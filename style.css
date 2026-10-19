@@ -17674,3 +17674,11 @@ body[data-market-theme="night"] .v442-market-search-label{background:#081526!imp
 
 /* V462: linee 7 giorni + quotazione live nella colonna Market */
 .v442-market-table svg.v449-market-sparkline{display:inline-block!important;width:130px!important;height:46px!important;visibility:visible!important}
+
+/* V464: sentiment immediatamente leggibile in entrambe le modalità */
+.v451-market-table td:nth-child(10){text-align:center!important;overflow:visible!important}
+.v451-market-table td:nth-child(10) .v451-sentiment{display:inline-flex!important;min-width:108px!important;min-height:32px!important;align-items:center!important;justify-content:center!important;white-space:nowrap!important;font-size:12px!important;letter-spacing:.01em;font-weight:850!important;visibility:visible!important;opacity:1!important}
+.v451-market-table td:nth-child(10) .v451-sentiment.up{background:rgba(22,199,132,.17)!important;color:#16c784!important;border:1px solid rgba(22,199,132,.38)!important}
+.v451-market-table td:nth-child(10) .v451-sentiment.down{background:rgba(234,57,67,.15)!important;color:#ea3943!important;border:1px solid rgba(234,57,67,.35)!important}
+.v451-market-table td:nth-child(10) .v451-sentiment.neutral{background:rgba(148,163,184,.14)!important;color:var(--v442-txt)!important;border:1px solid rgba(148,163,184,.3)!important}
+.v451-market-table td:nth-child(11) svg.v442-market-spark{display:inline-block!important;min-width:120px!important;width:130px!important;height:48px!important;visibility:visible!important;opacity:1!important}

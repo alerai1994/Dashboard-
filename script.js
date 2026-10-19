@@ -27405,7 +27405,7 @@ window.__V375LiveView={open,close};
     if(series.length===0){
       const missing=document.createElement('span');
       missing.className='v442-spark-empty';
-      missing.textContent='Dati non disponibili';
+      missing.textContent='Storico non disponibile';
       missing.title='Nessuna quotazione valida ricevuta';
       return missing;
     }
@@ -27507,7 +27507,7 @@ window.__V375LiveView={open,close};
     const frag=document.createDocumentFragment();
     if(!filtered.length){
       const tr=document.createElement('tr'), td=document.createElement('td');
-      td.colSpan=11; td.className='v442-empty-row'; td.textContent=coins.length?'Nessuna criptovaluta trovata.':'Nessun dato disponibile. Apri Market oppure premi Aggiorna.'; tr.appendChild(td); frag.appendChild(tr);
+      td.colSpan=11; td.className='v442-empty-row'; td.textContent=coins.length?'Nessuna criptovaluta trovata.':'Nessun dato disponibile. Market riprova automaticamente.'; tr.appendChild(td); frag.appendChild(tr);
     } else {
       for(let i=0;i<filtered.length;i++){
         const coin=filtered[i], tr=document.createElement('tr');
@@ -27534,12 +27534,14 @@ window.__V375LiveView={open,close};
         cell(tr, fmtBig(Number(coin.total_volume)), 'v442-market-money', 'Volume (24h)');
         cell(tr, supplyCell(coin), null, 'Supply');
         cell(tr, sentimentCell(coin), null, 'Sentiment');
-        cell(tr, sparkChart(coin), 'v453-live-chart', 'Mini grafico live');
+        cell(tr, sparkChart(coin), 'v453-live-chart', 'Storico 7g + live');
         frag.appendChild(tr);
       }
     }
     rows.replaceChildren(frag);
-    
+    if(scheduleHistory && document.body.classList.contains('v442-market-open')) {
+      setTimeout(queueVisibleHistories, 120);
+    }
   }
 
   async function fetchMarket(force=false){
