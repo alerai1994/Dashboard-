@@ -27290,10 +27290,90 @@ window.__V375LiveView={open,close};
   const close=q('v442MarketClose'), dashboardNav=q('v442MarketDashboardNav'), marketNav=q('v442MarketNav');
   const rows=q('v442MarketRows'), status=q('v442MarketStatus'), count=q('v442MarketCount'), search=q('v442MarketSearch'), refresh=q('v442MarketRefresh');
   if(!menu || !drawer || !shade || !rows) return;
-  const SOURCE='https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=200&page=1&sparkline=true&price_change_percentage=24h';
-  const CACHE_KEY='dashboard_market_v444_top200_https_v1';
+  const SOURCE='https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=200&page=1&sparkline=true&price_change_percentage=24h%2C7d';
+  const CACHE_KEY='dashboard_market_v446_top200_7g_24g_v1';
   const CACHE_AGE=3*60*1000, AUTO_REFRESH=3*60*1000;
   let coins=[], fetchedAt=0, lastAttempt=0, loading=false, timer=null, firstOpened=false, previousFocus=null, activeSource='';
+  // V446: lo storico 24 giorni si ricava soltanto da vere quotazioni storiche.
+  // Le fonti Market Top 200 non lo forniscono in blocco: richiesta per singola crypto.
+  const HISTORY_KEY='dashboard_market_v446_history24_v1';
+  const SAMPLES_KEY='dashboard_market_v446_live_samples_v1';
+  const HISTORY_TTL=60*60*1000, HISTORY_MIN_GAP=3500;
+  const history24=new Map(), historyBusy=new Set(), historyFailed=new Map(), liveSamples=new Map();
+  let lastHistoryFetch=0;
+  try{
+    const h=JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');
+    if(Array.isArray(h))for(const item of h)if(item&&item.id&&Date.now()-item.at<HISTORY_TTL&&Number.isFinite(item.change))history24.set(item.id,item);
+    const samples=JSON.parse(localStorage.getItem(SAMPLES_KEY)||'[]');
+    if(Array.isArray(samples))for(const item of samples){if(Array.isArray(item)&&item.length===2&&Array.isArray(item[1]))liveSamples.set(item[0],item[1]);}
+  }catch(_){}
+  function storeHistory(){try{localStorage.setItem(HISTORY_KEY,JSON.stringify(Array.from(history24.values()).slice(-80)));}catch(_){}}
+  function appendLiveSamples(){
+    const now=Date.now(),cutoff=now-7*24*60*60*1000;
+    for(const coin of coins){
+      const value=Number(coin.current_price),id=String(coin.id||coin.symbol||'');
+      if(!(value>0)||!id)continue;
+      const a=liveSamples.get(id)||[];
+      if(a.length && now-a[a.length-1][0]<60000)continue;
+      a.push([now,value]);
+      const keep=a.filter(p=>p[0]>=cutoff).slice(-240);
+      liveSamples.set(id,keep);
+    }
+    try{localStorage.setItem(SAMPLES_KEY,JSON.stringify(Array.from(liveSamples.entries()).slice(0,200)));}catch(_){}
+  }
+  function historyFor(coin){
+    const value=history24.get(String(coin.id||''));
+    return value&&Date.now()-value.at<HISTORY_TTL?value:null;
+  }
+  function trendIndicator(pct,label){
+    // Grafico reale di variazione percentuale: NON una finta linea di prezzi.
+    const svg=document.createElementNS(svgNS,'svg');svg.setAttribute('viewBox','0 0 112 42');
+    svg.setAttribute('class','v442-market-spark v446-market-changeplot');
+    svg.setAttribute('role','img');svg.setAttribute('aria-label',label+' '+nf(2).format(pct)+'%');
+    const axis=document.createElementNS(svgNS,'path');axis.setAttribute('d','M56 8V34 M6 21H106');
+    axis.setAttribute('stroke','currentColor');axis.setAttribute('stroke-opacity','.26');axis.setAttribute('stroke-width','1');axis.setAttribute('fill','none');svg.appendChild(axis);
+    const distance=45*Math.min(Math.abs(pct)/20,1),x=56+(pct>=0?distance:-distance),color=pct>=0?'#27c89e':'#f07783';
+    const bar=document.createElementNS(svgNS,'path');bar.setAttribute('d','M56 21H'+x.toFixed(2));bar.setAttribute('stroke',color);bar.setAttribute('stroke-width','3.5');bar.setAttribute('stroke-linecap','round');svg.appendChild(bar);
+    const dot=document.createElementNS(svgNS,'circle');dot.setAttribute('cx',x.toFixed(2));dot.setAttribute('cy','21');dot.setAttribute('r','4');dot.setAttribute('fill',color);svg.appendChild(dot);
+    return svg;
+  }
+  function change7days(coin){
+    if(Number.isFinite(coin.price_change_percentage_7d))return coin.price_change_percentage_7d;
+    const a=coin.sparkline_in_7d?.price;
+    if(Array.isArray(a)&&a.length>1&&a[0]>0&&Number.isFinite(a.at(-1)))return (a.at(-1)/a[0]-1)*100;
+    return null;
+  }
+  function fmtChange(v){return v==null||!Number.isFinite(v)?'—':(v>0?'+':'')+nf(2).format(v)+'%';}
+  function changeBadge(v,extraClass=''){
+    const span=document.createElement('span');span.className='v446-change-value '+extraClass+' '+(v==null?'v446-not-available':v<0?'v442-market-change-down':'v442-market-change-up');
+    span.textContent=fmtChange(v);return span;
+  }
+  async function fetchExact24(coin){
+    const id=String(coin.id||'');
+    if(!id||historyBusy.has(id))return;
+    if(historyFailed.has(id) && Date.now()-historyFailed.get(id)<60000)return;
+    historyBusy.add(id);render();
+    try{
+      // Rate limit locale: evitiamo il caricamento di 200 storici in parallelo.
+      const wait=Math.max(0,HISTORY_MIN_GAP-(Date.now()-lastHistoryFetch));
+      if(wait)await new Promise(resolve=>setTimeout(resolve,wait));
+      lastHistoryFetch=Date.now();
+      const u='https://api.coingecko.com/api/v3/coins/'+encodeURIComponent(id)+'/market_chart?vs_currency=usd&days=30';
+      const payload=await getJson(u,13000);
+      if(!Array.isArray(payload?.prices))throw new Error('Storico non disponibile');
+      const points=payload.prices.filter(p=>Array.isArray(p)&&Number.isFinite(p[0])&&Number.isFinite(p[1])&&p[1]>0).sort((a,b)=>a[0]-b[0]);
+      const target=Date.now()-24*86400000;
+      let earlier=null;
+      for(const point of points)if(Math.abs(point[0]-target)<14*3600000&&(!earlier||Math.abs(point[0]-target)<Math.abs(earlier[0]-target)))earlier=point;
+      if(!earlier||!(Number(coin.current_price)>0))throw new Error('Dati 24g insufficienti');
+      const change=(Number(coin.current_price)/earlier[1]-1)*100;
+      const series=points.filter(p=>p[0]>=target-12*3600000).map(p=>p[1]);
+      if(series.length<5)throw new Error('Storico grafico 24g insufficiente');
+      history24.set(id,{id,change,at:Date.now(),series:series.slice(-120)});storeHistory();
+    }catch(err){historyFailed.set(id,Date.now());console.info('Market 24g',id,err.message||err);}
+    finally{historyBusy.delete(id);render();}
+  }
+
   const nf = (digits=2) => new Intl.NumberFormat('it-IT',{maximumFractionDigits:digits,minimumFractionDigits:0});
   function fmtPrice(v){
     if(!Number.isFinite(v))return '—';
@@ -27324,14 +27404,20 @@ window.__V375LiveView={open,close};
   function logoFallback(coin){const el=document.createElement('span');el.className='v442-market-fallback-logo';el.textContent=(coin.symbol||'?').charAt(0).toUpperCase();return el;}
   const svgNS='http://www.w3.org/2000/svg';
   function sparkChart(coin){
-    const raw=coin.sparkline_in_7d&&coin.sparkline_in_7d.price;
-    const values=Array.isArray(raw)?raw.filter(n=>typeof n==='number'&&Number.isFinite(n)):[];
-    if(values.length<2){const missing=document.createElement('span');missing.className='v442-spark-empty';missing.textContent='—';return missing;}
+    const historical=historyFor(coin);
+    const raw=historical?.series?.length>1?historical.series:coin.sparkline_in_7d&&coin.sparkline_in_7d.price;
+    let values=Array.isArray(raw)?raw.filter(n=>typeof n==='number'&&Number.isFinite(n)):[];
+    let period=historical?.series?.length>1?'24 giorni': '7 giorni';
+    if(values.length<2){const saved=liveSamples.get(String(coin.id||coin.symbol||''))||[];
+      values=saved.filter(p=>p&&Number.isFinite(p[1])&&p[1]>0).map(p=>p[1]);period='campioni LIVE raccolti';}
+    if(values.length<2){const pct=change7days(coin);
+      if(pct!==null)return trendIndicator(pct,'Variazione 7 giorni, non storico prezzi');
+      const missing=document.createElement('span');missing.className='v442-spark-empty';missing.textContent='In raccolta';missing.title='In attesa di almeno 2 campioni reali';return missing;}
     const size=45, sample=[];
     for(let i=0;i<size;i++)sample.push(values[Math.round(i*(values.length-1)/(size-1))]);
     let lo=Math.min(...sample),hi=Math.max(...sample);if(hi===lo){lo-=Math.max(1,Math.abs(lo)*.01);hi+=Math.max(1,Math.abs(hi)*.01);}
     const up=sample[sample.length-1]>=sample[0],linecolor=up?'#27c89e':'#f07783';
-    const svg=document.createElementNS(svgNS,'svg');svg.setAttribute('viewBox','0 0 112 42');svg.setAttribute('preserveAspectRatio','none');svg.setAttribute('role','img');svg.setAttribute('aria-label','Andamento del prezzo degli ultimi 7 giorni');svg.setAttribute('class','v442-market-spark');
+    const svg=document.createElementNS(svgNS,'svg');svg.setAttribute('viewBox','0 0 112 42');svg.setAttribute('preserveAspectRatio','none');svg.setAttribute('role','img');svg.setAttribute('aria-label','Andamento reale: '+period);svg.setAttribute('title','Andamento reale: '+period);svg.setAttribute('class','v442-market-spark');
     const path=document.createElementNS(svgNS,'path');
     path.setAttribute('d',sample.map((v,i)=>(i===0?'M':'L')+(2+i*108/(sample.length-1)).toFixed(2)+' '+(38-34*(v-lo)/(hi-lo)).toFixed(2)).join(' '));
     path.setAttribute('fill','none');path.setAttribute('stroke',linecolor);path.setAttribute('stroke-width','2.1');path.setAttribute('stroke-linejoin','round');path.setAttribute('stroke-linecap','round');path.setAttribute('vector-effect','non-scaling-stroke');svg.appendChild(path);return svg;
@@ -27342,7 +27428,7 @@ window.__V375LiveView={open,close};
     const filtered=coins.filter(c=>!query || (String(c.name||'')+' '+String(c.symbol||'')+' '+String(c.id||'')).toLocaleLowerCase('it').includes(query));
     count.textContent=filtered.length+' / '+coins.length;
     const frag=document.createDocumentFragment();
-    if(!filtered.length){const tr=document.createElement('tr');const td=document.createElement('td');td.colSpan=6;td.className='v442-empty-row';td.textContent=coins.length?'Nessuna criptovaluta trovata.':'Nessun dato disponibile. Apri Market oppure premi Aggiorna.';tr.appendChild(td);frag.appendChild(tr);}
+    if(!filtered.length){const tr=document.createElement('tr');const td=document.createElement('td');td.colSpan=8;td.className='v442-empty-row';td.textContent=coins.length?'Nessuna criptovaluta trovata.':'Nessun dato disponibile. Apri Market oppure premi Aggiorna.';tr.appendChild(td);frag.appendChild(tr);}
     else for(let i=0;i<filtered.length;i++){
       const coin=filtered[i],tr=document.createElement('tr');tr.className='v442-market-row';
       cell(tr,String(coin.market_cap_rank||i+1));cell(tr,iconFor(coin));
@@ -27350,13 +27436,21 @@ window.__V375LiveView={open,close};
       const change=coin.price_change_percentage_24h;
       if(typeof change==='number' && Number.isFinite(change)){const sub=document.createElement('small');sub.className=change<0?'v442-market-change-down':'v442-market-change-up';sub.textContent=(change>0?'+':'')+nf(2).format(change)+'% · 24h';price.appendChild(sub);}
       cell(tr,price,null,'Prezzo');cell(tr,fmtBig(coin.market_cap),'v442-market-money','Market cap');cell(tr,fmtBig(coin.total_volume),'v442-market-money','Volume 24h');
-      let mini=sparkChart(coin);
-      if(!coin.sparkline_in_7d?.price?.length && Number.isFinite(coin.price_change_percentage_7d)){
-        mini=document.createElement('span');mini.className='v443-week-change '+(coin.price_change_percentage_7d<0?'v442-market-change-down':'v442-market-change-up');
-        mini.textContent='7g '+(coin.price_change_percentage_7d>0?'+':'')+nf(2).format(coin.price_change_percentage_7d)+'%';
-        mini.title='Variazione 7 giorni — dati del grafico non disponibili da questa fonte';
+      const pct7=change7days(coin);
+      cell(tr,changeBadge(pct7),'v446-seven-cell','7g');
+      const h24=historyFor(coin);
+      const historyCell=document.createElement('span');historyCell.className='v446-history-wrap';
+      if(h24){historyCell.appendChild(changeBadge(h24.change));historyCell.title='Variazione calcolata sul prezzo reale di circa 24 giorni fa';}
+      else if(historyBusy.has(String(coin.id||''))){historyCell.textContent='Carico…';historyCell.classList.add('v446-loading');}
+      else{
+        const btn=document.createElement('button');btn.type='button';btn.className='v446-history-button';
+        btn.dataset.coinId=String(coin.id||'');btn.textContent='Carica';
+        btn.title='Carica la variazione reale degli ultimi 24 giorni (richiede dati storici)';
+        if(historyFailed.has(String(coin.id||''))){btn.textContent='n/d';btn.title='Storico non disponibile ora: tocca per riprovare';}
+        historyCell.appendChild(btn);
       }
-      cell(tr,mini);frag.appendChild(tr);
+      cell(tr,historyCell,'v446-history-cell','24g');
+      cell(tr,sparkChart(coin),'v446-graph-cell','Grafico');frag.appendChild(tr);
     }
     rows.replaceChildren(frag);
   }
@@ -27378,7 +27472,7 @@ window.__V375LiveView={open,close};
     const list=result.filter(c=>c&&typeof c.name==='string'&&asNum(c.current_price)!=null);
     if(list.length<20)throw new Error('CoinGecko: risposta non valida');
     list.sort((a,b)=>(asNum(a.market_cap_rank)||999999)-(asNum(b.market_cap_rank)||999999));
-    return {name:'CoinGecko',list:list.slice(0,200)};
+    return {name:'CoinGecko',list:list.slice(0,200).map(c=>({...c,price_change_percentage_7d:asNum(c.price_change_percentage_7d_in_currency??c.price_change_percentage_7d)}))};
   }
   async function loadCoinLore(){
     // CoinLore offre al massimo 100 criptovalute per richiesta.
@@ -27427,12 +27521,12 @@ window.__V375LiveView={open,close};
       .map(c=>({ ...c, current_price:asNum(c.current_price),
         market_cap:asNum(c.market_cap),total_volume:asNum(c.total_volume),
         price_change_percentage_24h:asNum(c.price_change_percentage_24h),
-        price_change_percentage_7d:asNum(c.price_change_percentage_7d) }));
+        price_change_percentage_7d:asNum(c.price_change_percentage_7d_in_currency??c.price_change_percentage_7d) }));
     if(list.length<170)throw new Error('Risposta HTTPS incompleta');
     return {name:String(payload.source||'Market HTTPS'), list:list.slice(0,200)};
   }
   function sourceStatus(name,ageNotice=''){
-    const extra=name==='CoinGecko'?'Mini-grafici 7g quando disponibili':'Variazione 7g quando non disponibile il grafico';
+    const extra='7g LIVE · 24g su richiesta storica · mini-grafici basati solo su dati reali';
     return 'Fonte '+name+' · '+coins.length+' crypto · '+ageNotice+'Aggiornato alle '+new Date(fetchedAt).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})+' · '+extra;
   }
   async function fetchMarket(force=false){
@@ -27457,7 +27551,7 @@ window.__V375LiveView={open,close};
       }
       if(!selected || !selected.list || selected.list.length<1) throw new Error('Nessuna quotazione disponibile');
       coins=selected.list.slice(0,200);activeSource=selected.name;fetchedAt=Date.now();
-      cacheWrite();render();setStatus(sourceStatus(activeSource));
+      appendLiveSamples();cacheWrite();render();setStatus(sourceStatus(activeSource));
     }catch(err){
       render();
       setStatus(coins.length
@@ -27488,6 +27582,12 @@ window.__V375LiveView={open,close};
   close.addEventListener('click',hide);shade.addEventListener('click',hide);dashboardNav.addEventListener('click',hide);
   marketNav.addEventListener('click',()=>{search.focus();});
   refresh.addEventListener('click',()=>fetchMarket(true));search.addEventListener('input',render);
+  rows.addEventListener('click',ev=>{
+    const btn=ev.target.closest('.v446-history-button');
+    if(!btn)return;
+    const coin=coins.find(c=>String(c.id||'')===btn.dataset.coinId);
+    if(coin){historyFailed.delete(String(coin.id));fetchExact24(coin);}
+  });
   drawer.addEventListener('keydown',ev=>{
     if(ev.key==='Escape'){ev.preventDefault();hide();return;}
     if(ev.key!=='Tab')return;
