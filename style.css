@@ -1,5 +1,7 @@
-/* Dashboard Crypto V445: styles extracted from the original V444, original cascade order preserved. */
-/* ----- CSS block 1: unnamed ----- */
+/* Dashboard Crypto V442 — foglio di stile esterno.
+   I blocchi originali sono mantenuti nello stesso ordine per preservare la cascata CSS. */
+
+/* ===== CSS originale 1/293: blocco-css-1 ===== */
 
     :root {
       --bg: #07090d;
@@ -3160,7 +3162,7 @@
 
   
 
-/* ----- CSS block 2: unnamed ----- */
+/* ===== CSS originale 2/293: blocco-css-2 ===== */
 
     .ipad-runtime-note {
       display: none;
@@ -3177,7 +3179,7 @@
     .ipad-canvas-chart { -webkit-user-select: none; user-select: none; }
   
 
-/* ----- CSS block 3: embedded-crypto-logos ----- */
+/* ===== CSS originale 3/293: embedded-crypto-logos ===== */
 
     /* Loghi crypto incorporati: funzionano anche da file locale e senza CDN immagini. */
     .asset-tab-logo, .asset-logo {
@@ -3213,7 +3215,7 @@
     }
   
 
-/* ----- CSS block 4: crypto-logos-soft ----- */
+/* ===== CSS originale 4/293: crypto-logos-soft ===== */
 
     /* Loghi più discreti: dimensioni ridotte, colori attenuati e nessun effetto badge marcato. */
     .asset-tab-logo,
@@ -3354,7 +3356,7 @@
 
   
 
-/* ----- CSS block 5: no-crypto-logos-layout ----- */
+/* ===== CSS originale 5/293: no-crypto-logos-layout ===== */
 
     /* Crypto logos removed: compact two-column market tabs and clean card headings. */
     .asset-tab {
@@ -3365,7 +3367,7 @@
     .asset-tab-copy { padding-left: 0 !important; }
   
 
-/* ----- CSS block 6: upper-price-low-whole-quadrant-fix ----- */
+/* ===== CSS originale 6/293: upper-price-low-whole-quadrant-fix ===== */
 
 /* Alert finali: UPPER = giallo, PRICE LOW = rosso, sull'intero quadrante. */
 .asset-tab.live-upper,
@@ -3435,7 +3437,7 @@ body.light .asset-tab.live-lower .asset-tab-upper,
 body.light .asset-tab.live-lower .asset-tab-low { background:rgba(255,255,255,.25) !important; }
 
 
-/* ----- CSS block 7: embedded-colored-crypto-logos ----- */
+/* ===== CSS originale 7/293: embedded-colored-crypto-logos ===== */
 
 .asset-tab-logo,.asset-logo{display:grid!important;place-items:center!important;flex:0 0 auto!important;border:1px solid rgba(255,255,255,.20)!important;color:#fff!important;font-weight:900!important;line-height:1!important;text-shadow:0 1px 2px rgba(0,0,0,.28)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 2px 7px rgba(0,0,0,.15)!important}
 .asset-tab-logo{width:30px!important;height:30px!important;border-radius:9px!important;font-size:11px!important}.asset-logo{width:36px!important;height:36px!important;border-radius:10px!important;font-size:12px!important}
@@ -3443,7 +3445,7 @@ body.light .asset-tab.live-lower .asset-tab-low { background:rgba(255,255,255,.2
 @media(max-width:760px){.asset-tab-logo{width:27px!important;height:27px!important;border-radius:8px!important}.asset-logo{width:32px!important;height:32px!important}}
 
 
-/* ----- CSS block 8: round-original-svg-logos-final ----- */
+/* ===== CSS originale 8/293: round-original-svg-logos-final ===== */
 
   /* Override finale: loghi SVG incorporati, rotondi, nitidi e a colori pieni. */
   .asset-tab-logo,
@@ -3491,7 +3493,7 @@ body.light .asset-tab.live-lower .asset-tab-low { background:rgba(255,255,255,.2
   }
 
 
-/* ----- CSS block 9: coinmarketcap-logo-style ----- */
+/* ===== CSS originale 9/293: coinmarketcap-logo-style ===== */
 
   .asset-tab-logo.cmc-logo,.asset-logo.cmc-logo{display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:0 0 auto!important;padding:0!important;border:0!important;border-radius:50%!important;background:transparent!important;background-image:none!important;box-shadow:none!important;overflow:hidden!important;color:transparent!important}
   .asset-tab-logo.cmc-logo{width:20px!important;height:20px!important;min-width:20px!important;min-height:20px!important}
@@ -3500,12 +3502,12 @@ body.light .asset-tab.live-lower .asset-tab-low { background:rgba(255,255,255,.2
   @media(max-width:760px){.asset-tab-logo.cmc-logo{width:18px!important;height:18px!important;min-width:18px!important;min-height:18px!important}.asset-logo.cmc-logo{width:23px!important;height:23px!important;min-width:23px!important;min-height:23px!important}}
 
 
-/* ----- CSS block 10: raydium-small-fallback-style ----- */
+/* ===== CSS originale 10/293: raydium-small-fallback-style ===== */
 
     .asset-tab-logo.ray:not(.cmc-logo), .asset-logo.ray:not(.cmc-logo) { background:#5b8def; color:#fff; }
   
 
-/* ----- CSS block 11: burn-realtime-all-v8-style ----- */
+/* ===== CSS originale 11/293: burn-realtime-all-v8-style ===== */
 
   .burn-section[data-burn-realtime-v8="true"] .burn-status.realtime {
     border-color: rgba(24,198,131,.48) !important;
@@ -3524,7 +3526,7 @@ body.light .asset-tab.live-lower .asset-tab-low { background:rgba(255,255,255,.2
   }
 
 
-/* ----- CSS block 12: selected-crypto-no-border-v10 ----- */
+/* ===== CSS originale 12/293: selected-crypto-no-border-v10 ===== */
 
   .asset-tab.active,
   .asset-tab.active.live-up,
@@ -3537,7 +3539,7 @@ body.light .asset-tab.live-lower .asset-tab-low { background:rgba(255,255,255,.2
   }
 
 
-/* ----- CSS block 13: ray-real-v14-style ----- */
+/* ===== CSS originale 13/293: ray-real-v14-style ===== */
 
   #ray-burn-section .burn-value[data-verified-real-ray="true"] {
     font-variant-numeric: tabular-nums;
@@ -3548,7 +3550,7 @@ body.light .asset-tab.live-lower .asset-tab-low { background:rgba(255,255,255,.2
   }
 
 
-/* ----- CSS block 14: ipad-safari-compat-v43-style ----- */
+/* ===== CSS originale 14/293: ipad-safari-compat-v43-style ===== */
 
   html.ipad-device {
     -webkit-text-size-adjust: 100%;
@@ -3613,7 +3615,7 @@ body.light .asset-tab.live-lower .asset-tab-low { background:rgba(255,255,255,.2
   }
 
 
-/* ----- CSS block 15: night-tab-neutral-numbers-v47 ----- */
+/* ===== CSS originale 15/293: night-tab-neutral-numbers-v47 ===== */
 
     /* Night: i numeri dei tab restano neutri; il colore rialzo/ribasso resta solo sulla freccia. */
     body:not(.light) .asset-tab.live-up .asset-tab-quote > strong,
@@ -3637,7 +3639,7 @@ body.light .asset-tab.live-lower .asset-tab-low { background:rgba(255,255,255,.2
     }
   
 
-/* ----- CSS block 16: sound-bell-icon-v58 ----- */
+/* ===== CSS originale 16/293: sound-bell-icon-v58 ===== */
 
     #soundToggle .sound-bell-icon {
       width: 20px !important;
@@ -3686,7 +3688,7 @@ body.light .asset-tab.live-lower .asset-tab-low { background:rgba(255,255,255,.2
     }
   
 
-/* ----- CSS block 17: settings-gear-icon-v57 ----- */
+/* ===== CSS originale 17/293: settings-gear-icon-v57 ===== */
 
     #settingsToggle .settings-gear-icon {
       width: 20px !important;
@@ -3698,7 +3700,7 @@ body.light .asset-tab.live-lower .asset-tab-low { background:rgba(255,255,255,.2
     #settingsToggle[aria-expanded="true"] .settings-gear-icon { transform: rotate(90deg); }
   
 
-/* ----- CSS block 18: top-icons-frosted-glass-v59 ----- */
+/* ===== CSS originale 18/293: top-icons-frosted-glass-v59 ===== */
 
     /* V59 — Impostazioni + campanella: vetro satinato trasparente/opaco. */
     #settingsToggle,
@@ -3784,7 +3786,7 @@ body.light .asset-tab.live-lower .asset-tab-low { background:rgba(255,255,255,.2
     }
   
 
-/* ----- CSS block 19: top-icons-frosted-glass-light-v60 ----- */
+/* ===== CSS originale 19/293: top-icons-frosted-glass-light-v60 ===== */
 
     /* V60 — rende chiaramente visibile il vetro satinato anche in modalità LIGHT. */
     body.light #settingsToggle,
@@ -3853,7 +3855,7 @@ body.light .asset-tab.live-lower .asset-tab-low { background:rgba(255,255,255,.2
     }
   
 
-/* ----- CSS block 20: v65-light-night-minimal-final ----- */
+/* ===== CSS originale 20/293: v65-light-night-minimal-final ===== */
 
 /* V65 — Light/Night minimal: neutri da inattivi, colore solo sulla modalità attiva. */
 .top-actions #themeToggle,
@@ -3949,7 +3951,7 @@ body.light .top-actions #themeNight.active {
 }
 
 
-/* ----- CSS block 21: settings-vertical-scroll-v83 ----- */
+/* ===== CSS originale 21/293: settings-vertical-scroll-v83 ===== */
 
 /* V83 — pannello Impostazioni scorrevole verticalmente */
 .settings-menu {
@@ -3985,7 +3987,7 @@ body.light .top-actions #themeNight.active {
 }
 
 
-/* ----- CSS block 22: v89-top-icons-colored-final ----- */
+/* ===== CSS originale 22/293: v89-top-icons-colored-final ===== */
 
 /* V89 — Colore solo sulle icone Impostazioni e Campanella. */
 #settingsToggle .settings-gear-icon {
@@ -4031,7 +4033,7 @@ body.light #soundToggle.active .sound-bell-icon,
 body.light #soundToggle[aria-pressed="true"] .sound-bell-icon { color: #16a34a !important; }
 
 
-/* ----- CSS block 23: v89-settings-black-outline-lightgray-fill-final ----- */
+/* ===== CSS originale 23/293: v89-settings-black-outline-lightgray-fill-final ===== */
 
 /* Impostazioni: contorno nero + interno grigio chiaro. */
 .top-actions #settingsToggle .settings-gear-icon {
@@ -4059,7 +4061,7 @@ body.light .top-actions #settingsToggle .settings-gear-icon circle {
 }
 
 
-/* ----- CSS block 24: v89-bell-black-orange-gold-final ----- */
+/* ===== CSS originale 24/293: v89-bell-black-orange-gold-final ===== */
 
 /* Campanella: contorno nero, corpo arancio e dettagli oro. */
 #soundToggle .sound-bell-icon .bell-body-color {
@@ -4079,7 +4081,7 @@ body.light .top-actions #settingsToggle .settings-gear-icon circle {
 }
 
 
-/* ----- CSS block 25: v89-minimal-icons-real-svg-fix ----- */
+/* ===== CSS originale 25/293: v89-minimal-icons-real-svg-fix ===== */
 
 #settingsToggle .settings-gear-minimal { width:18px!important; height:18px!important; overflow:visible; }
 #settingsToggle .settings-gear-minimal path { fill:#cfd3da!important; stroke:#050505!important; stroke-width:1.35!important; stroke-linejoin:round!important; }
@@ -4096,7 +4098,7 @@ body.light .top-actions #settingsToggle .settings-gear-icon circle {
 #soundToggle:hover .sound-bell-minimal { transform:none!important; filter:none!important; }
 
 
-/* ----- CSS block 26: emoji-style-icons-v1 ----- */
+/* ===== CSS originale 26/293: emoji-style-icons-v1 ===== */
 
   .emoji-style-icon {
     display: inline-flex;
@@ -4136,7 +4138,7 @@ body.light .top-actions #settingsToggle .settings-gear-icon circle {
   }
 
 
-/* ----- CSS block 27: emoji-style-icon-animations-v1 ----- */
+/* ===== CSS originale 27/293: emoji-style-icon-animations-v1 ===== */
 
   @keyframes settingsEmojiSpinSoft {
     0% { transform: translateY(-0.5px) rotate(0deg); }
@@ -4185,7 +4187,7 @@ body.light .top-actions #settingsToggle .settings-gear-icon circle {
   }
 
 
-/* ----- CSS block 28: settings-subtle-hover-return-v1 ----- */
+/* ===== CSS originale 28/293: settings-subtle-hover-return-v1 ===== */
 
   #settingsToggle .emoji-style-icon {
     transition: transform .22s ease;
@@ -4193,7 +4195,7 @@ body.light .top-actions #settingsToggle .settings-gear-icon circle {
   }
 
 
-/* ----- CSS block 29: hover-click-both-icons-v1 ----- */
+/* ===== CSS originale 29/293: hover-click-both-icons-v1 ===== */
 
   @keyframes settingsClickNudge {
     0%   { transform: translateY(-0.5px) rotate(6deg) scale(1); }
@@ -4233,7 +4235,7 @@ body.light .top-actions #settingsToggle .settings-gear-icon circle {
   }
 
 
-/* ----- CSS block 30: v89-final-minimal-toolbar-icons ----- */
+/* ===== CSS originale 30/293: v89-final-minimal-toolbar-icons ===== */
 
   /* Versione finale minimal per Impostazioni e Campanella */
   #settingsToggle,
@@ -4308,7 +4310,7 @@ body.light .top-actions #settingsToggle .settings-gear-icon circle {
   }
 
 
-/* ----- CSS block 31: v89-refined-toolbar-icons ----- */
+/* ===== CSS originale 31/293: v89-refined-toolbar-icons ===== */
 
   #settingsToggle,
   #soundToggle {
@@ -4408,7 +4410,7 @@ body.light .top-actions #settingsToggle .settings-gear-icon circle {
   }
 
 
-/* ----- CSS block 32: v89-icons-frontali-final ----- */
+/* ===== CSS originale 32/293: v89-icons-frontali-final ===== */
 
   /* Icone frontali, proporzionate e ben leggibili */
   #settingsToggle,
@@ -4510,7 +4512,7 @@ body.light .top-actions #settingsToggle .settings-gear-icon circle {
   }
 
 
-/* ----- CSS block 33: v89-icons-light-night-visibility-fix ----- */
+/* ===== CSS originale 33/293: v89-icons-light-night-visibility-fix ===== */
 
   /* Contrasto ottimizzato per NIGHT */
   body:not(.light) #settingsToggle .frontal-icon {
@@ -4580,7 +4582,7 @@ body.light .top-actions #settingsToggle .settings-gear-icon circle {
   }
 
 
-/* ----- CSS block 34: v89-icons-subtle-hover-click ----- */
+/* ===== CSS originale 34/293: v89-icons-subtle-hover-click ===== */
 
   /* Movimento molto leggero e pulito */
   #settingsToggle .frontal-icon,
@@ -4619,7 +4621,7 @@ body.light .top-actions #settingsToggle .settings-gear-icon circle {
   }
 
 
-/* ----- CSS block 35: v89-icons-28deg-animation ----- */
+/* ===== CSS originale 35/293: v89-icons-28deg-animation ===== */
 
   @keyframes settingsRotate28 {
     0%   { transform: rotate(0deg) scale(1); }
@@ -4685,7 +4687,7 @@ body.light .top-actions #settingsToggle .settings-gear-icon circle {
   }
 
 
-/* ----- CSS block 36: v89-icon-motion-js-fix ----- */
+/* ===== CSS originale 36/293: v89-icon-motion-js-fix ===== */
 
   /* Il movimento viene gestito direttamente via JS per evitare conflitti
      con le numerose regole legacy presenti nella dashboard. */
@@ -4697,7 +4699,7 @@ body.light .top-actions #settingsToggle .settings-gear-icon circle {
   }
 
 
-/* ----- CSS block 37: v89-hide-price-direction-complete ----- */
+/* ===== CSS originale 37/293: v89-hide-price-direction-complete ===== */
 
   /* =========================================================
      NASCONDI PREZZI: nasconde anche salita/discesa e variazioni
@@ -4810,7 +4812,7 @@ body.light .top-actions #settingsToggle .settings-gear-icon circle {
   }
 
 
-/* ----- CSS block 38: v89-hide-direction-hard-fix ----- */
+/* ===== CSS originale 38/293: v89-hide-direction-hard-fix ===== */
 
   body.prices-hidden .direction-alert {
     visibility: hidden !important;
@@ -4830,7 +4832,7 @@ body.light .top-actions #settingsToggle .settings-gear-icon circle {
   }
 
 
-/* ----- CSS block 39: v89-price-hide-no-overlap-final ----- */
+/* ===== CSS originale 39/293: v89-price-hide-no-overlap-final ===== */
 
   /* IMPORTANT: niente più testi duplicati sovrapposti su UPPER / PRICE LOW */
   body.prices-hidden .asset-tab-upper,
@@ -4919,7 +4921,7 @@ body.light .top-actions #settingsToggle .settings-gear-icon circle {
   }
 
 
-/* ----- CSS block 40: v89-tab-price-hidden-no-overlay-definitive ----- */
+/* ===== CSS originale 40/293: v89-tab-price-hidden-no-overlay-definitive ===== */
 
   /* ============================================================
      FIX DEFINITIVO NASCONDI PREZZI NEI TAB
@@ -4969,7 +4971,7 @@ body.light .top-actions #settingsToggle .settings-gear-icon circle {
   }
 
 
-/* ----- CSS block 41: v89-hide-upper-low-no-overlap-hard-final ----- */
+/* ===== CSS originale 41/293: v89-hide-upper-low-no-overlap-hard-final ===== */
 
   /* ============================================================
      FIX DEFINITIVO:
@@ -5040,7 +5042,7 @@ body.light .top-actions #settingsToggle .settings-gear-icon circle {
   }
 
 
-/* ----- CSS block 42: v89-settings-sound-like-theme-toggle-final ----- */
+/* ===== CSS originale 42/293: v89-settings-sound-like-theme-toggle-final ===== */
 
   /* ============================================================
      Impostazioni + Campanella nello stesso stile di LIGHT / NIGHT
@@ -5169,7 +5171,7 @@ body.light .top-actions #settingsToggle .settings-gear-icon circle {
   }
 
 
-/* ----- CSS block 43: v132-no-duplicate-ema-labels ----- */
+/* ===== CSS originale 43/293: v132-no-duplicate-ema-labels ===== */
 
 /* V132 — Niente doppioni EMA: i valori compaiono una sola volta sulla scala destra. */
 .ema-legend {
@@ -5177,7 +5179,7 @@ body.light .top-actions #settingsToggle .settings-gear-icon circle {
 }
 
 
-/* ----- CSS block 44: v-full-page-responsive ----- */
+/* ===== CSS originale 44/293: v-full-page-responsive ===== */
 
 /* Full-page browser layout: use the entire available viewport width. */
 html, body {
@@ -5264,7 +5266,7 @@ body {
 }
 
 
-/* ----- CSS block 45: v144-ema-cross-alerts-discrete ----- */
+/* ===== CSS originale 45/293: v144-ema-cross-alerts-discrete ===== */
 
 /* V144 — Avviso EMA piccolo e ancorato al punto reale dell'incrocio. */
 .ema-cross-live-alert {
@@ -5321,7 +5323,7 @@ body {
 }
 
 
-/* ----- CSS block 46: global-marketcap-pills-v1 ----- */
+/* ===== CSS originale 46/293: global-marketcap-pills-v1 ===== */
 
     .global-marketcap-pills {
       display: flex;
@@ -5489,7 +5491,7 @@ body {
     }
   
 
-/* ----- CSS block 47: altcoin-index-threshold-colors-v2 ----- */
+/* ===== CSS originale 47/293: altcoin-index-threshold-colors-v2 ===== */
 
     /* ALTCOIN INDEX: colore basato sulla soglia, non sul movimento tick-to-tick. */
     #altcoinIndexPill[data-zone="altseason"] {
@@ -5521,7 +5523,7 @@ body {
     }
   
 
-/* ----- CSS block 48: altcoin-index-no-green-red-v3 ----- */
+/* ===== CSS originale 48/293: altcoin-index-no-green-red-v3 ===== */
 
     /* ALTCOIN INDEX: nessun verde/rosso. Solo blu, arancione o neutro. */
     #altcoinIndexPill[data-state="live"] .global-marketcap-pill-live::before {
@@ -5545,7 +5547,7 @@ body {
     }
   
 
-/* ----- CSS block 49: altcoin-index-live-bar-v5-pill ----- */
+/* ===== CSS originale 49/293: altcoin-index-live-bar-v5-pill ===== */
 
     /* ALTCOIN INDEX — mini barra 0–100 integrata nella stessa pillola di TOTAL. */
     #altcoinIndexPill {
@@ -5675,7 +5677,7 @@ body {
     }
   
 
-/* ----- CSS block 50: fear-greed-live-pill-v1 ----- */
+/* ===== CSS originale 50/293: fear-greed-live-pill-v1 ===== */
 
     /* PAURA & AVIDITÀ — pillola LIVE con barra a 5 zone. */
     #fearGreedPill {
@@ -5766,7 +5768,7 @@ body {
     }
   
 
-/* ----- CSS block 51: btc-rainbow-pill-live-v2-inverted ----- */
+/* ===== CSS originale 51/293: btc-rainbow-pill-live-v2-inverted ===== */
 
     /* BTC ARCOBALENO — pillola LIVE con mini rainbow chart. */
     #btcRainbowPill {
@@ -5852,13 +5854,13 @@ body {
     }
   
 
-/* ----- CSS block 52: hide-index-source-time-v1 ----- */
+/* ===== CSS originale 52/293: hide-index-source-time-v1 ===== */
 
   #altcoinIndexPill .index-source,
   #fearGreedPill .fng-source { display: none !important; }
 
 
-/* ----- CSS block 53: eth-rainbow-pill-live-v1 ----- */
+/* ===== CSS originale 53/293: eth-rainbow-pill-live-v1 ===== */
 
     /* ETH ARCOBALENO — stessa pillola del BTC, scala basso blu -> alto rosso. */
     #ethRainbowPill {
@@ -5942,7 +5944,7 @@ body {
     }
   
 
-/* ----- CSS block 54: altcoin-index-click-chart-v1 ----- */
+/* ===== CSS originale 54/293: altcoin-index-click-chart-v1 ===== */
 
   #altcoinIndexPill {
     cursor: pointer;
@@ -6168,7 +6170,7 @@ body {
   }
 
 
-/* ----- CSS block 55: panel-close-square-border-v1 ----- */
+/* ===== CSS originale 55/293: panel-close-square-border-v1 ===== */
 
   #altcoinIndexChartClose,
   #fearGreedChartClose,
@@ -6203,7 +6205,7 @@ body {
   }
 
 
-/* ----- CSS block 56: panel-close-x-centered-v2 ----- */
+/* ===== CSS originale 56/293: panel-close-x-centered-v2 ===== */
 
 /* X centrata perfettamente nel riquadro su tutti i pannelli fullscreen */
 .altcoin-chart-close {
@@ -6254,7 +6256,7 @@ body {
 .altcoin-chart-close:active::before { color:#ff6262 !important; }
 
 
-/* ----- CSS block 57: panel-close-single-x-v3 ----- */
+/* ===== CSS originale 57/293: panel-close-single-x-v3 ===== */
 
 /* Una sola X: usa il carattere reale del button, niente pseudo-elementi duplicati. */
 .altcoin-chart-close {
@@ -6301,7 +6303,7 @@ body {
 }
 
 
-/* ----- CSS block 58: ipad6-chart-performance-fix-v1 ----- */
+/* ===== CSS originale 58/293: ipad6-chart-performance-fix-v1 ===== */
 
   html.ipad-device * {
     animation-duration: .001ms !important;
@@ -6326,7 +6328,7 @@ body {
   }
 
 
-/* ----- CSS block 59: hide-tradingview-attribution-v24 ----- */
+/* ===== CSS originale 59/293: hide-tradingview-attribution-v24 ===== */
 
 /* V24 — nasconde esclusivamente logo/attribuzione grafica TradingView. */
 a[href*="tradingview.com"],
@@ -6342,7 +6344,7 @@ a[href*="www.tradingview.com"],
 }
 
 
-/* ----- CSS block 60: trading-zones-v46-style ----- */
+/* ===== CSS originale 60/293: trading-zones-v46-style ===== */
 
 .trading-zones-layer-v46{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:hidden}
 .trading-zone-v46{position:absolute;left:0;right:92px;min-height:8px;border-top:1px solid transparent;border-bottom:1px solid transparent;box-sizing:border-box;pointer-events:none;transition:top .16s linear,height .16s linear,opacity .16s ease}
@@ -6364,7 +6366,7 @@ body.light .trading-zone-rectangle-v55::after{background:rgba(161,98,7,.90);colo
 @media(max-width:820px){.trading-zone-rectangle-v55::after{font-size:7px;padding:1px 4px}}
 
 
-/* ----- CSS block 61: platform-universal-v94-style ----- */
+/* ===== CSS originale 61/293: platform-universal-v94-style ===== */
 
 /* Una sola build responsive per Apple, Android e Windows. */
 html.platform-apple-v94 .orderbook-panel,
@@ -6377,7 +6379,7 @@ html.platform-android-v94 .orderbook-rows { -webkit-overflow-scrolling: touch; }
 }
 
 
-/* ----- CSS block 62: orderbook-100-levels-v98 ----- */
+/* ===== CSS originale 62/293: orderbook-100-levels-v98 ===== */
 
 /* V98 — Order Book 100 livelli: mantiene ASK/BID affiancati e rende scorrevoli i 100 valori. */
 .orderbook-rows {
@@ -6398,7 +6400,7 @@ html.platform-android-v94 .orderbook-rows { -webkit-overflow-scrolling: touch; }
 }
 
 
-/* ----- CSS block 63: v100-orderbook-night-theme-fix ----- */
+/* ===== CSS originale 63/293: v100-orderbook-night-theme-fix ===== */
 
 /* V100 — Order Book: contrasto e leggibilità dedicati alla modalità NIGHT. */
 body:not(.light) .orderbook-section {
@@ -6489,7 +6491,7 @@ body:not(.light) .orderbook-rows::-webkit-scrollbar-thumb:hover {
 }
 
 
-/* ----- CSS block 64: v101-timeframe-active-blue-underline ----- */
+/* ===== CSS originale 64/293: v101-timeframe-active-blue-underline ===== */
 
 /* V102 — Timeframe selezionato: testo normale + sola riga azzurra inferiore. */
 .timeframe {
@@ -6520,10 +6522,10 @@ body.light .timeframe.active {
 }
 
 
-/* ----- CSS block 65: unnamed ----- */
+/* ===== CSS originale 65/293: blocco-css-65 ===== */
 .pill-data-age-v123{font-size:8px;letter-spacing:.02em;opacity:.7;margin-left:5px;white-space:nowrap}
 
-/* ----- CSS block 66: shared-pills-layout-v126 ----- */
+/* ===== CSS originale 66/293: shared-pills-layout-v126 ===== */
 
 .global-marketcap-pills {flex-wrap:nowrap!important;overflow-x:auto!important;align-items:center;}
 .global-marketcap-pills .global-marketcap-pill {flex:0 0 auto!important;min-width:max-content;}
@@ -6537,13 +6539,13 @@ body.light .timeframe.active {
 }
 
 
-/* ----- CSS block 67: hide-salvato-pill-label-v1 ----- */
+/* ===== CSS originale 67/293: hide-salvato-pill-label-v1 ===== */
 
 .pill-data-age-v123[hidden],
 .pill-data-age-v123:empty { display:none !important; }
 
 
-/* ----- CSS block 68: ai-adaptive-v169-style ----- */
+/* ===== CSS originale 68/293: ai-adaptive-v169-style ===== */
 
 /* V169 — indicatore AI discreto, nessun layout extra su mobile. */
 .connection .ai-adaptive-mark{
@@ -6563,7 +6565,7 @@ body.light .timeframe.active {
 }
 
 
-/* ----- CSS block 69: v173-brightness-blue-thumb-universal ----- */
+/* ===== CSS originale 69/293: v173-brightness-blue-thumb-universal ===== */
 
   #brightnessRange {
     accent-color: #1687ff !important;
@@ -6613,7 +6615,7 @@ body.light .timeframe.active {
   }
 
 
-/* ----- CSS block 70: v174-luna-burn-vertical ----- */
+/* ===== CSS originale 70/293: v174-luna-burn-vertical ===== */
 
 @media (max-width:767px){
   .v174-luna-burn-stack{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:14px!important}
@@ -6621,7 +6623,7 @@ body.light .timeframe.active {
 }
 
 
-/* ----- CSS block 71: v242-burn-mining-icons-match-x ----- */
+/* ===== CSS originale 71/293: v242-burn-mining-icons-match-x ===== */
 
 /* V242 — ⛏️ e 🔥 uguali alla 𝕏 del pulsante Notizie: box 18×18, glifo 11px */
 .burn-toggle > span:first-child {
@@ -6646,7 +6648,7 @@ body.light .timeframe.active {
 }
 
 
-/* ----- CSS block 72: v260-long-short-glowing-dots-all-crypto-css ----- */
+/* ===== CSS originale 72/293: v260-long-short-glowing-dots-all-crypto-css ===== */
 
 /* V263 · ••••• LONG xx% | SHORT xx% ••••• · 5 verdi + 5 rossi pieni, senza sfumature · tutti i sistemi operativi */
 .long-short-compact-v257{
@@ -6755,7 +6757,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 73: v264-long-short-light-solid-colors-all-os ----- */
+/* ===== CSS originale 73/293: v264-long-short-light-solid-colors-all-os ===== */
 
 /* V264 — colori chiari, pieni e senza sfumature per LONG/SHORT su tutti i sistemi operativi. */
 .long-short-compact-v257 .ls-long-v257{color:#22c55e!important}
@@ -6777,7 +6779,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 74: v265-long-short-light-illuminated-all-os ----- */
+/* ===== CSS originale 74/293: v265-long-short-light-illuminated-all-os ===== */
 
 /* V265 — pallini chiari che si illuminano in modo netto su tutti i sistemi operativi. */
 .ls-dots-long-v260{--ls-dot-on:#22c55e!important;--ls-dot-off:#bbf7d0!important;color:#22c55e!important}
@@ -6817,7 +6819,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 75: v266-long-short-solid-blocks-rtl-all-os ----- */
+/* ===== CSS originale 75/293: v266-long-short-solid-blocks-rtl-all-os ===== */
 
 /* V266 — blocchi pieni non circolari, animazione da destra verso sinistra su tutti i sistemi operativi. */
 .ls-dot-v260{
@@ -6833,7 +6835,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 76: v267-long-short-one-at-a-time-rtl-all-os ----- */
+/* ===== CSS originale 76/293: v267-long-short-one-at-a-time-rtl-all-os ===== */
 
 /* V267 — una sola luce alla volta, sequenza globale da destra a sinistra: 5 rossi -> 5 verdi. */
 .long-short-compact-v257[data-live="true"] .ls-dot-v260{
@@ -6886,7 +6888,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 77: v268-long-short-js-sequence-css ----- */
+/* ===== CSS originale 77/293: v268-long-short-js-sequence-css ===== */
 
 /* V268 — nessuna animazione CSS concorrente: un solo blocchetto acceso alla volta. */
 .long-short-compact-v257 .ls-dot-v260,
@@ -6913,7 +6915,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 78: v269-long-short-raf-animation-css ----- */
+/* ===== CSS originale 78/293: v269-long-short-raf-animation-css ===== */
 
 /* V269 — animazione stabile e netta, un solo blocchetto acceso alla volta. */
 .long-short-compact-v257 .ls-dot-v260{
@@ -6952,7 +6954,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 79: v272-round-dots-all-os ----- */
+/* ===== CSS originale 79/293: v272-round-dots-all-os ===== */
 
 /* V272 — pallini tondi simultanei su tutti i sistemi operativi. */
 .long-short-compact-v257 .ls-dot-v260{
@@ -6969,7 +6971,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 80: v273-round-dots-light-colors-all-os ----- */
+/* ===== CSS originale 80/293: v273-round-dots-light-colors-all-os ===== */
 
 /* V273 — pallini tondi con colori chiari su tutte le crypto e tutti i sistemi operativi. */
 .long-short-compact-v257 .ls-long-v257{color:#4ade80!important;}
@@ -6992,7 +6994,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 81: v274-total-defi-all-os-style ----- */
+/* ===== CSS originale 81/293: v274-total-defi-all-os-style ===== */
 
 /* V274 — TOTAL DEFI subito dopo TOTAL 2, responsive su tutti i sistemi operativi. */
 #globalTotalDefiPill{
@@ -7019,7 +7021,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 82: v277-total-four-live-direction-all-os ----- */
+/* ===== CSS originale 82/293: v277-total-four-live-direction-all-os ===== */
 
 /* V277 — TOTAL, TOTAL 1, TOTAL 2 e TOTAL DEFI: SU/GIÙ/STABILE calcolati a ogni nuovo dato LIVE. */
 #globalTotalPill[data-live-direction="up"] #globalTotalValue,#globalTotalPill[data-live-direction="up"] #globalTotalTrend,
@@ -7036,7 +7038,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 #globalTotalDefiPill[data-live-direction="neutral"] #globalTotalDefiTrend{color:var(--muted)!important;-webkit-text-fill-color:var(--muted)!important;}
 
 
-/* ----- CSS block 83: v278-total-defi-same-size-as-total-style ----- */
+/* ===== CSS originale 83/293: v278-total-defi-same-size-as-total-style ===== */
 
 /* V278 — TOTAL DEFI con le stesse dimensioni della pillola TOTAL su tutti i sistemi operativi. */
 #globalTotalDefiPill{
@@ -7064,7 +7066,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 84: v279-total-defi-readable-trend-all-os ----- */
+/* ===== CSS originale 84/293: v279-total-defi-readable-trend-all-os ===== */
 
 /* V279 — TOTAL DEFI: stessa dimensione di TOTAL, trend SU/GIÙ/STABILE sempre intero e leggibile. */
 #globalTotalDefiPill{
@@ -7120,7 +7122,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 85: v287-brand-title-final-all-os ----- */
+/* ===== CSS originale 85/293: v287-brand-title-final-all-os ===== */
 
 /* V287 — Prezzi live e indicatori: una riga stabile e leggibile su tutti i sistemi operativi. */
 .topbar .brand{
@@ -7159,7 +7161,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 86: v288-long-short-brighter-dots-all-os ----- */
+/* ===== CSS originale 86/293: v288-long-short-brighter-dots-all-os ===== */
 
 /* V288 — pallini LONG/SHORT più luminosi su tutti i sistemi operativi. */
 .long-short-compact-v257 .ls-long-v257{color:#86efac!important;}
@@ -7197,7 +7199,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 87: v289-long-short-solid-dots-no-gradient-all-os ----- */
+/* ===== CSS originale 87/293: v289-long-short-solid-dots-no-gradient-all-os ===== */
 
 /* V289 — solo pallini LONG/SHORT pieni, senza sfumature, su tutti i sistemi operativi. */
 .long-short-compact-v257 .ls-dots-long-v260 .ls-dot-v260,
@@ -7233,7 +7235,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 88: v290-long-short-text-vivid-all-os ----- */
+/* ===== CSS originale 88/293: v290-long-short-text-vivid-all-os ===== */
 
 /* V290 — solo testo LONG/SHORT + percentuali più marcato, scuro e vivace. */
 .long-short-compact-v257 .ls-long-v257,
@@ -7256,7 +7258,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 89: v291-long-short-dots-light-vivid-solid-all-os ----- */
+/* ===== CSS originale 89/293: v291-long-short-dots-light-vivid-solid-all-os ===== */
 
 /* V291 — solo pallini LONG/SHORT pieni, senza sfumature, chiari e vivaci su tutti i sistemi operativi. */
 .long-short-compact-v257 .ls-dots-long-v260 .ls-dot-v260,
@@ -7292,7 +7294,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 90: v292-only-dots-light-solid-no-gradient-all-os ----- */
+/* ===== CSS originale 90/293: v292-only-dots-light-solid-no-gradient-all-os ===== */
 
 /* V292 — SOLO pallini LONG/SHORT: chiari, pieni, senza sfumature. Testi e percentuali invariati. */
 .long-short-compact-v257 .ls-dots-long-v260 .ls-dot-v260,
@@ -7326,7 +7328,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 91: v293-solo-pallini-glow-chiari-pieni-all-os ----- */
+/* ===== CSS originale 91/293: v293-solo-pallini-glow-chiari-pieni-all-os ===== */
 
 /* V293 — glow solo sui pallini LONG/SHORT: pieni, chiari, luminosi, senza sfumature. */
 .long-short-compact-v257 .ls-dots-long-v260 .ls-dot-v260,
@@ -7361,7 +7363,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 92: v294-solo-pallini-piu-chiari-luminosi-all-os ----- */
+/* ===== CSS originale 92/293: v294-solo-pallini-piu-chiari-luminosi-all-os ===== */
 
 /* V294 — pallini LONG/SHORT ancora più chiari e luminosi su tutti i sistemi operativi. */
 .long-short-compact-v257 .ls-dots-long-v260 .ls-dot-v260,
@@ -7394,7 +7396,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 93: v295-solo-pallini-colori-vivaci-all-os ----- */
+/* ===== CSS originale 93/293: v295-solo-pallini-colori-vivaci-all-os ===== */
 
 /* V295 — pallini LONG/SHORT con colori più vivaci su tutti i sistemi operativi. */
 .long-short-compact-v257 .ls-dots-long-v260 .ls-dot-v260,
@@ -7427,7 +7429,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 94: v296-pallini-chiari-all-os ----- */
+/* ===== CSS originale 94/293: v296-pallini-chiari-all-os ===== */
 
 /* V296 — pallini LONG/SHORT chiari su tutti i sistemi operativi. */
 .long-short-compact-v257 .ls-dots-long-v260 .ls-dot-v260,
@@ -7460,7 +7462,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 95: v297-pallini-chiari-colori-vivaci-all-os ----- */
+/* ===== CSS originale 95/293: v297-pallini-chiari-colori-vivaci-all-os ===== */
 
 /* V297 — pallini LONG/SHORT chiari con colori vivaci su tutti i sistemi operativi. */
 .long-short-compact-v257 .ls-dots-long-v260 .ls-dot-v260,
@@ -7493,7 +7495,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 96: v298-pallini-chiari-pieni-come-foto-all-os ----- */
+/* ===== CSS originale 96/293: v298-pallini-chiari-pieni-come-foto-all-os ===== */
 
 /* V298 — pallini LONG/SHORT chiari, pieni e senza sfumature, come nella foto, su tutti i sistemi operativi. */
 .long-short-compact-v257 .ls-dots-long-v260 .ls-dot-v260,
@@ -7529,7 +7531,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 97: v299-pallini-verde-rosso-chiari-ben-visibili-all-os ----- */
+/* ===== CSS originale 97/293: v299-pallini-verde-rosso-chiari-ben-visibili-all-os ===== */
 
 /* V299 — pallini LONG/SHORT con verde e rosso chiari ma ben visibili su tutti i sistemi operativi. */
 .long-short-compact-v257 .ls-dots-long-v260 .ls-dot-v260,
@@ -7565,7 +7567,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 98: v300-pallini-colori-chiari-come-esempio-all-os ----- */
+/* ===== CSS originale 98/293: v300-pallini-colori-chiari-come-esempio-all-os ===== */
 
 /* V300 — pallini LONG/SHORT con colori chiari come gli esempi forniti, pieni e senza sfumature. */
 .long-short-compact-v257 .ls-dots-long-v260 .ls-dot-v260,
@@ -7604,7 +7606,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 99: v302-long-short-one-dot-normal-speed-all-os ----- */
+/* ===== CSS originale 99/293: v302-long-short-one-dot-normal-speed-all-os ===== */
 
 /* V302 — LONG/SHORT: un solo pallino acceso alla volta, velocità normale, da destra verso sinistra su entrambi i lati. */
 .long-short-compact-v257 .ls-dot-v260{
@@ -7613,7 +7615,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 100: v303-long-short-moving-light-solid-dots-all-os ----- */
+/* ===== CSS originale 100/293: v303-long-short-moving-light-solid-dots-all-os ===== */
 
 /* V303 — pallini LONG/SHORT non fissi: un solo pallino per lato si accende e avanza continuamente. */
 .long-short-compact-v257 .ls-dot-v260{
@@ -7647,7 +7649,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 101: v304-long-short-both-right-left-style ----- */
+/* ===== CSS originale 101/293: v304-long-short-both-right-left-style ===== */
 
 /* V304 — verde e rosso entrambi da destra verso sinistra, con un solo pallino acceso alla volta. */
 /* Neutralizza l'attivazione precedente, così non crea conflitti visivi. */
@@ -7673,7 +7675,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 102: v305-rosso-left-right-style ----- */
+/* ===== CSS originale 102/293: v305-rosso-left-right-style ===== */
 
 /* V305 — rosso da sinistra verso destra; verde resta da destra verso sinistra. */
 /* Neutralizza l'attivazione V304 sul lato rosso, così non interferisce. */
@@ -7689,7 +7691,7 @@ html.platform-apple-v94 .long-short-compact-v257{
 }
 
 
-/* ----- CSS block 103: v325-crypto-converter-css ----- */
+/* ===== CSS originale 103/293: v325-crypto-converter-css ===== */
 
 /* V327: stablecoin input + crypto output selects with optional online quotes. */
 .v325-crypto-converter-toggle{}
@@ -7742,13 +7744,13 @@ body.light .v325-crypto-output{background:rgba(14,165,233,.075);}
 @media(prefers-reduced-motion:reduce){.v325-crypto-converter-panel *{transition:none!important;animation:none!important;}}
 
 
-/* ----- CSS block 104: v327-crypto-simple-ui-css ----- */
+/* ===== CSS originale 104/293: v327-crypto-simple-ui-css ===== */
 
 .v325-crypto-field select{min-height:44px;-webkit-appearance:auto;appearance:auto;max-width:100%;}
 .v325-crypto-result{overflow-wrap:anywhere;word-break:break-word;}
 
 
-/* ----- CSS block 105: v328-automatic-converter-css ----- */
+/* ===== CSS originale 105/293: v328-automatic-converter-css ===== */
 
 /* V328: visible result + touch-friendly responsive automatic stablecoin conversion. */
 .v328-auto-result{margin-top:14px;padding:15px;border-color:rgba(56,189,248,.5);}
@@ -7762,7 +7764,7 @@ body.light .v325-crypto-output{background:rgba(14,165,233,.075);}
 @media(max-width:460px){.v328-auto-result .v325-crypto-result{font-size:25px;}.v328-auto-result{padding:12px;}}
 
 
-/* ----- CSS block 106: v351-futures-liquidation-alert-css ----- */
+/* ===== CSS originale 106/293: v351-futures-liquidation-alert-css ===== */
 
 /* Visible only when a fresh dashboard quote is within 2% of, or beyond,
    the theoretical liquidation threshold. The underlying quote is spot, not exchange MARK. */
@@ -7783,7 +7785,7 @@ body.light .v336-futures-surface .v351-liq-alert{color:#b45309;background:rgba(2
 .v336-futures-surface .v351-liq-alert .v351-liq-text{min-width:0;flex:1}
 
 
-/* ----- CSS block 107: v350-futures-hide-below-liquidation-notes ----- */
+/* ===== CSS originale 107/293: v350-futures-hide-below-liquidation-notes ===== */
 
 /* V350: remove visible explanatory copy immediately beneath the liquidation cards.
    Keep the nodes in the DOM for the Futures calculation / persistence logic.
@@ -7795,14 +7797,14 @@ body.light .v336-futures-surface .v351-liq-alert{color:#b45309;background:rgba(2
 }
 
 
-/* ----- CSS block 108: v353-hide-futures-backup-control ----- */
+/* ===== CSS originale 108/293: v353-hide-futures-backup-control ===== */
 
 /* V353: hide unused backup control and its icon, without changing autosave. */
 .v336-futures-panel .v346-backup,
 .v336-futures-panel .v346-backup[open]{display:none!important;margin:0!important;padding:0!important;}
 
 
-/* ----- CSS block 109: v407-ipados-standalone-viewport ----- */
+/* ===== CSS originale 109/293: v407-ipados-standalone-viewport ===== */
 
 /* V407: applicazione avviata dalla Home iPad. CSS non controlla le barre di Edge/Safari. */
 @media (display-mode: standalone), (display-mode: fullscreen) {
@@ -7817,7 +7819,7 @@ body.light .v336-futures-surface .v351-liq-alert{color:#b45309;background:rgba(2
 }
 
 
-/* ----- CSS block 110: v430-modern-surface-no-reflow-all-os ----- */
+/* ===== CSS originale 110/293: v430-modern-surface-no-reflow-all-os ===== */
 
 /* V430 — refresh esclusivamente cosmetico.
    Non cambiare display, position, grid, flex, width, height, gap, padding,
@@ -7998,7 +8000,7 @@ button:focus-visible, input:focus-visible, select:focus-visible,
 }
 
 
-/* ----- CSS block 111: unnamed ----- */
+/* ===== CSS originale 111/293: blocco-css-111 ===== */
 
 /* FIX LEGGIBILITÀ TESTI DURANTE IL LAMPEGGIO */
 .asset-tab.live-upper,
@@ -8086,7 +8088,7 @@ button:focus-visible, input:focus-visible, select:focus-visible,
 }
 
 
-/* ----- CSS block 112: unnamed ----- */
+/* ===== CSS originale 112/293: blocco-css-112 ===== */
 
 /* FIX TEMA TESTI DURANTE IL LAMPEGGIO
    Light = testo nero
@@ -8215,7 +8217,7 @@ body:not(.light) .asset-tab.live-lower.lower-blink .asset-tab-low {
 }
 
 
-/* ----- CSS block 113: unnamed ----- */
+/* ===== CSS originale 113/293: blocco-css-113 ===== */
 
 /* EFFETTO SFUMATO 30%: PRICE LOW rosso, UPPER giallo */
 .asset-tab.live-upper::before,
@@ -8339,7 +8341,7 @@ body:not(.light) .asset-tab.live-lower.lower-blink .asset-tab-low {
 }
 
 
-/* ----- CSS block 114: unnamed ----- */
+/* ===== CSS originale 114/293: blocco-css-114 ===== */
 
 /* RIMOZIONE TRASPARENZA 30%: effetto più pieno */
 .asset-tab.live-upper::before,
@@ -8459,7 +8461,7 @@ body:not(.light) .asset-tab.live-lower.lower-blink .asset-tab-low {
 }
 
 
-/* ----- CSS block 115: unnamed ----- */
+/* ===== CSS originale 115/293: blocco-css-115 ===== */
 
 /* ==========================================================
    ALERT FIX REALE — lampeggia il quadrante, niente overlay
@@ -8605,12 +8607,12 @@ body:not(.light) .asset-tab.live-lower .asset-tab-low {
 }
 
 
-/* ----- CSS block 116: unnamed ----- */
+/* ===== CSS originale 116/293: blocco-css-116 ===== */
 
 .asset-tab{position:relative;isolation:isolate}.asset-tab.live-upper,.asset-tab.live-upper.upper-blink,.asset-tab.live-lower,.asset-tab.live-lower.lower-blink{overflow:hidden!important;opacity:1!important;transform:none!important;animation:none!important;-webkit-animation:none!important}.asset-tab.live-upper::before,.asset-tab.live-upper.upper-blink::before,.asset-tab.live-lower::before,.asset-tab.live-lower.lower-blink::before{content:""!important;display:block!important;position:absolute!important;inset:0!important;z-index:0!important;border-radius:inherit!important;pointer-events:none!important;will-change:opacity,filter!important}.asset-tab.live-upper::before,.asset-tab.live-upper.upper-blink::before{background:radial-gradient(circle at 32% 24%,#fff4a8 0%,#facc15 48%,#b98900 100%)!important;animation:stableUpperBlink .92s ease-in-out infinite!important;-webkit-animation:stableUpperBlink .92s ease-in-out infinite!important}.asset-tab.live-lower::before,.asset-tab.live-lower.lower-blink::before{background:radial-gradient(circle at 32% 24%,#ffd1d6 0%,#ff5f6d 48%,#b91c36 100%)!important;animation:stableLowBlink .92s ease-in-out infinite!important;-webkit-animation:stableLowBlink .92s ease-in-out infinite!important}.asset-tab.live-upper>*,.asset-tab.live-upper.upper-blink>*,.asset-tab.live-lower>*,.asset-tab.live-lower.lower-blink>*{position:relative!important;z-index:1!important;opacity:1!important}@keyframes stableUpperBlink{0%,100%{opacity:1;filter:saturate(1.08) brightness(1.03)}50%{opacity:.42;filter:saturate(.82) brightness(.88)}}@-webkit-keyframes stableUpperBlink{0%,100%{opacity:1;-webkit-filter:saturate(1.08) brightness(1.03)}50%{opacity:.42;-webkit-filter:saturate(.82) brightness(.88)}}@keyframes stableLowBlink{0%,100%{opacity:1;filter:saturate(1.08) brightness(1.03)}50%{opacity:.42;filter:saturate(.82) brightness(.86)}}@-webkit-keyframes stableLowBlink{0%,100%{opacity:1;-webkit-filter:saturate(1.08) brightness(1.03)}50%{opacity:.42;-webkit-filter:saturate(.82) brightness(.86)}}body.light .asset-tab.live-upper *,body.light .asset-tab.live-upper.upper-blink *,body.light .asset-tab.live-lower *,body.light .asset-tab.live-lower.lower-blink *,body.light .asset-tab.live-upper *::before,body.light .asset-tab.live-upper *::after,body.light .asset-tab.live-lower *::before,body.light .asset-tab.live-lower *::after{color:#000!important;text-shadow:none!important;opacity:1!important}body:not(.light) .asset-tab.live-upper *,body:not(.light) .asset-tab.live-upper.upper-blink *,body:not(.light) .asset-tab.live-lower *,body:not(.light) .asset-tab.live-lower.lower-blink *,body:not(.light) .asset-tab.live-upper *::before,body:not(.light) .asset-tab.live-upper *::after,body:not(.light) .asset-tab.live-lower *::before,body:not(.light) .asset-tab.live-lower *::after{color:#fff!important;text-shadow:0 1px 2px rgba(0,0,0,.72)!important;opacity:1!important}.asset-tab.live-upper,.asset-tab.live-upper.upper-blink{border-color:#facc15!important;box-shadow:0 0 0 2px rgba(250,204,21,.22),0 0 15px rgba(250,204,21,.30)!important}.asset-tab.live-lower,.asset-tab.live-lower.lower-blink{border-color:#ff5f6d!important;box-shadow:0 0 0 2px rgba(255,95,109,.22),0 0 15px rgba(255,95,109,.30)!important}.asset-tab.live-upper .asset-tab-upper,.asset-tab.live-upper .asset-tab-low,.asset-tab.live-lower .asset-tab-upper,.asset-tab.live-lower .asset-tab-low{background:rgba(255,255,255,.28)!important;border-color:rgba(0,0,0,.26)!important}body:not(.light) .asset-tab.live-upper .asset-tab-upper,body:not(.light) .asset-tab.live-upper .asset-tab-low,body:not(.light) .asset-tab.live-lower .asset-tab-upper,body:not(.light) .asset-tab.live-lower .asset-tab-low{background:rgba(0,0,0,.26)!important;border-color:rgba(255,255,255,.40)!important}@media (prefers-reduced-motion:reduce){.asset-tab.live-upper::before,.asset-tab.live-upper.upper-blink::before{animation:stableUpperBlink .92s ease-in-out infinite!important;-webkit-animation:stableUpperBlink .92s ease-in-out infinite!important}.asset-tab.live-lower::before,.asset-tab.live-lower.lower-blink::before{animation:stableLowBlink .92s ease-in-out infinite!important;-webkit-animation:stableLowBlink .92s ease-in-out infinite!important}}
 
 
-/* ----- CSS block 117: unnamed ----- */
+/* ===== CSS originale 117/293: blocco-css-117 ===== */
 
 /* QUADRANTE SU/GIÙ: SU verde, GIÙ rosso, trasparenza 60% */
 .asset-tab.live-up,
@@ -8675,7 +8677,7 @@ body:not(.light) .asset-tab.live-down *::after {
 }
 
 
-/* ----- CSS block 118: unnamed ----- */
+/* ===== CSS originale 118/293: blocco-css-118 ===== */
 
 /* AGGIORNAMENTO TRASPARENZA QUADRANTE SU/GIÙ: 70% */
 .asset-tab.live-up::before {
@@ -8687,7 +8689,7 @@ body:not(.light) .asset-tab.live-down *::after {
 }
 
 
-/* ----- CSS block 119: unnamed ----- */
+/* ===== CSS originale 119/293: blocco-css-119 ===== */
 
 /* SFUMATO UNIFORME QUADRANTE SU/GIÙ */
 .asset-tab.live-up::before {
@@ -8711,7 +8713,7 @@ body:not(.light) .asset-tab.live-down *::after {
 }
 
 
-/* ----- CSS block 120: unnamed ----- */
+/* ===== CSS originale 120/293: blocco-css-120 ===== */
 
 /* PREZZO E QUADRANTE SINCRONIZZATI LIVE */
 .asset-tab.live-up,
@@ -8761,7 +8763,7 @@ body:not(.light) .asset-tab.live-down * {
 }
 
 
-/* ----- CSS block 121: unnamed ----- */
+/* ===== CSS originale 121/293: blocco-css-121 ===== */
 
 /* FIX REALE SU/GIÙ — applicato direttamente al quadrante, senza overlay che possano rompersi */
 .asset-tab.live-up,
@@ -8838,7 +8840,7 @@ body:not(.light) .asset-tab.live-down .asset-tab-low {
 }
 
 
-/* ----- CSS block 122: logos-cmc-small-fix ----- */
+/* ===== CSS originale 122/293: logos-cmc-small-fix ===== */
 
 /* Loghi più piccoli, rotondi, vettoriali, stile CoinMarketCap */
 .asset-tab-logo,
@@ -8895,7 +8897,7 @@ body:not(.light) .asset-tab.live-down .asset-tab-low {
 }
 
 
-/* ----- CSS block 123: final-upper-low-flash-all-crypto ----- */
+/* ===== CSS originale 123/293: final-upper-low-flash-all-crypto ===== */
 
 /* Alert universali: UPPER giallo, PRICE LOW rosso, intero quadrante */
 .asset-tab.live-upper,
@@ -8979,7 +8981,7 @@ body:not(.light) .asset-tab.live-lower *::after {
 }
 
 
-/* ----- CSS block 124: alert-all-crypto-hard-fix-v2 ----- */
+/* ===== CSS originale 124/293: alert-all-crypto-hard-fix-v2 ===== */
 
 /* FIX DEFINITIVO ALERT — tutte le 12 crypto
    UPPER = giallo lampeggiante | PRICE LOW = rosso lampeggiante */
@@ -9095,7 +9097,7 @@ body:not(.light) .asset-tab.live-lower.lower-blink * {
 }
 
 
-/* ----- CSS block 125: alert-tutte-11-final-direct-blink ----- */
+/* ===== CSS originale 125/293: alert-tutte-11-final-direct-blink ===== */
 
 /* ==========================================================
    ALERT TUTTE LE 12 CRYPTO — CSS FINALE
@@ -9211,7 +9213,7 @@ body:not(.light) .asset-tab.live-lower * {
 }
 
 
-/* ----- CSS block 126: burn-live-tutte-12-fix ----- */
+/* ===== CSS originale 126/293: burn-live-tutte-12-fix ===== */
 
 /* Feedback visivo discreto: lampeggia solo quando il numero Burn cambia davvero. */
 .burn-value.burn-value-live-change {
@@ -9234,14 +9236,14 @@ body:not(.light) .asset-tab.live-lower * {
 }
 
 
-/* ----- CSS block 127: burn-live-stable-12-fix ----- */
+/* ===== CSS originale 127/293: burn-live-stable-12-fix ===== */
 
 .burn-section[data-burn-refreshing="true"] .burn-status{opacity:.82}
 .burn-value[data-burn-cached="true"]{text-decoration:underline dotted;text-underline-offset:3px}
 .burn-section[data-last-burn-success="true"] .burn-value:not([data-burn-cached="true"]){text-decoration:none}
 
 
-/* ----- CSS block 128: upper-price-low-blink-50s-absolute-final ----- */
+/* ===== CSS originale 128/293: upper-price-low-blink-50s-absolute-final ===== */
 
 /* FIX FINALE: alert visibili sull'intero quadrante per tutta la durata di 50 secondi. */
 .asset-tab.live-upper,
@@ -9349,7 +9351,7 @@ body:not(.light) .asset-tab.live-lower * {
 }
 
 
-/* ----- CSS block 129: movement-up-down-70-60-visible-final ----- */
+/* ===== CSS originale 129/293: movement-up-down-70-60-visible-final ===== */
 
 /* Movimento normale: SU verde / GIU rosso.
    Fase soft = 30% opaco (70% trasparente), fase forte = 60% opaco.
@@ -9373,7 +9375,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower) .asset-t
 }
 
 
-/* ----- CSS block 130: movement-quadrant-only-final-fix ----- */
+/* ===== CSS originale 130/293: movement-quadrant-only-final-fix ===== */
 
 /* SU/GIU: l'effetto colore appartiene SOLO al quadrante.
    Testo, numeri, logo e contenuti restano fermi, nitidi e al 100%. */
@@ -9410,7 +9412,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower) .asset-t
 }
 
 
-/* ----- CSS block 131: movement-minimal-quadrant-final ----- */
+/* ===== CSS originale 131/293: movement-minimal-quadrant-final ===== */
 
 /* Effetto minimal SOLO quadrante: sfondo morbido, bordo sottile, contenuti fermi. */
 .asset-tab.live-up:not(.live-upper):not(.live-lower),
@@ -9425,7 +9427,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower) .asset-t
 }
 
 
-/* ----- CSS block 132: quadrant-opacity-70-60-final-guard ----- */
+/* ===== CSS originale 132/293: quadrant-opacity-70-60-final-guard ===== */
 
 /* SOLO QUADRANTE: 70% trasparente (alpha .30) <-> 60% opaco (alpha .60).
    Contenuti sempre al 100%. */
@@ -9439,7 +9441,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower) .asset-t
 }
 
 
-/* ----- CSS block 133: movement-cursor-tooltip-glass-effect-final ----- */
+/* ===== CSS originale 133/293: movement-cursor-tooltip-glass-effect-final ===== */
 
 /* SU/GIU: effetto vetro tipo "Prezzo al cursore" SOLO sul quadrante.
    Il layer colore oscilla tra 30% e 60% opaco; contenuti sempre nitidi. */
@@ -9523,7 +9525,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower) .asset-t
 }
 
 
-/* ----- CSS block 134: movement-glass-transparency-green-red-final-v2 ----- */
+/* ===== CSS originale 134/293: movement-glass-transparency-green-red-final-v2 ===== */
 
 /* Effetto vetro/trasparenza finale SOLO sui quadranti SU/GIU.
    Layer colore: 30% -> 60% opaco (= 70% trasparente -> 40% trasparente).
@@ -9627,7 +9629,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower) .asset-t
 }
 
 
-/* ----- CSS block 135: movement-static-glass-no-opacity-pulse-final ----- */
+/* ===== CSS originale 135/293: movement-static-glass-no-opacity-pulse-final ===== */
 
 /* SU/GIU: vetro statico. Nessun passaggio 70% trasparente <-> 60% opaco.
    Il layer resta al 60% di opacita; testi/numeri/loghi restano al 100%. */
@@ -9653,7 +9655,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower) .asset-t
 }
 
 
-/* ----- CSS block 136: mining-btc-ore-v3-style ----- */
+/* ===== CSS originale 136/293: mining-btc-ore-v3-style ===== */
 
   #btc-burn-section[data-btc-mining-live="true"] .burn-value,
   #ore-burn-section[data-ore-mining-v3="true"] .burn-value {
@@ -9720,7 +9722,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower) .asset-t
   }
 
 
-/* ----- CSS block 137: ore-mining-live-visible-style ----- */
+/* ===== CSS originale 137/293: ore-mining-live-visible-style ===== */
 
   #ore-burn-section .burn-value[data-ore-mining-real="true"] {
     font-variant-numeric: tabular-nums;
@@ -9739,7 +9741,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower) .asset-t
   }
 
 
-/* ----- CSS block 138: ore-mining-v4-real-style ----- */
+/* ===== CSS originale 138/293: ore-mining-v4-real-style ===== */
 
   #ore-burn-section[data-ore-mining-v4="true"] .burn-value {
     font-size: clamp(21px, 2.25vw, 29px);
@@ -9760,14 +9762,14 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower) .asset-t
   }
 
 
-/* ----- CSS block 139: ore-real-numbers-v13-style ----- */
+/* ===== CSS originale 139/293: ore-real-numbers-v13-style ===== */
 
 #ore-burn-section[data-ore-real-numbers-v13="true"] .ore-mining-extra[hidden]{display:none!important;}
 #ore-burn-section[data-ore-real-numbers-v13="true"] .burn-value,
 #ore-burn-section[data-ore-real-numbers-v13="true"] .ore-mining-extra strong{font-variant-numeric:tabular-nums;font-weight:900;}
 
 
-/* ----- CSS block 140: btc-mining-live-real-style ----- */
+/* ===== CSS originale 140/293: btc-mining-live-real-style ===== */
 
   #btc-burn-section[data-btc-mining-live="true"] .burn-icon { filter: drop-shadow(0 0 8px rgba(245,158,11,.28)); }
   #btc-burn-section[data-btc-mining-live="true"] .burn-value {
@@ -9817,7 +9819,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower) .asset-t
   }
 
 
-/* ----- CSS block 141: burn-trust-v6-style ----- */
+/* ===== CSS originale 141/293: burn-trust-v6-style ===== */
 
   .burn-trust-badge {
     display:inline-flex;
@@ -9840,7 +9842,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower) .asset-t
   .burn-trust-badge.notburn { color:#a78bfa; border-color:rgba(139,92,246,.38); background:rgba(139,92,246,.08); }
 
 
-/* ----- CSS block 142: eth-real-v15-style ----- */
+/* ===== CSS originale 142/293: eth-real-v15-style ===== */
 
   #eth-burn-section .burn-value[data-verified-real-eth="true"] {
     font-variant-numeric: tabular-nums;
@@ -9848,7 +9850,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower) .asset-t
   }
 
 
-/* ----- CSS block 143: bnb-real-v16-style ----- */
+/* ===== CSS originale 143/293: bnb-real-v16-style ===== */
 
   #bnb-burn-section .burn-value[data-verified-real-bnb="true"] {
     font-variant-numeric: tabular-nums;
@@ -9856,7 +9858,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower) .asset-t
   }
 
 
-/* ----- CSS block 144: sol-real-v17-style ----- */
+/* ===== CSS originale 144/293: sol-real-v17-style ===== */
 
   #sol-burn-section .burn-value[data-verified-real-sol="true"] {
     font-variant-numeric: tabular-nums;
@@ -9864,7 +9866,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower) .asset-t
   }
 
 
-/* ----- CSS block 145: inj-real-v18-style ----- */
+/* ===== CSS originale 145/293: inj-real-v18-style ===== */
 
   #inj-burn-section .burn-value[data-verified-real-inj="true"] {
     font-variant-numeric: tabular-nums;
@@ -9872,7 +9874,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower) .asset-t
   }
 
 
-/* ----- CSS block 146: tai-real-v19-style ----- */
+/* ===== CSS originale 146/293: tai-real-v19-style ===== */
 
   #tai-burn-section .burn-value[data-verified-real-tai="true"] {
     font-variant-numeric: tabular-nums;
@@ -9880,7 +9882,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower) .asset-t
   }
 
 
-/* ----- CSS block 147: virtual-real-v20-style ----- */
+/* ===== CSS originale 147/293: virtual-real-v20-style ===== */
 
   #virtual-burn-section .burn-value[data-verified-real-virtual="true"],
   #virtual-burn-section .burn-value[data-virtual-supply-live="true"] {
@@ -9889,7 +9891,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower) .asset-t
   }
 
 
-/* ----- CSS block 148: tao-real-v21-style ----- */
+/* ===== CSS originale 148/293: tao-real-v21-style ===== */
 
   #tao-burn-section .burn-value[data-verified-real-tao-network="true"],
   #tao-burn-section .burn-value[data-verified-real-tao-recycled="true"],
@@ -9899,7 +9901,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower) .asset-t
   }
 
 
-/* ----- CSS block 149: lunc-real-v22-style ----- */
+/* ===== CSS originale 149/293: lunc-real-v22-style ===== */
 
   #lunc-burn-section .burn-value[data-verified-real-lunc="true"] {
     font-variant-numeric: tabular-nums;
@@ -9910,7 +9912,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower) .asset-t
   }
 
 
-/* ----- CSS block 150: luna-real-v23-style ----- */
+/* ===== CSS originale 150/293: luna-real-v23-style ===== */
 
   #luna-burn-section .burn-value[data-verified-real-luna="true"],
   #luna-burn-section .burn-value[data-verified-real-luna-network="true"] {
@@ -9919,7 +9921,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower) .asset-t
   }
 
 
-/* ----- CSS block 151: mining-daily-total-v24-style ----- */
+/* ===== CSS originale 151/293: mining-daily-total-v24-style ===== */
 
   .mining-daily-total-grid {
     display: grid;
@@ -9981,7 +9983,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower) .asset-t
   }
 
 
-/* ----- CSS block 152: ore-mining-daily-v27-style ----- */
+/* ===== CSS originale 152/293: ore-mining-daily-v27-style ===== */
 
   #ore-mined-daily[data-live-quality="waiting"] { color: var(--yellow); }
   #ore-mined-daily[data-live-quality="real-or-derived-live"] { color: var(--green); }
@@ -9989,7 +9991,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower) .asset-t
   #ore-mined-total[data-live-quality="estimated-live"] { color: var(--green); }
 
 
-/* ----- CSS block 153: smooth-loading-v26-style ----- */
+/* ===== CSS originale 153/293: smooth-loading-v26-style ===== */
 
   /* Evita repaint costosi mentre i pannelli non visibili vengono inizializzati. */
   .market-card.market-hidden { display:none !important; }
@@ -10017,7 +10019,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower) .asset-t
   }
 
 
-/* ----- CSS block 154: burn-daily-total-v35-style ----- */
+/* ===== CSS originale 154/293: burn-daily-total-v35-style ===== */
 
   .burn-daily-total-v34 {
     display:grid;
@@ -10075,7 +10077,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower) .asset-t
   }
 
 
-/* ----- CSS block 155: burn-pair-real-v39-style ----- */
+/* ===== CSS originale 155/293: burn-pair-real-v39-style ===== */
 
   .burn-pair-real-change-v39{animation:burnPairRealChangeV39 .55s cubic-bezier(.2,.75,.25,1)}
   @keyframes burnPairRealChangeV39{0%{transform:translateY(0);filter:none}35%{transform:translateY(-2px);filter:brightness(1.25);text-shadow:0 0 15px rgba(24,198,131,.34)}100%{transform:translateY(0);filter:none}}
@@ -10083,7 +10085,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower) .asset-t
   .burn-daily-total-v34 .burn-value[data-real-burn-pair="true"]{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 
 
-/* ----- CSS block 156: burn-crypto-correct-v40-style ----- */
+/* ===== CSS originale 156/293: burn-crypto-correct-v40-style ===== */
 
   .burn-crypto-correct-v40 .burn-value{
     font-variant-numeric:tabular-nums;
@@ -10126,7 +10128,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower) .asset-t
   .burn-v40-kind.supply{border-color:rgba(56,189,248,.35);color:#38bdf8}
 
 
-/* ----- CSS block 157: night-tab-white-numbers-final-v49 ----- */
+/* ===== CSS originale 157/293: night-tab-white-numbers-final-v49 ===== */
 
 /* V49 — NIGHT: nei quadranti TAB prezzo e percentuale sono sempre bianchi.
    Override finale dopo tutti gli altri stili per impedire verde/rosso sui numeri. */
@@ -10158,7 +10160,7 @@ body:not(.light) .asset-tab.live-lower .asset-tab-change {
 }
 
 
-/* ----- CSS block 158: v50-night-tab-quadrant-color-only ----- */
+/* ===== CSS originale 158/293: v50-night-tab-quadrant-color-only ===== */
 
 /* V50 — NIGHT
    SU = colore verde SOLO sul quadrante.
@@ -10233,7 +10235,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower)::after {
 }
 
 
-/* ----- CSS block 159: v52-card-price-threshold-number-only ----- */
+/* ===== CSS originale 159/293: v52-card-price-threshold-number-only ===== */
 
 /* V52 — NELLA SCHEDA LAMPEGGIA ESCLUSIVAMENTE IL NUMERO DEL PREZZO.
    Nessuno sfondo, alone, ombra, bordo o glow viene applicato dall'alert.
@@ -10292,7 +10294,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower)::after {
 }
 
 
-/* ----- CSS block 160: ore-mining-total-green-v55 ----- */
+/* ===== CSS originale 160/293: ore-mining-total-green-v55 ===== */
 
   /* Mining totale ORE: stesso verde del valore giornaliero. */
   #ore-mined-total {
@@ -10306,7 +10308,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower)::after {
   }
 
 
-/* ----- CSS block 161: v56-tab-frosted-glass-up-down-final ----- */
+/* ===== CSS originale 161/293: v56-tab-frosted-glass-up-down-final ===== */
 
 /* V56 — QUADRANTI TAB: SU verde / GIU rosso con vetro satinato semi-trasparente.
    UPPER e PRICE LOW mantengono i rispettivi alert prioritari. */
@@ -10409,7 +10411,7 @@ body:not(.light) .asset-tab.live-down:not(.live-upper):not(.live-lower) .asset-t
 }
 
 
-/* ----- CSS block 162: v61-light-top-icons-real-frosted-glass-final ----- */
+/* ===== CSS originale 162/293: v61-light-top-icons-real-frosted-glass-final ===== */
 
 /* V61 — FIX FINALE LIGHT: vetro satinato realmente visibile su Impostazioni + Campanella. */
 body.light .top-actions #settingsToggle,
@@ -10515,7 +10517,7 @@ body.light .top-actions #soundToggle[aria-pressed="true"] {
 }
 
 
-/* ----- CSS block 163: v62-theme-light-night-frosted-glass-final ----- */
+/* ===== CSS originale 163/293: v62-theme-light-night-frosted-glass-final ===== */
 
 /* V62 — LIGHT / NIGHT: stesso linguaggio vetro satinato di Impostazioni e Campanella. */
 .top-actions #themeToggle {
@@ -10665,7 +10667,7 @@ body.light .top-actions #themeNight.active {
 }
 
 
-/* ----- CSS block 164: v63-theme-yellow-blue-glass-final ----- */
+/* ===== CSS originale 164/293: v63-theme-yellow-blue-glass-final ===== */
 
 /* V63 — LIGHT giallo vetro / NIGHT blu notte vetro. Override finale. */
 .top-actions #themeLight,
@@ -10777,7 +10779,7 @@ body:not(.light) .top-actions #themeNight.active {
 }
 
 
-/* ----- CSS block 165: v64-active-theme-color-only-final ----- */
+/* ===== CSS originale 165/293: v64-active-theme-color-only-final ===== */
 
 /* V64 — Light/Night neutri da inattivi; colore solo sulla modalità attiva. */
 .top-actions #themeLight,
@@ -10885,7 +10887,7 @@ body:not(.light) .top-actions #themeNight.active::before {
 }
 
 
-/* ----- CSS block 166: v66-settings-bell-minimal-final ----- */
+/* ===== CSS originale 166/293: v66-settings-bell-minimal-final ===== */
 
 /* V66 — Impostazioni + campanella minimal, coerenti con Light/Night. */
 .top-actions #settingsToggle,
@@ -10995,7 +10997,7 @@ body.light .top-actions #soundToggle > svg {
 }
 
 
-/* ----- CSS block 167: v67-bell-animation-like-settings-final ----- */
+/* ===== CSS originale 167/293: v67-bell-animation-like-settings-final ===== */
 
 /* V67 — Campanella con la stessa animazione minimal di Impostazioni. */
 .top-actions #soundToggle .sound-bell-icon,
@@ -11020,7 +11022,7 @@ body:not(.light) .top-actions #soundToggle .sound-bell-icon {
 }
 
 
-/* ----- CSS block 168: v68-bell-exact-settings-animation-final ----- */
+/* ===== CSS originale 168/293: v68-bell-exact-settings-animation-final ===== */
 
 /* V68 — Campanella: stessa rotazione effettiva della rotellina Impostazioni. */
 #soundToggle .sound-bell-icon,
@@ -11062,7 +11064,7 @@ body:not(.light) #soundToggle[aria-pressed="true"] .sound-bell-icon {
 }
 
 
-/* ----- CSS block 169: v71-hidden-prices-live-movement-final ----- */
+/* ===== CSS originale 169/293: v71-hidden-prices-live-movement-final ===== */
 
 /* V71 — Nascondi prezzi deve prevalere anche durante live-up/live-down,
    flash del prezzo e alert UPPER/PRICE LOW. Il quadrante può continuare
@@ -11136,7 +11138,7 @@ body:not(.light).prices-hidden .asset-tab .asset-tab-quote > strong::after {
 }
 
 
-/* ----- CSS block 170: v72-tab-glass-visible-up-down-final ----- */
+/* ===== CSS originale 170/293: v72-tab-glass-visible-up-down-final ===== */
 
 /* V72 — TAB: effetto vetro satinato più visibile.
    SU = verde, GIÙ = rosso. UPPER/PRICE LOW restano prioritari. */
@@ -11304,7 +11306,7 @@ body.prices-hidden .asset-tab.live-down .asset-tab-quote > strong {
 }
 
 
-/* ----- CSS block 171: v73-night-tab-glass-visible-final ----- */
+/* ===== CSS originale 171/293: v73-night-tab-glass-visible-final ===== */
 
 /* V73 — NIGHT: forza lo stesso vetro SU/GIU' anche nel tema scuro. */
 body:not(.light) .asset-tab.live-up:not(.live-upper):not(.live-lower),
@@ -11364,7 +11366,7 @@ body:not(.light).prices-hidden .asset-tab.live-down .asset-tab-quote > strong {
 }
 
 
-/* ----- CSS block 172: btc-mining-daily-total-green-v75 ----- */
+/* ===== CSS originale 172/293: btc-mining-daily-total-green-v75 ===== */
 
   /* Mining BTC: giornaliero e totale verdi, stesso stile ORE Protocol. */
   #btc-mined-daily,
@@ -11391,7 +11393,7 @@ body:not(.light).prices-hidden .asset-tab.live-down .asset-tab-quote > strong {
   }
 
 
-/* ----- CSS block 173: v77-tab-data-under-name-right ----- */
+/* ===== CSS originale 173/293: v77-tab-data-under-name-right ===== */
 
 /* V77 — Dati del tab sotto il nome, allineati a destra del logo.
    Prezzo / 24h / UPPER / PRICE LOW restano nello stesso contenitore live. */
@@ -11468,7 +11470,7 @@ body:not(.light).prices-hidden .asset-tab.live-down .asset-tab-quote > strong {
 }
 
 
-/* ----- CSS block 174: v78-tab-data-extreme-right-final ----- */
+/* ===== CSS originale 174/293: v78-tab-data-extreme-right-final ===== */
 
 /* V78 — Prezzo / 24h / UPPER / PRICE LOW all'estrema destra del TAB. */
 .asset-tab > .asset-tab-quote {
@@ -11494,7 +11496,7 @@ body:not(.light).prices-hidden .asset-tab.live-down .asset-tab-quote > strong {
 }
 
 
-/* ----- CSS block 175: v82-threshold-notifications-style ----- */
+/* ===== CSS originale 175/293: v82-threshold-notifications-style ===== */
 
 /* V82 — notifiche solo UPPER / PRICE LOW. Prezzi target rimossi. */
 #thresholdToastStackV80 {
@@ -11518,7 +11520,7 @@ body:not(.light).prices-hidden .asset-tab.live-down .asset-tab-quote > strong {
 }
 
 
-/* ----- CSS block 176: v81-notification-settings-style ----- */
+/* ===== CSS originale 176/293: v81-notification-settings-style ===== */
 
 /* V81 — Notifiche soglia separate dalla campanella audio. */
 #thresholdNotificationsRowV81 .settings-state.enabled {
@@ -11535,7 +11537,7 @@ body.light #thresholdNotificationsRowV81 .settings-state.internal-only {
 }
 
 
-/* ----- CSS block 177: v85-background-notifications-style ----- */
+/* ===== CSS originale 177/293: v85-background-notifications-style ===== */
 
 /* V85 — stato notifiche sistema/Android nel pannello Impostazioni. */
 #thresholdNotificationsRowV81 .settings-state.background-ready {
@@ -11552,7 +11554,7 @@ body.light #thresholdNotificationsRowV81 .settings-state.page-only {
 }
 
 
-/* ----- CSS block 178: eth-rainbow-chart-click-style-v1 ----- */
+/* ===== CSS originale 178/293: eth-rainbow-chart-click-style-v1 ===== */
 
   #ethRainbowPill { cursor: pointer; }
   .eth-rainbow-chart-legend .low i { background:#3b82f6; }
@@ -11562,7 +11564,7 @@ body.light #thresholdNotificationsRowV81 .settings-state.page-only {
   .eth-rainbow-chart-legend .euphoria i { background:#ef4444; }
 
 
-/* ----- CSS block 179: btc-rainbow-chart-click-style-v1 ----- */
+/* ===== CSS originale 179/293: btc-rainbow-chart-click-style-v1 ===== */
 
   #btcRainbowPill { cursor: pointer; }
   .btc-rainbow-chart-legend .low i { background:#3b82f6; }
@@ -11572,7 +11574,7 @@ body.light #thresholdNotificationsRowV81 .settings-state.page-only {
   .btc-rainbow-chart-legend .euphoria i { background:#ef4444; }
 
 
-/* ----- CSS block 180: fear-greed-chart-click-style-v1 ----- */
+/* ===== CSS originale 180/293: fear-greed-chart-click-style-v1 ===== */
 
   #fearGreedPill { cursor:pointer; }
   #fearGreedChartOverlay .fear-greed-chart-legend .extreme-fear i { background:#ff3b5f; }
@@ -11588,7 +11590,7 @@ body.light #thresholdNotificationsRowV81 .settings-state.page-only {
   }
 
 
-/* ----- CSS block 181: altcoin-index-full-fit-90d-1y-v1 ----- */
+/* ===== CSS originale 181/293: altcoin-index-full-fit-90d-1y-v1 ===== */
 
   #altcoinIndexChartOverlay .altcoin-chart-dialog {
     width: 100vw !important;
@@ -11620,7 +11622,7 @@ body.light #thresholdNotificationsRowV81 .settings-state.page-only {
   }
 
 
-/* ----- CSS block 182: altcoin-index-history-full-panel-v2 ----- */
+/* ===== CSS originale 182/293: altcoin-index-history-full-panel-v2 ===== */
 
   #altcoinIndexChartOverlay .altcoin-chart-body {
     padding: 0 !important;
@@ -11662,7 +11664,7 @@ body.light #thresholdNotificationsRowV81 .settings-state.page-only {
   }
 
 
-/* ----- CSS block 183: ipad-pro-m2-live-pills-v4 ----- */
+/* ===== CSS originale 183/293: ipad-pro-m2-live-pills-v4 ===== */
 
 /* Edge su iPadOS usa WebKit: per le pillole LIVE evitiamo backdrop-filter e pseudo-layer
    animati sovrapposti, che possono non ridisegnarsi dopo sospensione della scheda. */
@@ -11701,7 +11703,7 @@ html[data-ipad-profile="pro-12-9"] .asset-tab[data-live-pill="true"] .asset-tab-
 }
 
 
-/* ----- CSS block 184: ipad-pro-m2-chart-touch-v11 ----- */
+/* ===== CSS originale 184/293: ipad-pro-m2-chart-touch-v11 ===== */
 
 html[data-ipad-profile="pro-12-9"] #altcoinIndexPill,
 html[data-ipad-profile="pro-12-9"] #fearGreedPill,
@@ -11717,7 +11719,7 @@ html[data-ipad-profile="pro-12-9"] #ethRainbowHistoryCanvas {
 }
 
 
-/* ----- CSS block 185: ray-buyback-today-total-v20-style ----- */
+/* ===== CSS originale 185/293: ray-buyback-today-total-v20-style ===== */
 
   #ray-v40-total{
     overflow:visible!important;
@@ -11728,7 +11730,7 @@ html[data-ipad-profile="pro-12-9"] #ethRainbowHistoryCanvas {
   #ray-v40-daily-label,#ray-v40-total-label{white-space:normal}
 
 
-/* ----- CSS block 186: rainbow-pill-live-color-v78-style ----- */
+/* ===== CSS originale 186/293: rainbow-pill-live-color-v78-style ===== */
 
 #btcRainbowValue,#ethRainbowValue{
   transition:color .16s linear,text-shadow .16s linear!important;
@@ -11736,7 +11738,7 @@ html[data-ipad-profile="pro-12-9"] #ethRainbowHistoryCanvas {
 }
 
 
-/* ----- CSS block 187: fear-greed-number-color-v83-style ----- */
+/* ===== CSS originale 187/293: fear-greed-number-color-v83-style ===== */
 
 #fearGreedValue{
   transition:color .22s ease,-webkit-text-fill-color .22s ease,text-shadow .22s ease!important;
@@ -11744,7 +11746,7 @@ html[data-ipad-profile="pro-12-9"] #ethRainbowHistoryCanvas {
 }
 
 
-/* ----- CSS block 188: altcoin-index-number-color-v82-style ----- */
+/* ===== CSS originale 188/293: altcoin-index-number-color-v82-style ===== */
 
 #altcoinIndexValue{
   font-weight:900!important;
@@ -11752,7 +11754,7 @@ html[data-ipad-profile="pro-12-9"] #ethRainbowHistoryCanvas {
 }
 
 
-/* ----- CSS block 189: aurora-selectable-v18 ----- */
+/* ===== CSS originale 189/293: aurora-selectable-v18 ===== */
 
 /* ==========================================================
    AURORA SELEZIONABILE
@@ -11936,7 +11938,7 @@ body.aurora.light #themeSettingsAurora.active {
 }
 
 
-/* ----- CSS block 190: aurora-toggle-v19 ----- */
+/* ===== CSS originale 190/293: aurora-toggle-v19 ===== */
 
   #themeSettingsAurora:not(.active) .aurora-theme-check {
     opacity: 0 !important;
@@ -11952,7 +11954,7 @@ body.aurora.light #themeSettingsAurora.active {
   }
 
 
-/* ----- CSS block 191: aurora-light-strong-v20 ----- */
+/* ===== CSS originale 191/293: aurora-light-strong-v20 ===== */
 
 /* V20 — Aurora Light più evidente su tutta la pagina */
 
@@ -12056,7 +12058,7 @@ body.aurora.light svg{
 }
 
 
-/* ----- CSS block 192: sole-theme-v21 ----- */
+/* ===== CSS originale 192/293: sole-theme-v21 ===== */
 
 /* Secondo tema: SOLE */
 
@@ -12196,7 +12198,7 @@ body.sole.light #themeSettingsSole.active {
 }
 
 
-/* ----- CSS block 193: v22-sole-selector-like-aurora ----- */
+/* ===== CSS originale 193/293: v22-sole-selector-like-aurora ===== */
 
 /* V22 — Il selettore SOLE deve essere uguale ad AURORA */
 
@@ -12319,7 +12321,7 @@ body.aurora.light #themeSettingsAurora.active{
 }
 
 
-/* ----- CSS block 194: v23-temi-affiancati ----- */
+/* ===== CSS originale 194/293: v23-temi-affiancati ===== */
 
 /* V23 — Aurora e Sole uno di fianco all'altro nelle Impostazioni */
 
@@ -12388,7 +12390,7 @@ body.aurora.light #themeSettingsAurora.active{
 }
 
 
-/* ----- CSS block 195: v24-temi-orizzontali-fix ----- */
+/* ===== CSS originale 195/293: v24-temi-orizzontali-fix ===== */
 
 /* V24 — Aurora e Sole affiancati ORIZZONTALMENTE */
 
@@ -12480,7 +12482,7 @@ body.aurora.light #themeSettingsAurora.active{
 }
 
 
-/* ----- CSS block 196: v25-tema-viola ----- */
+/* ===== CSS originale 196/293: v25-tema-viola ===== */
 
 /* V25 — Terzo tema Viola + tre selettori orizzontali */
 
@@ -12676,7 +12678,7 @@ body.viola.light #themeSettingsViola.active{
 }
 
 
-/* ----- CSS block 197: v26-temi-senza-sottotesto ----- */
+/* ===== CSS originale 197/293: v26-temi-senza-sottotesto ===== */
 
 #auroraThemeSetting > #themeSettingsAurora,
 #auroraThemeSetting > #themeSettingsSole,
@@ -12716,7 +12718,7 @@ body.viola.light #themeSettingsViola.active{
 }
 
 
-/* ----- CSS block 198: v27-spunta-centrale-destra ----- */
+/* ===== CSS originale 198/293: v27-spunta-centrale-destra ===== */
 
 /* V27 — La spunta deve stare centrale all'estrema destra, affianco al tema */
 
@@ -12766,7 +12768,7 @@ body.viola.light #themeSettingsViola.active{
 }
 
 
-/* ----- CSS block 199: v28-testo-copiabile ----- */
+/* ===== CSS originale 199/293: v28-testo-copiabile ===== */
 
 /* V28 — Consente di selezionare e copiare il testo della dashboard */
 
@@ -12820,7 +12822,7 @@ body {
 }
 
 
-/* ----- CSS block 200: v29-tutto-testo-copiabile ----- */
+/* ===== CSS originale 200/293: v29-tutto-testo-copiabile ===== */
 
 /* V29 — Tutto il testo HTML del sito è selezionabile e copiabile */
 
@@ -12870,14 +12872,14 @@ textarea {
 }
 
 
-/* ----- CSS block 201: ipad-top-pills-jsonp-v89-style ----- */
+/* ===== CSS originale 201/293: ipad-top-pills-jsonp-v89-style ===== */
 
 /* V89 — iPad Pro M2 / Edge external-file: le 5 pillole restano visibili mentre i dati arrivano via JSONP HTTPS. */
 #globalTotalPill,#globalTotal2Pill,#globalTotal3Pill,#altcoinIndexPill,#fearGreedPill{visibility:visible!important;opacity:1!important}
 #globalTotalPill .global-marketcap-pill-value,#globalTotal2Pill .global-marketcap-pill-value,#globalTotal3Pill .global-marketcap-pill-value,#altcoinIndexPill .global-marketcap-pill-value,#fearGreedPill .global-marketcap-pill-value{visibility:visible!important;opacity:1!important}
 
 
-/* ----- CSS block 202: v95-ore-tars-chart-universal-visibility ----- */
+/* ===== CSS originale 202/293: v95-ore-tars-chart-universal-visibility ===== */
 
 /* V95 — Grafici ORE/TARS AI sempre dimensionati su iOS/iPadOS, Android e desktop. */
 #tai-market:not(.market-hidden) .chart-wrap {
@@ -12920,14 +12922,14 @@ textarea {
 }
 
 
-/* ----- CSS block 203: cmc-ipad-embedded-v120 ----- */
+/* ===== CSS originale 203/293: cmc-ipad-embedded-v120 ===== */
 
 .asset-tab-logo.cmc-logo,.asset-logo.cmc-logo{display:inline-flex!important;visibility:visible!important;opacity:1!important;flex-shrink:0!important;background:none!important;filter:none!important;-webkit-filter:none!important}
 .asset-tab-logo.cmc-logo>img,.asset-logo.cmc-logo>img{display:block!important;visibility:visible!important;opacity:1!important;object-fit:contain!important;width:100%!important;height:100%!important;filter:none!important;-webkit-filter:none!important}
 .card-head .asset{gap:10px!important}
 
 
-/* ----- CSS block 204: reference-panels-v130 ----- */
+/* ===== CSS originale 204/293: reference-panels-v130 ===== */
 
 /* One responsive panel layout on desktop, Android and iPadOS. */
 .altcoin-chart-overlay .altcoin-chart-dialog {min-height:0;}
@@ -12946,7 +12948,7 @@ textarea {
 }
 
 
-/* ----- CSS block 205: index-reference-layout-v131 ----- */
+/* ===== CSS originale 205/293: index-reference-layout-v131 ===== */
 
 #altcoinIndexChartOverlay .altcoin-chart-toolbar,
 #fearGreedChartOverlay .altcoin-chart-toolbar {flex-direction:column;align-items:stretch;gap:14px;}
@@ -12958,7 +12960,7 @@ textarea {
 #fearGreedChartOverlay .altcoin-chart-legend {padding-bottom:max(8px,env(safe-area-inset-bottom));}
 
 
-/* ----- CSS block 206: orderbook-visible-v134 ----- */
+/* ===== CSS originale 206/293: orderbook-visible-v134 ===== */
 
 .orderbook-panel {display:block!important;visibility:visible!important;opacity:1!important;min-height:150px;flex-shrink:0;}
 .orderbook-columns {grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
@@ -12966,7 +12968,7 @@ textarea {
 .orderbook-side-title span:first-child {display:block!important;}
 
 
-/* ----- CSS block 207: altcoin-screenshot-layout-v138 ----- */
+/* ===== CSS originale 207/293: altcoin-screenshot-layout-v138 ===== */
 
 #altcoinIndexChartOverlay {color-scheme:light;--panel:#fff;--panel-2:#f6f7f9;--text:#15191d;--muted:#6b7480;--border:#dfe2e6;--grid:#e4e7eb;}
 #altcoinIndexChartOverlay .altcoin-chart-dialog {background:#fff!important;color:#15191d!important;height:100vh!important;height:100dvh!important;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);}
@@ -12985,7 +12987,7 @@ textarea {
 #altcoinIndexChartOverlay .altcoin-chart-legend {background:#fff!important;color:#6b7480!important;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;font-weight:700;}
 
 
-/* ----- CSS block 208: indices-full-page-interactive-v140 ----- */
+/* ===== CSS originale 208/293: indices-full-page-interactive-v140 ===== */
 
 #altcoinIndexChartOverlay,#fearGreedChartOverlay{position:fixed!important;inset:0!important;width:100%!important;height:var(--indices-viewport-height,100dvh)!important;padding:0!important;overflow:auto!important;box-sizing:border-box;}
 #altcoinIndexChartOverlay .altcoin-chart-dialog,#fearGreedChartOverlay .altcoin-chart-dialog{width:100%!important;height:100%!important;min-height:440px!important;max-height:none!important;max-width:none!important;display:flex!important;flex-direction:column!important;margin:0!important;border-radius:0!important;box-sizing:border-box;}
@@ -12999,7 +13001,7 @@ textarea {
 #altcoinIndexChartOverlay .altcoin-chart-legend,#fearGreedChartOverlay .altcoin-chart-legend{padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px))!important;flex-wrap:wrap!important;}
 
 
-/* ----- CSS block 209: indices-previous-look-v141 ----- */
+/* ===== CSS originale 209/293: indices-previous-look-v141 ===== */
 
 #altcoinIndexChartOverlay .altcoin-chart-toolbar,#fearGreedChartOverlay .altcoin-chart-toolbar{flex-direction:column!important;align-items:stretch!important;gap:14px!important;padding:12px 10px!important;}
 #fearGreedChartOverlay{color-scheme:light;--panel:#fff;--panel-2:#f6f7f9;--text:#15191d;--muted:#6b7480;--border:#dfe2e6;--grid:#e4e7eb;}
@@ -13015,13 +13017,13 @@ textarea {
 #fearGreedChartOverlay .altcoin-chart-legend{color:#6b7480!important;}
 
 
-/* ----- CSS block 210: interactive-reference-width-v142 ----- */
+/* ===== CSS originale 210/293: interactive-reference-width-v142 ===== */
 
 .reference-toggle-v142{border:0;background:transparent;color:#66717d;font:600 11px system-ui;text-align:left;padding:2px 0;cursor:pointer;}
 #altcoinIndexChartFrame,#fearGreedChartFrame{width:100%!important;max-width:none!important;justify-self:stretch;align-self:stretch;}
 
 
-/* ----- CSS block 211: v149-ipad-orderbook-100-ws ----- */
+/* ===== CSS originale 211/293: v149-ipad-orderbook-100-ws ===== */
 
 html.ipad-device .orderbook-rows{
   max-height:560px!important;
@@ -13040,7 +13042,7 @@ html.ipad-device .orderbook-row{
 }
 
 
-/* ----- CSS block 212: final-clean-main-change-style ----- */
+/* ===== CSS originale 212/293: final-clean-main-change-style ===== */
 
 .market-card .quote .change{
   white-space:nowrap!important;
@@ -13048,7 +13050,7 @@ html.ipad-device .orderbook-row{
 }
 
 
-/* ----- CSS block 213: final-24h-absolute-change-style ----- */
+/* ===== CSS originale 213/293: final-24h-absolute-change-style ===== */
 
 .market-card .quote .change{
   white-space:nowrap!important;
@@ -13056,7 +13058,7 @@ html.ipad-device .orderbook-row{
 }
 
 
-/* ----- CSS block 214: total-pills-direction-universal-v80-style ----- */
+/* ===== CSS originale 214/293: total-pills-direction-universal-v80-style ===== */
 
 /* Stessa resa su Windows/Android/iOS/iPadOS. */
 #globalTotalPill[data-direction="up"] #globalTotalValue,
@@ -13100,23 +13102,23 @@ html.ipad-device .orderbook-row{
 }
 
 
-/* ----- CSS block 215: hide-pill-agg-universal-v1 ----- */
+/* ===== CSS originale 215/293: hide-pill-agg-universal-v1 ===== */
 
 /* Rimuove l'etichetta AGG. dalle pillole su WebKit/Chromium/desktop senza alterare i valori live. */
 .pill-data-age-v123:empty{display:none!important;}
 
 
-/* ----- CSS block 216: indices-live-only-v143-style ----- */
+/* ===== CSS originale 216/293: indices-live-only-v143-style ===== */
 
 .reference-toggle-v142{display:none!important}
 
 
-/* ----- CSS block 217: indices-pill-live-sync-v144-style ----- */
+/* ===== CSS originale 217/293: indices-pill-live-sync-v144-style ===== */
 
 #altcoinIndexValue,#fearGreedValue{font-variant-numeric:tabular-nums;will-change:contents}
 
 
-/* ----- CSS block 218: v96-settings-bell-theme-glass-neutral ----- */
+/* ===== CSS originale 218/293: v96-settings-bell-theme-glass-neutral ===== */
 
 /* V96 — ⚙️ e 🔔 con LO STESSO vetro satinato di Light/Night,
    ma neutro: niente giallo, blu, viola o arancione. */
@@ -13277,7 +13279,7 @@ body.light .top-actions #soundToggle[aria-pressed="true"] {
 /* Mantieni le animazioni originali delle icone. */
 
 
-/* ----- CSS block 219: v118-night-polished-buttons ----- */
+/* ===== CSS originale 219/293: v118-night-polished-buttons ===== */
 
 /* V118 — Campanella + Impostazioni rifiniti per NIGHT.
    Stesso linguaggio visivo del controllo Light/Night, ma senza fondi colorati. */
@@ -13455,7 +13457,7 @@ body.light #soundToggle.top-icon-nightlike[aria-pressed="true"] {
 }
 
 
-/* ----- CSS block 220: v120-x-centered-button ----- */
+/* ===== CSS originale 220/293: v120-x-centered-button ===== */
 
 /* V120 — Sezione X: solo un pulsante centrato */
 .xnews-toggle {
@@ -13601,7 +13603,7 @@ body.light .xnews-section {
 }
 
 
-/* ----- CSS block 221: v92-orderbook-live-responsive ----- */
+/* ===== CSS originale 221/293: v92-orderbook-live-responsive ===== */
 
 /* V93 — Orderbook REAL-TIME multi-exchange: Binance + LBank ORE + Bitvavo TARS AI, sempre aperto su iPad Pro M2, desktop e smartphone. */
 .orderbook-panel {
@@ -13825,7 +13827,7 @@ body.light .orderbook-side { background: rgba(255,255,255,.88); }
 }
 
 
-/* ----- CSS block 222: v121-chart-fix ----- */
+/* ===== CSS originale 222/293: v121-chart-fix ===== */
 
 /* V121 — Grafico principale stabile, leggibile e responsive. */
 
@@ -13922,7 +13924,7 @@ body.light .orderbook-side { background: rgba(255,255,255,.88); }
 }
 
 
-/* ----- CSS block 223: v122-chart-pan-4way ----- */
+/* ===== CSS originale 223/293: v122-chart-pan-4way ===== */
 
 /* V122 — Pan del grafico in quattro direzioni */
 .chart,
@@ -13952,7 +13954,7 @@ body.light .orderbook-side { background: rgba(255,255,255,.88); }
 }
 
 
-/* ----- CSS block 224: v123-chart-real-4way ----- */
+/* ===== CSS originale 224/293: v123-chart-real-4way ===== */
 
 /* V123 — Il plot riceve direttamente il drag 2D. */
 .chart,
@@ -13975,7 +13977,7 @@ body.light .orderbook-side { background: rgba(255,255,255,.88); }
 }
 
 
-/* ----- CSS block 225: v124-chart-wheel ----- */
+/* ===== CSS originale 225/293: v124-chart-wheel ===== */
 
 /* V124 — rotellina personalizzata sul grafico */
 .chart {
@@ -13991,7 +13993,7 @@ body.light .orderbook-side { background: rgba(255,255,255,.88); }
 }
 
 
-/* ----- CSS block 226: v125-windows-mobile-chart ----- */
+/* ===== CSS originale 226/293: v125-windows-mobile-chart ===== */
 
 /* V125 — Su Windows il grafico usa la stessa esperienza del mobile. */
 html.windows-mobile-chart .chart-wrap {
@@ -14064,7 +14066,7 @@ html.windows-mobile-chart .indicator-canvas {
 }
 
 
-/* ----- CSS block 227: v126-price-axis-no-hand ----- */
+/* ===== CSS originale 227/293: v126-price-axis-no-hand ===== */
 
 /* V126 — prezzi all'estrema destra + niente cursore a mano. */
 
@@ -14098,7 +14100,7 @@ html.windows-mobile-chart .chart canvas {
 }
 
 
-/* ----- CSS block 228: v127-ema-axis ----- */
+/* ===== CSS originale 228/293: v127-ema-axis ===== */
 
 /* V127 — EMA molto evidenti sulla scala prezzi destra. */
 .chart,
@@ -14111,7 +14113,7 @@ html.windows-mobile-chart .chart canvas {
 }
 
 
-/* ----- CSS block 229: v129-native-price-label ----- */
+/* ===== CSS originale 229/293: v129-native-price-label ===== */
 
 /* V129 — Prezzo corrente in stile trading, solo sull'asse destro. */
 .chart,
@@ -14124,7 +14126,7 @@ html.windows-mobile-chart .chart canvas {
 }
 
 
-/* ----- CSS block 230: v130-cursor-price-crosshair ----- */
+/* ===== CSS originale 230/293: v130-cursor-price-crosshair ===== */
 
 /* V130 — Cursore prezzo stile trading */
 .chart {
@@ -14210,7 +14212,7 @@ body.light .cursor-price-label {
 }
 
 
-/* ----- CSS block 231: v132-same-chart-all-devices ----- */
+/* ===== CSS originale 231/293: v132-same-chart-all-devices ===== */
 
 /* V132 — Stesso grafico e stesse interazioni su Windows, smartphone e tablet. */
 
@@ -14340,7 +14342,7 @@ body.light .cursor-price-label {
 }
 
 
-/* ----- CSS block 232: v139-free-right-price-scale ----- */
+/* ===== CSS originale 232/293: v139-free-right-price-scale ===== */
 
 /* V139 — trascina la fascia dei numeri a destra per allargare/comprimere verticalmente. */
 .chart.chart-price-scale-hover,
@@ -14359,7 +14361,7 @@ html.windows-mobile-chart .chart.chart-price-scale-active canvas {
 }
 
 
-/* ----- CSS block 233: v140-chart-taller-rectangle ----- */
+/* ===== CSS originale 233/293: v140-chart-taller-rectangle ===== */
 
 /* V140 — grafico leggermente più alto, mantenendo una forma rettangolare larga. */
 @media (min-width: 1025px) {
@@ -14395,7 +14397,7 @@ html.windows-mobile-chart .chart.chart-price-scale-active canvas {
 }
 
 
-/* ----- CSS block 234: v141-chart-height-700-desktop ----- */
+/* ===== CSS originale 234/293: v141-chart-height-700-desktop ===== */
 
 /* V142 — Desktop: grafico rettangolare alto 670px.
    Sovrascrive anche la vecchia modalità windows-mobile-chart che fissava 390px. */
@@ -14410,7 +14412,7 @@ html.windows-mobile-chart .chart.chart-price-scale-active canvas {
 }
 
 
-/* ----- CSS block 235: v143-chart-height-670-pc-tablet ----- */
+/* ===== CSS originale 235/293: v143-chart-height-670-pc-tablet ===== */
 
 /* V143 — PC + tablet: grafico rettangolare alto 670px.
    Smartphone fino a 560px mantiene l'altezza compatta precedente. */
@@ -14425,7 +14427,7 @@ html.windows-mobile-chart .chart.chart-price-scale-active canvas {
 }
 
 
-/* ----- CSS block 236: raydium-dati-v22-style ----- */
+/* ===== CSS originale 236/293: raydium-dati-v22-style ===== */
 
   /* V22 — solo Raydium: torna ai due box originali Giornaliero + Totale. */
   #ray-burn-section > .burn-daily-total-v34{
@@ -14441,7 +14443,7 @@ html.windows-mobile-chart .chart.chart-price-scale-active canvas {
   }
 
 
-/* ----- CSS block 237: ipad-pro-m2-pills-visible-v28 ----- */
+/* ===== CSS originale 237/293: ipad-pro-m2-pills-visible-v28 ===== */
 
 /* V86 — iPad Pro 6ª gen M2: pillole sempre su una sola riga orizzontale, con scroll touch se necessario. */
 html.ipad-pill-data-v28 .global-marketcap-pills {
@@ -14521,7 +14523,7 @@ html.ipad-pill-data-v28 .altcoin-chart-overlay[data-v12-active="true"] .ipad-cha
 }
 
 
-/* ----- CSS block 238: ipad-top-five-pills-live-v88-style ----- */
+/* ===== CSS originale 238/293: ipad-top-five-pills-live-v88-style ===== */
 
 /* V88 — iPad Pro 6ª generazione M2: TOTAL, TOTAL 1, TOTAL 2, Altcoin Index e Paura & Avidità sempre visibili e LIVE. */
 html.ipad-pill-data-v88 #globalTotalPill,
@@ -14552,7 +14554,7 @@ html.ipad-pill-data-v88 #fearGreedPill .fng-scale {
 }
 
 
-/* ----- CSS block 239: indicatori-visibili-v79-style ----- */
+/* ===== CSS originale 239/293: indicatori-visibili-v79-style ===== */
 
 /* V79 — indicatori tecnici più leggibili su PC, Android e soprattutto iPad. */
 .indicator-stack{
@@ -14628,7 +14630,7 @@ html.ipad-pill-data-v28 .indicator-head strong{
 }
 
 
-/* ----- CSS block 240: v96-galaxy-s25-orderbook-side-by-side ----- */
+/* ===== CSS originale 240/293: v96-galaxy-s25-orderbook-side-by-side ===== */
 
 /*
    Su smartphone Android mantieni ASK e BID in due colonne come su PC.
@@ -14721,7 +14723,7 @@ html.ipad-pill-data-v28 .indicator-head strong{
 }
 
 
-/* ----- CSS block 241: v97-galaxy-s25-orderbook-landscape ----- */
+/* ===== CSS originale 241/293: v97-galaxy-s25-orderbook-landscape ===== */
 
 /*
    Galaxy S25 Ultra / Android in landscape: ASK e BID restano affiancati.
@@ -14802,7 +14804,7 @@ html.ipad-pill-data-v28 .indicator-head strong{
 }
 
 
-/* ----- CSS block 242: v103-timeframe-darkblue-gradient ----- */
+/* ===== CSS originale 242/293: v103-timeframe-darkblue-gradient ===== */
 
 .timeframe.active {
   position: relative !important;
@@ -14827,7 +14829,7 @@ body.light .timeframe.active {
 }
 
 
-/* ----- CSS block 243: v104-timeframe-subtle-blue ----- */
+/* ===== CSS originale 243/293: v104-timeframe-subtle-blue ===== */
 
 .timeframe.active {
   color: var(--text) !important;
@@ -14851,7 +14853,7 @@ body.light .timeframe.active {
 }
 
 
-/* ----- CSS block 244: v105-asset-name-pair-spacing ----- */
+/* ===== CSS originale 244/293: v105-asset-name-pair-spacing ===== */
 
 .asset-tab-copy small {
   margin-top: 6px !important;
@@ -14869,7 +14871,7 @@ body.light .timeframe.active {
 }
 
 
-/* ----- CSS block 245: v106-logo-text-horizontal-spacing ----- */
+/* ===== CSS originale 245/293: v106-logo-text-horizontal-spacing ===== */
 
 /* Scheda principale: separa visivamente il logo dal blocco Bitcoin / BTC-USDT. */
 .asset {
@@ -14895,7 +14897,7 @@ body.light .timeframe.active {
 }
 
 
-/* ----- CSS block 246: v107-worldcoin-oraichain-style ----- */
+/* ===== CSS originale 246/293: v107-worldcoin-oraichain-style ===== */
 
   .asset-tab-logo.wld, .asset-logo.wld {
     background: linear-gradient(145deg, #111827, #2563eb) !important;
@@ -14914,7 +14916,7 @@ body.light .timeframe.active {
   }
 
 
-/* ----- CSS block 247: v114-wld-orai-burn-daily-total-style ----- */
+/* ===== CSS originale 247/293: v114-wld-orai-burn-daily-total-style ===== */
 
 #wld-burn-section .v114-burn-pair,
 #orai-burn-section .v114-burn-pair{
@@ -14970,7 +14972,7 @@ body.light .timeframe.active {
 }
 
 
-/* ----- CSS block 248: universal-preview-v146-style ----- */
+/* ===== CSS originale 248/293: universal-preview-v146-style ===== */
 
   :root {
     --universal-vh: 100vh;
@@ -15103,7 +15105,7 @@ body.light .timeframe.active {
   }
 
 
-/* ----- CSS block 249: ipad-pro-m2-live-v148-style ----- */
+/* ===== CSS originale 249/293: ipad-pro-m2-live-v148-style ===== */
 
 /* V148 — pillole + grafici LIVE, stessa build su iPad Pro 12,9\" M2 / iOS / Android / Windows. */
 html[data-ipad-m2="true"],html[data-ipad-profile="pro-12-9"]{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
@@ -15144,7 +15146,7 @@ html[data-pill-live-v148="updating"] #fearGreedPill{will-change:contents;}
 }
 
 
-/* ----- CSS block 250: mining-burn-universal-v149-style ----- */
+/* ===== CSS originale 250/293: mining-burn-universal-v149-style ===== */
 
   html[data-mining-burn-v149="ready"] .burn-section {
     max-width: 100%;
@@ -15221,7 +15223,7 @@ html[data-pill-live-v148="updating"] #fearGreedPill{will-change:contents;}
   }
 
 
-/* ----- CSS block 251: burn-v156-ipad-stable-style ----- */
+/* ===== CSS originale 251/293: burn-v156-ipad-stable-style ===== */
 
 html[data-burn-v156="ready"] .burn-daily-total-v34,
 html[data-burn-v156="ready"] .burn-daily-total-v34[hidden],
@@ -15262,7 +15264,7 @@ html[data-burn-v156="ready"] .v114-burn-pair .burn-value{
 }
 
 
-/* ----- CSS block 252: luna-wld-v159-total-burn-style ----- */
+/* ===== CSS originale 252/293: luna-wld-v159-total-burn-style ===== */
 
 #luna-burn-section .burn-daily-total-v34,
 #wld-burn-section .v114-burn-pair{
@@ -15293,7 +15295,7 @@ html[data-burn-v156="ready"] .v114-burn-pair .burn-value{
 }
 
 
-/* ----- CSS block 253: ore-24h-label-value-v163 ----- */
+/* ===== CSS originale 253/293: ore-24h-label-value-v163 ===== */
 
 /* WebKit/iPadOS: forza il prefisso 24h in grigio anche se il parent usa text-fill verde/rosso. */
 #ore-change::before {
@@ -15320,7 +15322,7 @@ html[data-burn-v156="ready"] .v114-burn-pair .burn-value{
 }
 
 
-/* ----- CSS block 254: universal-live-optimized-v164-style ----- */
+/* ===== CSS originale 254/293: universal-live-optimized-v164-style ===== */
 
 html[data-live-v164] { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
 html[data-live-v164] button,
@@ -15362,7 +15364,7 @@ html[data-live-v164] .asset-tab-quote {
 }
 
 
-/* ----- CSS block 255: ore-stable-24h-v166-style ----- */
+/* ===== CSS originale 255/293: ore-stable-24h-v166-style ===== */
 
 /* Il nodo originale continua a ricevere i dati LIVE ma non viene mostrato direttamente. */
 #ore-change{
@@ -15425,7 +15427,7 @@ html[data-live-v164] .asset-tab-quote {
 }
 
 
-/* ----- CSS block 256: total-pills-stable-direction-v170-style ----- */
+/* ===== CSS originale 256/293: total-pills-stable-direction-v170-style ===== */
 
 #globalTotalPill,
 #globalTotal2Pill,
@@ -15480,7 +15482,7 @@ html[data-live-v164] .asset-tab-quote {
 }
 
 
-/* ----- CSS block 257: indicator-models-v172-style ----- */
+/* ===== CSS originale 257/293: indicator-models-v172-style ===== */
 
 .indicator-models-setting-v172{position:relative}
 .indicator-models-button-v172{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px}
@@ -15494,7 +15496,7 @@ body.indicator-zones-off-v172 .trading-zones-layer-v46{display:none!important}
 @media(max-width:820px){.indicator-models-options-v172{padding:3px 9px}.indicator-model-row-v172{padding:9px 0!important}}
 
 
-/* ----- CSS block 258: v175-luna-burn-galaxy-final ----- */
+/* ===== CSS originale 258/293: v175-luna-burn-galaxy-final ===== */
 
 @media screen and (max-width: 767px){
   #luna-burn-section .burn-daily-total-v34{
@@ -15516,7 +15518,7 @@ body.indicator-zones-off-v172 .trading-zones-layer-v46{display:none!important}
 }
 
 
-/* ----- CSS block 259: v178-chart-crosshair-touch ----- */
+/* ===== CSS originale 259/293: v178-chart-crosshair-touch ===== */
 
 #altcoinIndexHistoryCanvas,
 #fearGreedHistoryCanvas,
@@ -15529,7 +15531,7 @@ body.indicator-zones-off-v172 .trading-zones-layer-v46{display:none!important}
 }
 
 
-/* ----- CSS block 260: v215-single-orderbook-indicator ----- */
+/* ===== CSS originale 260/293: v215-single-orderbook-indicator ===== */
 
 .orderbook-midline { display:inline-flex !important; align-items:center !important; flex-wrap:nowrap !important; gap:8px !important; }
 .orderbook-midline > strong { white-space:nowrap; }
@@ -15549,7 +15551,7 @@ body.indicator-zones-off-v172 .trading-zones-layer-v46{display:none!important}
 
 
 
-/* ----- CSS block 261: v223-orderbook-minimal-all-os ----- */
+/* ===== CSS originale 261/293: v223-orderbook-minimal-all-os ===== */
 
 /*
   Un solo componente condiviso da TUTTE le crypto.
@@ -15668,7 +15670,7 @@ body.indicator-zones-off-v172 .trading-zones-layer-v46{display:none!important}
 }
 
 
-/* ----- CSS block 262: v224-tars-orderbook-indicator-visible-fix ----- */
+/* ===== CSS originale 262/293: v224-tars-orderbook-indicator-visible-fix ===== */
 
 .orderbook-direction[data-dir="flat"] {
   --ob-dir-color: #00a86b !important;
@@ -15693,7 +15695,7 @@ body.indicator-zones-off-v172 .trading-zones-layer-v46{display:none!important}
 }
 
 
-/* ----- CSS block 263: v225-orderbook-pulse-all-os ----- */
+/* ===== CSS originale 263/293: v225-orderbook-pulse-all-os ===== */
 
 /* V225 — impulso continuo del cerchio orderbook su tutte le crypto e su tutti i sistemi operativi.
    Evita filter/color-mix animati perché su alcuni browser mobile/Safari possono non pulsare in modo stabile. */
@@ -15760,7 +15762,7 @@ body.indicator-zones-off-v172 .trading-zones-layer-v46{display:none!important}
 }
 
 
-/* ----- CSS block 264: orderbook-gradient-all-os-v227 ----- */
+/* ===== CSS originale 264/293: orderbook-gradient-all-os-v227 ===== */
 
 /* Shared depth bands: every market, mobile and desktop, light and dark. */
 body .orderbook-row::before {
@@ -15786,7 +15788,7 @@ body:not(.light) .orderbook-row.ask::before {
 body:not(.light) .orderbook-row::before { opacity: 1 !important; }
 
 
-/* ----- CSS block 265: orderbook-depth-all-os-v231 ----- */
+/* ===== CSS originale 265/293: orderbook-depth-all-os-v231 ===== */
 
 .orderbook-depth { margin: 10px 0; padding: 12px; border: 1px solid var(--border); border-radius: 10px; min-width: 0; color: var(--text); }
 .orderbook-depth[hidden] { display: none !important; }
@@ -15801,7 +15803,7 @@ body:not(.light) .orderbook-row::before { opacity: 1 !important; }
 .orderbook-depth-totals span:last-child { color:#ff5f6d; }
 
 
-/* ----- CSS block 266: v254-ore-chart-all-os-fix ----- */
+/* ===== CSS originale 266/293: v254-ore-chart-all-os-fix ===== */
 
 /* V254 — ORE Protocol: grafico stabile e responsive su iPadOS/iOS, Android, Windows, macOS e Linux/browser. */
 #ore-market:not(.market-hidden) .chart-wrap {
@@ -15837,7 +15839,7 @@ body:not(.light) .orderbook-row::before { opacity: 1 !important; }
 }
 
 
-/* ----- CSS block 267: v262-universal-live-all-os-style ----- */
+/* ===== CSS originale 267/293: v262-universal-live-all-os-style ===== */
 
 html[data-universal-live-v262="on"] .price,
 html[data-universal-live-v262="on"] .price-value,
@@ -15853,7 +15855,7 @@ html[data-universal-live-v262="on"] canvas {
 }
 
 
-/* ----- CSS block 268: v280-ore-candle-by-candle-style ----- */
+/* ===== CSS originale 268/293: v280-ore-candle-by-candle-style ===== */
 
 /* V281 — ORE Protocol: vista candela per candela senza gap a destra su tutti i sistemi operativi. */
 #ore-chart{
@@ -15864,7 +15866,7 @@ html[data-universal-live-v262="on"] canvas {
 }
 
 
-/* ----- CSS block 269: v282-connection-state-time-all-os ----- */
+/* ===== CSS originale 269/293: v282-connection-state-time-all-os ===== */
 
 /* V283 — OFFLINE senza testo “ultimo dato”; orario sempre visibile su tutti i sistemi operativi. */
 .connection{
@@ -15895,7 +15897,7 @@ html[data-universal-live-v262="on"] canvas {
 }
 
 
-/* ----- CSS block 270: v310-long-short-only-moving-dots-all-os ----- */
+/* ===== CSS originale 270/293: v310-long-short-only-moving-dots-all-os ===== */
 
 /* V310 — elimina VISIVAMENTE tutti i pallini fermi. Restano solo i due pallini realmente in movimento. */
 .long-short-compact-v257 .ls-dot-v260{
@@ -15931,7 +15933,7 @@ html[data-universal-live-v262="on"] canvas {
 }
 
 
-/* ----- CSS block 271: v311-long-short-flat-solid-all-os ----- */
+/* ===== CSS originale 271/293: v311-long-short-flat-solid-all-os ===== */
 
 /* V311 — pallini LONG/SHORT pieni e netti: nessuna sfumatura, glow, blur o trasparenza. */
 .long-short-compact-v257 .ls-dots-long-v260 .ls-dot-v260.v310-dot-active,
@@ -15954,7 +15956,7 @@ html[data-universal-live-v262="on"] canvas {
 }
 
 
-/* ----- CSS block 272: v312-long-short-brighter-all-os ----- */
+/* ===== CSS originale 272/293: v312-long-short-brighter-all-os ===== */
 
 /* V312 — pallini più luminosi, ma ancora pieni e netti: nessuna sfumatura o blur. */
 .long-short-compact-v257 .ls-dots-long-v260 .ls-dot-v260.v310-dot-active,
@@ -15977,7 +15979,7 @@ html[data-universal-live-v262="on"] canvas {
 }
 
 
-/* ----- CSS block 273: v313-long-short-solid-no-white-border-all-os ----- */
+/* ===== CSS originale 273/293: v313-long-short-solid-no-white-border-all-os ===== */
 
 /* V313 — pallini pieni verde e rosso, senza contorno bianco, su tutti i sistemi operativi. */
 .long-short-compact-v257 .ls-dots-long-v260 .ls-dot-v260.v310-dot-active,
@@ -16001,7 +16003,7 @@ html[data-universal-live-v262="on"] canvas {
 }
 
 
-/* ----- CSS block 274: v314-total-direction-live-all-os-style ----- */
+/* ===== CSS originale 274/293: v314-total-direction-live-all-os-style ===== */
 
 /* V314 — TOTAL / TOTAL 1 / TOTAL 2 / TOTAL DEFI: stato LIVE finale e uniforme su tutti gli OS. */
 #globalTotalPill #globalTotalTrend,
@@ -16051,7 +16053,7 @@ html[data-universal-live-v262="on"] canvas {
 }
 
 
-/* ----- CSS block 275: v317-indicator-history-status ----- */
+/* ===== CSS originale 275/293: v317-indicator-history-status ===== */
 
 .v317-history-notice { box-sizing:border-box; width:100%; border:1px solid rgba(245,158,11,.48);border-radius:9px;
  padding:10px 12px; margin:0 0 8px; color:#92400e;background:rgba(245,158,11,.10); font-size:12px;line-height:1.45;
@@ -16060,14 +16062,14 @@ body:not(.light) .v317-history-notice {color:#fde68a;}
 .v317-history-notice[hidden] {display:none!important;}
 
 
-/* ----- CSS block 276: v316-performance-style ----- */
+/* ===== CSS originale 276/293: v316-performance-style ===== */
 
 @media (prefers-reduced-motion: reduce) {
   .market-card .chart-wrap, .market-card .indicator-chart { scroll-behavior: auto; }
 }
 
 
-/* ----- CSS block 277: v315-compatibility-layout ----- */
+/* ===== CSS originale 277/293: v315-compatibility-layout ===== */
 
   html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .chart-wrap, .indicator-chart, .chart-container { min-width: 0; }
@@ -16077,7 +16079,7 @@ body:not(.light) .v317-history-notice {color:#fde68a;}
   }
 
 
-/* ----- CSS block 278: v330-crypto-converter-card-css ----- */
+/* ===== CSS originale 278/293: v330-crypto-converter-card-css ===== */
 
 .v330-converter-wrap{margin:10px 0 14px;font-family:inherit;color:#111827;}
 .v330-converter-stack{display:flex;flex-direction:column;gap:14px;}
@@ -16130,7 +16132,7 @@ body:not(.light) .v330-converter-card{background:#f8fafc;}
 @media(max-width:400px){.v330-converter-wrap .v370-fixed-symbol{font-size:20px}}
 
 
-/* ----- CSS block 279: v336-futures-css ----- */
+/* ===== CSS originale 279/293: v336-futures-css ===== */
 
 /* Futures calculator: intentionally reuses dashboard's native .details-toggle style */
 .v336-futures-panel{overflow:visible;min-width:0}
@@ -16242,7 +16244,7 @@ body:not(.light) .v330-converter-card{background:#f8fafc;}
 .v336-futures-panel .v346-backup .v346-backup-content{width:100%;align-self:stretch}
 
 
-/* ----- CSS block 280: v349-copy-paste-css ----- */
+/* ===== CSS originale 280/293: v349-copy-paste-css ===== */
 
 /* I campi restano selezionabili via touch e con tastiera, anche con le regole generali della dashboard. */
 .v336-futures-surface input[data-field],
@@ -16258,7 +16260,7 @@ body:not(.light) .v330-converter-card{background:#f8fafc;}
 }
 
 
-/* ----- CSS block 281: v372-dropdown-gray-chevrons-css ----- */
+/* ===== CSS originale 281/293: v372-dropdown-gray-chevrons-css ===== */
 
 /* Frecce delle tendine: stesso grigio sia chiuse sia aperte.
    Include info, mining, burn, Futures, notizie, convertitore e tendine impostazioni. */
@@ -16280,7 +16282,7 @@ body.light { --v372-chevron-gray: #6b7280; }
 }
 
 
-/* ----- CSS block 282: v375-live-view-css ----- */
+/* ===== CSS originale 282/293: v375-live-view-css ===== */
 
 /* V403: iPad Home Screen: Live View riempie tutta l'app senza invocare il fullscreen nativo,
    che aggiungerebbe una X di sistema a sinistra. Resta una sola X HTML a destra.
@@ -16353,7 +16355,7 @@ body.v375-live-locked{overflow:hidden!important;touch-action:auto}
 }
 
 
-/* ----- CSS block 283: v405-ipad-native-layout ----- */
+/* ===== CSS originale 283/293: v405-ipad-native-layout ===== */
 
 /* V406 — vista immersiva a tutta area disponibile su iPad M2, senza chiamare
    il fullscreen nativo che aggiunge la X di sistema a sinistra. */
@@ -16375,7 +16377,7 @@ body.v375-live-locked{overflow:hidden!important;touch-action:auto}
 #v375-live-overlay.v405-ipad-layout .v384-fullscreen-notice{display:none!important}
 
 
-/* ----- CSS block 284: v431-high-visibility-zero-reflow-cross-platform ----- */
+/* ===== CSS originale 284/293: v431-high-visibility-zero-reflow-cross-platform ===== */
 
 /* V431: alto contrasto controllato, grafica aggiornata su tutti i browser.
    Solo proprietà di colore, sfondo, contorno, ombra. Nessun intervento su
@@ -16534,7 +16536,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,[role="tab"]:focus
 }
 
 
-/* ----- CSS block 285: v432-premium-fintech-cross-platform ----- */
+/* ===== CSS originale 285/293: v432-premium-fintech-cross-platform ===== */
 
 
 /* ==============================================================
@@ -16845,7 +16847,7 @@ body.light .market-card .card-dominance span,
 body.light .market-card .card-dominance strong {color:#283e59;}
 
 
-/* ----- CSS block 286: v433-borderless-premium-across-platform ----- */
+/* ===== CSS originale 286/293: v433-borderless-premium-across-platform ===== */
 
 /* V433: elimina i contorni neri/scuri sulle superfici della dashboard.
    Solo rifiniture CSS; dati live, comportamento, layout, fullscreen e logiche
@@ -16935,7 +16937,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,
 }
 
 
-/* ----- CSS block 287: v434-no-blue-outline-on-selected-tabs-all-platforms ----- */
+/* ===== CSS originale 287/293: v434-no-blue-outline-on-selected-tabs-all-platforms ===== */
 
 /* V434 — Le schede delle criptovalute non mostrano più la cornice blu
    quando vengono selezionate, cliccate o ricevono il focus. Il layout,
@@ -16996,7 +16998,7 @@ body.light .asset-tab[aria-selected="true"]:is(:hover,:focus,:focus-visible,:act
 }
 
 
-/* ----- CSS block 288: v435-force-remove-blue-border-from-active-crypto-tabs-all-os ----- */
+/* ===== CSS originale 288/293: v435-force-remove-blue-border-from-active-crypto-tabs-all-os ===== */
 
 /* V435 — Rimozione reale del bordo/blu ring dai TAB delle crypto selezionate.
    Override finale in coda al documento per vincere ogni stile precedente,
@@ -17079,7 +17081,7 @@ body.light .asset-tab[aria-selected="true"]:not(.live-up):not(.live-down):not(.l
 }
 
 
-/* ----- CSS block 289: v436-force-no-blue-border-crypto-tabs-final-css ----- */
+/* ===== CSS originale 289/293: v436-force-no-blue-border-crypto-tabs-final-css ===== */
 
 /* V436 — eliminazione forzata del bordo dei tab crypto su tutti i sistemi.
    Vale per stato normale, hover, focus, active, aria-selected e live states. */
@@ -17140,7 +17142,7 @@ body.light .asset-tab.live-low {
 }
 
 
-/* ----- CSS block 290: v439-collapsible-indicator-sections-all-operating-systems ----- */
+/* ===== CSS originale 290/293: v439-collapsible-indicator-sections-all-operating-systems ===== */
 
 /* V439 · Contenitore apri/chiudi dei soli indicatori tecnici a fondo scheda.
    Nessuna modifica a dati live, logica dei grafici o selezione delle crypto. */
@@ -17250,7 +17252,7 @@ body.light .v439-indicator-shell {
 @media(prefers-reduced-motion:reduce){.v439-chevron{transition:none!important;}}
 
 
-/* ----- CSS block 291: v440-orderbook-collapsible-all-platforms ----- */
+/* ===== CSS originale 291/293: v440-orderbook-collapsible-all-platforms ===== */
 
 /* Orderbook: pannello nativo <details>/<summary>. Parte chiuso e si apre
    con click, tocco, Invio o Spazio senza fermare il WebSocket. */
@@ -17348,7 +17350,7 @@ body.light .orderbook-panel > .v440-orderbook-accordion {
 }
 
 
-/* ----- CSS block 292: v441-timeframes-immediately-above-selected-chart ----- */
+/* ===== CSS originale 292/293: v441-timeframes-immediately-above-selected-chart ===== */
 
 /* V441 · I timeframe sono posizionati sopra il grafico selezionato.
    Layout responsive, stessa barra originale per tutti i sistemi operativi. */
@@ -17417,7 +17419,7 @@ body.light .market-card > .controls {
 }
 
 
-/* ----- CSS block 293: v442-market-menu-top-200-responsive ----- */
+/* ===== CSS originale 293/293: v442-market-menu-top-200-responsive ===== */
 
 /* V442 Market. Solo UI aggiuntiva: tutte le funzioni della V441 restano al loro posto. */
 .v442-menu-button{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-width:43px;height:39px;padding:0 12px;border:1px solid transparent!important;border-radius:12px;background:var(--panel-2)!important;color:var(--text)!important;font-size:12px;font-weight:800;cursor:pointer;box-shadow:none!important;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
@@ -17439,63 +17441,3 @@ body.v442-market-open{overflow:hidden!important}
 @media(max-width:580px){.v442-menu-button{height:35px;min-width:38px;padding:0 9px}.v442-menu-button span{display:none}.v442-menu-button svg{width:19px;height:19px}.v442-market-drawer{width:100vw;width:100dvw;max-width:none}.v442-market-main{padding:13px 11px 9px}.v442-drawer-heading{min-height:65px;padding:10px 12px}.v442-market-nav{padding:8px 12px}.v442-market-titlebar h2{font-size:20px}.v442-market-titlebar p{font-size:11px}.v442-market-tools{padding:14px 0 8px}.v442-market-table{display:block;width:100%}.v442-market-table thead{display:none}.v442-market-table tbody{display:block}.v442-market-table tr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:11px;row-gap:9px;padding:12px 13px;border-bottom:1px solid var(--v442-bd)}.v442-market-table tr:last-child{border-bottom:0}.v442-market-table td{padding:0!important;border:0!important;white-space:normal!important;text-align:left!important;font-size:12px}.v442-market-table td:nth-child(1){display:none}.v442-market-table td:nth-child(2){grid-column:1/3;display:block!important;overflow:visible}.v442-market-table td:nth-child(3){grid-column:1;grid-row:2}.v442-market-table td:nth-child(4){grid-column:1;grid-row:3}.v442-market-table td:nth-child(5){grid-column:2;grid-row:3}.v442-market-table td:nth-child(6){grid-column:2;grid-row:2;display:flex;justify-content:flex-end;align-items:center}.v442-market-table td:nth-child(3)::before,.v442-market-table td:nth-child(4)::before,.v442-market-table td:nth-child(5)::before{content:attr(data-label);display:block;color:var(--v442-sub);font-size:10px;font-weight:650;margin-bottom:4px}.v442-market-symbol-wrap{gap:10px}.v442-market-coin{gap:4px}.v442-market-logo,.v442-market-fallback-logo{width:31px;height:31px;flex-basis:31px}.v442-market-coin-name{font-size:13px}.v442-market-rank-in-name{display:inline;color:var(--v442-sub);font-size:11px;margin-right:6px;font-weight:650}.v442-market-price{font-size:15px!important}.v442-market-price small{font-size:10px}.v442-market-spark{width:115px;max-width:100%;height:41px}.v442-empty-row{grid-column:1/-1!important;display:block!important;padding:16px!important;text-align:center!important}.v442-market-footer{padding-top:9px}.v442-market-count{font-size:10px}}
 @media(prefers-reduced-motion:reduce){.v442-market-drawer,.v442-market-shade{transition:none}.v442-refresh-button.v442-spinning svg{animation:none}}
 
-
-/* ----- CSS block 294: v443-market-connection-fallback ----- */
-
-.v443-week-change{font-size:11px;font-weight:800;white-space:nowrap;display:inline-block;padding:5px 7px;border-radius:8px;background:rgba(124,151,189,.09)}
-.v442-market-status[data-error="true"]{line-height:1.55}
-.v442-market-footer a{white-space:nowrap}
-
-
-/* ----- CSS block 295: v444-market-ipad-online-fallback-style ----- */
-
-.v444-market-online-link{display:inline-flex;align-items:center;min-height:34px;padding:5px 11px;margin:0 0 10px;color:#2267bc;font-size:12px;font-weight:750;text-decoration:none;border-radius:10px;background:rgba(82,143,235,.09)}
-.v444-market-online-link:focus-visible{outline:2px solid currentColor;outline-offset:2px}
-.v444-market-online-link:hover{text-decoration:underline}
-body:not(.light) .v444-market-online-link{color:#9bc6ff;background:rgba(92,148,234,.10)}
-
-
-
-/* V446 – Market: colonne 7g, 24g e mini-grafico; adattivo desktop/iPadOS/Android */
-.v442-market-drawer{width:min(1140px,calc(100vw - 38px))}
-.v442-market-table{min-width:820px}
-.v442-market-table th:nth-child(1){width:4%}
-.v442-market-table th:nth-child(2){width:21%}
-.v442-market-table th:nth-child(3){width:16%}
-.v442-market-table th:nth-child(4){width:16%}
-.v442-market-table th:nth-child(5){width:15%}
-.v442-market-table th:nth-child(6){width:8%;text-align:right}
-.v442-market-table th:nth-child(7){width:8%;text-align:right}
-.v442-market-table th:nth-child(8){width:12%;text-align:center}
-.v442-market-table td:nth-child(6),.v442-market-table td:nth-child(7){text-align:right}
-.v442-market-table td:nth-child(8){text-align:center}
-.v446-change-value{font-size:12px;font-weight:800;white-space:nowrap}
-.v446-not-available{color:var(--v442-sub)}
-.v446-history-button{font-family:inherit;color:#76acfa;border:1px solid rgba(116,167,244,.25);background:rgba(92,148,234,.08);border-radius:7px;padding:5px 7px;font-size:10px;font-weight:800;cursor:pointer;min-width:53px;min-height:27px}
-.v446-history-button:hover{background:rgba(92,148,234,.16)}
-.v446-history-button:focus-visible{outline:2px solid #70a9fa;outline-offset:2px}
-.v446-loading{font-size:10px;color:var(--v442-sub)}
-.v446-graph-cell{min-width:85px}
-.v446-market-changeplot{color:var(--v442-sub)}
-@media(max-width:800px) and (min-width:581px){
- .v442-market-drawer{width:min(100vw,960px)}
- .v442-market-scroll{overflow-x:auto}
- .v442-market-table{min-width:850px}
-}
-@media(max-width:580px){
- .v442-market-drawer{width:100vw;max-width:none}
- .v442-market-table{min-width:0;display:block}
- .v442-market-table tr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(72px,95px);gap:10px 8px}
- .v442-market-table td:nth-child(2){grid-column:1/4;grid-row:1}
- .v442-market-table td:nth-child(3){grid-column:1/4;grid-row:2}
- .v442-market-table td:nth-child(4){grid-column:1/3;grid-row:3}
- .v442-market-table td:nth-child(5){grid-column:3;grid-row:3}
- .v442-market-table td:nth-child(6){grid-column:1;grid-row:4;text-align:left}
- .v442-market-table td:nth-child(7){grid-column:2;grid-row:4;text-align:left}
- .v442-market-table td:nth-child(8){grid-column:3;grid-row:4;display:flex;align-items:center;justify-content:flex-end;min-width:0}
- .v442-market-table td:nth-child(6)::before,.v442-market-table td:nth-child(7)::before,.v442-market-table td:nth-child(8)::before{content:attr(data-label);display:block;color:var(--v442-sub);font-size:10px;font-weight:650;margin-bottom:4px}
- .v442-market-table td:nth-child(8){display:block}
- .v442-market-table td:nth-child(8)::before{text-align:right}
- .v442-market-table td:nth-child(8) .v442-market-spark{max-width:85px;height:33px}
- .v446-change-value{font-size:13px}
-}
