@@ -22,11 +22,12 @@ if "V546 EMA STEADY" not in js:
 """ + js[finish:]
     js_path.write_text(js, encoding="utf-8")
 # Ensure users load the updated script rather than a cached previous version.
-html = re.sub(r'(script\\.js\\?v=)\\d+', lambda m: m.group(1) + '546', html)
-html = re.sub(r'(style\\.css\\?v=)\\d+', lambda m: m.group(1) + '546', html)
-html = re.sub(r'(workspace\\.js\\?v=)\\d+', lambda m: m.group(1) + '546', html)
 html_path.write_text(html, encoding="utf-8")
 
+html = re.sub(r'(script\.js\?v=)\d+', lambda m: m.group(1) + '546', html)
+html = re.sub(r'(style\.css\?v=)\d+', lambda m: m.group(1) + '546', html)
+html = re.sub(r'(workspace\.js\?v=)\d+', lambda m: m.group(1) + '546', html)
+html_path.write_text(html, encoding="utf-8")
 # V545: final, idempotent display normalization. This runs on every deployment.
 V545_CSS = """
 /* V545 FINAL CLEAN CHART: stable, single pane for candles and four moving averages. */
@@ -49,12 +50,9 @@ V545_CSS = """
 .market-card .v439-indicator-content .indicator-canvas { width:100% !important; min-width:0 !important; }
 """
 if "/* V545 FINAL CLEAN CHART:" not in css:
-    css += "\\n" + V545_CSS
+    css += "\n" + V545_CSS
     css_path.write_text(css, encoding="utf-8")
 # Bust previous CSS/JS caches in all HTML references when the patch runs.
-html = re.sub(r'(style\\.css\\?v=)\\d+', r'\\g<1>545', html)
-html = re.sub(r'(script\\.js\\?v=)\\d+', r'\\g<1>545', html)
-html = re.sub(r'(workspace\\.js\\?v=)\\d+', r'\\g<1>545', html)
 html_path.write_text(html, encoding="utf-8")
 
 
