@@ -1,10 +1,11 @@
-name: Update Dashboard Chart V543
+name: Update Dashboard Chart V544
 
 on:
   push:
     branches: [main]
     paths:
       - ".github/workflows/v543-chart-update.yml"
+      - ".github/scripts/v543_graph_patch.py"
   workflow_dispatch:
 
 permissions:
@@ -19,7 +20,7 @@ jobs:
         with:
           ref: main
           persist-credentials: true
-      - name: Update indicators and historical chart
+      - name: Apply V544 cleanup to the main chart
         run: python3 .github/scripts/v543_graph_patch.py
       - name: Check JavaScript syntax
         run: node --check script.js
