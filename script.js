@@ -1913,11 +1913,6 @@ document.addEventListener('DOMContentLoaded',fix,{once:true});addEventListener('
         Object.entries(timeframeLabels).forEach(([value, key]) => {
           document.querySelector(`[data-interval="${value}"]`)?.setAttribute('aria-label', t(key));
         });
-        document.querySelectorAll('.details-toggle:not(.burn-toggle):not(.xnews-toggle)').forEach(button => {
-          const label = button.querySelector('span');
-          if (label) label.textContent = t('fullInfo') + ' · ' + button.dataset.assetName;
-        });
-
         document.querySelectorAll('.burn-toggle').forEach(button => {
           const label = button.querySelector('span');
           if (!label) return;
@@ -3579,47 +3574,9 @@ document.querySelectorAll('.asset-tab[data-symbol]').forEach(tab => {
         Object.keys(ASSETS).forEach(refreshAssetDetails);
       }
 
+      // V549 REMOVE FULL INFO: no dropdowns on any crypto card.
       function setupDetailsDropdown(symbol) {
-        const cfg = ASSETS[symbol];
-        const key = cfg.key;
-        if ($(key + '-details-toggle')) return;
-        const chartWrap = $(key + '-chart').closest('.chart-wrap');
-        const card = chartWrap.closest('.market-card');
-        const assetName = card.querySelector('h2')?.textContent?.trim() || key.toUpperCase();
-
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.id = key + '-details-toggle';
-        button.className = 'details-toggle';
-        button.dataset.assetName = assetName;
-        button.setAttribute('aria-expanded', 'false');
-        button.setAttribute('aria-controls', key + '-details');
-        const label = document.createElement('span');
-        label.textContent = t('fullInfo') + ' · ' + assetName;
-        const chevron = document.createElement('span');
-        chevron.className = 'details-chevron';
-        chevron.setAttribute('aria-hidden', 'true');
-        chevron.textContent = '⌄';
-        button.append(label, chevron);
-
-        const panel = document.createElement('div');
-        panel.id = key + '-details';
-        panel.className = 'details-panel';
-        panel.hidden = true;
-        panel.setAttribute('role', 'region');
-        panel.setAttribute('aria-labelledby', button.id);
-        const grid = document.createElement('div');
-        grid.className = 'details-grid';
-        panel.appendChild(grid);
-
-        card.insertBefore(button, chartWrap);
-        card.insertBefore(panel, chartWrap);
-        button.addEventListener('click', () => {
-          const willOpen = button.getAttribute('aria-expanded') !== 'true';
-          button.setAttribute('aria-expanded', String(willOpen));
-          panel.hidden = !willOpen;
-          if (willOpen) refreshAssetDetails(symbol);
-        });
+        // Deliberately empty: no UI elements are mounted.
       }
 
 
