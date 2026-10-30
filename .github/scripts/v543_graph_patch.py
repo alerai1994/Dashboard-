@@ -71,8 +71,28 @@ if "V547 STABLE SERIES" not in js:
     js_path.write_text(js, encoding="utf-8")
     print("V547 stable series, no EMA animation, timeframe request invalidation applied")
 
+# V548: minimize work on every live price tick. Preserve timeframe history,
+# but update only the final candle/EMA point while its existing prefix is stable.
+if "V547 STABLE SERIES" in js and "V548 EMA FAST PATH" not in js:
+    old = """          const prefixSame = rows.length >= previous.length &&
+            previous.slice(0, -1).every((row, i) => same(row, rows[i]));"""
+    new = """          // V548 EMA FAST PATH: O(1) for normal live ticks rather than scanning
+          // the entire EMA history for every price event on four curves.
+          // Full data reset still happens for timeframe/history changes.
+          const near = Math.max(0, previous.length - 2);
+          const mid = Math.floor(previous.length / 2);
+          const prefixSame = rows.length >= previous.length &&
+            same(previous[0], rows[0]) &&
+            same(previous[mid], rows[mid]) &&
+            same(previous[near], rows[near]);"""
+    if js.count(old) != 1:
+        raise ValueError("V548 cannot locate stable-series prefix comparison")
+    js = js.replace(old, new)
+    js_path.write_text(js, encoding="utf-8")
+    print("V548 EMA fast path: update last point without a historical scan")
+
 # Cache-bust on deployment (including previously cached desktop/browser assets).
-html = re.sub(r'(script\.js\?v=)\d+', lambda m: m.group(1) + '547', html)
+html = re.sub(r'(script\.js\?v=)\d+', lambda m: m.group(1) + '548', html)
 html = re.sub(r'(style\.css\?v=)\d+', lambda m: m.group(1) + '547', html)
 html = re.sub(r'(workspace\.js\?v=)\d+', lambda m: m.group(1) + '547', html)
 html_path.write_text(html, encoding="utf-8")
@@ -93,7 +113,7 @@ if "V546 EMA STEADY" not in js:
 # Ensure users load the updated script rather than a cached previous version.
 html_path.write_text(html, encoding="utf-8")
 
-html = re.sub(r'(script\.js\?v=)\d+', lambda m: m.group(1) + '546', html)
+html = re.sub(r'(script\.js\?v=)\d+', lambda m: m.group(1) + '548', html)
 html = re.sub(r'(style\.css\?v=)\d+', lambda m: m.group(1) + '546', html)
 html = re.sub(r'(workspace\.js\?v=)\d+', lambda m: m.group(1) + '546', html)
 html_path.write_text(html, encoding="utf-8")
