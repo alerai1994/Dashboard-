@@ -9,6 +9,75 @@ js = js_path.read_text(encoding="utf-8")
 html = html_path.read_text(encoding="utf-8")
 css = css_path.read_text(encoding="utf-8")
 
+# V547: render existing candles / EMA / MACD / Stoch RSI / RSI without
+# clearing the entire series on every market tick. Keep active timeframe.
+if "V547 STABLE SERIES" not in js:
+    def v547_replace(old, new):
+        global js
+        count = js.count(old)
+        if count != 1:
+            raise ValueError(f"V547 expected 1 occurrence, got {count}: {old[:80]}")
+        js = js.replace(old, new)
+
+    v547_replace("      function setEmaSeriesColor(symbol, periods, flashing) {\n",
+                 "      function setEmaSeriesColor(symbol, periods, flashing) {\n        flashing = false; // V547: disable every EMA alpha/width animation\n")
+    v547_replace("        detectAndBlinkLiveEmaCrosses(symbol, latestValues, latestTime, emaDataByPeriod);",
+                 "        // V547: crossover detection cannot animate plotted EMA lines.")
+    stable_helper = """      // V547 STABLE SERIES: keep chart visuals mounted during live refresh.
+      const steadySeriesCacheV547 = new WeakMap();
+      function applySteadySeriesDataV547(series, rows) {
+        if (!series || typeof series.setData !== 'function') return;
+        const previous = steadySeriesCacheV547.get(series);
+        const same = (a, b) => a.time === b.time &&
+          a.value === b.value && a.open === b.open && a.high === b.high &&
+          a.low === b.low && a.close === b.close && a.color === b.color;
+        if (!previous || !previous.length || !rows.length) {
+          series.setData(rows);
+        } else {
+          const prefixSame = rows.length >= previous.length &&
+            previous.slice(0, -1).every((row, i) => same(row, rows[i]));
+          const identical = rows.length === previous.length && prefixSame &&
+            same(previous[previous.length - 1], rows[rows.length - 1]);
+          if (!identical) {
+            if (prefixSame && rows.length === previous.length && typeof series.update === 'function') {
+              series.update(rows[rows.length - 1]);
+            } else if (rows.length === previous.length + 1 &&
+                       previous.every((row, i) => same(row, rows[i])) &&
+                       typeof series.update === 'function') {
+              series.update(rows[rows.length - 1]);
+            } else {
+              series.setData(rows);
+            }
+          }
+        }
+        steadySeriesCacheV547.set(series, rows);
+      }
+
+"""
+    v547_replace("      function applyAggregatedHistory(symbol, aggregated, preserveVisibleRange = false) {",
+                 stable_helper + "      function applyAggregatedHistory(symbol, aggregated, preserveVisibleRange = false) {")
+    v547_replace("        bundle.candles.setData(candles);\n        bundle.volume.setData(volume);",
+                 "        applySteadySeriesDataV547(bundle.candles, candles);\n        applySteadySeriesDataV547(bundle.volume, volume);")
+    v547_replace("          if (series && typeof series.setData === 'function') series.setData(data);",
+                 "          if (series) applySteadySeriesDataV547(series, data);")
+    for name in ("rsi.series", "stoch.series", "stoch.signalSeries",
+                 "macd.series", "macd.signalSeries", "macd.histogramSeries"):
+        pattern = re.compile(r"indicator\." + re.escape(name) + r"\.setData\(([^;]+)\);")
+        if len(pattern.findall(js)) == 1:
+            js = pattern.sub(lambda m: "applySteadySeriesDataV547(indicator." + name +
+                             ", " + m.group(1) + ");", js, count=1)
+    v547_replace("        interval = button.dataset.interval;\n        Object.keys(charts).forEach(symbol => resetChartViewMemory(symbol));",
+                 "        interval = button.dataset.interval;\n        ++loadToken; // V547: discard pending responses from previous timeframe\n        Object.keys(charts).forEach(symbol => resetChartViewMemory(symbol));")
+    js_path.write_text(js, encoding="utf-8")
+    print("V547 stable series, no EMA animation, timeframe request invalidation applied")
+
+# Cache-bust on deployment (including previously cached desktop/browser assets).
+html = re.sub(r'(script\.js\?v=)\d+', lambda m: m.group(1) + '547', html)
+html = re.sub(r'(style\.css\?v=)\d+', lambda m: m.group(1) + '547', html)
+html = re.sub(r'(workspace\.js\?v=)\d+', lambda m: m.group(1) + '547', html)
+html_path.write_text(html, encoding="utf-8")
+
+
 # V546: disable the legacy EMA-cross flashing at the source.
 # The previous V148 routine used a 100ms interval for up to 60 seconds.
 if "V546 EMA STEADY" not in js:
