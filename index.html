@@ -355,6 +355,44 @@
 
   <link rel="stylesheet" href="style.css?v=546">
   <link rel="stylesheet" href="pro-theme.css?v=543">
+  <style id="v550MarketTapeStyles">
+    /* Fascia prezzi a scorrimento: sopra le pillole, tema coerente con la dashboard. */
+    .v550-market-tape {
+      display:flex; align-items:center; gap:0; min-width:0; width:100%;
+      margin:0 0 10px; overflow:hidden;
+      border:1px solid var(--border, #252a33); border-radius:12px;
+      background:var(--panel, #101318); color:var(--text, #f3f4f6);
+      color-scheme:dark;
+    }
+    body.light .v550-market-tape { color-scheme:light; }
+    .v550-market-tape-label {
+      flex:0 0 auto; display:flex; align-items:center; gap:8px;
+      padding:0 13px; height:47px; min-width:147px;
+      border-right:1px solid var(--border, #252a33);
+      color:var(--text, #f3f4f6); font-size:10px; font-weight:800;
+      letter-spacing:.065em; white-space:nowrap; user-select:none;
+    }
+    .v550-market-tape-label b { color:var(--muted, #8b93a1); }
+    .v550-market-dot {
+      flex:0 0 auto; width:6px; height:6px; border-radius:50%;
+      background:#16a579;
+    }
+    .v550-market-tape-scroll { flex:1 1 auto; min-width:0; overflow:hidden; }
+    .v550-market-tape tv-ticker-tape { display:block; width:100%; min-height:46px; }
+    .v550-market-tape-loading {
+      height:46px; display:flex; align-items:center; padding:0 15px;
+      color:var(--muted, #8b93a1); font-size:12px;
+    }
+    @media (max-width:600px) {
+      .v550-market-tape { margin-bottom:8px; border-radius:10px; }
+      .v550-market-tape-label {
+        min-width:0; padding:0 9px; gap:6px; height:43px;
+        font-size:8px; letter-spacing:.02em;
+      }
+      .v550-market-tape tv-ticker-tape { min-height:42px; }
+      .v550-market-tape-loading { height:42px; font-size:10px; }
+    }
+  </style>
 </head>
 <body>
 <div class="v442-market-shade" id="v442MarketShade" hidden></div>
@@ -760,6 +798,21 @@
 
 
 
+
+    <!-- V550: fascia scorrevole criptovalute + mercati, indipendente dal grafico -->
+    <section class="v550-market-tape" id="v550MarketTape" aria-label="Quotazioni scorrevoli di criptovalute e mercati">
+      <div class="v550-market-tape-label" aria-hidden="true"><span class="v550-market-dot"></span><span>MERCATI <b>&amp;</b> CRYPTO</span></div>
+      <div class="v550-market-tape-scroll">
+        <tv-ticker-tape
+          symbols="BITSTAMP:BTCUSD,BITSTAMP:ETHUSD,BINANCE:SOLUSDT,BINANCE:BNBUSDT,BINANCE:INJUSDT,FOREXCOM:SPXUSD,FOREXCOM:NSXUSD,FOREXCOM:DJI,CMCMARKETS:GOLD,FX:EURUSD"
+          direction="horizontal"
+          item-size="compact"
+          hide-chart
+          locale="it">
+          <div class="v550-market-tape-loading">Caricamento quotazioni di mercato…</div>
+        </tv-ticker-tape>
+      </div>
+    </section>
 
     <section class="global-marketcap-pills" id="globalMarketCapPills" aria-label="Capitalizzazione globale crypto live">
       <div class="global-marketcap-pill" id="globalTotalPill" data-state="loading" data-direction="neutral" title="Total Market Cap: capitalizzazione totale del mercato crypto">
@@ -3064,5 +3117,6 @@
   <script src="workspace.js?v=546"></script>
   <script src="pro-tools.js?v=543"></script>
   <script src="nav-dock.js?v=543"></script>
+  <script type="module" src="https://widgets.tradingview-widget.com/w/en/tv-ticker-tape.js"></script>
 </body>
 </html>
