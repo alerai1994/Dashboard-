@@ -91,8 +91,30 @@ if "V547 STABLE SERIES" in js and "V548 EMA FAST PATH" not in js:
     js_path.write_text(js, encoding="utf-8")
     print("V548 EMA fast path: update last point without a historical scan")
 
+# V549: remove "Informazioni complete" controls and panels from EVERY crypto
+# card at creation time. Leave the burn/mining panels, news and indicators alone.
+if "V549 REMOVE FULL INFO" not in js:
+    start = js.index("      function setupDetailsDropdown(symbol) {")
+    end = js.index("\n\n      const LUNC_BURN_REFERENCE_MICRO", start)
+    js = js[:start] + """      // V549 REMOVE FULL INFO: no dropdowns on any crypto card.
+      function setupDetailsDropdown(symbol) {
+        // Deliberately empty: no UI elements are mounted.
+      }
+""" + js[end:]
+    locale_loop = """        document.querySelectorAll('.details-toggle:not(.burn-toggle):not(.xnews-toggle)').forEach(button => {
+          const label = button.querySelector('span');
+          if (label) label.textContent = t('fullInfo') + ' · ' + button.dataset.assetName;
+        });
+
+"""
+    if js.count(locale_loop) != 1:
+        raise ValueError("V549 expected one obsolete full-info localization loop")
+    js = js.replace(locale_loop, "")
+    js_path.write_text(js, encoding="utf-8")
+    print("V549 removed full-information dropdowns from all crypto cards")
+
 # Cache-bust on deployment (including previously cached desktop/browser assets).
-html = re.sub(r'(script\.js\?v=)\d+', lambda m: m.group(1) + '548', html)
+html = re.sub(r'(script\.js\?v=)\d+', lambda m: m.group(1) + '549', html)
 html = re.sub(r'(style\.css\?v=)\d+', lambda m: m.group(1) + '547', html)
 html = re.sub(r'(workspace\.js\?v=)\d+', lambda m: m.group(1) + '547', html)
 html_path.write_text(html, encoding="utf-8")
@@ -113,7 +135,7 @@ if "V546 EMA STEADY" not in js:
 # Ensure users load the updated script rather than a cached previous version.
 html_path.write_text(html, encoding="utf-8")
 
-html = re.sub(r'(script\.js\?v=)\d+', lambda m: m.group(1) + '548', html)
+html = re.sub(r'(script\.js\?v=)\d+', lambda m: m.group(1) + '549', html)
 html = re.sub(r'(style\.css\?v=)\d+', lambda m: m.group(1) + '546', html)
 html = re.sub(r'(workspace\.js\?v=)\d+', lambda m: m.group(1) + '546', html)
 html_path.write_text(html, encoding="utf-8")
