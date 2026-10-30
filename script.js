@@ -10803,32 +10803,9 @@ document.querySelectorAll('.asset-tab[data-symbol]').forEach(tab => {
         setEmaSeriesColor(symbol, periods || EMA_CONFIG.map(item => item.period), false);
       }
 
+      // V546 EMA STEADY: preserve fixed EMA colors and widths, never blink.
       function blinkEmaCrossLines(symbol, events) {
-        if (!Array.isArray(events) || !events.length) return;
-
-        const periods = Array.from(new Set(events.flatMap(event => [
-          Number(event.fastPeriod),
-          Number(event.slowPeriod)
-        ]).filter(period => [12, 26, 50, 200].includes(period))));
-        if (!periods.length) return;
-
-        // Se sullo stesso asset era già in corso un lampo, ripristina tutto prima
-        // di partire col nuovo evento: nessuna EMA può restare attenuata.
         stopEmaCrossLineBlink(symbol, EMA_CONFIG.map(item => item.period));
-
-        // Parte subito con la linea attenuata, così il lampo è percepibile anche se
-        // il browser ritarda il primo tick del timer.
-        let dimmed = true;
-        setEmaSeriesColor(symbol, periods, true);
-        emaCrossLineBlinkIntervals[symbol] = window.setInterval(() => {
-          dimmed = !dimmed;
-          setEmaSeriesColor(symbol, periods, dimmed);
-        }, 100);
-
-        // Durata totale esatta richiesta: 1 minuto, poi ripristino normale.
-        emaCrossLineBlinkTimeouts[symbol] = window.setTimeout(() => {
-          stopEmaCrossLineBlink(symbol, periods);
-        }, 60000);
       }
 
       function collectLatestCandleEmaCrosses(symbol, emaDataByPeriod) {
