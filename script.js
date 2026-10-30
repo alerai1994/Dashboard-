@@ -1419,8 +1419,8 @@ document.addEventListener('DOMContentLoaded',fix,{once:true});addEventListener('
       };
       const SUPPLY_REFRESH_MS = 50000;
       const EMA_CONFIG = [
-        { period: 15, color: '#facc15', width: 1 },
-        { period: 20, color: '#38bdf8', width: 1 },
+        { period: 12, color: '#facc15', width: 2 },
+        { period: 26, color: '#38bdf8', width: 2 },
         { period: 50, color: '#f97316', width: 2 },
         { period: 200, color: '#e879f9', width: 2 }
       ];
@@ -1903,7 +1903,7 @@ document.addEventListener('DOMContentLoaded',fix,{once:true});addEventListener('
           const stochLabel = $(cfg.key + '-stoch-value')?.previousElementSibling;
           const cycleLabel = $(cfg.key + '-cycle-value')?.previousElementSibling;
           const velocityLabel = $(cfg.key + '-velocity-value')?.previousElementSibling;
-          if (stochLabel) stochLabel.textContent = t('stochastic') + ' · 14/3';
+          if (stochLabel) stochLabel.textContent = 'Stoch RSI · 14/14/3/3';
           if (cycleLabel) cycleLabel.textContent = t('cycleTrack') + ' · RSI 14/5';
           if (velocityLabel) velocityLabel.textContent = t('cycleVelocity') + ' · 3';
           card?.querySelector('.ema-legend')?.setAttribute('aria-label', t('emaGroup') + ' ' + assetName);
@@ -2347,7 +2347,7 @@ document.addEventListener('DOMContentLoaded',fix,{once:true});addEventListener('
         lastEmaCrossNotifications[symbol] = signature;
 
         // V146 — AVVISO SOLO NELLE LINEE: niente badge/popup/marker aggiuntivi.
-        // Lampeggiano per 1 secondo esclusivamente le EMA 15/20/50/200 coinvolte nell'incrocio.
+        // Lampeggiano per 1 secondo esclusivamente le EMA 12/26/50/200 coinvolte nell'incrocio.
         blinkEmaCrossLines(symbol, latestEvents);
 
         if (bundle.emaCrossLiveAlert) bundle.emaCrossLiveAlert.classList.remove('visible');
@@ -10095,36 +10095,9 @@ document.querySelectorAll('.asset-tab[data-symbol]').forEach(tab => {
             fixRightEdge: false,
             lockVisibleTimeRangeOnResize: true
           },
-          handleScroll: {
-            mouseWheel: true,
-            pressedMouseMove: true,
-            horzTouchDrag: true,
-            vertTouchDrag: true
-          },
-          handleScale: {
-            axisPressedMouseMove: {
-              time: true,
-              price: false
-            },
-            axisDoubleClickReset: {
-              time: true,
-              price: false
-            },
-            mouseWheel: true,
-            pinch: true
-          },
-          handleScale: {
-            axisPressedMouseMove: { time: true, price: false },
-            axisDoubleClickReset: { time: true, price: false },
-            mouseWheel: true,
-            pinch: true
-          },
-          handleScroll: {
-            mouseWheel: false,
-            pressedMouseMove: false,
-            horzTouchDrag: false,
-            vertTouchDrag: false
-          },
+          // V543: nessuno zoom nativo, pan storico gestito sotto.
+          handleScale: false,
+          handleScroll: false,
           localization: { locale: currentLocale() }
         });
 
@@ -10379,7 +10352,7 @@ document.querySelectorAll('.asset-tab[data-symbol]').forEach(tab => {
           title: ''
         });
         volume.priceScale().applyOptions({ scaleMargins: { top: (symbol === ORE_SYMBOL || symbol === ORAI_SYMBOL) ? .78 : .82, bottom: 0 } });
-        if (symbol === ORE_SYMBOL || symbol === ORAI_SYMBOL) volume.applyOptions({ visible: true });
+        volume.applyOptions({ visible: false });
 
         // V130 — Etichetta VOL + valore all'estrema destra, aggiornata con l'ultima candela.
         const volumeAxisLabel = volume.createPriceLine({
@@ -10478,6 +10451,12 @@ document.querySelectorAll('.asset-tab[data-symbol]').forEach(tab => {
             if (width > 0 && height > 0) indicator.chart.applyOptions({ width, height });
           });
         });
+
+        // Proteggi tutte le future chiamate a applyOptions, inclusi i watchdog.
+        const originalChartApplyOptionsV543 = chart.applyOptions.bind(chart);
+        chart.applyOptions = function(opts = {}) {
+          return originalChartApplyOptionsV543({ ...opts, handleScale: false, handleScroll: false });
+        };
 
         charts[symbol] = {
           chart,
@@ -10620,343 +10599,71 @@ document.querySelectorAll('.asset-tab[data-symbol]').forEach(tab => {
         })();
 
 
-        /* V138 — trascinamento reale del plot in 4 direzioni, con pan X libero.
-           X = spostamento temporale senza snap al bordo destro; Y = traslazione reale della scala prezzo. */
+        /* V543 · Pan temporale: cronologia scorrevole senza zoom. */
         (() => {
-          let pointerId = null;
-          let startX = 0;
-          let startY = 0;
-          let startLogicalRange = null;
-          let startVerticalOffset = 0;
-          let startPriceSpan = 0;
-          let verticalOffset = 0;
-          let startVerticalScale = 1;
-          let verticalScale = 1;
-          let scaleAnchorPrice = NaN;
-          let startScaleAnchorPrice = NaN;
-          let gestureMode = 'pan';
+          let activePointer = null;
+          let startClientX = 0;
+          let originRange = null;
           let moved = false;
-
-          // Zona cliccabile della scala prezzi all'estrema destra.
-          const PRICE_SCALE_HIT_WIDTH = 112;
-          const panPriceSeries = [candles, ...Object.values(emaSeries)];
-          const usingFallback = Boolean(chart.__isEmbeddedFallback);
-
-          if (!usingFallback) {
-            const autoscaleProvider = original => {
-              const info = typeof original === 'function' ? original() : null;
-              if (!info || !info.priceRange) return info;
-
-              const factor = Number.isFinite(verticalScale) && verticalScale > 0 ? verticalScale : 1;
-              const baseMin = Number(info.priceRange.minValue);
-              const baseMax = Number(info.priceRange.maxValue);
-              if (!Number.isFinite(baseMin) || !Number.isFinite(baseMax)) return info;
-
-              const anchor = Number.isFinite(scaleAnchorPrice)
-                ? scaleAnchorPrice
-                : (baseMin + baseMax) / 2;
-              const offset = Number.isFinite(verticalOffset) ? verticalOffset : 0;
-
-              return {
-                ...info,
-                priceRange: {
-                  minValue: anchor + (baseMin - anchor) * factor + offset,
-                  maxValue: anchor + (baseMax - anchor) * factor + offset
-                }
-              };
-            };
-
-            panPriceSeries.forEach(series => {
-              try { series.applyOptions({ autoscaleInfoProvider: autoscaleProvider }); } catch (_) {}
-            });
-          }
-
-          const forcePriceRefresh = () => {
-            if (usingFallback) {
-              try {
-                if (typeof chart.__setVerticalPriceTransform === 'function') {
-                  chart.__setVerticalPriceTransform(verticalScale, scaleAnchorPrice, verticalOffset);
-                } else {
-                  chart.__setVerticalPriceOffset(verticalOffset);
-                }
-              } catch (_) {}
-              return;
-            }
-            try { chart.applyOptions({ rightPriceScale: { autoScale: true } }); } catch (_) {}
-          };
-
-          const getPriceSpan = () => {
-            const h = Math.max(1, container.clientHeight || 1);
-            const top = candles.coordinateToPrice(8);
-            const bottom = candles.coordinateToPrice(Math.max(9, h - 28));
-            if (!Number.isFinite(top) || !Number.isFinite(bottom)) return 0;
-            return Math.abs(top - bottom);
-          };
-
-          const isInPriceScaleZone = clientX => {
-            const rect = container.getBoundingClientRect();
-            return clientX >= rect.right - PRICE_SCALE_HIT_WIDTH && clientX <= rect.right + 2;
-          };
-
-          const onPointerDown = event => {
-            if (event.pointerType === 'mouse' && event.button !== 0) return;
-            if (pointerId !== null) {
-              // Secondo dito: lascia spazio al pinch nativo.
-              pointerId = null;
-              return;
-            }
-
-            pointerId = event.pointerId;
-            startX = event.clientX;
-            startY = event.clientY;
-            moved = false;
-            gestureMode = isInPriceScaleZone(event.clientX) ? 'price-scale' : 'pan';
-
-            // Blocca la vista dal primo click/tocco: nessun aggiornamento LIVE
-            // può cambiare la posizione mentre l'utente sta iniziando il drag.
-            lockChartView(symbol);
-
+          const timeline = chart.timeScale();
+          const readRange = () => {
             try {
-              startLogicalRange = chart.timeScale().getVisibleLogicalRange();
-            } catch (_) {
-              startLogicalRange = null;
-            }
-
-            startVerticalOffset = usingFallback
-              ? Number(chart.__getVerticalPriceOffset?.() || 0)
-              : verticalOffset;
-            startVerticalScale = usingFallback
-              ? Number(chart.__getVerticalPriceScale?.() || verticalScale || 1)
-              : verticalScale;
-            startPriceSpan = getPriceSpan();
-
-            const rect = container.getBoundingClientRect();
-            const localY = Math.max(0, Math.min(rect.height, event.clientY - rect.top));
-            let anchor = null;
-            try { anchor = candles.coordinateToPrice(localY); } catch (_) {}
-            startScaleAnchorPrice = Number.isFinite(anchor)
-              ? anchor
-              : (Number.isFinite(scaleAnchorPrice) ? scaleAnchorPrice : NaN);
-            if (gestureMode === 'price-scale' && Number.isFinite(startScaleAnchorPrice)) {
-              scaleAnchorPrice = startScaleAnchorPrice;
-            }
-
-            try { container.setPointerCapture(pointerId); } catch (_) {}
-            if (gestureMode === 'price-scale') {
-              container.classList.add('chart-price-scale-active');
-              container.classList.remove('chart-pan-active');
-            } else {
-              container.classList.add('chart-pan-active');
-              container.classList.remove('chart-price-scale-active');
-            }
+              const r = timeline.getVisibleLogicalRange();
+              return r && Number.isFinite(r.from) && Number.isFinite(r.to) && r.to > r.from ? r : null;
+            } catch (_) { return null; }
           };
-
-          const onPointerMove = event => {
-            // Cursore dedicato quando si passa sopra alla scala prezzi destra.
-            if (pointerId === null) {
-              container.classList.toggle('chart-price-scale-hover', isInPriceScaleZone(event.clientX));
-              return;
-            }
-            if (event.pointerId !== pointerId) return;
-
-            const dx = event.clientX - startX;
-            const dy = event.clientY - startY;
-            if (Math.abs(dx) > 2 || Math.abs(dy) > 2) moved = true;
-            if (!moved) return;
-
-            lockChartView(symbol);
-            event.preventDefault();
-
-            const width = Math.max(1, container.clientWidth || 1);
-            const height = Math.max(1, container.clientHeight || 1);
-
-            // V139 — trascinamento sull'estrema destra: scala verticale libera.
-            // Verso l'alto = allarga; verso il basso = comprime.
-            if (gestureMode === 'price-scale') {
-              const safeDy = Math.max(-700, Math.min(700, dy));
-              const scaleFactor = Math.exp(safeDy * 0.006);
-              verticalScale = Math.max(0.08, Math.min(12, startVerticalScale * scaleFactor));
-              if (Number.isFinite(startScaleAnchorPrice)) scaleAnchorPrice = startScaleAnchorPrice;
-              forcePriceRefresh();
-              return;
-            }
-
-            // Sinistra/destra: sposta l'intervallo logico delle candele.
-            if (startLogicalRange && Number.isFinite(startLogicalRange.from) && Number.isFinite(startLogicalRange.to)) {
-              const spanBars = Math.max(5, startLogicalRange.to - startLogicalRange.from);
-              const shiftBars = -(dx / width) * spanBars;
-              try {
-                chart.timeScale().setVisibleLogicalRange({
-                  from: startLogicalRange.from + shiftBars,
-                  to: startLogicalRange.to + shiftBars
-                });
-                rememberChartView(symbol);
-              } catch (_) {}
-            }
-
-            // Alto/basso sul corpo del grafico: trasla fisicamente candele/EMA.
-            if (startPriceSpan > 0) {
-              const deltaPrice = (dy / height) * startPriceSpan;
-              verticalOffset = startVerticalOffset + deltaPrice;
-              forcePriceRefresh();
-            }
-
-          };
-
-          const endPan = event => {
-            if (pointerId === null) return;
-            if (event && event.pointerId !== undefined && event.pointerId !== pointerId) return;
-            try { container.releasePointerCapture(pointerId); } catch (_) {}
-            pointerId = null;
-            rememberChartView(symbol);
-            container.classList.remove('chart-pan-active');
-            container.classList.remove('chart-price-scale-active');
-            gestureMode = 'pan';
-          };
-
-          container.addEventListener('pointerdown', onPointerDown, { passive: true });
-          container.addEventListener('pointermove', onPointerMove, { passive: false });
-          container.addEventListener('pointerup', endPan, { passive: true });
-          container.addEventListener('pointercancel', endPan, { passive: true });
-          container.addEventListener('lostpointercapture', endPan, { passive: true });
-          container.addEventListener('pointerleave', () => {
-            if (pointerId === null) container.classList.remove('chart-price-scale-hover');
-          }, { passive: true });
-
-          // Doppio clic sulla scala prezzi = ritorna alla scala verticale automatica.
-          container.addEventListener('dblclick', event => {
-            if (!isInPriceScaleZone(event.clientX)) return;
-            verticalScale = 1;
-            scaleAnchorPrice = NaN;
-            verticalOffset = 0;
-            forcePriceRefresh();
-            rememberChartView(symbol);
-          }, { passive: true });
-
-
-          /* Rotellina su Windows:
-             - normale: sposta il grafico verticalmente
-             - Shift + rotellina: scorre nel tempo sinistra/destra
-             - Ctrl + rotellina: zoom orizzontale del grafico, mantenuto durante il LIVE */
-          container.addEventListener('wheel', event => {
-            event.preventDefault();
-            lockChartView(symbol);
-
-            const width = Math.max(1, container.clientWidth || 1);
-            const height = Math.max(1, container.clientHeight || 1);
-
-            let logicalRange = null;
-            try { logicalRange = chart.timeScale().getVisibleLogicalRange(); } catch (_) {}
-
-            // Windows: Ctrl + rotellina = zoom orizzontale ancorato al puntatore.
-            if (event.ctrlKey && logicalRange && Number.isFinite(logicalRange.from) && Number.isFinite(logicalRange.to)) {
-              const rect = container.getBoundingClientRect();
-              const pointerRatio = Math.max(0, Math.min(1, (event.clientX - rect.left) / width));
-              const oldSpan = Math.max(5, logicalRange.to - logicalRange.from);
-              const zoomFactor = Math.exp(Math.max(-120, Math.min(120, event.deltaY)) * 0.0045);
-              const newSpan = Math.max(5, Math.min(600, oldSpan * zoomFactor));
-              const anchor = logicalRange.from + oldSpan * pointerRatio;
-              const nextFrom = anchor - newSpan * pointerRatio;
-              try {
-                chart.timeScale().setVisibleLogicalRange({ from: nextFrom, to: nextFrom + newSpan });
-                rememberChartView(symbol);
-              } catch (_) {}
-              return;
-            }
-
-            if (event.shiftKey || Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
-              if (
-                logicalRange &&
-                Number.isFinite(logicalRange.from) &&
-                Number.isFinite(logicalRange.to)
-              ) {
-                const spanBars = Math.max(5, logicalRange.to - logicalRange.from);
-                const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY)
-                  ? event.deltaX
-                  : event.deltaY;
-
-                const shiftBars = (delta / width) * spanBars * 0.85;
-
-                try {
-                  chart.timeScale().setVisibleLogicalRange({
-                    from: logicalRange.from + shiftBars,
-                    to: logicalRange.to + shiftBars
-                  });
-                  rememberChartView(symbol);
-                } catch (_) {}
-              }
-              return;
-            }
-
-            const priceSpan = getPriceSpan();
-            if (priceSpan > 0) {
-              const deltaPrice = (event.deltaY / height) * priceSpan * 0.65;
-              verticalOffset += deltaPrice;
-              forcePriceRefresh();
+          const moveRange = (range, shiftBars) => {
+            if (!range || !Number.isFinite(shiftBars)) return;
+            const span = range.to - range.from;
+            try {
+              timeline.setVisibleLogicalRange({ from: range.from + shiftBars, to: range.from + shiftBars + span });
+              lockChartView(symbol);
               rememberChartView(symbol);
-            }
-          }, { passive: false });
-
-          // V171 — Doppio clic / doppio tocco = vista DEFAULT completa su tutti i sistemi.
-          // Ripristina zoom verticale, traslazione prezzo, memoria della vista e scala temporale.
-          const resetChartToDefaultV171 = () => {
-            resetChartViewMemory(symbol);
-            verticalScale = 1;
-            scaleAnchorPrice = NaN;
-            verticalOffset = 0;
-            gestureMode = 'pan';
-            container.classList.remove('chart-pan-active','chart-price-scale-active','chart-price-scale-hover');
-
-            if (usingFallback) {
-              try { chart.__setVerticalPriceOffset(0); } catch (_) {}
-              try { chart.__setVerticalScale?.(1); } catch (_) {}
-            } else {
-              try { chart.priceScale('right').applyOptions({ autoScale:true }); } catch (_) {}
-              forcePriceRefresh();
-            }
-
-            try { chart.timeScale().resetTimeScale(); } catch (_) {}
-            try { chart.timeScale().fitContent(); } catch (_) {}
-
-            // Anche gli indicatori tornano alla loro vista standard.
-            try {
-              Object.values(charts[symbol]?.indicators || {}).forEach(indicator => {
-                try { indicator.chart.timeScale().resetTimeScale(); } catch (_) {}
-                try { indicator.chart.timeScale().fitContent(); } catch (_) {}
-              });
+              maybeLoadOlderHistory(symbol, timeline.getVisibleLogicalRange());
             } catch (_) {}
           };
-
-          container.addEventListener('dblclick', event => {
-            if (event.target.closest('.chart-tooltip, .ema-legend')) return;
-            event.preventDefault();
-            resetChartToDefaultV171();
-          }, { passive:false });
-
-          // iPadOS/Android: riconosce anche il doppio tocco sul corpo del grafico.
-          let lastTapDefaultV171 = 0;
-          let lastTapXDefaultV171 = 0;
-          let lastTapYDefaultV171 = 0;
-          container.addEventListener('touchend', event => {
-            if (!event.changedTouches || event.changedTouches.length !== 1) return;
-            if (event.target.closest('.chart-tooltip, .ema-legend')) return;
-            const touch = event.changedTouches[0];
-            const now = Date.now();
-            const dt = now - lastTapDefaultV171;
-            const dx = Math.abs(touch.clientX - lastTapXDefaultV171);
-            const dy = Math.abs(touch.clientY - lastTapYDefaultV171);
-            if (dt > 0 && dt < 380 && dx < 36 && dy < 36) {
-              event.preventDefault();
-              lastTapDefaultV171 = 0;
-              resetChartToDefaultV171();
-              return;
-            }
-            lastTapDefaultV171 = now;
-            lastTapXDefaultV171 = touch.clientX;
-            lastTapYDefaultV171 = touch.clientY;
-          }, { passive:false });
+          const onDown = event => {
+            if (event.pointerType === 'mouse' && event.button !== 0) return;
+            if (activePointer !== null) return;
+            const range = readRange();
+            if (!range) return;
+            activePointer = event.pointerId;
+            startClientX = event.clientX;
+            originRange = range;
+            moved = false;
+            lockChartView(symbol);
+            try { container.setPointerCapture(event.pointerId); } catch (_) {}
+            container.classList.add('chart-pan-active');
+          };
+          const onMove = event => {
+            if (activePointer !== event.pointerId || !originRange) return;
+            const dx = event.clientX - startClientX;
+            if (Math.abs(dx) < 2 && !moved) return;
+            moved = true;
+            if (event.cancelable) event.preventDefault();
+            moveRange(originRange, -(dx / Math.max(1, container.clientWidth)) * (originRange.to - originRange.from));
+          };
+          const onEnd = event => {
+            if (event.pointerId !== activePointer) return;
+            try { container.releasePointerCapture(event.pointerId); } catch (_) {}
+            activePointer = null;
+            originRange = null;
+            container.classList.remove('chart-pan-active');
+          };
+          container.addEventListener('pointerdown', onDown, { passive: true });
+          container.addEventListener('pointermove', onMove, { passive: false });
+          container.addEventListener('pointerup', onEnd, { passive: true });
+          container.addEventListener('pointercancel', onEnd, { passive: true });
+          container.addEventListener('lostpointercapture', onEnd, { passive: true });
+          container.addEventListener('wheel', event => {
+            if (event.cancelable) event.preventDefault();
+            const r = readRange();
+            if (!r) return;
+            const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+            const scale = event.deltaMode === 1 ? 18 : (event.deltaMode === 2 ? container.clientWidth : 1);
+            moveRange(r, (r.to - r.from) * delta * scale / Math.max(1, container.clientWidth) * 0.75);
+          }, { passive: false });
         })();
-
 
         const armHistoryLoading = () => {
           const state = historyLoadState[symbol];
@@ -11062,7 +10769,7 @@ document.querySelectorAll('.asset-tab[data-symbol]').forEach(tab => {
       }
 
       // V146 — Le linee EMA lampeggiano SOLO quando avviene un incrocio LIVE.
-      // Il lampeggio è integrato nelle linee EMA 15/20/50/200: 2 secondi, poi ripristino esatto.
+      // Il lampeggio è integrato nelle linee EMA 12/26/50/200: 2 secondi, poi ripristino esatto.
       const emaCrossLineBlinkIntervals = {};
       const emaCrossLineBlinkTimeouts = {};
 
@@ -11103,7 +10810,7 @@ document.querySelectorAll('.asset-tab[data-symbol]').forEach(tab => {
         const periods = Array.from(new Set(events.flatMap(event => [
           Number(event.fastPeriod),
           Number(event.slowPeriod)
-        ]).filter(period => [15, 20, 50, 200].includes(period))));
+        ]).filter(period => [12, 26, 50, 200].includes(period))));
         if (!periods.length) return;
 
         // Se sullo stesso asset era già in corso un lampo, ripristina tutto prima
@@ -11402,6 +11109,28 @@ document.querySelectorAll('.asset-tab[data-symbol]').forEach(tab => {
         return { k, d };
       }
 
+      // V543: Stoch RSI (14,14,3,3) calcolato sul RSI, non sui prezzi.
+      function calculateStochRSI(rsiValues, lookback = 14, kSmooth = 3, dSmooth = 3) {
+        const raw = Array(rsiValues.length).fill(null);
+        const k = Array(rsiValues.length).fill(null);
+        const d = Array(rsiValues.length).fill(null);
+        for (let i = lookback - 1; i < rsiValues.length; i++) {
+          const values = rsiValues.slice(i - lookback + 1, i + 1);
+          if (!values.every(Number.isFinite)) continue;
+          const low = Math.min(...values), high = Math.max(...values);
+          raw[i] = high === low ? 50 : Math.max(0, Math.min(100, (rsiValues[i] - low) / (high - low) * 100));
+        }
+        for (let i = kSmooth - 1; i < raw.length; i++) {
+          const values = raw.slice(i - kSmooth + 1, i + 1);
+          if (values.every(Number.isFinite)) k[i] = values.reduce((s, v) => s + v, 0) / kSmooth;
+        }
+        for (let i = dSmooth - 1; i < k.length; i++) {
+          const values = k.slice(i - dSmooth + 1, i + 1);
+          if (values.every(Number.isFinite)) d[i] = values.reduce((s, v) => s + v, 0) / dSmooth;
+        }
+        return { k, d };
+      }
+
       function calculateEmaValues(values, period) {
         const result = Array(values.length).fill(null);
         const multiplier = 2 / (period + 1);
@@ -11461,7 +11190,7 @@ document.querySelectorAll('.asset-tab[data-symbol]').forEach(tab => {
         }
         indicator.rsi.series.setData(rsiData);
 
-        const stochastic = calculateStochastic(candles, 14, 3);
+        const stochastic = calculateStochRSI(rsi, 14, 3, 3);
         const stochKData = [];
         const stochDData = [];
         for (let i = 0; i < candles.length; i++) {

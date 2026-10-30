@@ -19777,3 +19777,41 @@ body.v442-market-open #v442MarketDrawer[data-v516-motion="exiting"] > .v516-menu
 @media (prefers-reduced-motion:reduce){
   #v442MarketMain td.v453-live-chart svg.v533-line-7d .v533-seven-day-line{transition:none}
 }
+
+
+/* ===== V543: prezzo pulito + EMA12/26/50/200, MACD, Stoch RSI, RSI ===== */
+.market-card .chart, .market-card .chart canvas, .market-card .chart > div {
+  touch-action: pan-y !important;
+  overscroll-behavior-x: contain !important;
+}
+.market-card .chart, .market-card .chart canvas { cursor: grab !important; }
+.market-card .chart.chart-pan-active, .market-card .chart.chart-pan-active canvas { cursor: grabbing !important; }
+.market-card .chart-wrap { border-radius:12px !important; box-shadow:none !important; }
+.market-card .ema-legend { box-shadow:none !important; -webkit-backdrop-filter:none !important; backdrop-filter:none !important; }
+.market-card .ema-axis-badge, .market-card .volume-axis-badge, .market-card .ema-cross-live-alert { display:none !important; }
+.v439-indicator-shell { border:0 !important; box-shadow:none !important; background:transparent !important; margin-top:8px !important; }
+body.light .v439-indicator-shell { background:transparent !important; box-shadow:none !important; }
+.v439-indicator-toggle { display:none !important; }
+.v439-indicator-shell .v439-indicator-content {
+  max-height:none !important; visibility:visible !important; opacity:1 !important;
+  overflow:visible !important; pointer-events:auto !important; padding:0 6px 8px !important;
+}
+.v439-indicator-content > .indicator-stack {
+  display:flex !important; flex-direction:column !important; gap:8px !important;
+  padding:0 !important; border-top:0 !important;
+}
+.v439-indicator-content .indicator-panel:nth-child(3) { order:1; } /* MACD */
+.v439-indicator-content .indicator-panel:nth-child(2) { order:2; } /* Stoch RSI */
+.v439-indicator-content .indicator-panel:nth-child(1) { order:3; } /* RSI */
+.v439-indicator-content .indicator-panel:nth-child(n+4) { display:none !important; }
+.v439-indicator-content .indicator-panel.primary {
+  width:100% !important; min-width:0 !important;
+  border:1px solid color-mix(in srgb, var(--muted) 18%, transparent) !important;
+  border-radius:10px !important; box-shadow:none !important;
+}
+.v439-indicator-content .indicator-head { min-height:30px !important; padding:6px 10px !important; letter-spacing:0 !important; }
+.v439-indicator-content .indicator-head span::before { box-shadow:none !important; }
+.v439-indicator-content .indicator-canvas { height:104px !important; min-height:104px !important; filter:none !important; }
+@media(max-width:700px) {
+  .v439-indicator-content .indicator-canvas { height:96px !important; min-height:96px !important; }
+}
