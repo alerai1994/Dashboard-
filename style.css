@@ -19815,3 +19815,16 @@ body.light .v439-indicator-shell { background:transparent !important; box-shadow
 @media(max-width:700px) {
   .v439-indicator-content .indicator-canvas { height:96px !important; min-height:96px !important; }
 }
+
+/* V544 chart-only cleanup */
+.market-card .trading-zones-layer-v46,
+.market-card .trading-zone-v46,
+.market-card .ema-cross-live-alert,
+.market-card .volume-axis-badge,
+.market-card .ema-axis-badge { display:none !important; }
+.market-card .chart-wrap { overflow:hidden; }
+.v439-indicator-content > .indicator-stack { display:flex !important; flex-direction:column !important; }
+.v439-indicator-content .indicator-panel:nth-child(3) { order:1; }
+.v439-indicator-content .indicator-panel:nth-child(2) { order:2; }
+.v439-indicator-content .indicator-panel:nth-child(1) { order:3; }
+.v439-indicator-content .indicator-panel:nth-child(n+4) { display:none !important; }

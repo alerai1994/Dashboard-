@@ -2243,8 +2243,8 @@ document.addEventListener('DOMContentLoaded',fix,{once:true});addEventListener('
       }
 
       const EMA_CROSS_PAIRS = [
-        [15, 20], [15, 50], [15, 200],
-        [20, 50], [20, 200], [50, 200]
+        [12, 26], [12, 50], [12, 200],
+        [26, 50], [26, 200], [50, 200]
       ];
 
       function buildEmaCrossEvents(candles) {
@@ -2359,8 +2359,7 @@ document.addEventListener('DOMContentLoaded',fix,{once:true});addEventListener('
         const candles = candleHistory[symbol] || [];
         if (!bundle?.candles || typeof bundle.candles.setMarkers !== 'function') return;
         // Mantiene solo i marker TOP/BOTTOM; gli incroci EMA sono segnalati esclusivamente dal lampeggio delle linee.
-        const markers = buildTopBottomMarkers(candles)
-          .sort((a, b) => Number(a.time) - Number(b.time));
+        const markers = []; // V544 MAIN CHART CLEAN: remove historical TOP/BOTTOM markers
         bundle.candles.setMarkers(markers);
         // V147 — Il lampeggio EMA non viene più deciso dai marker/candele storiche.
         // Viene rilevato tick-per-tick direttamente in updateEmas().
@@ -2545,7 +2544,7 @@ document.addEventListener('DOMContentLoaded',fix,{once:true});addEventListener('
         if (!bundle || !bundle.candles || !Array.isArray(bundle.tradingZoneValues)) return;
         const layer = ensureTradingZoneLayer(symbol);
         if (!layer) return;
-        const zonesEnabledV172 = window.__indicatorModelsPrefsV172?.zones !== false;
+        const zonesEnabledV172 = false; // V544: hide all trading zones
         layer.hidden = !zonesEnabledV172;
         if (!zonesEnabledV172) return;
         const h = bundle.chartContainer?.clientHeight || 0;
@@ -2941,7 +2940,7 @@ document.addEventListener('DOMContentLoaded',fix,{once:true});addEventListener('
         if (!bundle || !cfg || !state || !Array.isArray(state.targets)) return;
         if (!Array.isArray(bundle.targetLines)) bundle.targetLines = [];
         if (!Array.isArray(bundle.targetLineValues)) bundle.targetLineValues = [];
-        const targetsEnabledV172 = window.__indicatorModelsPrefsV172?.targets !== false;
+        const targetsEnabledV172 = false; // V544: hide all target lines
 
         if (bundle.ipadTargetOverlayV60) {
           bundle.ipadTargetOverlayV60.remove();
@@ -2999,7 +2998,7 @@ document.addEventListener('DOMContentLoaded',fix,{once:true});addEventListener('
         try {
           Object.keys(charts || {}).forEach(symbol => {
             const bundle = charts[symbol];
-            const targetOn = window.__indicatorModelsPrefsV172?.targets !== false;
+            const targetOn = false; // V544: targets remain disabled
             if (Array.isArray(bundle?.targetLines)) {
               bundle.targetLines.forEach(line => {
                 try { line?.applyOptions({ lineVisible: targetOn, axisLabelVisible: targetOn }); } catch (_) {}
