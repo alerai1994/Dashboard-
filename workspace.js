@@ -738,51 +738,39 @@
    return {sma12:sma(12),sma26:sma(26),sma50:sma(50),sma200:sma(200),macd,signal,stoch,rsi};
  }
  function candleSvg(candles,offset=0){
-   const count=Math.min(80,candles.length),maxOffset=Math.max(0,candles.length-count);
-   const shift=Math.max(0,Math.min(maxOffset,Math.floor(offset)));
+   const count=Math.min(80,candles.length),shift=Math.max(0,Math.min(candles.length-count,Math.floor(offset)));
    const from=candles.length-count-shift,list=candles.slice(from,from+count);
    const studies=chartIndicators(candles);
    const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');
-   svg.setAttribute('viewBox','0 0 640 470');svg.setAttribute('preserveAspectRatio','none');
+   svg.setAttribute('viewBox','0 0 640 270');svg.setAttribute('preserveAspectRatio','none');
    svg.setAttribute('class','v526-candle-svg');svg.style.touchAction='pan-y';
-   svg.style.width='100%';svg.style.height='100%';svg.style.minHeight='340px';
-   svg.setAttribute('role','img');svg.setAttribute('aria-label','Candele OHLC con medie mobili 12, 26, 50, 200; MACD, Stochastic RSI e RSI. Trascina orizzontalmente per navigare nello storico.');
-   const add=(tag,attrs,parent=svg)=>{const e=document.createElementNS(ns,tag);Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,String(v)));parent.append(e);return e;};
+   svg.style.width='100%';svg.style.height='100%';svg.style.minHeight='220px';
+   svg.setAttribute('role','img');
+   svg.setAttribute('aria-label','Grafico a candele OHLC con sole medie mobili a 12, 26, 50 e 200 periodi. Trascina per scorrere lo storico.');
+   const add=(tag,attrs)=>{const e=document.createElementNS(ns,tag);Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,String(v)));svg.append(e);return e;};
    const x=i=>12+(i+.5)*536/count,axis=555;
-   const lo=Math.min(...list.map(d=>d.l)),hi=Math.max(...list.map(d=>d.h)),range=Math.max(hi-lo,Math.abs(hi)*1e-6,1e-10);
-   const y=v=>224-205*(v-lo)/range;
-   for(let n=0;n<5;n++){const yy=19+n*51.25;add('line',{x1:10,y1:yy,x2:axis,y2:yy,stroke:'currentColor','stroke-opacity':'.13','stroke-dasharray':'3 5'});const t=add('text',{x:560,y:yy+4,fill:'currentColor','font-size':11});t.textContent=fmt(hi-(hi-lo)*n/4,hi>=1?3:8);}
-   list.forEach((d,i)=>{const color=d.c>=d.o?'#16c784':'#ef596b',xx=x(i),w=Math.max(1,536/count*.65);
+   const plottedMA=['sma12','sma26','sma50','sma200'].flatMap(key=>studies[key].slice(from,from+count)).filter(Number.isFinite);
+   const lo=Math.min(...list.map(d=>d.l),...plottedMA),hi=Math.max(...list.map(d=>d.h),...plottedMA);
+   const range=Math.max(hi-lo,Math.abs(hi)*1e-6,1e-10),y=v=>215-192*(v-lo)/range;
+   for(let n=0;n<5;n++){
+     const yy=23+n*48;add('line',{x1:10,y1:yy,x2:axis,y2:yy,stroke:'currentColor','stroke-opacity':'.09','stroke-dasharray':'3 5'});
+     const t=add('text',{x:560,y:yy+4,fill:'currentColor','font-size':11});t.textContent=fmt(hi-(hi-lo)*n/4,hi>=1?3:8);
+   }
+   list.forEach((d,i)=>{
+     const color=d.c>=d.o?'#16c784':'#ef596b',xx=x(i),w=Math.max(1,536/count*.65);
      add('line',{x1:xx,y1:y(d.h),x2:xx,y2:y(d.l),stroke:color,'stroke-width':1.3});
      add('rect',{x:xx-w/2,y:Math.min(y(d.o),y(d.c)),width:w,height:Math.max(1,Math.abs(y(d.o)-y(d.c))),fill:color});
    });
    const lines=[['sma12','#f6bb4b'],['sma26','#59a9ff'],['sma50','#b48aff'],['sma200','#e7e7e7']];
    lines.forEach(([key,color])=>{
-     let segment=[];
-     const flush=()=>{if(segment.length>1)add('polyline',{points:segment.join(' '),fill:'none',stroke:color,'stroke-width':1.8,'stroke-linejoin':'round'});segment=[];};
-     for(let i=0;i<count;i++){const v=studies[key][from+i];if(v===null){flush();continue;}segment.push(x(i)+','+y(v));}
+     let points=[];
+     const flush=()=>{if(points.length>1)add('polyline',{points:points.join(' '),fill:'none',stroke:color,'stroke-width':1.7,'stroke-linejoin':'round'});points=[];};
+     for(let i=0;i<count;i++){const v=studies[key][from+i];if(!Number.isFinite(v)){flush();continue;}points.push(x(i)+','+y(v));}
      flush();
    });
-   const legends=[['MA12','#f6bb4b'],['MA26','#59a9ff'],['MA50','#b48aff'],['MA200','#e7e7e7']];
-   legends.forEach(([name,color],i)=>{const t=add('text',{x:12+i*87,y:242,fill:color,'font-size':12,'font-weight':600});t.textContent=name;});
-   const panel=(name,top,height,series,colors,bounds)=>{
-     add('line',{x1:10,y1:top,x2:axis,y2:top,stroke:'currentColor','stroke-opacity':'.25'});
-     const t=add('text',{x:12,y:top+12,fill:'currentColor','font-size':11,'font-weight':600});t.textContent=name;
-     const values=series.flatMap(arr=>arr.slice(from,from+count)).filter(Number.isFinite);
-     let min=bounds?bounds[0]:Math.min(0,...values),max=bounds?bounds[1]:Math.max(0,...values);
-     if(max===min){max+=1;min-=1;}
-     const py=v=>top+height-5-(v-min)/(max-min)*(height-19);
-     series.forEach((arr,j)=>{
-       let segment=[];const flush=()=>{if(segment.length>1)add('polyline',{points:segment.join(' '),fill:'none',stroke:colors[j],'stroke-width':1.5});segment=[];};
-       for(let i=0;i<count;i++){const v=arr[from+i];if(!Number.isFinite(v)){flush();continue;}segment.push(x(i)+','+py(v));}flush();
-     });
-     if(bounds)for(const v of [20,80])add('line',{x1:10,y1:py(v),x2:axis,y2:py(v),stroke:'currentColor','stroke-opacity':'.1','stroke-dasharray':'3 5'});
-   };
-   panel('MACD (12,26,9)',253,70,[studies.macd,studies.signal],['#42b7e9','#f5ad55']);
-   panel('Stoch RSI (14,14)',326,65,[studies.stoch],['#c58cff'],[0,100]);
-   panel('RSI (14)',394,65,[studies.rsi],['#50d3aa'],[0,100]);
-   const last=list.at(-1),stamp=add('text',{x:10,y:467,fill:'currentColor','font-size':11});
-   stamp.textContent='Ultimo: '+fmt(last.c,8)+' USDT'+(shift?' · storico -'+shift+' candele':'');
+   [['MA 12','#f6bb4b'],['MA 26','#59a9ff'],['MA 50','#b48aff'],['MA 200','#e7e7e7']].forEach(([name,color],i)=>{
+     const t=add('text',{x:12+i*90,y:251,fill:color,'font-size':11,'font-weight':600});t.textContent=name;
+   });
    return svg;
  }
  function chartDisplay(c,el){
@@ -791,7 +779,7 @@
    if(record?.data?.length>=2){
      const data=record.data,windowSize=Math.min(80,data.length),maxOffset=Math.max(0,data.length-windowSize);
      const offset=Math.max(0,Math.min(maxOffset,chartPan.get(c.id)||0));
-     const signature='v534:'+key+':'+c.interval+':'+record.at+':'+data.length+':'+data.at(-1).c+':'+offset;
+     const signature='v535:'+key+':'+c.interval+':'+record.at+':'+data.length+':'+data.at(-1).c+':'+offset;
      if(chartSignatures.get(c.id)!==signature){
        const toolbar=document.createElement('div');toolbar.style.cssText='display:flex;align-items:center;gap:8px;justify-content:flex-end;margin:3px 0 6px';
        const label=document.createElement('small');label.textContent='Storico · trascina le candele';label.style.marginRight='auto';toolbar.append(label);
