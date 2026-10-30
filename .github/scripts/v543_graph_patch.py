@@ -9,6 +9,56 @@ js = js_path.read_text(encoding="utf-8")
 html = html_path.read_text(encoding="utf-8")
 css = css_path.read_text(encoding="utf-8")
 
+# V544: applied to the existing V543 production chart, not the workspace chart.
+if "V543 · Pan temporale" in js and "V544 MAIN CHART CLEAN" not in js:
+    replacements = [
+        ("const markers = buildTopBottomMarkers(candles)\n          .sort((a, b) => Number(a.time) - Number(b.time));",
+         "const markers = []; // V544 MAIN CHART CLEAN: remove historical TOP/BOTTOM markers"),
+        ("const zonesEnabledV172 = window.__indicatorModelsPrefsV172?.zones !== false;",
+         "const zonesEnabledV172 = false; // V544: hide all trading zones"),
+        ("const targetsEnabledV172 = window.__indicatorModelsPrefsV172?.targets !== false;",
+         "const targetsEnabledV172 = false; // V544: hide all target lines"),
+        ("const targetOn = window.__indicatorModelsPrefsV172?.targets !== false;",
+         "const targetOn = false; // V544: targets remain disabled"),
+        ("""const EMA_CROSS_PAIRS = [
+        [15, 20], [15, 50], [15, 200],
+        [20, 50], [20, 200], [50, 200]
+      ];""",
+         """const EMA_CROSS_PAIRS = [
+        [12, 26], [12, 50], [12, 200],
+        [26, 50], [26, 200], [50, 200]
+      ];""")
+    ]
+    for old, new in replacements:
+        count = js.count(old)
+        if count != 1:
+            raise ValueError(f"V544 main chart replacement count {count}, expected 1: {old[:75]}")
+        js = js.replace(old, new)
+    # Make existing zones invisible, including those created before preferences change.
+    if "/* V544 chart-only cleanup */" not in css:
+        css += """
+/* V544 chart-only cleanup */
+.market-card .trading-zones-layer-v46,
+.market-card .trading-zone-v46,
+.market-card .ema-cross-live-alert,
+.market-card .volume-axis-badge,
+.market-card .ema-axis-badge { display:none !important; }
+.market-card .chart-wrap { overflow:hidden; }
+.v439-indicator-content > .indicator-stack { display:flex !important; flex-direction:column !important; }
+.v439-indicator-content .indicator-panel:nth-child(3) { order:1; }
+.v439-indicator-content .indicator-panel:nth-child(2) { order:2; }
+.v439-indicator-content .indicator-panel:nth-child(1) { order:3; }
+.v439-indicator-content .indicator-panel:nth-child(n+4) { display:none !important; }
+"""
+    html = html.replace('script.js?v=543', 'script.js?v=544')
+    html = html.replace('style.css?v=543', 'style.css?v=544')
+    html = html.replace('workspace.js?v=543', 'workspace.js?v=544')
+    js_path.write_text(js, encoding="utf-8")
+    html_path.write_text(html, encoding="utf-8")
+    css_path.write_text(css, encoding="utf-8")
+    print("V544 primary chart successfully patched: OHLC + EMA 12/26/50/200, 3 lower panels; markers, targets, zones removed")
+    raise SystemExit(0)
+
 if "V543 · Pan temporale" in js:
     print("Dashboard chart patch already applied")
     raise SystemExit(0)
