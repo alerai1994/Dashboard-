@@ -709,69 +709,115 @@
    }
    throw Error('Nessuna candela DEX identificata');
  }
- function candleSvg(candles,style){
-   const list=candles.slice(-80),lo=Math.min(...list.map(d=>d.l)),hi=Math.max(...list.map(d=>d.h)),range=Math.max(hi-lo,hi*.000001,1e-10);
-   const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');
-   svg.setAttribute('viewBox','0 0 640 270');svg.setAttribute('preserveAspectRatio','none');svg.setAttribute('class','v526-candle-svg');svg.setAttribute('role','img');svg.setAttribute('aria-label','Grafico con '+list.length+' candele OHLC reali');
-   const add=(name,attrs,parent=svg)=>{const el=document.createElementNS(ns,name);Object.entries(attrs).forEach(([a,v])=>el.setAttribute(a,String(v)));parent.append(el);return el;};
-   const X=i=>8+(i+.5)*548/list.length,Y=v=>202-187*(v-lo)/range;
-   for(let i=0;i<5;i++){
-     const yy=16+i*46.5;add('line',{x1:8,y1:yy,x2:558,y2:yy,stroke:'currentColor','stroke-opacity':'.12','stroke-dasharray':'3 5'});
-     const n=hi-(hi-lo)*i/4;const label=add('text',{x:564,y:yy+4,fill:'currentColor','font-size':12,'font-family':'system-ui'});label.textContent=fmt(n,n>=1?3:8);
+
+ // V534: only OHLC candles, 12/26/50/200 period moving averages,
+ // three studies (MACD, Stoch RSI, RSI), and historical panning without zoom.
+ const chartPan=new Map();
+ function chartIndicators(data){
+   const close=data.map(d=>d.c);
+   const sma=n=>close.map((_,i)=>i+1<n?null:close.slice(i+1-n,i+1).reduce((a,b)=>a+b,0)/n);
+   const ema=(arr,n)=>{let prev=null,count=0,sum=0;return arr.map(v=>{
+     if(!Number.isFinite(v))return null;
+     if(prev===null){sum+=v;if(++count<n)return null;prev=sum/n;return prev;}
+     prev=v*2/(n+1)+prev*(n-1)/(n+1);return prev;
+   });};
+   const rsi=Array(close.length).fill(null);let gain=0,loss=0;
+   for(let i=1;i<close.length;i++){
+     const d=close[i]-close[i-1],g=Math.max(0,d),l=Math.max(0,-d);
+     if(i<=14){gain+=g;loss+=l;if(i===14){gain/=14;loss/=14;rsi[i]=loss===0?(gain===0?50:100):100-100/(1+gain/loss);}}
+     else{gain=(gain*13+g)/14;loss=(loss*13+l)/14;rsi[i]=loss===0?(gain===0?50:100):100-100/(1+gain/loss);}
    }
-   const maxVol=Math.max(...list.map(d=>d.v),1);
-   list.forEach((d,i)=>{
-     const x=X(i),col=d.c>=d.o?'#16c784':'#ef596b',width=Math.max(1,548/list.length*.62);
-     add('rect',{x:x-width/2,y:210+34*(1-d.v/maxVol),width,height:Math.max(.7,34*d.v/maxVol),fill:col,'fill-opacity':'.25'});
-     if(style!=='line'){
-       add('line',{x1:x,y1:Y(d.h),x2:x,y2:Y(d.l),stroke:col,'stroke-width':'1.6'});
-       add('rect',{x:x-width/2,y:Math.min(Y(d.o),Y(d.c)),width,height:Math.max(1,Math.abs(Y(d.o)-Y(d.c))),fill:col,rx:'.8'});
-     }
+   const fast=ema(close,12),slow=ema(close,26);
+   const macd=close.map((_,i)=>fast[i]===null||slow[i]===null?null:fast[i]-slow[i]);
+   const signal=ema(macd,9);
+   const stoch=rsi.map((v,i)=>{
+     if(v===null||i<27)return null;
+     const w=rsi.slice(i-13,i+1);if(w.some(x=>x===null))return null;
+     const low=Math.min(...w),high=Math.max(...w);return high===low?50:(v-low)*100/(high-low);
    });
-   if(style==='line')add('polyline',{points:list.map((d,i)=>`${X(i)},${Y(d.c)}`).join(' '),fill:'none',stroke:list.at(-1).c>=list[0].c?'#16c784':'#ef596b','stroke-width':'2.4','stroke-linejoin':'round','vector-effect':'non-scaling-stroke'});
-   const last=list.at(-1),label=add('text',{x:8,y:260,fill:'currentColor','font-size':12,'font-family':'system-ui'});label.textContent='Ultimo: '+fmt(last.c,8)+' USDT';
+   return {sma12:sma(12),sma26:sma(26),sma50:sma(50),sma200:sma(200),macd,signal,stoch,rsi};
+ }
+ function candleSvg(candles,offset=0){
+   const count=Math.min(80,candles.length),maxOffset=Math.max(0,candles.length-count);
+   const shift=Math.max(0,Math.min(maxOffset,Math.floor(offset)));
+   const from=candles.length-count-shift,list=candles.slice(from,from+count);
+   const studies=chartIndicators(candles);
+   const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');
+   svg.setAttribute('viewBox','0 0 640 470');svg.setAttribute('preserveAspectRatio','none');
+   svg.setAttribute('class','v526-candle-svg');svg.style.touchAction='pan-y';
+   svg.style.width='100%';svg.style.height='100%';svg.style.minHeight='340px';
+   svg.setAttribute('role','img');svg.setAttribute('aria-label','Candele OHLC con medie mobili 12, 26, 50, 200; MACD, Stochastic RSI e RSI. Trascina orizzontalmente per navigare nello storico.');
+   const add=(tag,attrs,parent=svg)=>{const e=document.createElementNS(ns,tag);Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,String(v)));parent.append(e);return e;};
+   const x=i=>12+(i+.5)*536/count,axis=555;
+   const lo=Math.min(...list.map(d=>d.l)),hi=Math.max(...list.map(d=>d.h)),range=Math.max(hi-lo,Math.abs(hi)*1e-6,1e-10);
+   const y=v=>224-205*(v-lo)/range;
+   for(let n=0;n<5;n++){const yy=19+n*51.25;add('line',{x1:10,y1:yy,x2:axis,y2:yy,stroke:'currentColor','stroke-opacity':'.13','stroke-dasharray':'3 5'});const t=add('text',{x:560,y:yy+4,fill:'currentColor','font-size':11});t.textContent=fmt(hi-(hi-lo)*n/4,hi>=1?3:8);}
+   list.forEach((d,i)=>{const color=d.c>=d.o?'#16c784':'#ef596b',xx=x(i),w=Math.max(1,536/count*.65);
+     add('line',{x1:xx,y1:y(d.h),x2:xx,y2:y(d.l),stroke:color,'stroke-width':1.3});
+     add('rect',{x:xx-w/2,y:Math.min(y(d.o),y(d.c)),width:w,height:Math.max(1,Math.abs(y(d.o)-y(d.c))),fill:color});
+   });
+   const lines=[['sma12','#f6bb4b'],['sma26','#59a9ff'],['sma50','#b48aff'],['sma200','#e7e7e7']];
+   lines.forEach(([key,color])=>{
+     let segment=[];
+     const flush=()=>{if(segment.length>1)add('polyline',{points:segment.join(' '),fill:'none',stroke:color,'stroke-width':1.8,'stroke-linejoin':'round'});segment=[];};
+     for(let i=0;i<count;i++){const v=studies[key][from+i];if(v===null){flush();continue;}segment.push(x(i)+','+y(v));}
+     flush();
+   });
+   const legends=[['MA12','#f6bb4b'],['MA26','#59a9ff'],['MA50','#b48aff'],['MA200','#e7e7e7']];
+   legends.forEach(([name,color],i)=>{const t=add('text',{x:12+i*87,y:242,fill:color,'font-size':12,'font-weight':600});t.textContent=name;});
+   const panel=(name,top,height,series,colors,bounds)=>{
+     add('line',{x1:10,y1:top,x2:axis,y2:top,stroke:'currentColor','stroke-opacity':'.25'});
+     const t=add('text',{x:12,y:top+12,fill:'currentColor','font-size':11,'font-weight':600});t.textContent=name;
+     const values=series.flatMap(arr=>arr.slice(from,from+count)).filter(Number.isFinite);
+     let min=bounds?bounds[0]:Math.min(0,...values),max=bounds?bounds[1]:Math.max(0,...values);
+     if(max===min){max+=1;min-=1;}
+     const py=v=>top+height-5-(v-min)/(max-min)*(height-19);
+     series.forEach((arr,j)=>{
+       let segment=[];const flush=()=>{if(segment.length>1)add('polyline',{points:segment.join(' '),fill:'none',stroke:colors[j],'stroke-width':1.5});segment=[];};
+       for(let i=0;i<count;i++){const v=arr[from+i];if(!Number.isFinite(v)){flush();continue;}segment.push(x(i)+','+py(v));}flush();
+     });
+     if(bounds)for(const v of [20,80])add('line',{x1:10,y1:py(v),x2:axis,y2:py(v),stroke:'currentColor','stroke-opacity':'.1','stroke-dasharray':'3 5'});
+   };
+   panel('MACD (12,26,9)',253,70,[studies.macd,studies.signal],['#42b7e9','#f5ad55']);
+   panel('Stoch RSI (14,14)',326,65,[studies.stoch],['#c58cff'],[0,100]);
+   panel('RSI (14)',394,65,[studies.rsi],['#50d3aa'],[0,100]);
+   const last=list.at(-1),stamp=add('text',{x:10,y:467,fill:'currentColor','font-size':11});
+   stamp.textContent='Ultimo: '+fmt(last.c,8)+' USDT'+(shift?' · storico -'+shift+' candele':'');
    return svg;
  }
  function chartDisplay(c,el){
    const area=el.querySelector('.v526-candles'),footer=el.querySelector('.v526-source');if(!area)return;
    const key=cardAsset(c),record=bestCandles(key,c.interval);
    if(record?.data?.length>=2){
-     const signature='ohlc:'+key+':'+c.interval+':'+record.at+':'+record.data.at(-1).c;
-     if(chartSignatures.get(c.id)!==signature){area.replaceChildren(candleSvg(record.data,'candles'));chartSignatures.set(c.id,signature);}
-     footer.textContent=(record.source||'Candele OHLC reali')+' · '+(record.interval||c.interval)+' · '+new Date(record.at).toLocaleTimeString('it-IT')+(record.source==='Binance WebSocket OHLC'?' · LIVE':(Date.now()-record.at>120000?' · ultimo storico salvato · aggiornamento in corso':' · API periodica'));
+     const data=record.data,windowSize=Math.min(80,data.length),maxOffset=Math.max(0,data.length-windowSize);
+     const offset=Math.max(0,Math.min(maxOffset,chartPan.get(c.id)||0));
+     const signature='v534:'+key+':'+c.interval+':'+record.at+':'+data.length+':'+data.at(-1).c+':'+offset;
+     if(chartSignatures.get(c.id)!==signature){
+       const toolbar=document.createElement('div');toolbar.style.cssText='display:flex;align-items:center;gap:8px;justify-content:flex-end;margin:3px 0 6px';
+       const label=document.createElement('small');label.textContent='Storico · trascina le candele';label.style.marginRight='auto';toolbar.append(label);
+       const btn=(caption,delta)=>{const b=document.createElement('button');b.type='button';b.textContent=caption;b.title=delta>0?'Candele precedenti':'Candele successive';b.style.cssText='padding:3px 9px;border-radius:6px;cursor:pointer';b.disabled=delta>0?offset>=maxOffset:offset<=0;b.addEventListener('click',()=>{chartPan.set(c.id,Math.max(0,Math.min(maxOffset,(chartPan.get(c.id)||0)+delta)));chartSignatures.delete(c.id);chartDisplay(c,el);});toolbar.append(b);};
+       btn('←',20);btn('→',-20);
+       const svg=candleSvg(data,offset);let down=null;
+       svg.addEventListener('pointerdown',ev=>{if(ev.button!==0)return;down={x:ev.clientX,offset:chartPan.get(c.id)||0};svg.setPointerCapture(ev.pointerId);});
+       svg.addEventListener('pointerup',ev=>{if(!down)return;const width=svg.getBoundingClientRect().width||500;const move=Math.round((ev.clientX-down.x)/width*windowSize);down=null;if(move){chartPan.set(c.id,Math.max(0,Math.min(maxOffset,offset+move)));chartSignatures.delete(c.id);chartDisplay(c,el);}});
+       svg.addEventListener('pointercancel',()=>{down=null;});
+       area.replaceChildren(toolbar,svg);chartSignatures.set(c.id,signature);
+     }
+     footer.textContent=(record.source||'Candele OHLC reali')+' · '+(record.interval||c.interval)+' · '+new Date(record.at).toLocaleTimeString('it-IT')+' · solo navigazione storica, zoom disattivato';
    }else{
-     const pending=inflight.has('k:'+key+':'+c.interval);
-     area.textContent=['orai','tai'].includes(key)
-       ? (pending?'Recupero candele ORAI/TAI da KuCoin, Gate.io e fonti alternative…':'Ricerca storico reale ORAI/TAI · nuovo tentativo automatico…')
-       : 'Ricerca candele OHLC reali da Binance, CoinGecko o GeckoTerminal…';
+     area.textContent='Ricerca candele OHLC reali dalla fonte di mercato…';
      footer.textContent='Candele autentiche · nessun grafico sintetico · aggiornamento API automatico';
    }
  }
+
  function technicalDisplay(c,el){
-    const host=el.querySelector('.v526-indicators-grid'),source=el.querySelector('.v526-source');if(!host)return;
-    const asset=cardAsset(c),symbol=assets[asset][3],record=bestCandles(asset,c.interval);
-    if(!record?.data){host.textContent=symbol||SPECIAL_SPOT[asset]?'In attesa di candele OHLC reali…':'Indicatori: attesa di candele da una fonte alternativa';source.textContent='Indicatori derivati da quotazioni reali, non previsionali';return;}
-    const close=record.data.map(x=>x.c),last=close.at(-1);
-    function ema(input,period){const result=[];const alpha=2/(period+1);let prev;
-      input.forEach((v,i)=>{if(i<period-1){result.push(null);return;}if(i===period-1){prev=input.slice(0,period).reduce((a,b)=>a+b,0)/period;result.push(prev);return;}prev=alpha*v+(1-alpha)*prev;result.push(prev);});
-      return result;
-    }
-    function rsi(input,n=14){if(input.length<n+1)return null;
-      let up=0,down=0;for(let i=1;i<=n;i++){const delta=input[i]-input[i-1];up+=Math.max(0,delta);down+=Math.max(0,-delta);}
-      up/=n;down/=n;for(let i=n+1;i<input.length;i++){const d=input[i]-input[i-1];up=(up*(n-1)+Math.max(0,d))/n;down=(down*(n-1)+Math.max(0,-d))/n;}
-      return down===0?100:100-100/(1+up/down);
-    }
-    const ema12=ema(close,12),ema26=ema(close,26);
-    const macd=close.map((_,i)=>ema12[i]!=null&&ema26[i]!=null?ema12[i]-ema26[i]:null);
-    const signal=ema(macd.filter(v=>v!=null),9).at(-1);
-    const latestMacd=macd.at(-1);
-    const rsi14=rsi(close);
-    const values=[['Prezzo USDT',fmt(last,8)],['RSI 14',rsi14!=null?rsi14.toFixed(2):'—'],
-      ['EMA 12',fmt(ema12.at(-1),8)],['EMA 26',fmt(ema26.at(-1),8)],
-      ['MACD 12/26',latestMacd!=null?latestMacd.toFixed(7):'—'],['Segnale MACD 9',signal!=null?signal.toFixed(7):'—'],
-      ['Vol. ultima candela',fmt(record.data.at(-1).v,4)],['Candele disponibili',String(record.data.length)]];
-    host.replaceChildren(...values.map(([label,value])=>{const item=document.createElement('div');item.className='v526-stat';const l=document.createElement('span');l.textContent=label;const v=document.createElement('strong');v.textContent=value;item.append(l,v);return item;}));
-    source.textContent='Calcolati su '+record.data.length+' candele OHLC · '+(record.source||'API')+' · '+(record.interval||c.interval)+' · '+new Date(record.at).toLocaleTimeString('it-IT');
+   const host=el.querySelector('.v526-indicators-grid'),source=el.querySelector('.v526-source');if(!host)return;
+   const record=bestCandles(cardAsset(c),c.interval);
+   if(!record?.data?.length){host.textContent='In attesa di candele OHLC reali…';return;}
+   const s=chartIndicators(record.data),last=a=>{const v=a.at(-1);return Number.isFinite(v)?v.toFixed(3):'—';};
+   const values=[['MACD (12,26,9)',last(s.macd)+' / '+last(s.signal)],['Stoch RSI (14,14)',last(s.stoch)],['RSI (14)',last(s.rsi)]];
+   host.replaceChildren(...values.map(([label,value])=>{const item=document.createElement('div');item.className='v526-stat';const l=document.createElement('span');l.textContent=label;const v=document.createElement('strong');v.textContent=value;item.append(l,v);return item;}));
+   source.textContent='Solo MACD, Stochastic RSI e RSI · '+record.data.length+' candele OHLC · '+(record.source||'API');
  }
  function bookFromExchange(raw){
    if(!Array.isArray(raw?.bids)||!Array.isArray(raw?.asks))return null;
