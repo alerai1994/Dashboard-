@@ -9,6 +9,37 @@ js = js_path.read_text(encoding="utf-8")
 html = html_path.read_text(encoding="utf-8")
 css = css_path.read_text(encoding="utf-8")
 
+# V545: final, idempotent display normalization. This runs on every deployment.
+V545_CSS = """
+/* V545 FINAL CLEAN CHART: stable, single pane for candles and four moving averages. */
+.market-card .chart-wrap { position:relative; overflow:hidden !important; isolation:isolate; box-shadow:none !important; }
+.market-card .chart { overflow:hidden !important; }
+.market-card .trading-zones-layer-v46,
+.market-card .trading-zone-v46,
+.market-card .ema-cross-live-alert,
+.market-card .ema-axis-badge,
+.market-card .volume-axis-badge { display:none !important; }
+.market-card .v439-indicator-shell { border:0 !important; box-shadow:none !important; background:transparent !important; }
+.market-card .v439-indicator-toggle { display:none !important; }
+.market-card .v439-indicator-content { display:block !important; max-height:none !important; height:auto !important; opacity:1 !important; visibility:visible !important; overflow:visible !important; padding:0 !important; }
+.market-card .v439-indicator-content > .indicator-stack { display:flex !important; flex-direction:column !important; gap:8px !important; }
+.market-card .v439-indicator-content .indicator-panel { width:100% !important; max-width:100% !important; min-width:0 !important; flex:none !important; margin:0 !important; box-shadow:none !important; }
+.market-card .v439-indicator-content .indicator-panel:nth-child(3) { order:1 !important; }
+.market-card .v439-indicator-content .indicator-panel:nth-child(2) { order:2 !important; }
+.market-card .v439-indicator-content .indicator-panel:nth-child(1) { order:3 !important; }
+.market-card .v439-indicator-content .indicator-panel:nth-child(n+4) { display:none !important; }
+.market-card .v439-indicator-content .indicator-canvas { width:100% !important; min-width:0 !important; }
+"""
+if "/* V545 FINAL CLEAN CHART:" not in css:
+    css += "\\n" + V545_CSS
+    css_path.write_text(css, encoding="utf-8")
+# Bust previous CSS/JS caches in all HTML references when the patch runs.
+html = re.sub(r'(style\\.css\\?v=)\\d+', r'\\g<1>545', html)
+html = re.sub(r'(script\\.js\\?v=)\\d+', r'\\g<1>545', html)
+html = re.sub(r'(workspace\\.js\\?v=)\\d+', r'\\g<1>545', html)
+html_path.write_text(html, encoding="utf-8")
+
+
 # V544: applied to the existing V543 production chart, not the workspace chart.
 if "V543 · Pan temporale" in js and "V544 MAIN CHART CLEAN" not in js:
     replacements = [
