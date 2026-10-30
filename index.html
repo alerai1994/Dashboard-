@@ -3156,9 +3156,7 @@
     const v=Number(value);
     if(!Number.isFinite(v)||v<=0)return '—';
     const decimals=fx?5:v<0.01?6:v<1?4:2;
-    return (fx?'':'</body>
-</html>
-)+v.toLocaleString('en-US',{minimumFractionDigits:decimals,maximumFractionDigits:decimals});
+    return (fx?'':'$')+v.toLocaleString('en-US',{minimumFractionDigits:decimals,maximumFractionDigits:decimals});
   }
   function update(key,value,change,closed,description){
     const val=money(value,key==='EURUSD');
@@ -3225,9 +3223,11 @@
     try{
       const response=await getJSON('https://biquote.io/api/latest?'+params.toString());
       const rows=Array.isArray(response)?response:
-        Array.isArray(response.data)?response.data:
-        Array.isArray(response.items)?response.items:
-        (response&&typeof response==='object'?Object.values(response).filter(v=>v&&typeof v==='object'):[]);
+        (response&&Array.isArray(response.data))?response.data:
+        (response&&Array.isArray(response.items))?response.items:
+        (response&&typeof response==='object'
+          ?Object.entries(response).filter(([_,v])=>v&&typeof v==='object').map(([symbol,v])=>Object.assign({symbol},v))
+          :[]);
       const bySymbol=new Map(rows.map(x=>[String(x.symbol||'').toUpperCase(),x]));
       Object.entries(named).forEach(([key,symbol])=>{
         const row=bySymbol.get(String(symbol).toUpperCase());
