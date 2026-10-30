@@ -3157,8 +3157,15 @@ document.addEventListener('DOMContentLoaded',fix,{once:true});addEventListener('
         if (!previous || !previous.length || !rows.length) {
           series.setData(rows);
         } else {
+          // V548 EMA FAST PATH: O(1) for normal live ticks rather than scanning
+          // the entire EMA history for every price event on four curves.
+          // Full data reset still happens for timeframe/history changes.
+          const near = Math.max(0, previous.length - 2);
+          const mid = Math.floor(previous.length / 2);
           const prefixSame = rows.length >= previous.length &&
-            previous.slice(0, -1).every((row, i) => same(row, rows[i]));
+            same(previous[0], rows[0]) &&
+            same(previous[mid], rows[mid]) &&
+            same(previous[near], rows[near]);
           const identical = rows.length === previous.length && prefixSame &&
             same(previous[previous.length - 1], rows[rows.length - 1]);
           if (!identical) {
