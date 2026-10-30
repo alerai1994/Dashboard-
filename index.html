@@ -356,41 +356,48 @@
   <link rel="stylesheet" href="style.css?v=546">
   <link rel="stylesheet" href="pro-theme.css?v=543">
   <style id="v550MarketTapeStyles">
-    /* Fascia prezzi a scorrimento: sopra le pillole, tema coerente con la dashboard. */
-    .v550-market-tape {
-      display:flex; align-items:center; gap:0; min-width:0; width:100%;
-      margin:0 0 10px; overflow:hidden;
-      border:1px solid var(--border, #252a33); border-radius:12px;
-      background:var(--panel, #101318); color:var(--text, #f3f4f6);
-      color-scheme:dark;
+    /* V551: pillole in scorrimento continuo. Sostituisce il widget di terzi. */
+    .v550-market-tape{
+      display:flex;align-items:center;gap:9px;width:100%;min-width:0;
+      margin:0 0 11px;overflow:hidden;color:var(--text,#f3f4f6);
     }
-    body.light .v550-market-tape { color-scheme:light; }
-    .v550-market-tape-label {
-      flex:0 0 auto; display:flex; align-items:center; gap:8px;
-      padding:0 13px; height:47px; min-width:147px;
-      border-right:1px solid var(--border, #252a33);
-      color:var(--text, #f3f4f6); font-size:10px; font-weight:800;
-      letter-spacing:.065em; white-space:nowrap; user-select:none;
+    .v550-market-tape-label{
+      flex:0 0 auto;display:flex;align-items:center;gap:7px;height:37px;
+      padding:0 13px;border:1px solid var(--border,#252a33);
+      border-radius:999px;background:var(--panel,#101318);
+      font-size:10px;font-weight:800;letter-spacing:.035em;white-space:nowrap;
     }
-    .v550-market-tape-label b { color:var(--muted, #8b93a1); }
-    .v550-market-dot {
-      flex:0 0 auto; width:6px; height:6px; border-radius:50%;
-      background:#16a579;
+    .v550-market-tape-label b{color:var(--muted,#8b93a1)}
+    .v550-market-dot{height:6px;width:6px;flex:0 0 auto;border-radius:50%;background:#16a579}
+    .v550-market-tape-scroll{flex:1 1 auto;min-width:0;overflow:hidden;mask-image:linear-gradient(90deg,transparent,#000 2%,#000 97%,transparent);-webkit-mask-image:linear-gradient(90deg,transparent,#000 2%,#000 97%,transparent)}
+    .v551-ticker-track{display:flex;align-items:center;width:max-content;min-height:39px;animation:v551-pill-scroll 32s linear infinite;will-change:transform}
+    .v551-ticker-set{display:flex;flex:0 0 auto;align-items:center;white-space:nowrap}
+    .v551-quote-pill{
+      box-sizing:border-box;display:inline-flex;align-items:center;gap:9px;flex:0 0 auto;
+      min-height:35px;margin-right:9px;padding:0 12px;border:1px solid var(--border,#252a33);
+      border-radius:999px;background:var(--panel,#101318);
+      color:var(--text,#f3f4f6);font-variant-numeric:tabular-nums;
+      font-size:11px;box-shadow:0 1px 4px rgba(0,0,0,.025);
     }
-    .v550-market-tape-scroll { flex:1 1 auto; min-width:0; overflow:hidden; }
-    .v550-market-tape tv-ticker-tape { display:block; width:100%; min-height:46px; }
-    .v550-market-tape-loading {
-      height:46px; display:flex; align-items:center; padding:0 15px;
-      color:var(--muted, #8b93a1); font-size:12px;
+    .v551-quote-pill .v551-symbol{font-weight:800;letter-spacing:.015em}
+    .v551-quote-pill .v551-price{font-weight:680}
+    .v551-quote-pill .v551-change{font-weight:750;font-size:10px;color:var(--muted,#8b93a1)}
+    .v551-quote-pill .v551-change[data-trend="up"]{color:var(--green,#16a579)}
+    .v551-quote-pill .v551-change[data-trend="down"]{color:var(--red,#f35a65)}
+    .v551-quote-pill .v551-change[data-trend="closed"]{color:var(--muted,#8b93a1)}
+    .v550-market-tape-scroll:hover .v551-ticker-track,
+    .v550-market-tape-scroll:focus-within .v551-ticker-track{animation-play-state:paused}
+    @keyframes v551-pill-scroll{from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)}}
+    @media(max-width:600px){
+      .v550-market-tape{gap:6px;margin-bottom:8px}
+      .v550-market-tape-label{height:35px;padding:0 9px;font-size:8px;gap:5px}
+      .v551-quote-pill{min-height:33px;gap:7px;padding:0 10px;font-size:10px}
+      .v551-ticker-track{min-height:35px;animation-duration:28s}
     }
-    @media (max-width:600px) {
-      .v550-market-tape { margin-bottom:8px; border-radius:10px; }
-      .v550-market-tape-label {
-        min-width:0; padding:0 9px; gap:6px; height:43px;
-        font-size:8px; letter-spacing:.02em;
-      }
-      .v550-market-tape tv-ticker-tape { min-height:42px; }
-      .v550-market-tape-loading { height:42px; font-size:10px; }
+    @media(prefers-reduced-motion:reduce){
+      .v551-ticker-track{animation:none;will-change:auto}
+      .v550-market-tape-scroll{overflow-x:auto;scrollbar-width:thin;mask-image:none;-webkit-mask-image:none}
+      .v551-ticker-set[aria-hidden="true"]{display:none}
     }
   </style>
 </head>
@@ -799,18 +806,13 @@
 
 
 
-    <!-- V550: fascia scorrevole criptovalute + mercati, indipendente dal grafico -->
-    <section class="v550-market-tape" id="v550MarketTape" aria-label="Quotazioni scorrevoli di criptovalute e mercati">
-      <div class="v550-market-tape-label" aria-hidden="true"><span class="v550-market-dot"></span><span>MERCATI <b>&amp;</b> CRYPTO</span></div>
-      <div class="v550-market-tape-scroll">
-        <tv-ticker-tape
-          symbols="BITSTAMP:BTCUSD,BITSTAMP:ETHUSD,BINANCE:SOLUSDT,BINANCE:BNBUSDT,BINANCE:INJUSDT,FOREXCOM:SPXUSD,FOREXCOM:NSXUSD,FOREXCOM:DJI,CMCMARKETS:GOLD,FX:EURUSD"
-          direction="horizontal"
-          item-size="compact"
-          hide-chart
-          locale="it">
-          <div class="v550-market-tape-loading">Caricamento quotazioni di mercato…</div>
-        </tv-ticker-tape>
+    <!-- V551 ticker pill personalizzato, senza widget TradingView -->
+    <section class="v550-market-tape" id="v550MarketTape" aria-label="Criptovalute e mercati: prezzi a scorrimento continuo">
+      <div class="v550-market-tape-label"><span class="v550-market-dot" aria-hidden="true"></span><span>CRYPTO <b>&amp;</b> MERCATI</span></div>
+      <div class="v550-market-tape-scroll" id="v551TickerViewport">
+        <div class="v551-ticker-track" id="v551TickerTrack">
+          <div class="v551-ticker-set" id="v551TickerSet"></div>
+        </div>
       </div>
     </section>
 
@@ -3117,6 +3119,135 @@
   <script src="workspace.js?v=546"></script>
   <script src="pro-tools.js?v=543"></script>
   <script src="nav-dock.js?v=543"></script>
-  <script type="module" src="https://widgets.tradingview-widget.com/w/en/tv-ticker-tape.js"></script>
+  <script id="v551TickerLogic">
+(function(){
+  'use strict';
+  const root=document.getElementById('v550MarketTape');
+  const first=document.getElementById('v551TickerSet');
+  const track=document.getElementById('v551TickerTrack');
+  if(!root||!first||!track||root.dataset.ready==='1')return;
+  root.dataset.ready='1';
+  // Nessun valore inventato: trattino finché la sorgente non risponde.
+  const items=[
+    {key:'BTC',label:'BTC',symbol:'BTCUSDT',type:'crypto'},
+    {key:'ETH',label:'ETH',symbol:'ETHUSDT',type:'crypto'},
+    {key:'SOL',label:'SOL',symbol:'SOLUSDT',type:'crypto'},
+    {key:'BNB',label:'BNB',symbol:'BNBUSDT',type:'crypto'},
+    {key:'INJ',label:'INJ',symbol:'INJUSDT',type:'crypto'},
+    {key:'SP500',label:'S&P 500',type:'market'},
+    {key:'NASDAQ',label:'NASDAQ 100',type:'market'},
+    {key:'DOW',label:'DOW JONES',type:'market'},
+    {key:'GOLD',label:'ORO',type:'market',symbol:'XAUUSD'},
+    {key:'EURUSD',label:'EUR/USD',type:'market',symbol:'EURUSD'}
+  ];
+  const encoded=(s)=>String(s).replace(/[&<>"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  first.innerHTML=items.map(item=>
+    '<span class="v551-quote-pill" data-v551-key="'+encoded(item.key)+'" title="'+encoded(item.label)+': dati in aggiornamento">'+
+    '<strong class="v551-symbol">'+encoded(item.label)+'</strong>'+
+    '<span class="v551-price">—</span>'+
+    '<span class="v551-change" data-trend="neutral">—</span></span>'
+  ).join('');
+  const clone=first.cloneNode(true);
+  clone.removeAttribute('id');
+  clone.setAttribute('aria-hidden','true');
+  clone.inert=true;
+  track.appendChild(clone);
+  function money(value,fx){
+    const v=Number(value);
+    if(!Number.isFinite(v)||v<=0)return '—';
+    const decimals=fx?5:v<0.01?6:v<1?4:2;
+    return (fx?'':'</body>
+</html>
+)+v.toLocaleString('en-US',{minimumFractionDigits:decimals,maximumFractionDigits:decimals});
+  }
+  function update(key,value,change,closed,description){
+    const val=money(value,key==='EURUSD');
+    if(val==='—')return;
+    const percent=Number(change);
+    const valid=Number.isFinite(percent);
+    const diff=closed?'CHIUSO':valid?((percent>0?'+':'')+percent.toFixed(2)+'%'):'—';
+    const trend=closed?'closed':valid?(percent>0?'up':percent<0?'down':'neutral'):'neutral';
+    track.querySelectorAll('[data-v551-key="'+key+'"]').forEach((node)=>{
+      node.querySelector('.v551-price').textContent=val;
+      const n=node.querySelector('.v551-change');
+      n.textContent=diff;n.dataset.trend=trend;
+      node.title=(description||key)+': '+val+(closed?' · mercato chiuso':valid?' · '+diff:'');
+    });
+  }
+  async function getJSON(url){
+    const ctl=new AbortController();
+    const timeout=setTimeout(()=>ctl.abort(),9000);
+    try{
+      const res=await fetch(url,{signal:ctl.signal,cache:'no-store',mode:'cors'});
+      if(!res.ok)throw new Error('HTTP '+res.status);
+      return await res.json();
+    }finally{clearTimeout(timeout)}
+  }
+  async function loadCrypto(){
+    const symbols=items.filter(x=>x.type==='crypto').map(x=>x.symbol);
+    const query=encodeURIComponent(JSON.stringify(symbols));
+    const hosts=['https://api.binance.com','https://data-api.binance.vision'];
+    for(const host of hosts){
+      try{
+        const rows=await getJSON(host+'/api/v3/ticker/24hr?symbols='+query);
+        if(!Array.isArray(rows)||!rows.length)continue;
+        rows.forEach(row=>{
+          const item=items.find(i=>i.symbol===row.symbol&&i.type==='crypto');
+          if(item)update(item.key,row.lastPrice,row.priceChangePercent,false,item.label+' · Binance · var. 24h');
+        });
+        return;
+      }catch(_e){/* Fonte successiva senza numeri simulati. */}
+    }
+  }
+  let marketSymbols=null;
+  function matchIndex(list,match){
+    const row=list.find(x=>match.test(String(x.name||'')+' '+String(x.description||'')));
+    return row&&row.name;
+  }
+  async function resolveMarkets(){
+    if(marketSymbols)return marketSymbols;
+    marketSymbols={SP500:'US500',NASDAQ:'NAS100',DOW:'US30',GOLD:'XAUUSD',EURUSD:'EURUSD'};
+    try{
+      const catalog=await getJSON('https://biquote.io/api/active');
+      if(Array.isArray(catalog)){
+        marketSymbols.SP500=matchIndex(catalog,/S&P\s*500|SPX500|US500|SP500/i)||marketSymbols.SP500;
+        marketSymbols.NASDAQ=matchIndex(catalog,/NASDAQ\s*100|NAS100|US100|USTEC|NDX100/i)||marketSymbols.NASDAQ;
+        marketSymbols.DOW=matchIndex(catalog,/DOW\s*JONES|US30|DJ30|WALL\s*STREET\s*30/i)||marketSymbols.DOW;
+      }
+    }catch(_e){/* Alias comuni, nessun dato fittizio. */}
+    return marketSymbols;
+  }
+  async function loadMarkets(){
+    const named=await resolveMarkets();
+    const symbols=[...new Set(Object.values(named))];
+    const params=new URLSearchParams();
+    symbols.forEach(s=>params.append('symbols',s));
+    try{
+      const response=await getJSON('https://biquote.io/api/latest?'+params.toString());
+      const rows=Array.isArray(response)?response:
+        Array.isArray(response.data)?response.data:
+        Array.isArray(response.items)?response.items:
+        (response&&typeof response==='object'?Object.values(response).filter(v=>v&&typeof v==='object'):[]);
+      const bySymbol=new Map(rows.map(x=>[String(x.symbol||'').toUpperCase(),x]));
+      Object.entries(named).forEach(([key,symbol])=>{
+        const row=bySymbol.get(String(symbol).toUpperCase());
+        if(!row)return;
+        const p=Number(row.mid)>0?Number(row.mid):Number(row.last)>0?Number(row.last):(Number(row.bid)+Number(row.ask))/2;
+        const closed=row.marketState==='closed'||row.stale===true;
+        update(key,p,closed?NaN:row.dayDiffPercent,closed,(key==='GOLD'?'Oro':key==='EURUSD'?'EUR/USD':key)+' · biquote');
+      });
+    }catch(_e){
+      // Batch non raggiungibile: proveremo ancora al prossimo aggiornamento.
+    }
+  }
+  function refresh(){
+    if(document.hidden)return;
+    loadCrypto();loadMarkets();
+  }
+  refresh();
+  setInterval(refresh,45000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh()});
+})();
+</script>
 </body>
 </html>
