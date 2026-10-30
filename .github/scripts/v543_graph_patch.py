@@ -9,6 +9,24 @@ js = js_path.read_text(encoding="utf-8")
 html = html_path.read_text(encoding="utf-8")
 css = css_path.read_text(encoding="utf-8")
 
+# V546: disable the legacy EMA-cross flashing at the source.
+# The previous V148 routine used a 100ms interval for up to 60 seconds.
+if "V546 EMA STEADY" not in js:
+    begin = js.index("      function blinkEmaCrossLines(symbol, events) {")
+    finish = js.index("      function collectLatestCandleEmaCrosses(symbol, emaDataByPeriod) {", begin)
+    js = js[:begin] + """      // V546 EMA STEADY: preserve fixed EMA colors and widths, never blink.
+      function blinkEmaCrossLines(symbol, events) {
+        stopEmaCrossLineBlink(symbol, EMA_CONFIG.map(item => item.period));
+      }
+
+""" + js[finish:]
+    js_path.write_text(js, encoding="utf-8")
+# Ensure users load the updated script rather than a cached previous version.
+html = re.sub(r'(script\\.js\\?v=)\\d+', lambda m: m.group(1) + '546', html)
+html = re.sub(r'(style\\.css\\?v=)\\d+', lambda m: m.group(1) + '546', html)
+html = re.sub(r'(workspace\\.js\\?v=)\\d+', lambda m: m.group(1) + '546', html)
+html_path.write_text(html, encoding="utf-8")
+
 # V545: final, idempotent display normalization. This runs on every deployment.
 V545_CSS = """
 /* V545 FINAL CLEAN CHART: stable, single pane for candles and four moving averages. */
