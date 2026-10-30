@@ -3146,6 +3146,36 @@ document.addEventListener('DOMContentLoaded',fix,{once:true});addEventListener('
         }
       }
 
+      // V547 STABLE SERIES: keep chart visuals mounted during live refresh.
+      const steadySeriesCacheV547 = new WeakMap();
+      function applySteadySeriesDataV547(series, rows) {
+        if (!series || typeof series.setData !== 'function') return;
+        const previous = steadySeriesCacheV547.get(series);
+        const same = (a, b) => a.time === b.time &&
+          a.value === b.value && a.open === b.open && a.high === b.high &&
+          a.low === b.low && a.close === b.close && a.color === b.color;
+        if (!previous || !previous.length || !rows.length) {
+          series.setData(rows);
+        } else {
+          const prefixSame = rows.length >= previous.length &&
+            previous.slice(0, -1).every((row, i) => same(row, rows[i]));
+          const identical = rows.length === previous.length && prefixSame &&
+            same(previous[previous.length - 1], rows[rows.length - 1]);
+          if (!identical) {
+            if (prefixSame && rows.length === previous.length && typeof series.update === 'function') {
+              series.update(rows[rows.length - 1]);
+            } else if (rows.length === previous.length + 1 &&
+                       previous.every((row, i) => same(row, rows[i])) &&
+                       typeof series.update === 'function') {
+              series.update(rows[rows.length - 1]);
+            } else {
+              series.setData(rows);
+            }
+          }
+        }
+        steadySeriesCacheV547.set(series, rows);
+      }
+
       function applyAggregatedHistory(symbol, aggregated, preserveVisibleRange = false) {
         if (!charts[symbol] || !aggregated.length) return;
         const bundle = charts[symbol];
@@ -3175,8 +3205,8 @@ document.addEventListener('DOMContentLoaded',fix,{once:true});addEventListener('
         candleHistory[symbol] = candles;
         v317HistoryNotice(symbol);
         refreshDerivedLowReference(symbol);
-        bundle.candles.setData(candles);
-        bundle.volume.setData(volume);
+        applySteadySeriesDataV547(bundle.candles, candles);
+        applySteadySeriesDataV547(bundle.volume, volume);
         const latestVolumePoint = volume[volume.length - 1];
         if (latestVolumePoint && (symbol === ORAI_SYMBOL || symbol === TAI_SYMBOL)) {
           coinGeckoCurrentVolumes[symbol] = latestVolumePoint.value;
@@ -10773,6 +10803,7 @@ document.querySelectorAll('.asset-tab[data-symbol]').forEach(tab => {
       const emaCrossLineBlinkTimeouts = {};
 
       function setEmaSeriesColor(symbol, periods, flashing) {
+        flashing = false; // V547: disable every EMA alpha/width animation
         const bundle = charts[symbol];
         if (!bundle || !bundle.emaSeries) return;
         const wanted = new Set((periods || []).map(Number));
@@ -10986,7 +11017,7 @@ document.querySelectorAll('.asset-tab[data-symbol]').forEach(tab => {
           const data = calculateEMA(candles, period);
           emaDataByPeriod[period] = data;
           const series = bundle.emaSeries[period];
-          if (series && typeof series.setData === 'function') series.setData(data);
+          if (series) applySteadySeriesDataV547(series, data);
 
           const latest = data[data.length - 1];
           if (latest) {
@@ -11009,7 +11040,7 @@ document.querySelectorAll('.asset-tab[data-symbol]').forEach(tab => {
         // V148 — Un solo motore globale per TUTTE le crypto: confronto tick-per-tick
         // + ultime due candele. Al crossover lampeggiano SOLO le linee EMA coinvolte
         // per 1 secondo, poi vengono ripristinate automaticamente.
-        detectAndBlinkLiveEmaCrosses(symbol, latestValues, latestTime, emaDataByPeriod);
+        // V547: crossover detection cannot animate plotted EMA lines.
       }
 
       function simpleMovingAverage(values, period) {
@@ -11164,7 +11195,7 @@ document.querySelectorAll('.asset-tab[data-symbol]').forEach(tab => {
         for (let i = 0; i < candles.length; i++) {
           if (Number.isFinite(rsi[i])) rsiData.push({ time: candles[i].time, value: rsi[i] });
         }
-        indicator.rsi.series.setData(rsiData);
+        applySteadySeriesDataV547(indicator.rsi.series, rsiData);
 
         const stochastic = calculateStochRSI(rsi, 14, 3, 3);
         const stochKData = [];
@@ -11173,8 +11204,8 @@ document.querySelectorAll('.asset-tab[data-symbol]').forEach(tab => {
           if (Number.isFinite(stochastic.k[i])) stochKData.push({ time: candles[i].time, value: stochastic.k[i] });
           if (Number.isFinite(stochastic.d[i])) stochDData.push({ time: candles[i].time, value: stochastic.d[i] });
         }
-        indicator.stoch.series.setData(stochKData);
-        indicator.stoch.signalSeries.setData(stochDData);
+        applySteadySeriesDataV547(indicator.stoch.series, stochKData);
+        applySteadySeriesDataV547(indicator.stoch.signalSeries, stochDData);
 
         const macdValues = calculateMACD(closes, 12, 26, 9);
         const macdData = [];
@@ -11191,9 +11222,9 @@ document.querySelectorAll('.asset-tab[data-symbol]').forEach(tab => {
             });
           }
         }
-        indicator.macd.series.setData(macdData);
-        indicator.macd.signalSeries.setData(macdSignalData);
-        indicator.macd.histogramSeries.setData(macdHistogramData);
+        applySteadySeriesDataV547(indicator.macd.series, macdData);
+        applySteadySeriesDataV547(indicator.macd.signalSeries, macdSignalData);
+        applySteadySeriesDataV547(indicator.macd.histogramSeries, macdHistogramData);
 
         const fastSma = simpleMovingAverage(closes, 5);
         const slowSma = simpleMovingAverage(closes, 35);
@@ -15350,6 +15381,7 @@ document.querySelectorAll('.asset-tab[data-symbol]').forEach(tab => {
         const button = event.target.closest('[data-interval]');
         if (!button || button.dataset.interval === interval) return;
         interval = button.dataset.interval;
+        ++loadToken; // V547: discard pending responses from previous timeframe
         Object.keys(charts).forEach(symbol => resetChartViewMemory(symbol));
         document.querySelectorAll('.timeframe').forEach(b => b.classList.toggle('active', b === button));
         if (socket) {
