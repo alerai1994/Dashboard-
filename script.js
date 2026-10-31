@@ -62,6 +62,7 @@ const ASSETS=[
 {id:'bnb',name:'BNB',short:'BNB',group:'crypto',symbol:'BNB-USD',icon:'⬡',currency:'USD'},
 {id:'doge',name:'Dogecoin (DOGE)',short:'Dogecoin',group:'crypto',symbol:'DOGE-USD',icon:'Ð',currency:'USD'},
 {id:'inj',name:'Injective (INJ)',short:'Injective',group:'crypto',symbol:'INJ-USD',icon:'∿',currency:'USD'},
+{id:'ore',name:'ORE Protocol (ORE)',short:'ORE Protocol',group:'crypto',symbol:'ORE',icon:'⛏',currency:'USD',coingeckoId:'ore',network:'Solana'},
 {id:'ada',name:'Cardano (ADA)',short:'Cardano',group:'crypto',symbol:'ADA-USD',icon:'₳',currency:'USD',coingeckoId:'cardano'},
 {id:'avax',name:'Avalanche (AVAX)',short:'Avalanche',group:'crypto',symbol:'AVAX-USD',icon:'▲',currency:'USD',coingeckoId:'avalanche-2'},
 {id:'link',name:'Chainlink (LINK)',short:'Chainlink',group:'crypto',symbol:'LINK-USD',icon:'⬡',currency:'USD',coingeckoId:'chainlink'},

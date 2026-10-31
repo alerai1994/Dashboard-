@@ -51,6 +51,7 @@ FOREX = [
 CRYPTO = [
     ("btc", "bitcoin"), ("eth", "ethereum"), ("sol", "solana"),
     ("inj", "injective-protocol"), ("bnb", "binancecoin"),
+    ("ore", "ore"),
     ("xrp", "ripple"), ("doge", "dogecoin"),
     ("ada", "cardano"),
     ("avax", "avalanche-2"),
