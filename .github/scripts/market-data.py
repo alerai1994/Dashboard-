@@ -184,8 +184,12 @@ def yahoo_quote(pair):
             )
             session_previous = sessions[-2][1] if len(sessions) >= 2 else None
             if session_previous is not None and (
-                previous is None or abs(last - previous) <= max(0.0001, last * 0.000001)
+                identity in ("asx", "tadawul") or previous is None
+                or abs(last - previous) <= max(0.0001, last * 0.000001)
             ):
+                # For these benchmarks the Yahoo metadata can expose an
+                # unrelated chart baseline. The preceding distinct trading
+                # session's actual close takes priority.
                 previous = session_previous
             if previous is None and len(closes) > 1:
                 # Avoid duplicate close prices from a single market session.
