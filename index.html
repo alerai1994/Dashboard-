@@ -370,7 +370,7 @@
     .v550-market-tape-label b{color:var(--muted,#8b93a1)}
     .v550-market-dot{height:6px;width:6px;flex:0 0 auto;border-radius:50%;background:#16a579}
     .v550-market-tape-scroll{flex:1 1 auto;min-width:0;overflow:hidden;mask-image:linear-gradient(90deg,transparent,#000 2%,#000 97%,transparent);-webkit-mask-image:linear-gradient(90deg,transparent,#000 2%,#000 97%,transparent)}
-    .v551-ticker-track{display:flex;align-items:center;width:max-content;min-height:39px;animation:v551-pill-scroll 32s linear infinite;will-change:transform}
+    .v551-ticker-track{display:flex;align-items:center;width:max-content;min-height:39px;animation:v551-pill-scroll var(--v551-duration,30s) linear infinite;animation-direction:normal;animation-play-state:running;will-change:transform;backface-visibility:hidden}
     .v551-ticker-set{display:flex;flex:0 0 auto;align-items:center;white-space:nowrap}
     .v551-quote-pill{
       box-sizing:border-box;display:inline-flex;align-items:center;gap:9px;flex:0 0 auto;
@@ -385,14 +385,14 @@
     .v551-quote-pill .v551-change[data-trend="up"]{color:var(--green,#16a579)}
     .v551-quote-pill .v551-change[data-trend="down"]{color:var(--red,#f35a65)}
     .v551-quote-pill .v551-change[data-trend="closed"]{color:var(--muted,#8b93a1)}
-    .v550-market-tape-scroll:hover .v551-ticker-track,
-    .v550-market-tape-scroll:focus-within .v551-ticker-track{animation-play-state:paused}
-    @keyframes v551-pill-scroll{from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)}}
+    /* Movimento automatico anche quando il cursore passa sulle pillole. */
+    /* Le due copie hanno larghezza identica: lo scorrimento RTL non ha salti. */
+    @keyframes v551-pill-scroll{0%{transform:translate3d(0,0,0)}100%{transform:translate3d(-50%,0,0)}}
     @media(max-width:600px){
       .v550-market-tape{gap:6px;margin-bottom:8px}
       .v550-market-tape-label{height:35px;padding:0 9px;font-size:8px;gap:5px}
       .v551-quote-pill{min-height:33px;gap:7px;padding:0 10px;font-size:10px}
-      .v551-ticker-track{min-height:35px;animation-duration:28s}
+      .v551-ticker-track{min-height:35px;animation-duration:var(--v551-duration,30s)}
     }
     @media(prefers-reduced-motion:reduce){
       .v551-ticker-track{animation:none;will-change:auto}
@@ -401,7 +401,7 @@
     }
       /* V552: settori distinti, ticker formato pillola con movimento continuo. */
     .v550-market-tape-label{padding:0 13px;font-size:9px}
-    .v551-ticker-track{animation-duration:var(--v551-duration,42s)}
+    .v551-ticker-track{animation-duration:var(--v551-duration,30s)}
     .v551-quote-pill{gap:8px;min-height:36px;padding:0 11px}
     .v551-sector-tag{
       display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;
@@ -423,7 +423,7 @@
       .v551-sector-tag{font-size:7px;min-width:0;padding:3px 5px}
       .v551-quote-pill{padding:0 8px;gap:6px;min-height:34px}
       .v550-market-tape-label{font-size:8px;padding:0 8px}
-      .v551-ticker-track{animation-duration:var(--v551-duration,40s)}
+      .v551-ticker-track{animation-duration:var(--v551-duration,30s)}
     }
 </style>
 </head>
@@ -3189,7 +3189,8 @@
   clone.inert=true;
   track.appendChild(clone);
   const width=first.getBoundingClientRect().width;
-  if(width>0)track.style.setProperty('--v551-duration',Math.max(26,Math.round(width/84))+'s');
+  // 105 px/s, sempre verso sinistra, con il ciclo composto da due copie identiche.
+  if(width>0)track.style.setProperty('--v551-duration',Math.max(22,Math.round(width/105))+'s');
   function formatPrice(raw,item){
     const price=Number(raw);
     if(!Number.isFinite(price)||price<=0)return null;
