@@ -826,11 +826,11 @@ function techBigTechOverview(){
 }
 
 function globalPage(){
- return marketStatusStrip()+'<section class="market-index-strip">'+TOP_IDS.map(indexCard).join('')+'</section>'+
+ return '<section class="market-index-strip">'+TOP_IDS.map(indexCard).join('')+'</section>'+
  '<div class="global-grid">'+regionList()+mapPanel()+
  '<aside class="aside-stack">'+QUOTE_GROUPS.map(sidePanel).join('')+'</aside>'+
  '<div class="region-photo-grid" aria-label="Panoramica fotografica delle regioni">'+REGIONS.map(photoCard).join('')+'</div></div>'+
- techBigTechOverview()+feedStatus();
+ feedStatus();
 }
 function secHeader(title,subtitle,actions){return '<div class="content-heading"><div><h2>'+esc(title)+'</h2><p>'+esc(subtitle||'')+'</p></div>'+(actions?'<div class="btn-group">'+actions+'</div>':'')+'</div>';}
 function countMarketMood(){
