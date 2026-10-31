@@ -1097,7 +1097,7 @@ function playClickSound(){
   tone.frequency.setValueAtTime(680,t);
   tone.frequency.exponentialRampToValueAtTime(490,t+0.05);
   volume.gain.setValueAtTime(0.0001,t);
-  volume.gain.exponentialRampToValueAtTime(0.020,t+0.006);
+  volume.gain.exponentialRampToValueAtTime(0.035,t+0.006);
   volume.gain.exponentialRampToValueAtTime(0.0001,t+0.065);
   tone.connect(volume);
   volume.connect(clickAudioContext.destination);
