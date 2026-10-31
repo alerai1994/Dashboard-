@@ -3380,5 +3380,179 @@
   });
 })();
 </script>
+  <script id="v558RealMacd">
+/* MACD 12/26/9: sottografico reale, senza dati sintetici. */
+(function(){
+  'use strict';
+  const assetSymbols={
+    btc:'BTCUSDT',eth:'ETHUSDT',bnb:'BNBUSDT',sol:'SOLUSDT',
+    ray:'RAYUSDT',inj:'INJUSDT',virtual:'VIRTUALUSDT',
+    wld:'WLDUSDT',tao:'TAOUSDT',lunc:'LUNCUSDT',luna:'LUNAUSDT'
+  };
+  const assetIds=[...document.querySelectorAll('[id$="-macd-chart"]')].map(el=>el.id.replace(/-macd-chart$/,''));
+  if(!assetIds.length)return;
+  const hostNames=['https://data-api.binance.vision','https://api.binance.com'];
+  const cache=new Map();
+  const intervalMap={'1m':'1m','5m':'5m','15m':'15m','30m':'30m',
+    '1h':'1h','2h':'2h','3h':'4h','4h':'4h','6h':'6h','8h':'8h',
+    '12h':'12h','1d':'1d','3d':'3d','1w':'1w','1M':'1M','MAX':'1d'};
+  function intervalFor(assetId){
+    const card=document.getElementById(assetId+'-market');
+    const active=card&&card.querySelector('.timeframe.active[data-interval]');
+    return intervalMap[active&&active.dataset.interval]||'1h';
+  }
+  function ema(values,period){
+    const output=new Array(values.length).fill(null);
+    let seed=0,count=0,previous=null;
+    const k=2/(period+1);
+    values.forEach((raw,index)=>{
+      if(raw===null||!Number.isFinite(raw))return;
+      if(previous===null){
+        seed+=raw;count++;
+        if(count===period){previous=seed/period;output[index]=previous;}
+      }else{previous=k*raw+(1-k)*previous;output[index]=previous;}
+    });
+    return output;
+  }
+  function calculate(close){
+    const short=ema(close,12),long=ema(close,26);
+    const macd=close.map((_,i)=>short[i]===null||long[i]===null?null:short[i]-long[i]);
+    const signal=ema(macd,9);
+    const histogram=macd.map((v,i)=>v===null||signal[i]===null?null:v-signal[i]);
+    return {macd,signal,histogram};
+  }
+  function displayNumber(value){
+    if(!Number.isFinite(value))return '—';
+    const digits=Math.abs(value)<0.1?6:Math.abs(value)<1?5:4;
+    return value.toLocaleString('en-US',{maximumFractionDigits:digits,minimumFractionDigits:digits});
+  }
+  function svgElem(name,attrs){
+    const node=document.createElementNS('http://www.w3.org/2000/svg',name);
+    Object.entries(attrs||{}).forEach(([key,val])=>node.setAttribute(key,String(val)));
+    return node;
+  }
+  function linePath(arr,from,range,drawX,drawY){
+    let path='',pen=false;
+    for(let i=from;i<arr.length;i++){
+      const value=arr[i];
+      if(!Number.isFinite(value)){pen=false;continue;}
+      path+=(pen?' L':'M')+drawX(i-from).toFixed(2)+' '+drawY(value,range).toFixed(2);
+      pen=true;
+    }
+    return path;
+  }
+  function plot(assetId,close,interval){
+    const host=document.getElementById(assetId+'-macd-chart');
+    const valueHost=document.getElementById(assetId+'-macd-value');
+    if(!host||!valueHost)return;
+    const all=calculate(close),visible=66,from=Math.max(0,close.length-visible);
+    const valid=all.macd.map((value,i)=>[value,all.signal[i],all.histogram[i]]).flat()
+      .filter(Number.isFinite);
+    if(valid.length<30){host.textContent='Storico insufficiente per MACD 12/26/9';return;}
+    const range=Math.max(.000000001,...valid.map(Math.abs))*1.15;
+    const left=9,right=891,top=9,bottom=111;
+    const size=close.length-from;
+    const width=(right-left)/Math.max(1,size-1);
+    const X=(i)=>left+width*i;
+    const Y=(v)=>top+(range-v)/(2*range)*(bottom-top);
+    const svg=svgElem('svg',{viewBox:'0 0 900 120',width:'100%',height:'100%',
+      role:'img','aria-label':'MACD 12/26/9: linea MACD, linea segnale e istogramma'});
+    svg.style.cssText='display:block;min-width:0;overflow:visible';
+    const zero=Y(0);
+    svg.append(svgElem('line',{x1:left,y1:zero,x2:right,y2:zero,
+      stroke:'currentColor','stroke-opacity':'.28','stroke-width':'.8','stroke-dasharray':'5 5'}));
+    for(let i=from;i<close.length;i++){
+      const h=all.histogram[i];
+      if(!Number.isFinite(h))continue;
+      const x=X(i-from),y=Y(h);
+      svg.append(svgElem('rect',{x:(x-Math.max(1.3,width*.28)).toFixed(2),
+        y:Math.min(y,zero).toFixed(2),width:Math.max(2.6,width*.56).toFixed(2),
+        height:Math.max(1,Math.abs(y-zero)).toFixed(2),rx:'.7',
+        fill:h>=0?'#17b886':'#eb6474',opacity:'.73'}));
+    }
+    for(const [values,color] of [[all.macd,'#f59e0b'],[all.signal,'#38bdf8']]){
+      const d=linePath(values,from,range,X,Y);
+      if(d)svg.append(svgElem('path',{d,fill:'none',stroke:color,'stroke-width':'2.2',
+        'stroke-linejoin':'round','stroke-linecap':'round'}));
+    }
+    const tail=all.macd.length-1;
+    const last=all.macd[tail],signal=all.signal[tail];
+    host.replaceChildren(svg);
+    const text=displayNumber(last);
+    valueHost.textContent=text+' / '+displayNumber(signal);
+    valueHost.title='MACD / Signal · 12/26/9 · intervallo '+interval+' · candele reali Binance';
+    host.title='Arancione: MACD · Azzurro: Signal · Verde/Rosso: istogramma · '+interval;
+    host.dataset.macdSource='Binance';
+  }
+  function unavailable(assetId,message){
+    const host=document.getElementById(assetId+'-macd-chart');
+    if(host&&!host.querySelector('svg')){
+      const note=document.createElement('span');
+      note.className='v558-macd-note';
+      note.textContent=message;
+      host.replaceChildren(note);
+    }
+  }
+  async function json(url){
+    const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),8500);
+    try{
+      const response=await fetch(url,{signal:ctl.signal,cache:'no-store'});
+      if(!response.ok)throw Error('HTTP '+response.status);
+      return await response.json();
+    }finally{clearTimeout(timer)}
+  }
+  const busy=new Set();
+  async function load(assetId,force){
+    const symbol=assetSymbols[assetId],interval=intervalFor(assetId);
+    if(!symbol){unavailable(assetId,'Candele MACD non disponibili per questo asset');return;}
+    const key=assetId+'-'+interval;
+    const item=cache.get(key);
+    if(!force&&item&&Date.now()-item.at<90000){plot(assetId,item.close,interval);return;}
+    if(busy.has(key))return;
+    busy.add(key);
+    try{
+      for(const base of hostNames){
+        try{
+          const raw=await json(base+'/api/v3/klines?symbol='+encodeURIComponent(symbol)+
+            '&interval='+encodeURIComponent(interval)+'&limit=220');
+          const close=Array.isArray(raw)?raw.map(row=>Number(row[4]))
+            .filter(Number.isFinite):[];
+          if(close.length<45)continue;
+          cache.set(key,{close,at:Date.now()});
+          if(intervalFor(assetId)===interval)plot(assetId,close,interval);
+          return;
+        }catch(_error){/* Prova l'altra fonte. */}
+      }
+      unavailable(assetId,'Dati MACD momentaneamente non disponibili');
+    }finally{busy.delete(key)}
+  }
+  async function loadAll(){
+    // Al massimo tre richieste alla volta.
+    const pending=assetIds.filter(id=>Boolean(assetSymbols[id]));
+    async function worker(){
+      while(pending.length){
+        const id=pending.shift();
+        await load(id,false).catch(()=>unavailable(id,'MACD non disponibile'));
+      }
+    }
+    await Promise.all([worker(),worker(),worker()]);
+    assetIds.filter(id=>!assetSymbols[id]).forEach(id=>load(id,false));
+  }
+  document.addEventListener('click',(event)=>{
+    const btn=event.target.closest('button.timeframe[data-interval]');
+    if(!btn)return;
+    const card=btn.closest('.market-card');
+    if(!card)return;
+    const id=card.id.replace(/-market$/,'');
+    if(!assetIds.includes(id))return;
+    setTimeout(()=>load(id,true).catch(()=>{}),0);
+  });
+  loadAll();
+  setInterval(()=>{if(!document.hidden)loadAll()},120000);
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden)loadAll();
+  });
+})();
+</script>
 </body>
 </html>
