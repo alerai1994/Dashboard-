@@ -164,7 +164,7 @@ def crypto_quotes():
         "ids": ids,
         "per_page": min(250, len(CRYPTO)),
         "page": 1,
-        "sparkline": "false",
+        "sparkline": "true",
     })
     try:
         data = request_json(markets_url)
@@ -176,6 +176,13 @@ def crypto_quotes():
             cid = by_coingecko_id.get(market.get("id"))
             if cid is None:
                 continue
+            # Verified 7-day close-price series, useful where Yahoo OHLC is unavailable.
+            sparkline = market.get("sparkline_in_7d")
+            samples = sparkline.get("price") if isinstance(sparkline, dict) else None
+            if isinstance(samples, list):
+                closes = [v for v in (valid(x) for x in samples) if v is not None and v > 0]
+                if len(closes) >= 2:
+                    items[cid]["history"] = closes[-168:]
             url = market.get("image")
             if isinstance(url, str) and url.startswith(
                     ("https://coin-images.coingecko.com/",
@@ -251,8 +258,12 @@ def crypto_quotes():
         for row in histories:
             cid = row["id"]
             if cid in items:
-                items[cid]["history"] = row.get("history", [])
-                items[cid]["candles"] = row.get("candles", [])
+                # Prefer longer daily OHLC history, but never erase valid CoinGecko
+                # historical line data merely because Yahoo is temporarily blocked.
+                if row.get("history"):
+                    items[cid]["history"] = row["history"]
+                if row.get("candles"):
+                    items[cid]["candles"] = row["candles"]
     except Exception as e:
         print("Crypto historical data unavailable:", type(e).__name__)
     return [items[cid] for cid, _ in CRYPTO]
