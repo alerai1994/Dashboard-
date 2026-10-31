@@ -382,6 +382,56 @@ body.theme-light .market-panel .instrument-row:hover{background:#e7f1f9}
  .market-table-asset .crypto-logo{width:22px;height:22px;min-width:22px;min-height:22px}
 }
 
+/* Big Tech and commodities: recognizable, responsive market logos */
+.asset-logo.bigtech-logo,.asset-logo.commodity-logo{
+ position:relative;display:inline-grid;place-items:center;flex:0 0 auto;
+ width:26px;height:26px;min-width:26px;min-height:26px;
+ overflow:hidden;border:1px solid rgba(153,196,221,.30);border-radius:50%;
+ box-sizing:border-box;vertical-align:middle;
+}
+.asset-logo.bigtech-logo{background:#f6f8fc;isolation:isolate}
+.bigtech-logo-fallback{
+ position:absolute;inset:0;z-index:0;display:grid;place-items:center;
+ font-size:10px;font-weight:800;letter-spacing:-.03em;color:#273650;
+}
+.bigtech-logo-image{
+ position:absolute;inset:0;z-index:1;display:block;width:100%;height:100%;
+ padding:2px;box-sizing:border-box;object-fit:contain;background:#fff;
+}
+.asset-logo.commodity-logo{background:linear-gradient(135deg,#213e54,#0c1f31)}
+.commodity-logo svg{display:block;width:87%;height:87%;overflow:visible}
+.commodity-gold{border-color:#bb8a30!important;background:#332a1b!important}
+.commodity-silver{border-color:#8d9da9!important;background:#263540!important}
+.commodity-brent,.commodity-wti{border-color:#417f9f!important}
+.commodity-naturalgas{border-color:#aa6337!important;background:#34251f!important}
+.commodity-copper{border-color:#a86542!important;background:#38271d!important}
+.instrument-row .asset-logo.bigtech-logo,.instrument-row .asset-logo.commodity-logo{
+ width:21px;height:21px;min-width:21px;min-height:21px;
+}
+.market-table-asset .bigtech-logo,.market-table-asset .commodity-logo,
+.search-asset-label .bigtech-logo,.search-asset-label .commodity-logo{
+ width:26px;height:26px;min-width:26px;min-height:26px;
+}
+.index-mini .crypto-mini-title .bigtech-logo,
+.index-mini .crypto-mini-title .commodity-logo{
+ width:20px;height:20px;min-width:20px;min-height:20px;
+}
+.index-mini .crypto-mini-title .bigtech-logo-fallback{font-size:9px}
+.holding-asset-selector .bigtech-logo,.holding-asset-selector .commodity-logo{
+ width:27px;height:27px;min-width:27px;min-height:27px;
+}
+.dialog-header h2:has(.bigtech-logo),.dialog-header h2:has(.commodity-logo){
+ display:flex;align-items:center;gap:10px;
+}
+.dialog-header h2 .bigtech-logo,.dialog-header h2 .commodity-logo{
+ width:31px;height:31px;min-width:31px;min-height:31px;
+}
+@media(max-width:650px){
+ .market-table-asset .bigtech-logo,.market-table-asset .commodity-logo{
+  width:23px;height:23px;min-width:23px;min-height:23px;
+ }
+}
+
 /* Forex logo pair: base and quote flags, in all Forex views */
 .forex-pair-logo{position:relative;display:inline-block;flex:0 0 30px;width:30px;min-width:30px;height:26px;vertical-align:middle}
 .forex-pair-part{position:absolute;top:3px;display:grid;place-items:center;width:20px;height:20px;border:1.5px solid var(--panel);border-radius:50%;overflow:hidden;background:#15304a;box-shadow:0 1px 4px #0005}
