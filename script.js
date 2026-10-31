@@ -133,9 +133,10 @@ const CITY_MARKETS=[
 [-74,40.7,'sp500'],[-79.38,43.65,'tsx'],[-46.63,-23.55,'ibov'],[-0.13,51.51,'ftse'],[8.68,50.11,'dax'],[2.35,48.86,'cac'],[28.04,-26.2,'jse'],[46.7,24.7,'tadawul'],[139.7,35.7,'nikkei'],[114.17,22.31,'hsi'],[72.8,19.1,'nifty'],[126.9,37.5,'kospi'],[151.2,-33.87,'asx']
 ];
 const deviceThemeQuery=typeof window.matchMedia==='function'?window.matchMedia('(prefers-color-scheme: dark)'):null;
+const THEME_NAMES={light:'Chiaro',dark:'Scuro',ocean:'Oceano',emerald:'Smeraldo',violet:'Viola'};
 function resolvedTheme(mode){
  if(mode==='auto')return deviceThemeQuery&&deviceThemeQuery.matches?'dark':'light';
- return mode==='light'?'light':'dark';
+ return Object.hasOwn(THEME_NAMES,mode)?mode:'dark';
 }
 const state={
  page:(location.hash||'#global').slice(1).toLowerCase(),quotes:{},feedTime:null,feedError:false,loading:true,
@@ -147,7 +148,7 @@ const state={
  solarLastRoot:null,solarLastUpdate:0,solarLastStatus:0
 };
 if(!SECTIONS[state.page])state.page='global';
-if(!['dark','light','auto'].includes(state.themeMode))state.themeMode='dark';
+if(!(state.themeMode==='auto'||Object.hasOwn(THEME_NAMES,state.themeMode)))state.themeMode='dark';
 state.theme=resolvedTheme(state.themeMode);
 state.clickSound=state.clickSound!==false;
 state.clickVolume=Number.isFinite(Number(state.clickVolume))?Math.min(100,Math.max(0,Math.round(Number(state.clickVolume)))):70;
@@ -1105,12 +1106,13 @@ function alertsPage(){
  (state.alerts.length?state.alerts.map((x,i)=>'<div class="alert-row"><div><strong>'+esc(ASSET_BY_ID[x.id]?.name||x.id)+' · '+(x.operator==='above'?'≥':'≤')+' '+Number(x.value).toLocaleString('it-IT')+'</strong><small>'+esc(alertState(x))+' · Prezzo '+assetValue(ASSET_BY_ID[x.id]||{id:x.id,group:'markets'})+'</small></div><button type="button" data-delete-alert="'+i+'">Rimuovi</button></div>').join(''):'<div class="empty-state"><h3>Nessun alert</h3><p>Aggiungi una soglia per monitorarla quando usi la dashboard.</p></div>')+'</section>'+feedStatus();
 }
 function settingsPage(){
- const choices=[['light','☀','Chiaro'],['dark','☾','Scuro'],['auto','◐','Automatico']];
+ const choices=[['light','☀','Chiaro'],['dark','☾','Scuro'],['ocean','◈','Oceano'],['emerald','❖','Smeraldo'],['violet','✦','Viola']];
  return secHeader('Impostazioni','Personalizza aspetto e suoni della dashboard')+
- '<section class="content-card panel settings-preferences"><h3>Modalità schermo</h3><p class="subnote">Scegli il tema chiaro, scuro oppure la luminosità automatica: in automatico, la dashboard segue il tema impostato sul dispositivo.</p>'+
- '<div class="settings-theme-options" role="group" aria-label="Tema della dashboard">'+
- choices.map(([mode,icon,label])=>'<button type="button" data-theme-mode="'+mode+'" class="settings-theme-option'+(state.themeMode===mode?' is-selected':'')+'" aria-pressed="'+(state.themeMode===mode)+'"><span class="settings-choice-icon" aria-hidden="true">'+icon+'</span><span>'+label+'</span></button>').join('')+
+ '<section class="content-card panel settings-preferences"><h3>Temi della dashboard</h3><p class="subnote">Scegli fra cinque stili. Il tema cambia subito in tutte le sezioni e la tua preferenza rimane salvata.</p>'+
+ '<div class="settings-theme-options" role="group" aria-label="Scegli uno dei cinque temi">'+
+ choices.map(([mode,icon,label])=>'<button type="button" data-theme-mode="'+mode+'" class="settings-theme-option'+(state.themeMode===mode?' is-selected':'')+'" aria-pressed="'+(state.themeMode===mode)+'"><span class="settings-theme-swatch theme-swatch-'+mode+'" aria-hidden="true"><span>'+icon+'</span></span><span>'+label+'</span></button>').join('')+
  '</div>'+
+ '<button type="button" data-theme-mode="auto" class="settings-auto-theme'+(state.themeMode==='auto'?' is-selected':'')+'" aria-pressed="'+(state.themeMode==='auto')+'"><span class="settings-choice-icon" aria-hidden="true">◐</span><span><strong>Automatico</strong><small>Segue il tema chiaro/scuro del dispositivo</small></span><span class="settings-auto-state">'+(state.themeMode==='auto'?'Attivo':'Seleziona')+'</span></button>'+
  '<div class="settings-volume settings-brightness"><div class="settings-volume-heading"><label for="brightnessSlider">Luminosità della dashboard</label><output id="brightnessValue" for="brightnessSlider">'+state.brightness+'%</output></div>'+
  '<input type="range" id="brightnessSlider" min="0" max="100" step="1" value="'+state.brightness+'" style="--volume-progress:'+state.brightness+'%" aria-label="Luminosità della dashboard">'+
  '<div class="settings-volume-scale"><span>0%</span><span>100%</span></div>'+
@@ -1162,18 +1164,17 @@ function applyBrightness(){
 }
 function applyTheme(){
  state.theme=resolvedTheme(state.themeMode);
- document.body.classList.toggle('theme-dark',state.theme==='dark');
- document.body.classList.toggle('theme-light',state.theme==='light');
+ for(const theme of Object.keys(THEME_NAMES))document.body.classList.toggle('theme-'+theme,state.theme===theme);
  const switchEl=$('#themeSwitch'),toggle=$('#themeToggle');
- if(switchEl)switchEl.classList.toggle('on',state.theme==='dark');
+ if(switchEl)switchEl.classList.toggle('on',state.theme!=='light');
  if(toggle){
-  toggle.setAttribute('aria-label',state.theme==='dark'?'Attiva modalità chiara':'Attiva modalità scura');
+  toggle.setAttribute('aria-label',state.theme==='light'?'Attiva modalità scura':'Attiva modalità chiara');
   const name=toggle.querySelector('span:not(.switch)');
-  if(name)name.textContent=state.themeMode==='auto'?'Tema automatico':state.theme==='dark'?'Tema scuro':'Tema chiaro';
+  if(name)name.textContent=state.themeMode==='auto'?'Tema automatico':'Tema '+THEME_NAMES[state.theme].toLowerCase();
  }
 }
 function setTheme(mode){
- state.themeMode=['light','dark','auto'].includes(mode)?mode:'dark';
+ state.themeMode=(mode==='auto'||Object.hasOwn(THEME_NAMES,mode))?mode:'dark';
  applyTheme();
  save('themeMode',state.themeMode);
  save('theme',state.theme);
