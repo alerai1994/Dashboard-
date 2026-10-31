@@ -395,9 +395,10 @@
       .v551-ticker-track{min-height:35px;animation-duration:var(--v551-duration,30s)}
     }
     @media(prefers-reduced-motion:reduce){
-      .v551-ticker-track{animation:none;will-change:auto}
-      .v550-market-tape-scroll{overflow-x:auto;scrollbar-width:thin;mask-image:none;-webkit-mask-image:none}
-      .v551-ticker-set[aria-hidden="true"]{display:none}
+      /* Movimento esplicitamente richiesto: il ticker usa requestAnimationFrame, 
+         senza modificare le preferenze per il resto della dashboard. */
+      .v550-market-tape-scroll{overflow:hidden;scrollbar-width:none}
+      .v551-ticker-set[aria-hidden="true"]{display:flex}
     }
       /* V552: settori distinti, ticker formato pillola con movimento continuo. */
     .v550-market-tape-label{padding:0 13px;font-size:9px}
@@ -3188,9 +3189,36 @@
   clone.setAttribute('aria-hidden','true');
   clone.inert=true;
   track.appendChild(clone);
-  const width=first.getBoundingClientRect().width;
-  // 105 px/s, sempre verso sinistra, con il ciclo composto da due copie identiche.
-  if(width>0)track.style.setProperty('--v551-duration',Math.max(22,Math.round(width/105))+'s');
+  // Scorrimento reale sempre attivo: non dipende da regole CSS che bloccano le animazioni.
+  // Il clone è visivo ma non viene letto una seconda volta dagli screen reader.
+  clone.style.setProperty('display','flex','important');
+  track.style.setProperty('animation','none','important');
+  track.style.setProperty('-webkit-animation','none','important');
+  track.style.setProperty('will-change','transform');
+  let setWidth=first.getBoundingClientRect().width;
+  let offset=0;
+  let previousTime=null;
+  const tickerSpeed=110; // pixel al secondo, direzione destra -> sinistra.
+  function measureTicker(){
+    setWidth=first.getBoundingClientRect().width;
+    if(setWidth>0)offset%=setWidth;
+  }
+  if(typeof ResizeObserver==='function'){
+    const tickerObserver=new ResizeObserver(measureTicker);
+    tickerObserver.observe(first);
+  }
+  window.addEventListener('resize',measureTicker,{passive:true});
+  function advanceTicker(now){
+    if(!track.isConnected)return;
+    if(!document.hidden&&setWidth>0){
+      const elapsed=previousTime===null?0:Math.max(0,Math.min(80,now-previousTime));
+      offset=(offset+tickerSpeed*elapsed/1000)%setWidth;
+      track.style.transform='translate3d('+(-offset).toFixed(2)+'px,0,0)';
+    }
+    previousTime=now;
+    requestAnimationFrame(advanceTicker);
+  }
+  requestAnimationFrame(advanceTicker);
   function formatPrice(raw,item){
     const price=Number(raw);
     if(!Number.isFinite(price)||price<=0)return null;
