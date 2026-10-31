@@ -1056,6 +1056,14 @@ function updateNav(){
 function render(){
  const page=SECTIONS[state.page]||SECTIONS.global;
  $('#pageTitle').textContent=page[0];$('#pageSubtitle').textContent=page[1];
+ const searchWrap=$('.search-wrap');
+ if(searchWrap)searchWrap.hidden=state.page==='settings';
+ if(state.page==='settings'){
+  const searchMenu=$('#searchMenu');
+  if(searchMenu)searchMenu.hidden=true;
+  const searchInput=$('#searchInput');
+  if(searchInput)searchInput.setAttribute('aria-expanded','false');
+ }
  const main=$('#pageContainer');
  main.innerHTML=PAGE_RENDERERS[state.page]();
  updateNav();
