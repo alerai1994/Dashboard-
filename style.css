@@ -318,3 +318,12 @@ body.theme-light .market-panel .instrument-row:hover{background:#e7f1f9}
 .crypto-market-panel .instrument-row .asset-label{max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .crypto-market-panel .instrument-row .asset-logo{font-size:12px;font-weight:780}
 @media(max-width:600px){.crypto-market-panel .instrument-row{min-height:39px}}
+
+/* Verified crypto streaming and snapshot age, with non-flickering DOM updates. */
+.crypto-market-panel .section-topline{flex-wrap:wrap}
+.crypto-market-panel .section-topline h3{min-width:0;flex-wrap:wrap}
+.crypto-stream-status{display:inline-flex;align-items:center;gap:4px;color:var(--muted);font-size:9px;font-weight:650;letter-spacing:.02em;white-space:nowrap}
+.crypto-stream-status.live-online{color:var(--green)}
+.data-footnote .live-stream-note{display:inline-block;flex:1 1 320px;color:var(--muted);font-size:10px;line-height:1.45}
+.crypto-market-panel .asset-price{font-variant-numeric:tabular-nums}
+@media(max-width:700px){.crypto-market-panel .crypto-stream-status{font-size:9px}.data-footnote .live-stream-note{flex-basis:100%}}

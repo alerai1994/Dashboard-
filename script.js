@@ -138,7 +138,7 @@ const formatValue=(v,a)=>{
  const digits=Math.abs(v)<0.00001?10:Math.abs(v)<0.001?8:Math.abs(v)<0.1?6:Math.abs(v)<1?5:Math.abs(v)<10?3:2;
  return (a&&(a.group==='crypto'||a.group==='commodities')?'$':'')+v.toLocaleString('it-IT',{minimumFractionDigits:digits,maximumFractionDigits:digits});
 };
-const assetValue=a=>formatValue(quote(a.id)&&quote(a.id).value,a);
+const assetValue=a=>(a&&a.group==='crypto'&&quote(a.id)&&quote(a.id).currency==='USDT'?'≈':'')+formatValue(quote(a.id)&&quote(a.id).value,a);
 const refTime=id=>quote(id)&&quote(id).time?localeDate(quote(id).time,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'Non disponibile';
 const classArrow=id=>trendClass(change(id));
 function sparkLine(id,width=120,height=32){
@@ -232,7 +232,7 @@ function sidePanel(group){
  const crypto=group.group==='crypto';
  const visible=crypto&&!state.cryptoExpanded?group.ids.slice(0,8):group.ids;
  const count=group.ids.length;
- return '<section class="market-panel panel'+(crypto?' crypto-market-panel':'')+'"><div class="section-topline"><h3>'+sym('globe')+' '+esc(group.title)+(crypto?'<span class="crypto-counter">'+count+'</span>':'')+'</h3><button type="button" class="text-action" data-page="markets" data-category="'+group.group+'">View All</button></div>'+
+ return '<section class="market-panel panel'+(crypto?' crypto-market-panel':'')+'"><div class="section-topline"><h3>'+sym('globe')+' '+esc(group.title)+(crypto?'<span class="crypto-counter">'+count+'</span><span class="crypto-stream-status" aria-label="Stato streaming">'+liveLabel()+'</span>':'')+'</h3><button type="button" class="text-action" data-page="markets" data-category="'+group.group+'">View All</button></div>'+
  '<div class="instrument-rows">'+visible.map(id=>{
  const a=ASSET_BY_ID[id],q=quote(id);
  return '<button type="button" class="instrument-row" data-asset="'+id+'" aria-label="Apri '+esc(a.name)+'">'+assetLogo(a)+'<span class="asset-label">'+esc(a.name)+'</span>'+
@@ -246,10 +246,146 @@ function photoCard(r){
  '<span class="photo-cover" aria-hidden="true"></span><span class="photo-card-body"><span class="photo-card-title">'+esc(r.name)+'</span>'+
  '<span class="photo-card-metrics"><strong>'+meanPrice(r)+'</strong><span class="change '+trendClass(change(r.lead))+'">'+pct(change(r.lead))+'</span></span>'+sparkLine(r.lead,120,32)+'</span></button>';
 }
+
+/* Live market feed: streaming Binance Spot USDT quotes when available.
+   Non-crypto indices, futures and FX remain provider-delayed snapshot quotes. */
+const STREAM_PAIRS={
+ btc:'btcusdt',eth:'ethusdt',sol:'solusdt',xrp:'xrpusdt',bnb:'bnbusdt',doge:'dogeusdt',
+ inj:'injusdt',ada:'adausdt',avax:'avaxusdt',link:'linkusdt',dot:'dotusdt',
+ trx:'trxusdt',ton:'tonusdt',sui:'suiusdt',ltc:'ltcusdt',bch:'bchusdt',
+ xlm:'xlmusdt',hbar:'hbarusdt',near:'nearusdt',apt:'aptusdt',atom:'atomusdt',
+ uni:'uniusdt',aave:'aaveusdt',arb:'arbusdt',op:'opusdt',shib:'shibusdt',
+ pepe:'pepeusdt',render:'renderusdt',ray:'rayusdt',lunc:'luncusdt',
+ vra:'vrausdt',wlfi:'wlfiusdt',hot:'hotusdt'
+};
+const STREAM_IDS=Object.fromEntries(Object.entries(STREAM_PAIRS).map(([id,pair])=>[pair.toUpperCase(),id]));
+const STREAM_OVERLAY=new Map();
+const streamStatus={socket:null,connected:false,seen:new Set(),last:0,attempt:0,retryTimer:null,flushTimer:null,dirty:new Set(),endpointIndex:0};
+function liveConnected(){return streamStatus.connected&&Date.now()-streamStatus.last<25000;}
+function liveLabel(){
+ const active=liveConnected(),count=[...streamStatus.seen].filter(id=>STREAM_OVERLAY.has(id)&&Date.now()-STREAM_OVERLAY.get(id).received<90000).length;
+ return active?'● LIVE crypto: '+count+' coppie Binance Spot (USDT)':'○ Crypto: '+(streamStatus.connected?'in attesa dei tick':'connessione / riconnessione');
+}
+function updateLiveBadges(){
+ document.querySelectorAll('.crypto-stream-status').forEach(n=>{
+  n.textContent=liveLabel();
+  n.classList.toggle('live-online',liveConnected());
+ });
+ document.querySelectorAll('.live-stream-note').forEach(n=>{
+  n.textContent=liveLabel()+' · Indici, Forex e materie prime: quotazioni ritardate, aggiornate dal feed quando disponibili.';
+ });
+}
+function updatePriceDom(){
+ const ids=[...streamStatus.dirty];streamStatus.dirty.clear();
+ for(const id of ids){
+  const a=ASSET_BY_ID[id],q=quote(id);
+  if(!a||!q)continue;
+  document.querySelectorAll('#pageContainer [data-asset="'+id+'"]').forEach(el=>{
+   const price=el.querySelector('.asset-price,.mini-price');
+   const delta=el.querySelector('.asset-change,.mini-change');
+   if(price)price.textContent=assetValue(a);
+   if(delta){delta.textContent=pct(q.change);delta.classList.remove('color-up','color-down','color-flat','color-unknown');delta.classList.add(trendClass(q.change))}
+   if(el.matches('tr[data-asset]')){
+    const cells=el.querySelectorAll('td');
+    if(cells.length>=3){
+     cells[1].textContent=assetValue(a);
+     cells[2].textContent=pct(q.change);
+     cells[2].classList.remove('color-up','color-down','color-flat','color-unknown');
+     cells[2].classList.add(trendClass(q.change));
+    }
+   }
+   if(el.hasAttribute('data-trend'))el.dataset.trend=trend(q.change);
+  });
+  if(state.dialogId===id){
+   const p=document.querySelector('#dialogBody .dialog-stats strong');
+   const c=document.querySelector('#dialogBody .dialog-stats .change');
+   const m=document.querySelector('#dialogBody .dialog-meta');
+   if(p)p.textContent=assetValue(a);
+   if(c){c.textContent=pct(q.change);c.classList.remove('color-up','color-down','color-flat','color-unknown');c.classList.add(trendClass(q.change))}
+   if(m)m.textContent='Binance Spot USDT · '+refTime(id)+' · prezzo streaming';
+  }
+ }
+ updateLiveBadges();
+ if(ids.length&&state.alerts.length)updateNav();
+}
+function scheduleLivePaint(){
+ if(streamStatus.flushTimer)return;
+ streamStatus.flushTimer=window.setTimeout(()=>{
+  streamStatus.flushTimer=null;
+  if(!document.hidden)updatePriceDom();
+ },900);
+}
+function applyLiveTick(d){
+ const id=STREAM_IDS[d&&d.s],close=Number(d&&d.c),open=Number(d&&d.o);
+ if(!id||!Number.isFinite(close)||close<=0)return;
+ const eventMs=Number(d.E),timeMs=Number.isFinite(eventMs)&&eventMs>1000000000000?eventMs:Date.now();
+ const change24h=Number.isFinite(open)&&open>0?(close/open-1)*100:null;
+ const fresh={value:close,change:change24h,currency:'USDT',source:'Binance Spot (USDT)',time:new Date(timeMs).toISOString(),live:true,received:Date.now()};
+ STREAM_OVERLAY.set(id,fresh);
+ state.quotes[id]={...(state.quotes[id]||{id,history:[],candles:[]}),...fresh};
+ streamStatus.last=Date.now();streamStatus.seen.add(id);streamStatus.dirty.add(id);
+ scheduleLivePaint();
+}
+function closeStream(){
+ if(streamStatus.retryTimer){clearTimeout(streamStatus.retryTimer);streamStatus.retryTimer=null}
+ if(streamStatus.socket){
+  const ws=streamStatus.socket;streamStatus.socket=null;
+  ws.onclose=null;ws.onmessage=null;ws.onerror=null;
+  try{ws.close()}catch(e){}
+ }
+ streamStatus.connected=false;
+}
+function connectCryptoStream(){
+ if(document.hidden||!navigator.onLine||typeof WebSocket==='undefined')return;
+ if(streamStatus.socket&&(streamStatus.socket.readyState===WebSocket.OPEN||streamStatus.socket.readyState===WebSocket.CONNECTING))return;
+ if(streamStatus.retryTimer){clearTimeout(streamStatus.retryTimer);streamStatus.retryTimer=null}
+ const streams=Object.values(STREAM_PAIRS).map(s=>s+'@miniTicker').join('/');
+ const host=streamStatus.endpointIndex%2?'wss://stream.binance.com:443':'wss://data-stream.binance.vision';
+ let ws;
+ try{ws=new WebSocket(host+'/stream?streams='+streams)}catch(e){scheduleReconnect();return}
+ streamStatus.socket=ws;streamStatus.connected=false;
+ ws.onopen=()=>{if(streamStatus.socket!==ws)return;streamStatus.connected=true;streamStatus.attempt=0;updateLiveBadges()};
+ ws.onmessage=e=>{
+  if(streamStatus.socket!==ws)return;
+  try{
+   const msg=JSON.parse(e.data),d=msg&&msg.data||msg;
+   if(d&&d.e==='24hrMiniTicker')applyLiveTick(d);
+  }catch(err){}
+ };
+ ws.onerror=()=>{if(streamStatus.socket===ws){streamStatus.connected=false;updateLiveBadges()}};
+ ws.onclose=()=>{
+  if(streamStatus.socket!==ws)return;
+  streamStatus.socket=null;streamStatus.connected=false;
+  streamStatus.endpointIndex++;updateLiveBadges();scheduleReconnect();
+ };
+ updateLiveBadges();
+}
+function scheduleReconnect(){
+ if(streamStatus.retryTimer||document.hidden||!navigator.onLine)return;
+ const ms=Math.min(45000,1500*Math.pow(2,Math.min(5,streamStatus.attempt++)));
+ streamStatus.retryTimer=setTimeout(()=>{streamStatus.retryTimer=null;connectCryptoStream()},ms);
+}
+function keepStreamAlive(){
+ if(document.hidden||!navigator.onLine){closeStream();updateLiveBadges();return}
+ const silence=Date.now()-streamStatus.last;
+ if(streamStatus.connected&&streamStatus.last&&silence>90000){
+  closeStream();scheduleReconnect();
+ }else if(!streamStatus.socket)connectCryptoStream();
+ updateLiveBadges();
+}
+function preserveStreamingQuotes(snapshot){
+ const now=Date.now();
+ for(const [id,live] of STREAM_OVERLAY){
+  if(now-live.received<90000&&snapshot[id])snapshot[id]={...snapshot[id],...live};
+  else if(now-live.received>=90000)STREAM_OVERLAY.delete(id);
+ }
+ return snapshot;
+}
+
 function feedStatus(){
  const when=state.feedTime?localeDate(state.feedTime,{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'non disponibile';
  return '<div class="data-footnote"><span class="data-status'+(state.feedError?' error':'')+'"><i></i> '+(state.feedError?'Feed non raggiungibile':'Dati disponibili: '+dataCount()+'/'+ASSETS.length)+' · Ultimo snapshot '+when+'</span>'+
- '<span>Quotazioni indicative e potenzialmente ritardate; mercati chiusi = ultima seduta. <button type="button" data-refresh="1">'+sym('refresh')+' Aggiorna</button></span></div>';
+ '<span class="live-stream-note">'+liveLabel()+' · Indici, Forex e materie prime: feed ritardato, aggiornato automaticamente.</span><span>Mercati chiusi = ultima seduta. <button type="button" data-refresh="1">'+sym('refresh')+' Aggiorna</button></span></div>';
 }
 function globalPage(){
  return '<section class="market-index-strip">'+TOP_IDS.map(indexCard).join('')+'</section>'+
@@ -434,13 +570,14 @@ async function fetchQuotes(isManual=false){
   const data=await response.json();
   if(!data||!Array.isArray(data.markets))throw new Error('Invalid format');
   const all=[...(data.markets||[]),...(data.commodities||[]),...(data.forex||[]),...(data.crypto||[])];
-  state.quotes=Object.fromEntries(all.filter(x=>x&&x.id&&ASSET_BY_ID[x.id]).map(x=>[x.id,x]));
+  state.quotes=preserveStreamingQuotes(Object.fromEntries(all.filter(x=>x&&x.id&&ASSET_BY_ID[x.id]).map(x=>[x.id,x])));
   state.feedTime=data.generatedAt||null;
   state.feedError=false;state.loading=false;
-  if(isManual)toast('Snapshot dei mercati ricaricato.');
+  if(isManual)toast('Snapshot dei mercati ricaricato; streaming crypto indipendente.');
  }catch(e){state.feedError=true;state.loading=false;if(isManual)toast('Impossibile ricaricare il feed.');}
- render();
+ if(isManual||state.page==='global'||state.page==='home'||state.page==='analytics'||state.page==='markets'||state.page==='watchlist'||state.page==='portfolio'||state.page==='alerts'||state.page==='settings')render();
  if(state.dialogId)refreshDialog();
+ updateLiveBadges();
 }
 function findAssets(term){
  const needle=term.trim().toLowerCase();
@@ -506,7 +643,7 @@ function refreshDialog(){
  '<div class="chart-toolbar"><div class="chart-legend"><span>RSI (14)</span><span>Stochastic RSI (14/14/3/3)</span><span>MACD (12/26/9)</span></div>'+
  '<div><button class="btn btn-small" type="button" data-pan="-20">◀ Storico</button> <button class="btn btn-small" type="button" data-pan="20">Recenti ▶</button> <button class="btn btn-small" type="button" data-pan="reset">Oggi</button></div></div>'+
  '<div class="chart-help">Trascina il grafico in orizzontale per scorrere lo storico. Nessuno zoom. Le medie e gli indicatori sono mostrati solo quando le serie contengono dati sufficienti.</div>'+
- '<div class="chart-source"><span>Fonte: '+(a.group==='crypto'?'CoinGecko (prezzo), Yahoo Finance (storico quando disponibile)':'Yahoo Finance')+' · quotazioni anche ritardate.</span>'+
+ '<div class="chart-source"><span>Fonte: '+(a.group==='crypto'?(q&&q.live?'Binance Spot in USDT (prezzo ≈ USD), CoinGecko/Yahoo Finance (storico)':'CoinGecko (prezzo), Yahoo Finance (storico quando disponibile)'):'Yahoo Finance')+' · snapshot e grafici storici non sono tick live.</span>'+
  '<a href="'+esc(externalUrl(a))+'" target="_blank" rel="noopener noreferrer">Apri fonte '+sym('external')+'</a></div>';
  requestAnimationFrame(drawChart);
 }
@@ -771,7 +908,15 @@ function init(){
  setInterval(updateClock,30000);
  render();
  fetchQuotes();
- setInterval(()=>{if(!document.hidden)fetchQuotes()},300000);
+ connectCryptoStream();
+ setInterval(()=>{if(!document.hidden)fetchQuotes()},60000);
+ setInterval(keepStreamAlive,15000);
+ document.addEventListener('visibilitychange',()=>{
+  if(document.hidden)closeStream();
+  else {connectCryptoStream();fetchQuotes();}
+ });
+ window.addEventListener('online',()=>{connectCryptoStream();fetchQuotes()});
+ window.addEventListener('offline',()=>{closeStream();updateLiveBadges()});
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
