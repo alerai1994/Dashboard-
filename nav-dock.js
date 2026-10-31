@@ -163,6 +163,7 @@
     const nav=drawer?.querySelector('.v442-market-nav');
     const market=$('v442MarketMain'), ws=$('v525WorkspacePanel'), compare=$('v490ComparePanel'), etf=$('v538EtfPanel');
     if(!drawer||!menu||!dock||!market||!ws||!compare||!etf||!nav)return;
+    if($('v560GlobalMarketPanel'))return; // never create a second region panel
     const panel=document.createElement('section');
     panel.id='v560GlobalMarketPanel';
     panel.className='v442-market-main v560-global';
@@ -223,8 +224,23 @@
       if(b!==globalDock)b.addEventListener('click',leave);
     });
     globalDock.addEventListener('click',()=>{
-      if(!document.body.classList.contains('v442-market-open'))menu.click();
-      show();
+      if(document.body.classList.contains('v442-market-open')){
+        show();
+      }else{
+        // The original menu initializes its default section asynchronously.
+        // Open it first, then select Global Market AFTER that initialization.
+        menu.click();
+        setTimeout(()=>{
+          if(document.body.classList.contains('v442-market-open'))show();
+          else {
+            // Recover from a non-responsive hidden legacy menu trigger.
+            menu.click();
+            setTimeout(()=>{
+              if(document.body.classList.contains('v442-market-open'))show();
+            },180);
+          }
+        },220);
+      }
     });
     // Navigation remains reachable without wasting vertical space on Home.
     let hideTimer,showTimer;
