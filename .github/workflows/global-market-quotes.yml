@@ -1,0 +1,41 @@
+name: Global Market Quotes
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - global-world.js
+      - global-world.css
+      - global-quotes.json
+      - .github/scripts/global_quotes.py
+      - .github/workflows/global-market-quotes.yml
+      - index.html
+  schedule:
+    - cron: '11,41 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: global-market-quotes
+  cancel-in-progress: false
+
+jobs:
+  update-quotes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Collect verified market data
+        run: python3 .github/scripts/global_quotes.py
+      - name: Publish quote snapshot
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add global-quotes.json
+          if ! git diff --cached --quiet; then
+            git commit -m "data(global): refresh verified market quotes [skip ci]"
+            git push
+          fi
