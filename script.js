@@ -19,7 +19,7 @@ const ASSETS=[
 {id:'ftse',name:'FTSE 100',short:'FTSE 100',group:'markets',symbol:'^FTSE',country:'Regno Unito',where:'Londra · Regno Unito'},
 {id:'dax',name:'DAX',short:'DAX',group:'markets',symbol:'^GDAXI',country:'Germania',where:'Francoforte · Germania'},
 {id:'cac',name:'CAC 40',short:'CAC 40',group:'markets',symbol:'^FCHI',country:'Francia',where:'Parigi · Francia'},
-{id:'jse',name:'FTSE/JSE Top 40',short:'JSE Top 40',group:'markets',symbol:'J200.JO',country:'Sudafrica',where:'Johannesburg · Sudafrica'},
+{id:'jse',name:'FTSE/JSE All Share',short:'JSE All Share',group:'markets',symbol:'^J203.JO',country:'Sudafrica',where:'Johannesburg · Sudafrica'},
 {id:'tadawul',name:'Tadawul All Share',short:'Tadawul',group:'markets',symbol:'^TASI.SR',country:'Arabia Saudita',where:'Riyadh · Arabia Saudita'},
 {id:'nikkei',name:'Nikkei 225',short:'NIKKEI 225',group:'markets',symbol:'^N225',country:'Giappone',where:'Tokyo · Giappone'},
 {id:'hsi',name:'Hang Seng',short:'Hang Seng',group:'markets',symbol:'^HSI',country:'Hong Kong',where:'Hong Kong'},
@@ -183,6 +183,13 @@ function meanRegion(r){
  const changes=r.ids.map(change).filter(num);
  return changes.length?changes.reduce((a,b)=>a+b,0)/changes.length:null;
 }
+function regionLastQuoteLabel(r){
+ const a=ASSET_BY_ID[r.lead],q=quote(r.lead);
+ if(!a)return 'Indice non disponibile';
+ const date=q&&q.time?safeDate(q.time):null;
+ const last=date?new Intl.DateTimeFormat('it-IT',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Rome'}).format(date):'non disponibile';
+ return a.short+' · ultima quotazione: '+last+(q&&q.change!=null?' · '+pct(q.change):'');
+}
 function meanPrice(r){const a=ASSET_BY_ID[r.lead];return a?assetValue(a):'—';}
 function selectRegion(id){state.region=state.region===id?null:id;render();const map=$('#worldMap');if(map)map.scrollIntoView({block:'nearest',behavior:'smooth'});}
 function indexCard(id){
@@ -345,8 +352,9 @@ function mapPanel(){
  '</div></div><div class="map-stage">'+svgMap()+
  REGIONS.map(r=>{
  const p=coord(...r.pin),avg=meanRegion(r),tr=trend(avg),selected=state.region===r.id;
- return '<button type="button" class="map-pin'+(selected?' selected':'')+'" data-region="'+r.id+'" data-trend="'+tr+'" style="left:'+(p[0]/10).toFixed(2)+'%;top:'+(p[1]/5.8).toFixed(2)+'%" aria-label="'+esc(r.italian)+': '+pct(avg)+'" title="'+esc(r.italian)+'"></button>'+
- '<button type="button" class="map-callout'+(selected?' selected':'')+'" data-region="'+r.id+'" data-trend="'+tr+'" style="left:'+r.callout[0]+'%;top:'+r.callout[1]+'%" aria-label="Apri '+esc(r.italian)+'"><strong>'+esc(r.name)+'</strong><span>'+pct(avg)+'</span></button>';
+ const hint=esc(regionLastQuoteLabel(r));
+ return '<button type="button" class="map-pin'+(selected?' selected':'')+'" data-region="'+r.id+'" data-trend="'+tr+'" style="left:'+(p[0]/10).toFixed(2)+'%;top:'+(p[1]/5.8).toFixed(2)+'%" aria-label="'+esc(r.italian)+': '+pct(avg)+'. '+hint+'" title="'+hint+'"></button>'+
+ '<button type="button" class="map-callout'+(selected?' selected':'')+'" data-region="'+r.id+'" data-trend="'+tr+'" style="left:'+r.callout[0]+'%;top:'+r.callout[1]+'%" aria-label="Apri '+esc(r.italian)+'. '+hint+'" title="'+hint+'"><strong>'+esc(r.name)+'</strong><span>'+pct(avg)+'</span></button>';
  }).join('')+
  '<div class="map-hint">● Seleziona una regione · media degli indici disponibili</div></div>'+
  '<div class="world-solar-statusbar"><span class="world-solar-status" id="worldSolarStatus">Illuminazione terrestre…</span><span class="world-solar-help" id="worldSolarHelp">Ciclo giorno/notte</span></div>'+geographicLegend()+
@@ -355,7 +363,9 @@ function mapPanel(){
 function regionInsight(r){
  if(!r)return '';
  const avail=r.ids.filter(id=>quote(id)&&num(quote(id).value)).length;
- return '<div class="region-insight"><strong>'+esc(r.italian)+'</strong><small>Media aritmetica di '+avail+' indici disponibili su '+r.ids.length+'</small><div class="region-insight-markets">'+r.ids.map(id=>'<button type="button" data-asset="'+id+'">'+esc(ASSET_BY_ID[id].short)+' <span class="'+classArrow(id)+'">'+pct(change(id))+'</span></button>').join('')+'</div></div>';
+ return '<div class="region-insight"><strong>'+esc(r.italian)+'</strong><small>Media aritmetica di '+avail+' indici disponibili su '+r.ids.length+'</small>'+
+ '<small>'+esc(regionLastQuoteLabel(r))+'</small>'+
+ '<div class="region-insight-markets">'+r.ids.map(id=>'<button type="button" data-asset="'+id+'">'+esc(ASSET_BY_ID[id].short)+' <span class="'+classArrow(id)+'">'+pct(change(id))+'</span></button>').join('')+'</div></div>';
 }
 
 const REGION_SHAPES={
@@ -374,7 +384,7 @@ function regionIcon(r){
 
 function regionList(){
  return '<section class="global-regions panel"><div class="section-topline"><h2>'+sym('globe')+' Global Markets</h2><button type="button" class="text-action" data-page="markets">View All</button></div><div class="region-list">'+
- REGIONS.map(r=>'<button type="button" class="region-list-item'+(state.region===r.id?' selected':'')+'" data-trend="'+trend(meanRegion(r))+'" data-region="'+r.id+'"><span class="region-glyph '+trendClass(meanRegion(r))+'">'+regionIcon(r)+'</span><span class="region-titles"><strong>'+esc(r.name)+'</strong><span class="region-change '+trendClass(meanRegion(r))+'">'+pct(meanRegion(r))+'</span></span>'+sym('arrow')+'</button>').join('')+
+ REGIONS.map(r=>'<button type="button" class="region-list-item'+(state.region===r.id?' selected':'')+'" data-trend="'+trend(meanRegion(r))+'" data-region="'+r.id+'" title="'+esc(regionLastQuoteLabel(r))+'"><span class="region-glyph '+trendClass(meanRegion(r))+'">'+regionIcon(r)+'</span><span class="region-titles"><strong>'+esc(r.name)+'</strong><span class="region-change '+trendClass(meanRegion(r))+'">'+pct(meanRegion(r))+'</span></span>'+sym('arrow')+'</button>').join('')+
  '</div></section>';
 }
 function coinLogoUrl(url){
@@ -581,17 +591,20 @@ function patchRegions(){
  if(state.page!=='global')return;
  for(const r of REGIONS){
   const avg=meanRegion(r),lead=ASSET_BY_ID[r.lead],leadQuote=quote(r.lead);
+  const hint=regionLastQuoteLabel(r);
   document.querySelectorAll('#pageContainer .region-list-item[data-region="'+r.id+'"]').forEach(el=>{
    el.dataset.trend=trend(avg);
+   el.title=hint;
    const d=el.querySelector('.region-change'),i=el.querySelector('.region-glyph');
    if(d){d.textContent=pct(avg);setMovementClass(d,avg)}
    setMovementClass(i,avg);
   });
   document.querySelectorAll('#worldMap .map-callout[data-region="'+r.id+'"]').forEach(el=>{
-   el.dataset.trend=trend(avg);
+   el.dataset.trend=trend(avg);el.title=hint;
+   el.setAttribute('aria-label','Apri '+r.italian+'. '+hint);
    const v=el.querySelector('span');if(v)v.textContent=pct(avg);
   });
-  document.querySelectorAll('#worldMap .map-pin[data-region="'+r.id+'"]').forEach(el=>el.dataset.trend=trend(avg));
+  document.querySelectorAll('#worldMap .map-pin[data-region="'+r.id+'"]').forEach(el=>{el.dataset.trend=trend(avg);el.title=hint;el.setAttribute('aria-label',r.italian+': '+pct(avg)+'. '+hint)});
   document.querySelectorAll('#pageContainer .photo-card[data-region="'+r.id+'"]').forEach(el=>{
    el.dataset.trend=trend(change(r.lead));
    const v=el.querySelector('.photo-card-metrics strong'),p=el.querySelector('.photo-card-metrics .change');

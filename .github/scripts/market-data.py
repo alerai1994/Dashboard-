@@ -16,7 +16,7 @@ OUTPUT = Path("market-data.json")
 MARKETS = [
     ("sp500", "^GSPC"), ("nasdaq", "^IXIC"), ("tsx", "^GSPTSE"),
     ("ibov", "^BVSP"), ("ftse", "^FTSE"), ("dax", "^GDAXI"),
-    ("cac", "^FCHI"), ("jse", "J200.JO"), ("tadawul", "^TASI.SR"), ("nikkei", "^N225"),
+    ("cac", "^FCHI"), ("jse", "^J203.JO"), ("tadawul", "^TASI.SR"), ("nikkei", "^N225"),
     ("hsi", "^HSI"), ("nifty", "^NSEI"), ("kospi", "^KS11"), ("asx", "^AXJO"),
 ]
 TECH = [
@@ -409,11 +409,49 @@ def fetch_group(pairs):
             results[result["id"]] = result
     return [results[k] for k, _ in pairs]
 
+def retain_verified_regional_quotes(markets):
+    """Keep real recent market quotes if an upstream API is temporarily unavailable.
+
+    This cache is limited to 5 days to cover weekends. The original exchange
+    timestamp is preserved, making the age of the quote visible in the UI.
+    """
+    important = {"jse", "tadawul", "asx"}
+    if not OUTPUT.exists():
+        return markets
+    try:
+        previous = json.loads(OUTPUT.read_text(encoding="utf-8"))
+        old = {row["id"]: row for row in previous.get("markets", [])
+               if isinstance(row, dict) and row.get("id") in important}
+    except (OSError, ValueError, TypeError):
+        return markets
+    now = datetime.now(timezone.utc)
+    for row in markets:
+        if row["id"] not in important or row["value"] is not None:
+            continue
+        prior = old.get(row["id"])
+        if not prior or valid(prior.get("value")) is None or valid(prior.get("change")) is None:
+            continue
+        # Disallow reuse when the benchmark changes from JSE Top40 to All Share.
+        if prior.get("symbol") != row.get("symbol"):
+            continue
+        try:
+            stamp = datetime.fromisoformat(str(prior["time"]).replace("Z", "+00:00"))
+            if stamp.tzinfo is None:
+                stamp = stamp.replace(tzinfo=timezone.utc)
+            if not 0 <= (now-stamp).total_seconds() < 5*24*3600:
+                continue
+        except (ValueError, TypeError, KeyError):
+            continue
+        row.update(prior)
+        row["source"] = prior.get("source") or "Yahoo Finance (ultima quotazione verificata)"
+        print("Retained verified regional closing quote",row["id"],row["time"])
+    return markets
+
 def main():
     data = {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "source": "Yahoo Finance chart + CoinGecko, delayed/not real-time",
-        "markets": fetch_group(MARKETS + TECH),
+        "markets": retain_verified_regional_quotes(fetch_group(MARKETS + TECH)),
         "bigtech": fetch_group(BIGTECH),
         "commodities": fetch_group(COMMODITIES),
         "forex": fetch_group(FOREX),
