@@ -42,6 +42,7 @@
   function pct(n) {return finite(n)?(n>0?'+':'')+n.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})+'%':'n.d.';}
   function fmt(n,currency) {
     if(!finite(n))return '—';
+    if(currency==='RATIO')return n.toLocaleString('it-IT',{minimumFractionDigits:Math.abs(n)>10?2:4,maximumFractionDigits:Math.abs(n)>10?3:5});
     const digits=Math.abs(n)<1?4:Math.abs(n)<10?3:2;
     const s=n.toLocaleString('it-IT',{minimumFractionDigits:digits,maximumFractionDigits:digits});
     return currency==='USD'?'$'+s:currency==='EUR'?'€'+s:currency==='GBP'?'£'+s:currency==='JPY'?'¥'+s:s+(currency&&currency!=='RATIO'?' '+currency:'');
