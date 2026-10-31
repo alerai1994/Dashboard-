@@ -119,3 +119,146 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
   else init();
 })();
+
+
+/* V560 — Global Market by region, lazy sections and unobtrusive dock. */
+(() => {
+  'use strict';
+  if (window.__injGlobalMarketV560) return;
+  window.__injGlobalMarketV560 = true;
+  const $ = id => document.getElementById(id);
+  const REGIONS = {
+    americas: {
+      name:'Americhe', icon:'🌎',
+      groups:{
+        'Indici':[['S&P 500','^GSPC'],['Nasdaq Composite','^IXIC'],['Dow Jones','^DJI'],['S&P/TSX Composite','^GSPTSE']],
+        'Azioni · Tecnologia':[['Apple','AAPL'],['Microsoft','MSFT'],['NVIDIA','NVDA'],['Alphabet','GOOGL']],
+        'ETF':[['SPDR S&P 500','SPY'],['Invesco QQQ','QQQ'],['iShares Core S&P 500','IVV']],
+        'Settori · ETF':[['Technology Select Sector','XLK'],['Financial Select Sector','XLF'],['Energy Select Sector','XLE']]
+      }
+    },
+    europe: {
+      name:'Europa', icon:'🌍',
+      groups:{
+        'Indici':[['Euro STOXX 50','^STOXX50E'],['DAX','^GDAXI'],['FTSE 100','^FTSE'],['CAC 40','^FCHI']],
+        'Azioni':[['ASML','ASML.AS'],['SAP','SAP.DE'],['LVMH','MC.PA'],['Siemens','SIE.DE']],
+        'ETF':[['iShares Core MSCI Europe','IMEU.AS'],['iShares STOXX Europe 600','EXSA.DE']],
+        'Settori · Esempi':[['ASML · Semiconduttori','ASML.AS'],['Siemens · Industria','SIE.DE'],['LVMH · Consumi','MC.PA']]
+      }
+    },
+    asia: {
+      name:'Asia Pacifico', icon:'🌏',
+      groups:{
+        'Indici':[['Nikkei 225','^N225'],['Hang Seng','^HSI'],['S&P/ASX 200','^AXJO'],['KOSPI','^KS11']],
+        'Azioni':[['Toyota','7203.T'],['Sony','6758.T'],['Samsung Electronics','005930.KS'],['TSMC','2330.TW']],
+        'ETF · Esempi':[['iShares MSCI Japan','EWJ'],['iShares MSCI Pacific ex Japan','EPP']],
+        'Settori · Esempi':[['Toyota · Automotive','7203.T'],['TSMC · Semiconduttori','2330.TW'],['Sony · Tecnologia','6758.T']]
+      }
+    }
+  };
+  let active='americas';
+  const escapeHtml = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function init() {
+    const drawer=$('v442MarketDrawer'), menu=$('v442MenuButton'), dock=document.querySelector('.v538-dock');
+    const nav=drawer?.querySelector('.v442-market-nav');
+    const market=$('v442MarketMain'), ws=$('v525WorkspacePanel'), compare=$('v490ComparePanel'), etf=$('v538EtfPanel');
+    if(!drawer||!menu||!dock||!market||!ws||!compare||!etf||!nav)return;
+    const panel=document.createElement('section');
+    panel.id='v560GlobalMarketPanel';
+    panel.className='v442-market-main v560-global';
+    panel.hidden=true;
+    panel.setAttribute('aria-labelledby','v560GlobalTitle');
+    panel.innerHTML='<div class="v442-market-titlebar"><div><div class="v442-eyebrow">WORLD MARKETS</div><h2 id="v560GlobalTitle">Global Market</h2><p class="v534-market-subtitle">Esplora indici, azioni, ETF e settori per area geografica. Quotazioni e disponibilità su fonte esterna.</p></div></div>'+
+      '<div class="v560-region-tabs" role="tablist" aria-label="Aree geografiche">'+
+      Object.entries(REGIONS).map(([id,r],i)=>'<button type="button" role="tab" id="v560-tab-'+id+'" data-region="'+id+'" aria-selected="'+(i===0)+'" aria-controls="v560-region-content">'+r.icon+' '+r.name+'</button>').join('')+
+      '</div><div class="v560-region-content" id="v560-region-content" role="tabpanel" aria-labelledby="v560-tab-americas"></div>'+
+      '<p class="v538-etf-note">Selezione indicativa di strumenti: nessun prezzo sintetico. I link aprono la pagina della quotazione esterna. Verifica sempre mercato e ticker prima di operare.</p>';
+    etf.after(panel);
+    const content=$('v560-region-content');
+    const render=()=>{
+      const data=REGIONS[active];
+      content.setAttribute('aria-labelledby','v560-tab-'+active);
+      content.replaceChildren();
+      for(const [group,items] of Object.entries(data.groups)){
+        const details=document.createElement('details');
+        details.className='v560-market-group';
+        details.innerHTML='<summary>'+escapeHtml(group)+'<span>'+items.length+' strumenti</span></summary>';
+        const list=document.createElement('div'); list.className='v560-instruments';
+        for(const [name,symbol] of items){
+          const a=document.createElement('a');
+          a.href='https://finance.yahoo.com/quote/'+encodeURIComponent(symbol)+'/';
+          a.target='_blank';a.rel='noopener noreferrer';
+          const n=document.createElement('strong'); n.textContent=name;
+          const code=document.createElement('span');code.textContent=symbol+' ↗';
+          a.append(n,code);list.append(a);
+        }
+        details.append(list);content.append(details);
+      }
+    };
+    render();
+    panel.querySelectorAll('[data-region]').forEach(button=>button.addEventListener('click',()=>{
+      active=button.dataset.region;
+      panel.querySelectorAll('[data-region]').forEach(tab=>tab.setAttribute('aria-selected',String(tab===button)));
+      render();
+    }));
+    const globalNav=document.createElement('button');globalNav.type='button';globalNav.className='v442-nav-button';
+    globalNav.id='v560GlobalMarketNav';globalNav.textContent='🌐 Global Market';
+    nav.append(globalNav);
+    const globalDock=document.createElement('button');globalDock.type='button';globalDock.dataset.v538Go='global';
+    globalDock.dataset.label='Global Market';globalDock.setAttribute('aria-label','Apri Global Market');
+    globalDock.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c-5 5-5 13 0 18M12 3c5 5 5 13 0 18"/></svg><span>Global</span>';
+    dock.append(globalDock);
+    const otherNav=['v442MarketDashboardNav','v525WorkspaceNav','v442MarketNav','v490CompareNav','v538EtfNav'];
+    const leave=()=>{panel.hidden=true;globalNav.classList.remove('is-selected');globalDock.classList.remove('is-active')};
+    const show=()=>{
+      [market,ws,compare,etf].forEach(p=>p.hidden=true);
+      panel.hidden=false;globalNav.classList.add('is-selected');
+      drawer.setAttribute('aria-labelledby','v560GlobalTitle');
+      document.dispatchEvent(new CustomEvent('v525:workspace-visibility',{detail:{visible:false}}));
+      globalDock.classList.add('is-active');
+    };
+    globalNav.addEventListener('click',show);
+    for(const id of otherNav)$(id)?.addEventListener('click',leave);
+    dock.querySelectorAll('[data-v538-go]').forEach(b=>{
+      if(b!==globalDock)b.addEventListener('click',leave);
+    });
+    globalDock.addEventListener('click',()=>{
+      if(!document.body.classList.contains('v442-market-open'))menu.click();
+      show();
+    });
+    // Navigation remains reachable without wasting vertical space on Home.
+    let hideTimer,showTimer;
+    const schedule=()=>{
+      clearTimeout(hideTimer);clearTimeout(showTimer);
+      dock.classList.remove('v560-dock-hidden');
+      const isHome=!document.body.classList.contains('v442-market-open');
+      if(isHome){
+        hideTimer=setTimeout(()=>{
+          if(!dock.matches(':hover')&&!dock.contains(document.activeElement)&&!document.hidden)
+            dock.classList.add('v560-dock-hidden');
+        },6500);
+      } else {
+        dock.classList.add('v560-dock-pending');
+        showTimer=setTimeout(()=>dock.classList.remove('v560-dock-pending'),900);
+      }
+    };
+    const reveal=()=>{
+      dock.classList.remove('v560-dock-hidden','v560-dock-pending');
+      schedule();
+    };
+    document.addEventListener('pointermove',e=>{
+      if(e.clientY>=window.innerHeight-85&&dock.classList.contains('v560-dock-hidden'))reveal();
+    },{passive:true});
+    document.addEventListener('keydown',e=>{
+      if(e.key==='Tab'&&dock.classList.contains('v560-dock-hidden'))reveal();
+    });
+    dock.addEventListener('focusin',()=>{clearTimeout(hideTimer);dock.classList.remove('v560-dock-hidden')});
+    dock.addEventListener('focusout',()=>setTimeout(schedule,100));
+    dock.addEventListener('pointerenter',()=>clearTimeout(hideTimer));
+    dock.addEventListener('pointerleave',schedule);
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)schedule()});
+    new MutationObserver(schedule).observe(document.body,{attributes:true,attributeFilter:['class']});
+    schedule();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+})();
