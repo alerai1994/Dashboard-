@@ -626,3 +626,14 @@ body.theme-light .market-panel .instrument-row:hover{background:#e7f1f9}
 .settings-sound-toggle{flex:0 0 auto;min-width:92px;min-height:41px;border:1px solid var(--line);border-radius:99px;background:var(--surface);color:var(--muted);font-weight:730}
 .settings-sound-toggle.is-on{border-color:var(--brand);background:color-mix(in srgb,var(--brand) 16%,var(--panel));color:var(--text)}
 @media(max-width:520px){.settings-preferences{padding:14px}.settings-theme-options{gap:7px}.settings-theme-option{flex-direction:column;gap:6px;padding:9px 6px;min-height:72px;font-size:11px}.settings-sound-row{gap:10px}}
+
+/* Volume slider for click feedback (0% is silent; 70% matches previous loudness). */
+.settings-volume{margin-top:19px;padding-top:16px;border-top:1px solid var(--line)}
+.settings-volume-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:13px}
+.settings-volume-heading label{font-size:13px;font-weight:700;color:var(--text)}
+.settings-volume-heading output{min-width:45px;text-align:right;color:var(--brand);font-weight:760;font-variant-numeric:tabular-nums;font-size:14px}
+.settings-volume input[type="range"]{display:block;width:100%;height:8px;margin:0;cursor:pointer;border:0;border-radius:99px;outline-offset:8px;appearance:none;-webkit-appearance:none;background:linear-gradient(to right,var(--brand) 0,var(--brand) var(--volume-progress,70%),var(--line) var(--volume-progress,70%),var(--line) 100%)}
+.settings-volume input[type="range"]::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:21px;height:21px;border-radius:50%;border:3px solid var(--panel);background:var(--brand);box-shadow:0 0 0 1px var(--brand);cursor:pointer}
+.settings-volume input[type="range"]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;border:3px solid var(--panel);background:var(--brand);box-shadow:0 0 0 1px var(--brand);cursor:pointer}
+.settings-volume input[type="range"]:focus-visible{outline:2px solid var(--brand);outline-offset:7px}
+.settings-volume-scale{display:flex;align-items:center;justify-content:space-between;margin-top:11px;color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}

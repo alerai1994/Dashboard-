@@ -142,7 +142,7 @@ const state={
  watch:Array.isArray(load('watch',[]))?load('watch',[]):[],
  holdings:Array.isArray(load('holdings',[]))?load('holdings',[]):[],
  alerts:Array.isArray(load('alerts',[]))?load('alerts',[]):[],
- theme:load('theme','dark'),themeMode:load('themeMode',load('theme','dark')),clickSound:load('clickSound',true),region:null,marketFilter:'all',marketSearch:'',dialogId:null,chartShift:0,chartHover:null,
+ theme:load('theme','dark'),themeMode:load('themeMode',load('theme','dark')),clickSound:load('clickSound',true),clickVolume:load('clickVolume',70),region:null,marketFilter:'all',marketSearch:'',dialogId:null,chartShift:0,chartHover:null,
  land:'',searchResults:[],errorText:'',cryptoExpanded:false,
  solarLastRoot:null,solarLastUpdate:0,solarLastStatus:0
 };
@@ -150,6 +150,7 @@ if(!SECTIONS[state.page])state.page='global';
 if(!['dark','light','auto'].includes(state.themeMode))state.themeMode='dark';
 state.theme=resolvedTheme(state.themeMode);
 state.clickSound=state.clickSound!==false;
+state.clickVolume=Number.isFinite(Number(state.clickVolume))?Math.min(100,Math.max(0,Math.round(Number(state.clickVolume)))):70;
 document.body.className='theme-'+state.theme;
 const safeDate=t=>{const d=new Date(t);return Number.isFinite(d.getTime())?d:null};
 const localeDate=(t,opts)=>{const d=safeDate(t);return d?new Intl.DateTimeFormat('it-IT',opts).format(d):'n.d.'};
@@ -1036,7 +1037,10 @@ function settingsPage(){
  choices.map(([mode,icon,label])=>'<button type="button" data-theme-mode="'+mode+'" class="settings-theme-option'+(state.themeMode===mode?' is-selected':'')+'" aria-pressed="'+(state.themeMode===mode)+'"><span class="settings-choice-icon" aria-hidden="true">'+icon+'</span><span>'+label+'</span></button>').join('')+
  '</div></section>'+
  '<section class="content-card panel settings-preferences"><div class="settings-sound-row"><div><h3>Suono al clic</h3><p class="subnote">Un breve suono quando premi i pulsanti. Puoi disattivarlo quando vuoi.</p></div>'+
- '<button type="button" data-sound-toggle="1" class="settings-sound-toggle'+(state.clickSound?' is-on':'')+'" role="switch" aria-checked="'+state.clickSound+'" aria-label="Suono al clic">'+(state.clickSound?'Attivo':'Disattivo')+'</button></div></section>';
+ '<button type="button" data-sound-toggle="1" class="settings-sound-toggle'+(state.clickSound?' is-on':'')+'" role="switch" aria-checked="'+state.clickSound+'" aria-label="Suono al clic">'+(state.clickSound?'Attivo':'Disattivo')+'</button></div>'+
+ '<div class="settings-volume"><div class="settings-volume-heading"><label for="clickVolumeSlider">Volume dei clic</label><output id="clickVolumeValue" for="clickVolumeSlider">'+state.clickVolume+'%</output></div>'+
+ '<input type="range" id="clickVolumeSlider" min="0" max="100" step="1" value="'+state.clickVolume+'" style="--volume-progress:'+state.clickVolume+'%" aria-label="Volume del suono al clic">'+
+ '<div class="settings-volume-scale"><span>0%</span><span>100%</span></div></div></section>';
 }
 const PAGE_RENDERERS={home:homePage,global:globalPage,markets:marketsPage,watchlist:watchlistPage,portfolio:portfolioPage,news:newsPage,analytics:analyticsPage,alerts:alertsPage,settings:settingsPage};
 function updateNav(){
@@ -1084,7 +1088,7 @@ function setTheme(mode){
 }
 let clickAudioContext=null;
 function playClickSound(){
- if(!state.clickSound)return;
+ if(!state.clickSound||state.clickVolume===0)return;
  try{
   const Audio=window.AudioContext||window.webkitAudioContext;
   if(!Audio)return;
@@ -1097,7 +1101,7 @@ function playClickSound(){
   tone.frequency.setValueAtTime(680,t);
   tone.frequency.exponentialRampToValueAtTime(490,t+0.05);
   volume.gain.setValueAtTime(0.0001,t);
-  volume.gain.exponentialRampToValueAtTime(0.035,t+0.006);
+  volume.gain.exponentialRampToValueAtTime(0.05*state.clickVolume/100,t+0.006);
   volume.gain.exponentialRampToValueAtTime(0.0001,t+0.065);
   tone.connect(volume);
   volume.connect(clickAudioContext.destination);
@@ -1493,6 +1497,14 @@ function setupEvents(){
   }
  });
  $('#pageContainer').addEventListener('input',e=>{
+  if(e.target.id==='clickVolumeSlider'){
+   state.clickVolume=Math.min(100,Math.max(0,Math.round(Number(e.target.value)||0)));
+   const value=$('#clickVolumeValue');
+   if(value)value.textContent=state.clickVolume+'%';
+   e.target.style.setProperty('--volume-progress',state.clickVolume+'%');
+   save('clickVolume',state.clickVolume);
+   return;
+  }
   if(e.target.id==='marketSearch'){
    const target=e.target,cursor=target.selectionStart;
    state.marketSearch=target.value;
@@ -1501,6 +1513,9 @@ function setupEvents(){
     (a.name+' '+a.symbol+' '+(a.country||'')).toLowerCase().includes(state.marketSearch.trim().toLowerCase())),'Nessun risultato');
    try{target.setSelectionRange(cursor,cursor)}catch(err){}
   }
+ });
+ $('#pageContainer').addEventListener('change',e=>{
+  if(e.target.id==='clickVolumeSlider')playClickSound();
  });
  $('#pageContainer').addEventListener('submit',e=>{
   if(e.target.id==='portfolioForm'){
