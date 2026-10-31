@@ -3216,8 +3216,8 @@
   clone.inert=true;
   track.appendChild(clone);
 
-  // V554: scrollLeft nativo al posto di transform/CSS; funziona anche quando
-  // altre regole del progetto annullano animation o transform.
+  // V555: marquee fluido sincronizzato al refresh del display con requestAnimationFrame.
+  // Sposta lo scroll nativo (non il transform), per evitare conflitti col CSS globale.
   const viewport=document.getElementById('v551TickerViewport');
   if(!viewport)return;
   track.style.setProperty('animation','none','important');
@@ -3227,40 +3227,52 @@
   viewport.style.setProperty('overflow-y','hidden','important');
   viewport.style.setProperty('scroll-behavior','auto','important');
   clone.style.setProperty('display','flex','important');
-
-  let contentWidth=0;
+  const tickerSpeed=108; // pixel/secondo: costante anche su display 120 Hz.
+  let copyWidth=0;
   let position=0;
-  let previousTick=performance.now();
+  let lastFrame=null;
+  let rafHandle=0;
+
   function measureTicker(){
-    contentWidth=first.scrollWidth||first.getBoundingClientRect().width;
-    if(contentWidth>0)position%=contentWidth;
+    const measured=first.getBoundingClientRect().width||first.scrollWidth;
+    if(measured>0){
+      copyWidth=measured;
+      position%=copyWidth;
+    }
   }
   measureTicker();
   if(typeof ResizeObserver==='function'){
     const observer=new ResizeObserver(measureTicker);
     observer.observe(first);
-    observer.observe(viewport);
   }
   window.addEventListener('resize',measureTicker,{passive:true});
-  function scrollTick(){
-    if(!viewport.isConnected)return;
-    const now=performance.now();
-    const elapsed=Math.min(100,Math.max(0,now-previousTick));
-    previousTick=now;
-    if(contentWidth<=0)measureTicker();
-    if(document.hidden||contentWidth<=0)return;
-    // In direzione LTR un valore scrollLeft crescente sposta le pillole a sinistra.
-    position=(position+elapsed*0.115)%contentWidth;
-    viewport.scrollLeft=position;
+
+  function scrollFrame(time){
+    if(!viewport.isConnected){rafHandle=0;return;}
+    if(document.hidden){
+      lastFrame=null;
+      rafHandle=requestAnimationFrame(scrollFrame);
+      return;
+    }
+    if(copyWidth<=0)measureTicker();
+    const delta=lastFrame===null?0:Math.min(64,Math.max(0,time-lastFrame));
+    lastFrame=time;
+    if(copyWidth>0){
+      position=(position+tickerSpeed*(delta/1000))%copyWidth;
+      viewport.scrollLeft=position; // Incrementa da sinistra: pillole da destra verso sinistra.
+    }
+    rafHandle=requestAnimationFrame(scrollFrame);
   }
-  // Il timer nativo non dipende dai frame CSS o dalle preferenze di animazione.
-  const tickerTimer=window.setInterval(scrollTick,30);
-  document.addEventListener('visibilitychange',()=>{
-    previousTick=performance.now();
-    if(!document.hidden){measureTicker();scrollTick()}
-  });
-  // In caso di ritorno dalla cache della pagina, riprendi lo scorrimento.
-  window.addEventListener('pageshow',()=>{previousTick=performance.now();measureTicker();});
+
+  function restartTicker(){
+    lastFrame=null; // Nessun salto dopo la sospensione o il ritorno nella scheda.
+    measureTicker();
+    if(!rafHandle)rafHandle=requestAnimationFrame(scrollFrame);
+  }
+  document.addEventListener('visibilitychange',restartTicker);
+  window.addEventListener('pageshow',restartTicker);
+  // Su browser moderni il loop segue i frame (60/120 fps), senza timer a 30 ms.
+  restartTicker();
   function formatPrice(raw,item){
     const price=Number(raw);
     if(!Number.isFinite(price)||price<=0)return null;
