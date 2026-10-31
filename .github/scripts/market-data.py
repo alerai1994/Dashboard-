@@ -133,8 +133,11 @@ def yahoo_quote(pair):
                 o, h, l, c = valid(op), valid(hi), valid(lo), valid(cl)
                 if None in (o, h, l, c) or l <= 0 or h < l or not ts:
                     continue
-                candles.append({"t": int(ts), "o": round(o, 6), "h": round(h, 6),
-                                "l": round(l, 6), "c": round(c, 6)})
+                # Preserve the significant decimals of tiny crypto prices (e.g. SHIB/PEPE).
+                candles.append({"t": int(ts), "o": float(f"{o:.12g}"),
+                                "h": float(f"{h:.12g}"),
+                                "l": float(f"{l:.12g}"),
+                                "c": float(f"{c:.12g}")})
             entry["candles"] = candles[-260:]
             t = meta.get("regularMarketTime")
             entry["time"] = datetime.fromtimestamp(t, timezone.utc).isoformat() if t else None
