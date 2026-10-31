@@ -862,22 +862,91 @@ function tableForAssets(items,emptyTitle){
  '<td class="'+classArrow(a.id)+'">'+sparkLine(a.id,90,26)+'</td><td><small>'+esc(a.group==='crypto'?'Binance/CoinGecko':a.group==='forex'?'Broker MT5/Yahoo':'Yahoo Finance')+'</small></td></tr>').join('')+
  '</tbody></table></div>';
 }
-function marketFilterMatch(asset){
- if(state.marketFilter==='all')return true;
- if(state.marketFilter==='tech')return asset.sector==='tech';
- if(state.marketFilter==='bigtech')return asset.group==='bigtech';
- return asset.group===state.marketFilter;
+
+/* Visual Markets gallery: charts only from actual historical candles or price data. */
+const MARKET_CHART_GROUPS=[
+ ['crypto','Criptovalute'],['commodities','Materie prime'],['bigtech','Big Tech'],
+ ['tech','Tech · Indici ed ETF'],['markets','Indici mondiali'],['forex','Forex']
+];
+function marketCategory(a){return a.sector==='tech'?'tech':a.group;}
+function marketFilterMatch(a){return state.marketFilter==='all'||marketCategory(a)===state.marketFilter;}
+function marketChartPlot(id){
+ const q=quote(id),W=320,H=142,L=10,R=10,T=10,B=14,chartW=W-L-R,chartH=H-T-B;
+ const grid='<path d="M10 42H310 M10 82H310 M10 122H310" stroke="currentColor" stroke-opacity=".13" stroke-width=".7" fill="none"/>';
+ const plot=(svg,note)=>'<svg viewBox="0 0 320 142" preserveAspectRatio="none" aria-hidden="true">'+grid+svg+'</svg><span class="market-chart-note">'+note+'</span>';
+ const valid=c=>{
+  if(!c)return false;
+  const o=Number(c.o),h=Number(c.h),l=Number(c.l),cl=Number(c.c);
+  return [o,h,l,cl].every(num)&&o>0&&h>0&&l>0&&cl>0&&h>=Math.max(o,cl)&&l<=Math.min(o,cl);
+ };
+ const candles=q&&Array.isArray(q.candles)?q.candles.filter(valid).slice(-48):[];
+ if(candles.length>=2){
+  const low=Math.min(...candles.map(c=>Number(c.l))),high=Math.max(...candles.map(c=>Number(c.h)));
+  const pad=Math.max((high-low)*.09,high*.0002),min=low-pad,max=high+pad;
+  const y=v=>T+(max-v)/(max-min)*chartH,step=chartW/candles.length;
+  const paths=candles.map((c,i)=>{
+   const o=Number(c.o),cl=Number(c.c),x=L+(i+.5)*step,co=cl>=o?'#18d8a0':'#f57185';
+   const yo=y(o),yc=y(cl),cw=Math.max(2,Math.min(6,step*.68));
+   return '<path d="M'+x.toFixed(2)+' '+y(Number(c.h)).toFixed(2)+'V'+y(Number(c.l)).toFixed(2)+'" stroke="'+co+'" stroke-width="1.15"/>'+
+    '<rect x="'+(x-cw/2).toFixed(2)+'" y="'+Math.min(yo,yc).toFixed(2)+'" width="'+cw.toFixed(2)+'" height="'+Math.max(1,Math.abs(yo-yc)).toFixed(2)+'" rx=".5" fill="'+co+'"/>';
+  }).join('');
+  return plot(paths,'Candele giornaliere · '+candles.length+' sedute');
+ }
+ const values=q&&Array.isArray(q.history)?q.history.filter(v=>num(v)&&v>0).slice(-70):[];
+ if(values.length>=2){
+  const low=Math.min(...values),high=Math.max(...values),pad=Math.max((high-low)*.1,high*.0005);
+  const min=low-pad,max=high+pad;
+  const points=values.map((v,i)=>[L+i/(values.length-1)*chartW,T+(max-v)/(max-min)*chartH]);
+  const d=points.map(([x,y],i)=>(i?'L':'M')+x.toFixed(2)+' '+y.toFixed(2)).join(' ');
+  const color=values.at(-1)>=values[0]?'#18d8a0':'#f57185';
+  return plot('<path d="'+d+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+   'Storico prezzi · '+values.length+' punti');
+ }
+ return '<span class="market-chart-unavailable">Storico non disponibile per questo strumento</span>'+
+  '<span class="market-chart-note">In attesa di dati storici verificati</span>';
+}
+function marketChartCard(a){
+ const q=quote(a.id),cat=marketCategory(a);
+ const label={markets:'Indice',tech:'Tech',bigtech:'Azione',commodities:'Materia prima',forex:'Cambio',crypto:'Crypto'}[cat]||cat;
+ return '<button type="button" class="market-chart-card" data-asset="'+esc(a.id)+'" data-trend="'+trend(q&&q.change)+'" aria-label="Apri grafico completo di '+esc(a.name)+'">'+
+ '<span class="market-chart-top">'+(showAssetLogo(a)?assetLogo(a):'')+
+ '<span class="market-chart-title"><strong>'+esc(a.short||a.name)+'</strong><small>'+esc(a.symbol)+' · '+label+'</small></span></span>'+
+ '<span class="market-chart-values"><strong class="asset-price">'+assetValue(a)+'</strong>'+
+ '<span class="asset-change '+classArrow(a.id)+'">'+pct(q&&q.change)+'</span></span>'+
+ '<span class="market-mini-chart">'+marketChartPlot(a.id)+'</span>'+
+ '<span class="market-chart-open">Grafico completo · EMA · RSI · Stoch RSI · MACD</span></button>';
+}
+function marketsCards(items){
+ if(!items.length)return '<div class="empty-state"><h3>Nessuno strumento trovato</h3><p>Modifica ricerca o categoria.</p></div>';
+ return MARKET_CHART_GROUPS.map(([group,title])=>{
+  const assets=items.filter(a=>marketCategory(a)===group);
+  if(!assets.length)return '';
+  return '<section class="market-chart-section" aria-label="'+esc(title)+'">'+
+   '<div class="market-chart-section-head"><h3>'+esc(title)+'</h3><span>'+assets.length+' grafici</span></div>'+
+   '<div class="market-chart-grid">'+assets.map(marketChartCard).join('')+'</div></section>';
+ }).join('');
+}
+function updateMarketsSnapshotCharts(){
+ if(state.page!=='markets')return;
+ document.querySelectorAll('#marketRows .market-chart-card[data-asset]').forEach(card=>{
+  const node=card.querySelector('.market-mini-chart');if(!node)return;
+  const next=marketChartPlot(card.dataset.asset);
+  if(node.innerHTML!==next)node.innerHTML=next;
+ });
 }
 function marketsPage(){
  const options=[['all','Tutti'],['markets','Indici'],['tech','Tech'],['bigtech','Big Tech'],['commodities','Materie prime'],['forex','Forex'],['crypto','Crypto']];
  const text=state.marketSearch.trim().toLowerCase();
  const filtered=ASSETS.filter(a=>marketFilterMatch(a)&&(!text||(a.name+' '+a.symbol+' '+(a.country||'')).toLowerCase().includes(text)));
- return secHeader('Esplora tutti i mercati','Seleziona uno strumento per aprire il grafico storico e gli indicatori',
+ return secHeader('Tutti i grafici dei mercati','Grafici visibili per ogni strumento: selezionane uno per aprire le medie mobili e gli indicatori',
  '<a class="btn btn-small" href="#global">'+sym('globe')+' Mappa mondiale</a>')+
- marketStatusStrip()+'<section class="content-card panel"><div class="filter-row"><div class="tab-filters" role="group" aria-label="Categorie mercati">'+
+ marketStatusStrip()+'<section class="content-card panel markets-gallery"><div class="filter-row"><div class="tab-filters" role="group" aria-label="Categorie mercati">'+
  options.map(([id,label])=>'<button type="button" data-filter="'+id+'" class="'+(state.marketFilter===id?'active':'')+'">'+label+'</button>').join('')+
- '</div><input class="filter-input" type="search" id="marketSearch" value="'+esc(state.marketSearch)+'" placeholder="Cerca per nome o ticker..." aria-label="Filtra strumenti"></div><div id="marketRows">'+tableForAssets(filtered,'Nessun risultato')+'</div></section>'+feedStatus();
+ '</div><input class="filter-input" type="search" id="marketSearch" value="'+esc(state.marketSearch)+'" placeholder="Cerca per nome o ticker..." aria-label="Filtra strumenti"></div>'+
+ '<p class="markets-gallery-info">Grafici basati su dati storici verificati. I mercati possono essere ritardati; nessun grafico simulato.</p>'+
+ '<div id="marketRows">'+marketsCards(filtered)+'</div></section>'+feedStatus();
 }
+
 function watchlistPage(){
  const assets=state.watch.map(id=>ASSET_BY_ID[id]).filter(Boolean);
  return secHeader('La tua Watchlist','Preferiti memorizzati solo in questo browser','<button type="button" class="btn btn-primary" data-page="markets">'+sym('plus')+' Aggiungi mercati</button>')+
@@ -1061,6 +1130,7 @@ async function fetchQuotes(isManual=false){
    changed.forEach(id=>streamStatus.dirty.add(id));
    if(changed.length)updatePriceDom();
    else updateLiveBadges();
+    updateMarketsSnapshotCharts();
   }
   if(isManual)toast(changed.length?'Quotazioni aggiornate da tutte le fonti disponibili.':'Feed controllato: nessuna nuova quotazione disponibile.');
  }catch(e){
@@ -1381,7 +1451,7 @@ function setupEvents(){
    const target=e.target,cursor=target.selectionStart;
    state.marketSearch=target.value;
    const rows=$('#marketRows');
-   if(rows)rows.innerHTML=tableForAssets(ASSETS.filter(a=>marketFilterMatch(a)&&
+   if(rows)rows.innerHTML=marketsCards(ASSETS.filter(a=>marketFilterMatch(a)&&
     (a.name+' '+a.symbol+' '+(a.country||'')).toLowerCase().includes(state.marketSearch.trim().toLowerCase())),'Nessun risultato');
    try{target.setSelectionRange(cursor,cursor)}catch(err){}
   }
