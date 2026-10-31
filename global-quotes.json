@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-31T13:54:43.341921+00:00",
+  "generatedAt": "2026-10-31T13:56:02.026820+00:00",
   "source": "Yahoo Finance chart + CoinGecko, delayed/not real-time",
   "markets": [
     {
@@ -504,47 +504,47 @@
     {
       "id": "btc",
       "symbol": "BITCOIN",
-      "value": 77503.0,
-      "change": 0.9321015511154656,
+      "value": 77496.0,
+      "change": 1.1633167172044279,
       "currency": "USD",
       "history": [],
-      "time": "2026-10-31T13:54:07+00:00"
+      "time": "2026-10-31T13:55:50+00:00"
     },
     {
       "id": "eth",
       "symbol": "ETHEREUM",
-      "value": 2251.53,
-      "change": 1.685641187861448,
+      "value": 2250.92,
+      "change": 1.6030638241804884,
       "currency": "USD",
       "history": [],
-      "time": "2026-10-31T13:54:14+00:00"
+      "time": "2026-10-31T13:55:50+00:00"
     },
     {
       "id": "sol",
       "symbol": "SOLANA",
-      "value": 95.99,
-      "change": 1.2111564255252993,
+      "value": 95.82,
+      "change": 0.9784542771426904,
       "currency": "USD",
       "history": [],
-      "time": "2026-10-31T13:54:14+00:00"
+      "time": "2026-10-31T13:55:44+00:00"
     },
     {
       "id": "inj",
       "symbol": "INJECTIVE-PROTOCOL",
-      "value": 7.15,
-      "change": 1.2016716262297225,
+      "value": 7.14,
+      "change": 0.8203219107561076,
       "currency": "USD",
       "history": [],
-      "time": "2026-10-31T13:54:14+00:00"
+      "time": "2026-10-31T13:55:50+00:00"
     },
     {
       "id": "bnb",
       "symbol": "BINANCECOIN",
-      "value": 704.35,
-      "change": 1.2594480145129423,
+      "value": 704.04,
+      "change": 1.2078040114916195,
       "currency": "USD",
       "history": [],
-      "time": "2026-10-31T13:53:55+00:00"
+      "time": "2026-10-31T13:55:50+00:00"
     }
   ]
 }
