@@ -422,11 +422,46 @@ function commodityLogo(a){
   '<svg viewBox="0 0 32 32" focusable="false">'+art+'</svg></span>';
 }
 
-function showAssetLogo(a){return a&&['crypto','forex','bigtech','commodities'].includes(a.group);}
+
+/* Indices and Tech ETFs are tied to index publishers / fund managers.
+   Show their recognizable provider favicon; keep a styled short-label fallback
+   so the badge remains meaningful if the image provider is unavailable. */
+const MARKET_LOGOS=Object.freeze({
+ sp500:{domain:'spglobal.com',label:'S&P'},
+ nasdaq:{domain:'nasdaq.com',label:'NQ'},
+ tsx:{domain:'tsx.com',label:'TSX'},
+ ibov:{domain:'b3.com.br',label:'B3'},
+ ftse:{domain:'lseg.com',label:'FTSE'},
+ dax:{domain:'stoxx.com',label:'DAX'},
+ cac:{domain:'euronext.com',label:'CAC'},
+ jse:{domain:'jse.co.za',label:'JSE'},
+ tadawul:{domain:'saudiexchange.sa',label:'TASI'},
+ nikkei:{domain:'nikkei.com',label:'225'},
+ hsi:{domain:'hsi.com.hk',label:'HSI'},
+ nifty:{domain:'nseindia.com',label:'N50'},
+ kospi:{domain:'krx.co.kr',label:'KOS'},
+ asx:{domain:'asx.com.au',label:'ASX'},
+ ndx:{domain:'nasdaq.com',label:'NDX'},
+ sox:{domain:'nasdaq.com',label:'SOX'},
+ xlk:{domain:'ssga.com',label:'XLK'},
+ qqq:{domain:'invesco.com',label:'QQQ'},
+ smh:{domain:'vaneck.com',label:'SMH'}
+});
+function marketLogo(a){
+ const logo=MARKET_LOGOS[a.id];
+ if(!logo)return '<span class="asset-logo" aria-hidden="true">'+esc(a.short||a.symbol)+'</span>';
+ const image='https://www.google.com/s2/favicons?domain='+encodeURIComponent(logo.domain)+'&sz=64';
+ return '<span class="asset-logo market-index-logo'+(a.sector==='tech'?' market-tech-logo':'')+' asset-'+esc(a.id)+'" aria-hidden="true">'+
+  '<span class="market-index-logo-fallback">'+esc(logo.label)+'</span>'+
+  '<img class="market-index-logo-image" src="'+esc(image)+'" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"></span>';
+}
+
+function showAssetLogo(a){return a&&['crypto','forex','bigtech','commodities','markets'].includes(a.group);}
 
 function assetLogo(a){
  const fallback=esc(a.icon||(a.short||a.name||'?').trim().charAt(0));
  if(a.group==='forex')return forexPairLogo(a);
+ if(a.group==='markets')return marketLogo(a);
  if(a.group==='bigtech')return bigTechLogo(a);
  if(a.group==='commodities')return commodityLogo(a);
  if(a.group!=='crypto')return '<span class="asset-logo asset-'+esc(a.id)+'">'+fallback+'</span>';
@@ -1302,7 +1337,7 @@ function setupCanvasInteractions(){
 function setupEvents(){
  document.addEventListener('error',e=>{
   const img=e.target;
-  if(img&&img.tagName==='IMG'&&(img.classList.contains('crypto-logo-image')||img.classList.contains('forex-flag-image')||img.classList.contains('bigtech-logo-image')))img.remove();
+  if(img&&img.tagName==='IMG'&&(img.classList.contains('crypto-logo-image')||img.classList.contains('forex-flag-image')||img.classList.contains('bigtech-logo-image')||img.classList.contains('market-index-logo-image')))img.remove();
  },true);
  $$('.side-link[data-page]').forEach(btn=>btn.addEventListener('click',()=>navigate(btn.dataset.page)));
  $('#menuToggle').addEventListener('click',()=>$('#sidebar').classList.toggle('open'));
