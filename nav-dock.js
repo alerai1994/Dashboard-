@@ -175,6 +175,14 @@
       '</div><div class="v560-region-content" id="v560-region-content" role="tabpanel" aria-labelledby="v560-tab-americas"></div>'+
       '<p class="v538-etf-note">Selezione indicativa di strumenti: nessun prezzo sintetico. I link aprono la pagina della quotazione esterna. Verifica sempre mercato e ticker prima di operare.</p>';
     etf.after(panel);
+    // The stylized geographical strip is selectable and remains horizontally scrollable.
+    const map=document.createElement('div');
+    map.className='v562-region-map';
+    map.setAttribute('role','group');map.setAttribute('aria-label','Seleziona il continente');
+    map.innerHTML='<button type="button" data-map-region="americas" aria-label="Mostra Americhe">🌎 <span>AMERICAS</span></button>'+
+      '<button type="button" data-map-region="europe" aria-label="Mostra Europa">🌍 <span>EUROPE</span></button>'+
+      '<button type="button" data-map-region="asia" aria-label="Mostra Asia Pacifico">🌏 <span>ASIA PACIFIC</span></button>';
+    panel.querySelector('.v560-region-tabs').before(map);
     const content=$('v560-region-content');
     const render=()=>{
       const data=REGIONS[active];
@@ -201,7 +209,12 @@
       active=button.dataset.region;
       panel.querySelectorAll('[data-region]').forEach(tab=>tab.setAttribute('aria-selected',String(tab===button)));
       render();
+      panel.querySelectorAll('[data-map-region]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mapRegion===active)));
     }));
+    map.querySelectorAll('[data-map-region]').forEach(b=>b.addEventListener('click',()=>{
+      panel.querySelector('[data-region="'+b.dataset.mapRegion+'"]')?.click();
+    }));
+    map.querySelector('[data-map-region="americas"]')?.setAttribute('aria-pressed','true');
     const globalNav=document.createElement('button');globalNav.type='button';globalNav.className='v442-nav-button';
     globalNav.id='v560GlobalMarketNav';globalNav.textContent='🌐 Global Market';
     nav.append(globalNav);
@@ -255,7 +268,7 @@
         },6500);
       } else {
         dock.classList.add('v560-dock-pending');
-        showTimer=setTimeout(()=>dock.classList.remove('v560-dock-pending'),900);
+        showTimer=setTimeout(()=>dock.classList.remove('v560-dock-pending'),2300);
       }
     };
     const reveal=()=>{
@@ -264,6 +277,9 @@
     };
     document.addEventListener('pointermove',e=>{
       if(e.clientY>=window.innerHeight-85&&dock.classList.contains('v560-dock-hidden'))reveal();
+    },{passive:true});
+    document.addEventListener('pointerdown',e=>{
+      if(e.clientY>=window.innerHeight-80&&dock.classList.contains('v560-dock-hidden'))reveal();
     },{passive:true});
     document.addEventListener('keydown',e=>{
       if(e.key==='Tab'&&dock.classList.contains('v560-dock-hidden'))reveal();
