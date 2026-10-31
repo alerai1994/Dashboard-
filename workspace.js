@@ -291,6 +291,15 @@
    if(!intervals.includes(c.interval))c.interval='1h';
    if(![5,10,20].includes(Number(c.depth)))c.depth=10;
    c.chartStyle='candles';
+   // Stessa crypto e timeframe: riutilizza il grafico, non duplicare la card.
+   if(cardKind(c)==='chart'){
+     const existing=cards.find(old=>cardKind(old)==='chart'&&cardAsset(old)===cardAsset(c)&&old.interval===c.interval);
+     if(existing){
+       const element=findElement(existing.id);
+       if(element && visible()) element.scrollIntoView({block:'nearest',inline:'nearest',behavior:'auto'});
+       return existing;
+     }
+   }
    cards.push(c);mount(c);arrangeCards(c.id);if(empty)empty.hidden=true;save();refreshValues();
    if(visible()){refreshDetailCards();syncCandleStream();}
    return c;
@@ -327,6 +336,10 @@
      // V531: le card originali BTC/ETH/etc devono rispettare la selezione della crypto.
      if(isAsset(c.type)&&selected==='asset'&&assetInput.value!==c.type)c.type='asset';
      c.asset=assetInput.value;c.interval=intervalInput.value;c.chartStyle='candles';c.depth=Number(depthInput.value);
+     if(selected==='chart' && cards.some(other=>other!==c && cardKind(other)==='chart' && cardAsset(other)===cardAsset(c) && other.interval===c.interval)){
+       removeCard(c.id);
+       return;
+     }
      settings.querySelector('.v526-asset-field').hidden=['clock','notes','ab'].includes(selected);
      settings.querySelector('.v526-interval-field').hidden=!['chart','indicators'].includes(selected);
      settings.querySelector('.v526-chart-style-field').hidden=selected!=='chart';
