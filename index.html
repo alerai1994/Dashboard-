@@ -3259,7 +3259,8 @@
     previousTick=performance.now();
     if(!document.hidden){measureTicker();scrollTick()}
   });
-  window.addEventListener('pagehide',()=>window.clearInterval(tickerTimer),{once:true});
+  // In caso di ritorno dalla cache della pagina, riprendi lo scorrimento.
+  window.addEventListener('pageshow',()=>{previousTick=performance.now();measureTicker();});
   function formatPrice(raw,item){
     const price=Number(raw);
     if(!Number.isFinite(price)||price<=0)return null;
