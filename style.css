@@ -327,3 +327,26 @@ body.theme-light .market-panel .instrument-row:hover{background:#e7f1f9}
 .data-footnote .live-stream-note{display:inline-block;flex:1 1 320px;color:var(--muted);font-size:10px;line-height:1.45}
 .crypto-market-panel .asset-price{font-variant-numeric:tabular-nums}
 @media(max-width:700px){.crypto-market-panel .crypto-stream-status{font-size:9px}.data-footnote .live-stream-note{flex-basis:100%}}
+
+/* Vertex Technology Markets: responsive Tech & Big Tech index cards */
+.sector-overview{margin:18px 0 14px;min-width:0}
+.sector-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:15px;margin-bottom:12px}
+.sector-heading h2{font-size:21px;margin:6px 0 5px;line-height:1.2;letter-spacing:-.035em}
+.sector-heading h2 span{color:var(--brand)}
+.sector-heading p{color:var(--muted);font-size:11px;margin:0;line-height:1.5}
+.sector-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sector-overview-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:11px;align-items:start}
+.sector-panel{padding:13px;min-width:0}
+.sector-panel h3{font-size:13px;display:flex;align-items:center;gap:8px;margin:0 0 12px;color:var(--text)}
+.sector-panel h3 .icon{height:17px;width:17px;color:var(--brand)}
+.sector-card-grid{display:grid;gap:8px}
+.sector-tech-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+.sector-bigtech-cards{grid-template-columns:repeat(3,minmax(0,1fr))}
+.sector-card-grid .index-mini{min-width:0;height:102px;padding:10px}
+.sector-card-grid .mini-title{font-size:11px}
+.sector-card-grid .mini-price{font-size:11px}
+.sector-card-grid .spark{height:30px}
+.sector-view-all{display:block;text-align:center;width:100%;border-radius:8px;border:1px solid var(--line);padding:9px;margin-top:9px}
+.sector-footnote{color:var(--subtle);font-size:10px;line-height:1.5;margin:9px 2px}
+@media(max-width:1160px){.sector-overview-grid{grid-template-columns:1fr}.sector-tech-cards{grid-template-columns:repeat(3,minmax(0,1fr))}.sector-bigtech-cards{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:650px){.sector-heading{align-items:flex-start;flex-direction:column}.sector-actions{width:100%}.sector-tech-cards,.sector-bigtech-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.sector-card-grid .index-mini{min-width:0;flex:initial}.sector-panel{padding:10px}}

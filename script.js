@@ -26,6 +26,23 @@ const ASSETS=[
 {id:'nifty',name:'Nifty 50',short:'Nifty 50',group:'markets',symbol:'^NSEI',country:'India',where:'Mumbai · India'},
 {id:'kospi',name:'KOSPI',short:'KOSPI',group:'markets',symbol:'^KS11',country:'Corea del Sud',where:'Seul · Corea del Sud'},
 {id:'asx',name:'S&P/ASX 200',short:'ASX 200',group:'markets',symbol:'^AXJO',country:'Australia',where:'Sydney · Australia'},
+{id:'ndx',name:'Nasdaq-100',short:'NASDAQ 100',group:'markets',symbol:'^NDX',country:'USA',sector:'tech',where:'Borsa USA'},
+{id:'sox',name:'PHLX Semiconductor Index',short:'SOX · Chip',group:'markets',symbol:'^SOX',country:'USA',sector:'tech',where:'Borsa USA'},
+{id:'xlk',name:'Technology Select Sector SPDR (ETF)',short:'XLK · Tech',group:'markets',symbol:'XLK',country:'USA',sector:'tech',where:'Borsa USA'},
+{id:'qqq',name:'Invesco QQQ (ETF)',short:'QQQ · Nasdaq',group:'markets',symbol:'QQQ',country:'USA',sector:'tech',where:'Borsa USA'},
+{id:'smh',name:'VanEck Semiconductor (ETF)',short:'SMH · Chip',group:'markets',symbol:'SMH',country:'USA',sector:'tech',where:'Borsa USA'},
+{id:'nvda',name:'NVIDIA',short:'NVIDIA',group:'bigtech',symbol:'NVDA',country:'USA',sector:'bigtech',where:'Mercato azionario'},
+{id:'msft',name:'Microsoft',short:'Microsoft',group:'bigtech',symbol:'MSFT',country:'USA',sector:'bigtech',where:'Mercato azionario'},
+{id:'aapl',name:'Apple',short:'Apple',group:'bigtech',symbol:'AAPL',country:'USA',sector:'bigtech',where:'Mercato azionario'},
+{id:'googl',name:'Alphabet (Google)',short:'Alphabet (Google)',group:'bigtech',symbol:'GOOGL',country:'USA',sector:'bigtech',where:'Mercato azionario'},
+{id:'amzn',name:'Amazon',short:'Amazon',group:'bigtech',symbol:'AMZN',country:'USA',sector:'bigtech',where:'Mercato azionario'},
+{id:'meta',name:'Meta Platforms',short:'Meta Platforms',group:'bigtech',symbol:'META',country:'USA',sector:'bigtech',where:'Mercato azionario'},
+{id:'tsla',name:'Tesla',short:'Tesla',group:'bigtech',symbol:'TSLA',country:'USA',sector:'bigtech',where:'Mercato azionario'},
+{id:'avgo',name:'Broadcom',short:'Broadcom',group:'bigtech',symbol:'AVGO',country:'USA',sector:'bigtech',where:'Mercato azionario'},
+{id:'amd',name:'AMD',short:'AMD',group:'bigtech',symbol:'AMD',country:'USA',sector:'bigtech',where:'Mercato azionario'},
+{id:'orcl',name:'Oracle',short:'Oracle',group:'bigtech',symbol:'ORCL',country:'USA',sector:'bigtech',where:'Mercato azionario'},
+{id:'tsm',name:'TSMC',short:'TSMC',group:'bigtech',symbol:'TSM',country:'Taiwan',sector:'bigtech',where:'Mercato azionario'},
+{id:'asml',name:'ASML',short:'ASML',group:'bigtech',symbol:'ASML',country:'Paesi Bassi',sector:'bigtech',where:'Mercato azionario'},
 {id:'gold',name:'Gold',short:'Oro',group:'commodities',symbol:'GC=F',icon:'🟡',currency:'USD'},
 {id:'brent',name:'Brent Crude',short:'Brent Crude',group:'commodities',symbol:'BZ=F',icon:'💧',currency:'USD'},
 {id:'wti',name:'WTI Crude',short:'WTI Crude',group:'commodities',symbol:'CL=F',icon:'💧',currency:'USD'},
@@ -73,6 +90,8 @@ const ASSETS=[
 {id:'hot',name:'Holo (HOT)',short:'Holo',group:'crypto',symbol:'HOT-USD',icon:'H',currency:'USD',coingeckoId:'holotoken'}
 ];
 const ASSET_BY_ID=Object.fromEntries(ASSETS.map(a=>[a.id,a]));
+const TECH_IDS=["ndx","sox","xlk","qqq","smh"];
+const BIGTECH_IDS=["nvda","msft","aapl","googl","amzn","meta","tsla","avgo","amd","orcl","tsm","asml"];
 const SECTIONS={
 home:['Home','La tua panoramica dei mercati e degli strumenti.'],
 global:['Global','Global market data across every region, market and asset class.'],
@@ -136,7 +155,7 @@ const formatValue=(v,a)=>{
  if(a&&a.group==='forex')return v.toLocaleString('it-IT',{minimumFractionDigits:v>=100?2:4,maximumFractionDigits:v>=100?3:5});
  if(a&&a.group==='markets')return v.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
  const digits=Math.abs(v)<0.00001?10:Math.abs(v)<0.001?8:Math.abs(v)<0.1?6:Math.abs(v)<1?5:Math.abs(v)<10?3:2;
- return (a&&(a.group==='crypto'||a.group==='commodities')?'$':'')+v.toLocaleString('it-IT',{minimumFractionDigits:digits,maximumFractionDigits:digits});
+ return (a&&(a.group==='crypto'||a.group==='commodities'||a.group==='bigtech')?'$':'')+v.toLocaleString('it-IT',{minimumFractionDigits:digits,maximumFractionDigits:digits});
 };
 const assetValue=a=>(a&&a.group==='crypto'&&quote(a.id)&&quote(a.id).currency==='USDT'?'≈':'')+formatValue(quote(a.id)&&quote(a.id).value,a);
 const refTime=id=>quote(id)&&quote(id).time?localeDate(quote(id).time,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'Non disponibile';
@@ -387,12 +406,25 @@ function feedStatus(){
  return '<div class="data-footnote"><span class="data-status'+(state.feedError?' error':'')+'"><i></i> '+(state.feedError?'Feed non raggiungibile':'Dati disponibili: '+dataCount()+'/'+ASSETS.length)+' · Ultimo snapshot '+when+'</span>'+
  '<span class="live-stream-note">'+liveLabel()+' · Indici, Forex e materie prime: feed ritardato, aggiornato automaticamente.</span><span>Mercati chiusi = ultima seduta. <button type="button" data-refresh="1">'+sym('refresh')+' Aggiorna</button></span></div>';
 }
+function techBigTechOverview(){
+ return '<section class="sector-overview" aria-label="Mercato Tech e Big Tech">'+
+ '<div class="sector-heading"><div><span class="eyebrow">TECHNOLOGY MARKETS</span><h2>Mercato Tech <span>&amp;</span> Big Tech</h2><p>Indici tecnologici, ETF e grandi aziende quotate.</p></div>'+
+ '<div class="sector-actions"><button type="button" class="btn btn-small" data-page="markets" data-category="tech">Mercato Tech</button>'+
+ '<button type="button" class="btn btn-small" data-page="markets" data-category="bigtech">Big Tech</button></div></div>'+
+ '<div class="sector-overview-grid"><div class="panel sector-panel"><h3>'+sym('trend')+' Indici e ETF Tech</h3>'+
+ '<div class="sector-card-grid sector-tech-cards">'+TECH_IDS.map(indexCard).join('')+'</div></div>'+
+ '<div class="panel sector-panel"><h3>'+sym('bars')+' Big Tech · Azioni</h3>'+
+ '<div class="sector-card-grid sector-bigtech-cards">'+BIGTECH_IDS.slice(0,7).map(indexCard).join('')+'</div>'+
+ '<button type="button" class="text-action sector-view-all" data-page="markets" data-category="bigtech">Vedi tutte le '+BIGTECH_IDS.length+' aziende →</button></div></div>'+
+ '<p class="sector-footnote">Nasdaq-100 e PHLX SOX sono indici; XLK, QQQ e SMH sono ETF. Le Big Tech sono azioni. Prezzi da Yahoo Finance, anche ritardati.</p></section>';
+}
+
 function globalPage(){
  return '<section class="market-index-strip">'+TOP_IDS.map(indexCard).join('')+'</section>'+
  '<div class="global-grid">'+regionList()+mapPanel()+
  '<aside class="aside-stack">'+QUOTE_GROUPS.map(sidePanel).join('')+'</aside>'+
  '<div class="region-photo-grid" aria-label="Panoramica fotografica delle regioni">'+REGIONS.map(photoCard).join('')+'</div></div>'+
- feedStatus();
+ techBigTechOverview()+feedStatus();
 }
 function secHeader(title,subtitle,actions){return '<div class="content-heading"><div><h2>'+esc(title)+'</h2><p>'+esc(subtitle||'')+'</p></div>'+(actions?'<div class="btn-group">'+actions+'</div>':'')+'</div>';}
 function countMarketMood(){
@@ -424,10 +456,16 @@ function tableForAssets(items,emptyTitle){
  '<td class="'+classArrow(a.id)+'">'+sparkLine(a.id,90,26)+'</td><td><small>'+esc(a.group==='crypto'?'CoinGecko':'Yahoo Finance')+'</small></td></tr>').join('')+
  '</tbody></table></div>';
 }
+function marketFilterMatch(asset){
+ if(state.marketFilter==='all')return true;
+ if(state.marketFilter==='tech')return asset.sector==='tech';
+ if(state.marketFilter==='bigtech')return asset.group==='bigtech';
+ return asset.group===state.marketFilter;
+}
 function marketsPage(){
- const options=[['all','Tutti'],['markets','Indici'],['commodities','Materie prime'],['forex','Forex'],['crypto','Crypto']];
+ const options=[['all','Tutti'],['markets','Indici'],['tech','Tech'],['bigtech','Big Tech'],['commodities','Materie prime'],['forex','Forex'],['crypto','Crypto']];
  const text=state.marketSearch.trim().toLowerCase();
- const filtered=ASSETS.filter(a=>(state.marketFilter==='all'||state.marketFilter===a.group)&&(!text||(a.name+' '+a.symbol+' '+a.country).toLowerCase().includes(text)));
+ const filtered=ASSETS.filter(a=>marketFilterMatch(a)&&(!text||(a.name+' '+a.symbol+' '+(a.country||'')).toLowerCase().includes(text)));
  return secHeader('Esplora tutti i mercati','Seleziona uno strumento per aprire il grafico storico e gli indicatori',
  '<a class="btn btn-small" href="#global">'+sym('globe')+' Mappa mondiale</a>')+
  '<section class="content-card panel"><div class="filter-row"><div class="tab-filters" role="group" aria-label="Categorie mercati">'+
@@ -453,7 +491,7 @@ function portfolioTotals(){
 }
 function portfolioPage(){
  const total=portfolioTotals(),pnl=total.value-total.cost;
- const opts=ASSETS.filter(a=>a.group==='crypto'||a.group==='commodities').map(a=>'<option value="'+a.id+'">'+esc(a.name)+'</option>').join('');
+ const opts=ASSETS.filter(a=>a.group==='crypto'||a.group==='commodities'||a.group==='bigtech').map(a=>'<option value="'+a.id+'">'+esc(a.name)+'</option>').join('');
  return secHeader('Portfolio','Monitoraggio manuale, senza collegamento a conti o exchange')+
  '<div class="summary-grid">'+overviewCard('Valore delle posizioni con quotazione',formatValue(total.value,{group:'crypto'}),'Asset con prezzo disponibile')+
  overviewCard('Capitale di carico',formatValue(total.cost,{group:'crypto'}),'Somma dei costi inseriti')+
@@ -570,7 +608,7 @@ async function fetchQuotes(isManual=false){
   if(!response.ok)throw new Error('HTTP '+response.status);
   const data=await response.json();
   if(!data||!Array.isArray(data.markets))throw new Error('Invalid format');
-  const all=[...(data.markets||[]),...(data.commodities||[]),...(data.forex||[]),...(data.crypto||[])];
+  const all=[...(data.markets||[]),...(data.bigtech||[]),...(data.commodities||[]),...(data.forex||[]),...(data.crypto||[])];
   state.quotes=preserveStreamingQuotes(Object.fromEntries(all.filter(x=>x&&x.id&&ASSET_BY_ID[x.id]).map(x=>[x.id,x])));
   state.feedTime=data.generatedAt||null;
   state.feedError=false;state.loading=false;
@@ -876,8 +914,8 @@ function setupEvents(){
    const target=e.target,cursor=target.selectionStart;
    state.marketSearch=target.value;
    const rows=$('#marketRows');
-   if(rows)rows.innerHTML=tableForAssets(ASSETS.filter(a=>(state.marketFilter==='all'||a.group===state.marketFilter)&&
-    (a.name+' '+a.symbol+' '+a.country).toLowerCase().includes(state.marketSearch.trim().toLowerCase())),'Nessun risultato');
+   if(rows)rows.innerHTML=tableForAssets(ASSETS.filter(a=>marketFilterMatch(a)&&
+    (a.name+' '+a.symbol+' '+(a.country||'')).toLowerCase().includes(state.marketSearch.trim().toLowerCase())),'Nessun risultato');
    try{target.setSelectionRange(cursor,cursor)}catch(err){}
   }
  });

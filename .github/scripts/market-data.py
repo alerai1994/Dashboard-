@@ -19,6 +19,27 @@ MARKETS = [
     ("cac", "^FCHI"), ("jse", "J200.JO"), ("tadawul", "^TASI.SR"), ("nikkei", "^N225"),
     ("hsi", "^HSI"), ("nifty", "^NSEI"), ("kospi", "^KS11"), ("asx", "^AXJO"),
 ]
+TECH = [
+    ("ndx", "^NDX"),
+    ("sox", "^SOX"),
+    ("xlk", "XLK"),
+    ("qqq", "QQQ"),
+    ("smh", "SMH"),
+]
+BIGTECH = [
+    ("nvda", "NVDA"),
+    ("msft", "MSFT"),
+    ("aapl", "AAPL"),
+    ("googl", "GOOGL"),
+    ("amzn", "AMZN"),
+    ("meta", "META"),
+    ("tsla", "TSLA"),
+    ("avgo", "AVGO"),
+    ("amd", "AMD"),
+    ("orcl", "ORCL"),
+    ("tsm", "TSM"),
+    ("asml", "ASML"),
+]
 COMMODITIES = [
     ("gold", "GC=F"), ("silver", "SI=F"), ("brent", "BZ=F"),
     ("wti", "CL=F"), ("naturalgas", "NG=F"), ("copper", "HG=F")
@@ -181,20 +202,21 @@ def main():
     data = {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "source": "Yahoo Finance chart + CoinGecko, delayed/not real-time",
-        "markets": fetch_group(MARKETS),
+        "markets": fetch_group(MARKETS + TECH),
+        "bigtech": fetch_group(BIGTECH),
         "commodities": fetch_group(COMMODITIES),
         "forex": fetch_group(FOREX),
         "crypto": crypto_quotes(),
     }
-    ready = sum(1 for group in ("markets", "commodities", "forex", "crypto")
+    ready = sum(1 for group in ("markets", "bigtech", "commodities", "forex", "crypto")
                 for row in data[group] if row["value"] is not None)
-    print("Verified quotes:", ready, "of", sum(map(len, (MARKETS, COMMODITIES, FOREX, CRYPTO))))
+    print("Verified quotes:", ready, "of", sum(map(len, (MARKETS, TECH, BIGTECH, COMMODITIES, FOREX, CRYPTO))))
     # If every request is denied, preserve the last successful snapshot rather than
     # overwriting real existing prices with empty values.
     if ready == 0 and OUTPUT.exists():
         try:
             old = json.loads(OUTPUT.read_text(encoding="utf-8"))
-            if any(x.get("value") is not None for g in ("markets", "commodities", "forex", "crypto")
+            if any(x.get("value") is not None for g in ("markets", "bigtech", "commodities", "forex", "crypto")
                    for x in old.get(g, [])):
                 print("All APIs unavailable; retaining last successful snapshot")
                 return
