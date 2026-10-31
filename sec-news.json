@@ -1,99 +1,537 @@
 {
   "source": "U.S. Securities and Exchange Commission",
-  "updated_at": null,
+  "updated_at": "2026-10-31T22:06:10Z",
   "seed_date": "2026-10-31T12:00:00Z",
-  "feeds_updated": [],
+  "feeds_updated": [
+    "press",
+    "speeches",
+    "testimony"
+  ],
   "items": [
+    {
+      "category": "speeches",
+      "title": "Remarks at the Economic Club of Dallas",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/atkins-remarks-economic-club-of-dallas-103026",
+      "date": "2026-10-30T20:50:44Z",
+      "summary": "Chairman Paul S. Atkins"
+    },
     {
       "category": "press",
       "title": "SEC Issues Exemptive Relief from Treasury Clearing Requirements for Certain Inter-Affiliate and Non-U.S. Repo Transactions",
       "url": "https://www.sec.gov/newsroom/press-releases/2026-111-sec-issues-exemptive-relief-treasury-clearing-requirements-certain-inter-affiliate-non-us-repo",
-      "date": "2026-10-30T12:00:00Z",
-      "summary": ""
+      "date": "2026-10-30T19:30:00Z",
+      "summary": "The Securities and Exchange Commission took another step forward today to assist broker-dealers and other market participants on the path to central clearing of U.S. Treasury securities by issuing exemptive relief related to inter"
+    },
+    {
+      "category": "speeches",
+      "title": "“Transfer Portal”",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/remarks-selway-sta-annual-conference-2026-102926",
+      "date": "2026-10-29T17:15:55Z",
+      "summary": "Jamie Selway, Director, Division of Trading and Markets"
     },
     {
       "category": "press",
       "title": "Two Entities Charged in $130 Million Fraud Scheme That Used False SEC Filings to Boost Investor Confidence",
       "url": "https://www.sec.gov/newsroom/press-releases/2026-110-two-entities-charged-130-million-fraud-scheme-used-false-sec-filings-boost-investor-confidence",
-      "date": "2026-10-29T12:00:00Z",
-      "summary": ""
+      "date": "2026-10-29T16:42:37Z",
+      "summary": "The Securities and Exchange Commission today charged two foreign-operated, Colorado-incorporated entities, BG Wealth Sharing Ltd and DSJ Exchange Pty Ltd, for orchestrating a fraud scheme that used false SEC filings to boost confi"
+    },
+    {
+      "category": "speeches",
+      "title": "Remarks to the Small Business Capital Formation Advisory Committee",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/uyeda-remarks-sbcfac-102726",
+      "date": "2026-10-28T01:06:56Z",
+      "summary": "Commissioner Mark T. Uyeda"
+    },
+    {
+      "category": "speeches",
+      "title": "Remarks at the Small Business Capital Formation Advisory Committee Meeting",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/atkins-remarks-sbcfac-meeting-102726",
+      "date": "2026-10-27T16:11:13Z",
+      "summary": "SEC Chairman Paul S. Atkins"
     },
     {
       "category": "press",
       "title": "SEC Announces Fiscal Year 2027 Examination Priorities",
       "url": "https://www.sec.gov/newsroom/press-releases/2026-109-sec-announces-fiscal-year-2027-examination-priorities",
-      "date": "2026-10-23T12:00:00Z",
-      "summary": ""
+      "date": "2026-10-23T14:10:00Z",
+      "summary": "The Securities and Exchange Commission today announced the Division of Examinations’ Fiscal Year 2027 examination priorities. The annual report identifies key areas of focus as the Division carries out its mission to promote compl"
     },
     {
       "category": "press",
       "title": "SEC and AMF Announce Supervisory MOU To Enhance Cooperation for Investment Advisers and Investment Service Providers",
       "url": "https://www.sec.gov/newsroom/press-releases/2026-108-sec-amf-announce-supervisory-mou-enhance-cooperation-investment-advisers-investment-service",
-      "date": "2026-10-20T12:00:00Z",
-      "summary": ""
+      "date": "2026-10-20T13:25:16Z",
+      "summary": "The U.S. Securities and Exchange Commission (SEC) and the French Autorité des Marchés Financiers (AMF) announced that they have entered into a Memorandum of Understanding (MOU) designed to facilitate consultation and information-s"
     },
     {
       "category": "press",
       "title": "SEC, FSA Hold Autumn Financial Regulatory Dialogue",
       "url": "https://www.sec.gov/newsroom/press-releases/2026-107-sec-fsa-hold-autumn-financial-regulatory-dialogue",
-      "date": "2026-10-20T12:00:00Z",
-      "summary": ""
+      "date": "2026-10-20T12:51:00Z",
+      "summary": "The U.S. Securities and Exchange Commission (SEC) and the Financial Services Agency of Japan (FSA) convened the Autumn SEC-FSA Financial Regulatory Dialogue in Tokyo on Oct. 19, 2026.The SEC–FSA Dialogue builds upon longstanding e"
     },
     {
       "category": "press",
       "title": "SEC Announces Roundtable on Machine-Understandable Data in the Age of Super Intelligence",
       "url": "https://www.sec.gov/newsroom/press-releases/2026-106-sec-announces-roundtable-machine-understandable-data-age-super-intelligence",
-      "date": "2026-10-19T12:00:00Z",
-      "summary": ""
+      "date": "2026-10-19T17:19:43Z",
+      "summary": "The Securities and Exchange Commission announced today that it will host a roundtable on November 9, 2026, to discuss the use of machine-understandable data and Super Intelligence (SI) and related risks and costs.“In the age of SI"
+    },
+    {
+      "category": "speeches",
+      "title": "Remarks at the Stanford University Private Capital Roundtable",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/daly-remarks-stanford-roundtable-101626",
+      "date": "2026-10-16T18:11:50Z",
+      "summary": "Brian Daly, Director of the Division of Investment Management"
+    },
+    {
+      "category": "speeches",
+      "title": "Statewide Joint Powers Authorities and Energy Prepay Bonds",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/sanchez-remarks-statewide-joint-powers-authorities-energy-prepay-bonds-101526",
+      "date": "2026-10-16T00:00:00Z",
+      "summary": "Dave Sanchez, Director, Office of Municipal Securities"
+    },
+    {
+      "category": "speeches",
+      "title": "How Soon is Now?",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/selway-remarks-market-structure-conference-101426",
+      "date": "2026-10-14T17:49:25Z",
+      "summary": "Jamie Selway, Director, Division of Trading and Markets"
     },
     {
       "category": "press",
       "title": "SEC Small Business Advisory Committee to Discuss IPO Modernization and Regulation Crowdfunding",
       "url": "https://www.sec.gov/newsroom/press-releases/2026-105-sec-small-business-advisory-committee-discuss-ipo-modernization-regulation-crowdfunding",
-      "date": "2026-10-14T12:00:00Z",
-      "summary": ""
+      "date": "2026-10-14T14:30:47Z",
+      "summary": "The Securities and Exchange Commission’s Small Business Capital Formation Advisory Committee announced that it will hold a meeting on Tuesday, October 27, 2026, at 10 a.m. to continue discussing IPO modernization and explore poten"
+    },
+    {
+      "category": "speeches",
+      "title": "Statement on the Commission’s Approval of a Proposed Rule Change to Permit the Listing of Binary Options Overlying Key Performance Indicators",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/atkins-101326-statement-commissions-approval-proposed-rule-change-permit-listing-binary-options-overlying-key",
+      "date": "2026-10-14T01:30:17Z",
+      "summary": "Chairman Paul S. Atkins"
     },
     {
       "category": "press",
       "title": "SEC Proposes Expanding Securities Eligible for Cross Trading by Registered Funds",
       "url": "https://www.sec.gov/newsroom/press-releases/2026-104-sec-proposes-expanding-securities-eligible-cross-trading-registered-funds",
-      "date": "2026-10-09T12:00:00Z",
-      "summary": ""
+      "date": "2026-10-09T14:59:00Z",
+      "summary": "The Securities and Exchange Commission today proposed amendments to the Investment Company Act “cross-trading rule,” which permits transactions in securities between a registered fund and its affiliates under certain conditions. T"
+    },
+    {
+      "category": "speeches",
+      "title": "Statement on Proposed Amendments to Investment Company Cross Trading",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/atkins-statement-cross-trading-10-09-2026-statement-proposed-amendments-investment-company-cross-trading",
+      "date": "2026-10-09T14:29:09Z",
+      "summary": "Chairman Paul S. Atkins"
+    },
+    {
+      "category": "speeches",
+      "title": "Statement on Proposed Amendments to the Cross-Trading Rules",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/uyeda-100926-statement-proposed-amendments-cross-trading-rules",
+      "date": "2026-10-09T14:12:58Z",
+      "summary": "Commissioner Mark T. Uyeda"
     },
     {
       "category": "press",
       "title": "SEC Seeks Final Judgment Against Former Western Asset Co-CIO Ken Leech in Cherry Picking Case",
       "url": "https://www.sec.gov/newsroom/press-releases/2026-103-sec-seeks-final-judgment-against-former-western-asset-co-cio-ken-leech-cherry-picking-case",
-      "date": "2026-10-06T12:00:00Z",
-      "summary": ""
+      "date": "2026-10-06T20:30:24Z",
+      "summary": "The Securities and Exchange Commission today moved for entry of a final judgment by consent against Stephen Kenneth Leech II, the former co-chief investment officer of registered investment adviser Western Asset Management Company"
+    },
+    {
+      "category": "speeches",
+      "title": "When an “IRMA” Is Not Quite an IRMA: Revisiting the Requirements of the Independent Registered Municipal Advisor Exemption",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/sanchez-remarks-naheffa-fall-conference-100626",
+      "date": "2026-10-06T16:47:41Z",
+      "summary": "Dave A. Sanchez, Director, Office of Municipal Securities"
     },
     {
       "category": "press",
       "title": "SEC to Host Virtual National Compliance Outreach Seminar for Investment Companies and Investment Advisers",
       "url": "https://www.sec.gov/newsroom/press-releases/2026-102-sec-host-virtual-national-compliance-outreach-seminar-investment-companies-investment-advisers",
-      "date": "2026-10-06T12:00:00Z",
-      "summary": ""
+      "date": "2026-10-06T14:37:55Z",
+      "summary": "The Securities and Exchange Commission’s Compliance Outreach Program announced today that it will host a virtual national seminar for investment companies and investment advisers on November 19, 2026. The purpose of the event is t"
     },
     {
       "category": "press",
       "title": "SEC Coordinates with Global Financial Regulators to Raise Fraud Awareness During World Investor Week",
       "url": "https://www.sec.gov/newsroom/press-releases/2026-101-sec-coordinates-global-financial-regulators-raise-fraud-awareness-during-world-investor-week",
-      "date": "2026-10-05T12:00:00Z",
-      "summary": ""
+      "date": "2026-10-05T12:47:36Z",
+      "summary": "The Securities and Exchange Commission, in coordination with other U.S. and global financial regulators, today issued a joint investor bulletin as part of World Investor Week (WIW). The bulletin encourages investors to be resilien"
+    },
+    {
+      "category": "speeches",
+      "title": "Statement on Departure of Commissioner Hester Peirce",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/atkins-uyeda-statement-commissioner-peirce-100126",
+      "date": "2026-10-01T20:30:37Z",
+      "summary": "Chairman Paul S. Atkins Commissioner Mark T. Uyeda"
+    },
+    {
+      "category": "speeches",
+      "title": "Statement on Proposal to Address the Custody of Crypto Assets Under the Investment Advisers Act and the Investment Company Act",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/atkins-crypto-custody-100126-statement-proposal-address-custody-crypto-assets-under-investment-advisers-act-investment-company",
+      "date": "2026-10-01T20:00:02Z",
+      "summary": "Chairman Paul S. Atkins"
+    },
+    {
+      "category": "speeches",
+      "title": "Roller Coaster Ride: Statement on Proposed Adviser and Regulated Fund Custody Rules; Crypto Custody Rules",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/peirce-statement-proposed-amendments-custody-rules-100126",
+      "date": "2026-10-01T19:59:13Z",
+      "summary": "Commissioner Hester M. Peirce"
+    },
+    {
+      "category": "speeches",
+      "title": "Statement on Proposed Amendments to the Custody Rules",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/uyeda-statement-proposed-amendments-custody-rules-100126",
+      "date": "2026-10-01T19:58:10Z",
+      "summary": "Commissioner Mark T. Uyeda"
     },
     {
       "category": "press",
       "title": "SEC Proposal Would Address How Investment Advisers and Funds Can Custody Crypto Assets Under the Federal Securities Laws",
       "url": "https://www.sec.gov/newsroom/press-releases/2026-100-sec-proposal-would-address-how-investment-advisers-funds-can-custody-crypto-assets-under-federal",
-      "date": "2026-10-01T12:00:00Z",
-      "summary": ""
+      "date": "2026-10-01T16:16:07Z",
+      "summary": "The Securities and Exchange Commission today proposed new rules and amendments to provide a tailored framework for the custody of crypto assets for registered investment advisers and regulated funds, i.e. registered investment com"
     },
     {
       "category": "press",
       "title": "SEC’s Division of Examinations Announces New Exam Handbook",
       "url": "https://www.sec.gov/newsroom/press-releases/2026-99-secs-division-examinations-announces-new-exam-handbook",
-      "date": "2026-10-01T12:00:00Z",
+      "date": "2026-10-01T15:03:35Z",
+      "summary": "The Securities and Exchange Commission’s Division of Examinations today published its new handbook, “The SEC Exam Handbook: A Practical Guide on Process and Engagement,” which replaces and expands upon the previous examination bro"
+    },
+    {
+      "category": "speeches",
+      "title": "Staff Statement on Trump Accounts",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/im-corpfin-statement-trump-accounts-093026",
+      "date": "2026-09-30T21:09:08Z",
+      "summary": "Divisions of Investment Management and Corporation Finance"
+    },
+    {
+      "category": "speeches",
+      "title": "Staff Statement on Affiliations Between National Securities Exchanges and Broker-Dealers",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/tm-statement-affiliations-093026",
+      "date": "2026-09-30T19:15:06Z",
+      "summary": "Division of Trading and Markets"
+    },
+    {
+      "category": "press",
+      "title": "SEC Charges Meyer Global Management and Its CEO With Defrauding Retail Investors in Private Funds That Held Interests in SpaceX and Other Pre-IPO Securities",
+      "url": "https://www.sec.gov/newsroom/press-releases/2026-98-sec-charges-meyer-global-management-its-ceo-defrauding-retail-investors-private-funds-held-interests",
+      "date": "2026-09-30T18:30:01Z",
+      "summary": "The Securities and Exchange Commission today charged private fund adviser Meyer Global Management LLC (MGM) and its CEO, Owen E.H. Meyer, with defrauding investors and MGM-managed funds in connection with investments in SpaceX and"
+    },
+    {
+      "category": "speeches",
+      "title": "The Other AI: Remarks at the Open Commission Meeting on Accredited Investor Notices under Rule 501(a)(10) of Regulation D",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/peirce-the-other-ai-remarks-ocm-on-accredited-investor-notices-under-rule-501a10-of-regd-093026",
+      "date": "2026-09-30T18:10:25Z",
+      "summary": "Commissioner Hester M. Peirce"
+    },
+    {
+      "category": "speeches",
+      "title": "Performance Interval: Statement on Proposals to Facilitate Retail Investor Access to Private Investments",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/peirce-performance-interval-statement-on-proposals-to-facilitate-retail-investor-access-to-private-investments-093026",
+      "date": "2026-09-30T17:56:36Z",
+      "summary": "Commissioner Hester M. Peirce"
+    },
+    {
+      "category": "press",
+      "title": "SEC Charges Two Individuals With Orchestrating Fraud Scheme That Targeted Veterans",
+      "url": "https://www.sec.gov/newsroom/press-releases/2026-97-sec-charges-two-individuals-orchestrating-fraud-scheme-targeted-veterans",
+      "date": "2026-09-30T16:42:15Z",
+      "summary": "The Securities and Exchange Commission today announced charges against Christopher Kenji Dinelli and Jacob David “Kobe” Frankel for allegedly orchestrating a fraud scheme that raised more than $8.7 million from 35 investors throug"
+    },
+    {
+      "category": "press",
+      "title": "SEC Proposes Amendments to Expand Responsible Retailization of Private Markets",
+      "url": "https://www.sec.gov/newsroom/press-releases/2026-96-sec-proposes-amendments-expand-responsible-retailization-private-markets",
+      "date": "2026-09-30T15:45:00Z",
+      "summary": "The Securities and Exchange Commission today voted to propose rule amendments that would facilitate capital formation in the public and private markets by expanding retail investor choice and promoting innovation in regulated fund"
+    },
+    {
+      "category": "speeches",
+      "title": "Statement at Open Meeting on Proposals to Expand Responsible Retailization of Private Markets",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/atkins-statement-open-meeting-093026",
+      "date": "2026-09-30T14:00:00Z",
+      "summary": "SEC Chairman Paul S. Atkins"
+    },
+    {
+      "category": "speeches",
+      "title": "Statement on Proposed Amendments to Adviser Performance-Based Compensation, Interval Fund Modernization, and Multiple Share Class Rules for Closed-End Funds and BDCs",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/uyeda-statement-interval-fund-modernization-093026",
+      "date": "2026-09-30T13:58:47Z",
+      "summary": "Commissioner Mark T. Uyeda"
+    },
+    {
+      "category": "press",
+      "title": "SEC Charges Multiple Entities in Fraud Schemes Totaling at Least $15 Million That Used WhatsApp and Other Platforms to Lure Investors",
+      "url": "https://www.sec.gov/newsroom/press-releases/2026-95-sec-charges-multiple-entities-fraud-schemes-totaling-least-15-million-used-whatsapp-other-platforms",
+      "date": "2026-09-29T13:55:53Z",
+      "summary": "The Securities and Exchange Commission today charged multiple entities that are likely operated by individuals located overseas for defrauding hundreds of retail investors, including many in the U.S., through so-called investment"
+    },
+    {
+      "category": "press",
+      "title": "SEC Charges Registered Investment Adviser Zoe Financial for Failure to Disclose Conflict of Interest",
+      "url": "https://www.sec.gov/newsroom/press-releases/2026-94-sec-charges-registered-investment-adviser-zoe-financial-failure-disclose-conflict-interest",
+      "date": "2026-09-28T17:46:30Z",
+      "summary": "The Securities and Exchange Commission today announced settled charges against New York-based investment adviser Zoe Financial Inc. for failing to fully and fairly disclose material facts concerning conflicts of interest to its cl"
+    },
+    {
+      "category": "speeches",
+      "title": "Statement on Fair Value Measurement and Disclosure Considerations for Private Assets",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/hohl-daley-statement-fair-value-measurement-disclosure-considerations-private-assets-092806",
+      "date": "2026-09-28T12:30:55Z",
+      "summary": "Kurt Hohl, Chief Accountant Brian Daly, Director, Division of Investment Management"
+    },
+    {
+      "category": "speeches",
+      "title": "Looking for Change in Haystacks: Remarks before SIFMA’s Digital Assets Conference",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/peirce-looking-change-haystacks-remarks-sifma-s-digital-assets-conference-092326",
+      "date": "2026-09-23T19:43:22Z",
+      "summary": "Commissioner Hester M. Peirce"
+    },
+    {
+      "category": "press",
+      "title": "SEC Publishes Updated Market Statistics, Highlighting Increase in IPOs and Proceeds Raised",
+      "url": "https://www.sec.gov/newsroom/press-releases/2026-93-sec-publishes-updated-market-statistics-highlighting-increase-ipos-proceeds-raised",
+      "date": "2026-09-23T18:27:00Z",
+      "summary": "The Securities and Exchange Commission’s Division of Economic and Risk Analysis (DERA) published updated statistics and data visualizations covering key segments of the U.S. capital markets, including a notable increase in the num"
+    },
+    {
+      "category": "press",
+      "title": "SEC Charges South Florida Resident and His Company for Alleged Investment Scheme Defrauding Law Enforcement",
+      "url": "https://www.sec.gov/newsroom/press-releases/2026-92-sec-charges-south-florida-resident-his-company-alleged-investment-scheme-defrauding-law-enforcement",
+      "date": "2026-09-23T16:00:00Z",
+      "summary": "The Securities and Exchange Commission today charged CMI Capital LLC and its founder and manager, Michael D. Williams, for an alleged fraudulent investment scheme that raised approximately $860,000 from at least 18 investors, many"
+    },
+    {
+      "category": "speeches",
+      "title": "Remarks at the 2026 U.S. Treasury Market Conference",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/uyeda-remarks-2026-u-s-treasury-market-conference-092226",
+      "date": "2026-09-22T21:37:43Z",
+      "summary": "Commissioner Mark T. Uyeda"
+    },
+    {
+      "category": "press",
+      "title": "SEC Censures OTC Link LLC for Repeated Compliance Failures Related to Regulation SCI",
+      "url": "https://www.sec.gov/newsroom/press-releases/2026-91-sec-censures-otc-link-llc-repeated-compliance-failures-related-regulation-sci",
+      "date": "2026-09-22T16:41:11Z",
+      "summary": "The Securities and Exchange Commission today censured New York-based broker dealer OTC Link LLC and ordered it to pay a $575,000 civil penalty for longstanding violations of Regulation Systems Compliance and Integrity (SCI).Accord"
+    },
+    {
+      "category": "speeches",
+      "title": "Remarks Before 12th Annual Government Enforcement Institute",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/woodcock-remarks-before-12th-annual-government-enforcement-institute-091826",
+      "date": "2026-09-18T14:40:06Z",
+      "summary": "David Woodcock, Director, Division of Enforcement"
+    },
+    {
+      "category": "press",
+      "title": "SEC Issues “Innovation Exemption” to Facilitate the Trading of Tokenized NMS Stock and Request for Comment",
+      "url": "https://www.sec.gov/newsroom/press-releases/2026-90-sec-issues-innovation-exemption-facilitate-trading-tokenized-nms-stock-request-comment",
+      "date": "2026-09-17T12:55:00Z",
+      "summary": "The SEC is taking a significant step forward, within its statutory authority, to bring America’s capital markets into the digital age by facilitating onchain trading of certain tokenized stocks."
+    },
+    {
+      "category": "press",
+      "title": "SEC Proposes Rescission of Shareholder Proposal Rule and Reforms to Proxy Solicitation Process",
+      "url": "https://www.sec.gov/newsroom/press-releases/2026-89-sec-proposes-rescission-shareholder-proposal-rule-reforms-proxy-solicitation-process",
+      "date": "2026-09-16T14:00:00Z",
+      "summary": "The Securities and Exchange Commission today proposed to rescind Rule 14a-8 under the Securities Exchange Act of 1934, which exceeds the scope of the Commission's statutory authority and intrudes into matters of state law.The Comm"
+    },
+    {
+      "category": "press",
+      "title": "SEC Grants Exemptive Relief from Certain Inline XBRL Filing or Submission Requirements",
+      "url": "https://www.sec.gov/newsroom/press-releases/2026-88-sec-grants-exemptive-relief-certain-inline-xbrl-filing-or-submission-requirements",
+      "date": "2026-09-14T16:47:00Z",
+      "summary": "The Securities and Exchange Commission issued an order granting exemptive relief from certain Inline XBRL requirements adopted on Dec. 16, 2024. More specifically, the Commission is granting exemptive relief from filing or submitt"
+    },
+    {
+      "category": "press",
+      "title": "Joint Readout of Principals’ Meeting of U.S. and UK Authorities Regarding Central Counterparty Resolution",
+      "url": "https://www.sec.gov/newsroom/press-releases/2026-87-joint-readout-principals-meeting-us-uk-authorities-regarding-central-counterparty-resolution",
+      "date": "2026-09-11T15:00:00Z",
+      "summary": "Senior officials from the Securities and Exchange Commission, Federal Deposit Insurance Corporation, Commodity Futures Trading Commission, Federal Reserve Board, and Bank of England convened for a tabletop exercise on Sept. 3, 202"
+    },
+    {
+      "category": "testimony",
+      "title": "Testimony Before the U.S. Senate Committee on Banking, Housing, and Urban Affairs",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/atkins-testimony-sbhuac-021226",
+      "date": "2026-02-12T15:00:00Z",
       "summary": ""
+    },
+    {
+      "category": "testimony",
+      "title": "Testimony Before the U.S. House Financial Services Committee",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/atkins-testimony-hfsc-021126",
+      "date": "2026-02-11T15:00:00Z",
+      "summary": "11 February 2026 Chairman Paul S. Atkins"
+    },
+    {
+      "category": "testimony",
+      "title": "Testimony Before the United States Senate Appropriations Subcommittee on Financial Services and General Government",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/testimony-atkins-060325",
+      "date": "2025-06-03T18:30:00Z",
+      "summary": "Testimony of Paul S. Atkins Chairman, United States Securities and Exchange Commission Before the United States Senate Appropriations Subcommittee on Financial Services and General Government June 3, 2025"
+    },
+    {
+      "category": "testimony",
+      "title": "Testimony Before the United States House Appropriations Subcommittee on Financial Services and General Government",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/atkins-testimony-fsgg-052025",
+      "date": "2025-05-20T14:00:00Z",
+      "summary": "Testimony of Paul S. Atkins Chairman, United States Securities and Exchange Commission Before the United States House Appropriations Subcommittee on Financial Services and General Government May 20, 2025"
+    },
+    {
+      "category": "testimony",
+      "title": "Testimony of the Securities and Exchange Commission Before the United States House of Representatives Committee on Financial Services",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/testimony-securities-exchange-commission-united-states-house-representatives-committee-financial",
+      "date": "2024-09-24T13:52:00Z",
+      "summary": "Testimony of the Securities and Exchange Commission Before the United States House of Representatives Committee on Financial Services Sept. 24, 2024"
+    },
+    {
+      "category": "testimony",
+      "title": "Oral Testimony Before the Senate Appropriations Subcommittee on Financial Services and General Government",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/gensler-oral-testimony-061324",
+      "date": "2024-06-13T18:11:52Z",
+      "summary": "Oral Testimony of Chair Gary Gensler Chair, Securities and Exchange Commission Hearing Before the Subcommittee on Financial Services and General Government U.S. Senate Appropriations Committee June 13, 2024"
+    },
+    {
+      "category": "testimony",
+      "title": "Testimony Before the Senate Appropriations Subcommittee on Financial Services and General Government",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/gensler-testimony-061324",
+      "date": "2024-06-13T14:00:27Z",
+      "summary": "Testimony of Gary Gensler Chair, Securities and Exchange Commission Hearing Before the Subcommittee on Financial Services and General Government U.S. Senate Appropriations Committee June 13, 2024"
+    },
+    {
+      "category": "testimony",
+      "title": "Testimony Before the House Financial Services Committee",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/gensler-testimony-committee-financial-services-092723",
+      "date": "2023-09-27T15:32:05Z",
+      "summary": "Testimony of Chair Gary Gensler Before the United States House of Representatives Committee on Financial Services Sept. 27, 2023"
+    },
+    {
+      "category": "testimony",
+      "title": "Testimony on Oversight of the SEC’s Division of Investment Management Before the House Financial Services Subcommittee on Capital Markets",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/birdthistle-testimony-house-rep-committee-fin-services-091923",
+      "date": "2023-09-19T14:25:16Z",
+      "summary": "Testimony on Oversight of the SEC’s Division of Investment Management By William A. Birdthistle, Director, Division of Investment Management U.S. Securities and Exchange Commission Before the U.S. House of Representatives Committe"
+    },
+    {
+      "category": "testimony",
+      "title": "Oral Testimony Before the Senate Committee on Banking, Housing, and Urban Affairs",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/gensler-oral-testimony-091223",
+      "date": "2023-09-12T20:29:46Z",
+      "summary": "Oral Testimony Before the Senate Committee on Banking, Housing, and Urban Affairs Sept. 12, 2023"
+    },
+    {
+      "category": "testimony",
+      "title": "Testimony Before the Senate Committee on Banking, Housing, and Urban Affairs",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/gensler-senate-testimony-091223",
+      "date": "2023-09-12T14:30:40Z",
+      "summary": "Testimony of Chair Gary Gensler Before the United States Senate Committee on Banking, Housing, and Urban Affairs Sept. 12, 2023"
+    },
+    {
+      "category": "testimony",
+      "title": "Testimony Before the Senate Appropriations Subcommittee on Financial Services and General Government",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/gensler-testimony-fsgg-subcommittee-senate-appropriations-committee-071923",
+      "date": "2023-07-19T18:45:21Z",
+      "summary": "Testimony of Gary Gensler Chair, Securities and Exchange Commission Hearing Before the Subcommittee on Financial Services and General Government U.S. Senate Appropriations Committee July 19, 2023"
+    },
+    {
+      "category": "testimony",
+      "title": "Testimony on Oversight of the SEC’s Division of Corporation Finance Before the House Financial Services Subcommittee on Capital Markets",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/gerding-testimony-oversight-corpfin-07-18-23",
+      "date": "2023-07-18T06:02:32Z",
+      "summary": "Testimony on Oversight of the SEC’s Division of Corporation Finance By Erik F. Gerding, Director of the Division of Corporation Finance Before the United States House of Representatives Committee on Financial Services Subcommittee"
+    },
+    {
+      "category": "testimony",
+      "title": "Testimony Before the House Financial Services Subcommittee on Oversight and Investigations",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/barbero-testimony-committee-financial-services-062223",
+      "date": "2023-06-22T15:28:27Z",
+      "summary": "Testimony of Securities and Exchange Commission General Counsel Megan Barbero Before the U.S. House of Representatives Committee on Financial Services, Subcommittee on Oversight and Investigations June 22, 2023"
+    },
+    {
+      "category": "testimony",
+      "title": "Testimony Before the House Financial Services Subcommittee on Capital Markets",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/zhu-testimony-committee-financial-services-062223",
+      "date": "2023-06-22T14:53:58Z",
+      "summary": "Testimony of Securities and Exchange Commission Director of the Division of Trading and Markets Haoxiang Zhu Before the U.S. House of Representatives Committee on Financial Services, Subcommittee on Capital Markets June 22, 2023"
+    },
+    {
+      "category": "testimony",
+      "title": "Testimony Before the House Financial Services Committee",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/gensler-testimony-house-financial-services-041823",
+      "date": "2023-04-18T14:00:00Z",
+      "summary": "Testimony of Gary Gensler, Chair, Securities and Exchange Commission Before the U.S. House of Representatives Committee on Financial Services April 18, 2023"
+    },
+    {
+      "category": "testimony",
+      "title": "Testimony Before the House Appropriations Subcommittee on Financial Services and General Government",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/gensler-testimony-subcommittee-financial-services-general-government-032923",
+      "date": "2023-03-29T18:30:00Z",
+      "summary": "Testimony of Gary Gensler, Chair, Securities and Exchange Commission Hearing Before the Subcommittee on Financial Services and General Government U.S. House Appropriations Committee March 29, 2023"
+    },
+    {
+      "category": "testimony",
+      "title": "Oral Testimony Before the Senate Committee on Banking, Housing, and Urban Affairs",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/gensler-oral-testimony-09152022",
+      "date": "2022-09-15T15:33:30Z",
+      "summary": "Oral Testimony of Gary Gensler Before the United States Senate Committee on Banking, Housing, and Urban Affairs Sept. 15, 2022 Washington, D.C."
+    },
+    {
+      "category": "testimony",
+      "title": "Testimony Before Senate Committee on Banking, Housing, and Urban Affairs",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/gensler-testimony-housing-urban-affairs-091522",
+      "date": "2022-09-15T13:31:14Z",
+      "summary": "Testimony of Gary Gensler Before the United States Senate Committee on Banking, Housing, and Urban Affairs Sept. 15, 2022 Washington, D.C."
+    },
+    {
+      "category": "testimony",
+      "title": "Testimony on “Oversight of the SEC’s Division of Enforcement” Before the House Financial Services Subcommittee on Investor Protection, Entrepreneurship, and Capital Markets",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/grewal-statement-house-testimony-071922",
+      "date": "2022-07-21T16:19:19Z",
+      "summary": "Testimony on “Oversight of the SEC’s Division of Enforcement” by Gurbir S. Grewal Director, Division of Enforcement United States Securities and Exchange Commission Before the United States House of Representatives Committee on Fi"
+    },
+    {
+      "category": "testimony",
+      "title": "Testimony Before the House Appropriations Subcommittee on Financial Services and General Government",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/gensler-testimony-fsgg-subcommittee",
+      "date": "2022-05-17T18:44:38Z",
+      "summary": "Testimony of Gary Gensler Chair, Securities and Exchange Commission Hearing Before the Subcommittee on Financial Services and General Government U.S. House Appropriations Committee May 18, 2022"
+    },
+    {
+      "category": "testimony",
+      "title": "Testimony Before the House Financial Services Committee",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/gensler-2021-10-05",
+      "date": "2021-10-05T16:00:00Z",
+      "summary": "Testimony of Gary Gensler Before the United States House of Representatives Committee on Financial Services Oct. 5, 2021 Washington, D.C."
+    },
+    {
+      "category": "testimony",
+      "title": "Testimony Before Senate Committee on Banking, Housing, and Urban Affairs",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/gensler-2021-09-14",
+      "date": "2021-09-14T13:27:30Z",
+      "summary": "Testimony of Gary Gensler Before the United States Senate Committee on Banking, Housing, and Urban Affairs Sept. 14, 2021 Washington, D.C."
+    },
+    {
+      "category": "testimony",
+      "title": "Testimony Before the Subcommittee on Financial Services and General Government, U.S. House Appropriations Committee",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/gensler-2021-05-26",
+      "date": "2021-05-26T18:00:00Z",
+      "summary": "Testimony of Gary Gensler Chair, Securities and Exchange Commission Hearing Before the Subcommittee on Financial Services and General Government U.S. House Appropriations Committee May 26, 2021"
+    },
+    {
+      "category": "testimony",
+      "title": "Testimony Before the House Financial Services Committee",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/gensler-testimony-20210505",
+      "date": "2021-05-06T16:00:00Z",
+      "summary": "Testimony of Gary Gensler, Chair, Securities and Exchange Commission Before the House Committee on Financial Services May 6, 2021"
     }
   ]
 }
