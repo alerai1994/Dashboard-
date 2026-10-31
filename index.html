@@ -500,6 +500,68 @@
       font-size:12px;
     }
   </style>
+  <style id="v560MacdBelowStyles">
+    /* MACD: terzo indicatore reale, indipendente dal contenitore che nasconde gli extra. */
+    body .market-card .v439-indicator-content .indicator-stack > .indicator-panel:nth-child(n+3){
+      display:none!important;
+    }
+    body .market-card .v560-macd-below{
+      display:block!important;
+      width:100%!important;
+      box-sizing:border-box!important;
+      margin:9px 0 12px!important;
+      visibility:visible!important;
+      opacity:1!important;
+      height:auto!important;
+      min-height:145px!important;
+      overflow:visible!important;
+    }
+    body .market-card .v560-macd-below > .indicator-panel{
+      display:block!important;
+      width:100%!important;
+      max-width:none!important;
+      height:auto!important;
+      min-height:145px!important;
+      box-sizing:border-box!important;
+      margin:0!important;
+      visibility:visible!important;
+      opacity:1!important;
+      background:var(--panel-2,#141a24)!important;
+      border:1px solid var(--border,#293241)!important;
+      border-left:3px solid #f59e0b!important;
+      border-radius:10px!important;
+      box-shadow:none!important;
+      overflow:hidden!important;
+    }
+    body .market-card .v560-macd-below .indicator-head{
+      display:flex!important;
+      align-items:center!important;
+      justify-content:space-between!important;
+      padding:9px 12px!important;
+      min-height:33px!important;
+      visibility:visible!important;
+      opacity:1!important;
+    }
+    body .market-card .v560-macd-below .indicator-canvas{
+      display:block!important;
+      width:100%!important;
+      height:116px!important;
+      min-height:116px!important;
+      visibility:visible!important;
+      opacity:1!important;
+      overflow:hidden!important;
+    }
+    body .market-card .v560-macd-below .indicator-canvas svg{
+      width:100%!important;
+      height:100%!important;
+      display:block!important;
+      visibility:visible!important;
+    }
+    @media(max-width:700px){
+      body .market-card .v560-macd-below{margin:8px 0 11px!important}
+      body .market-card .v560-macd-below .indicator-canvas{height:105px!important;min-height:105px!important}
+    }
+  </style>
 </head>
 <body>
 <div class="v442-market-shade" id="v442MarketShade" hidden></div>
@@ -1185,10 +1247,7 @@
             <div class="indicator-head" style="--indicator-color:#06b6d4"><span>Stoch RSI · 14/14/3/3</span><strong id="btc-stoch-value">—</strong></div>
             <div class="indicator-canvas" id="btc-stoch-chart"></div>
           </div>
-          <div class="indicator-panel primary">
-            <div class="indicator-head" style="--indicator-color:#f59e0b"><span>MACD · 12/26/9</span><strong id="btc-macd-value">—</strong></div>
-            <div class="indicator-canvas" id="btc-macd-chart"></div>
-          </div>
+
           <div class="indicator-panel">
             <div class="indicator-head" style="--indicator-color:#a78bfa"><span>Elliott Wave Analysis · EWO 5/35</span><strong id="btc-elliott-value">—</strong></div>
             <div class="indicator-canvas" id="btc-elliott-chart"></div>
@@ -1206,6 +1265,12 @@
             <div class="indicator-canvas" id="btc-velocity-chart"></div>
           </div>
         </div>
+          </div>
+        </section>
+        <section class="v560-macd-below" id="btc-macd-below" aria-label="Terzo indicatore MACD 12/26/9">
+          <div class="indicator-panel primary">
+            <div class="indicator-head" style="--indicator-color:#f59e0b"><span>MACD · 12/26/9</span><strong id="btc-macd-value">—</strong></div>
+            <div class="indicator-canvas" id="btc-macd-chart"></div>
           </div>
         </section>
       </section>
@@ -1264,10 +1329,7 @@
             <div class="indicator-head" style="--indicator-color:#06b6d4"><span>Stoch RSI · 14/14/3/3</span><strong id="eth-stoch-value">—</strong></div>
             <div class="indicator-canvas" id="eth-stoch-chart"></div>
           </div>
-          <div class="indicator-panel primary">
-            <div class="indicator-head" style="--indicator-color:#f59e0b"><span>MACD · 12/26/9</span><strong id="eth-macd-value">—</strong></div>
-            <div class="indicator-canvas" id="eth-macd-chart"></div>
-          </div>
+
           <div class="indicator-panel">
             <div class="indicator-head" style="--indicator-color:#a78bfa"><span>Elliott Wave Analysis · EWO 5/35</span><strong id="eth-elliott-value">—</strong></div>
             <div class="indicator-canvas" id="eth-elliott-chart"></div>
@@ -1285,6 +1347,12 @@
             <div class="indicator-canvas" id="eth-velocity-chart"></div>
           </div>
         </div>
+          </div>
+        </section>
+        <section class="v560-macd-below" id="eth-macd-below" aria-label="Terzo indicatore MACD 12/26/9">
+          <div class="indicator-panel primary">
+            <div class="indicator-head" style="--indicator-color:#f59e0b"><span>MACD · 12/26/9</span><strong id="eth-macd-value">—</strong></div>
+            <div class="indicator-canvas" id="eth-macd-chart"></div>
           </div>
         </section>
       </section>
@@ -1343,10 +1411,7 @@
             <div class="indicator-head" style="--indicator-color:#06b6d4"><span>Stoch RSI · 14/14/3/3</span><strong id="bnb-stoch-value">—</strong></div>
             <div class="indicator-canvas" id="bnb-stoch-chart"></div>
           </div>
-          <div class="indicator-panel primary">
-            <div class="indicator-head" style="--indicator-color:#f59e0b"><span>MACD · 12/26/9</span><strong id="bnb-macd-value">—</strong></div>
-            <div class="indicator-canvas" id="bnb-macd-chart"></div>
-          </div>
+
           <div class="indicator-panel">
             <div class="indicator-head" style="--indicator-color:#a78bfa"><span>Elliott Wave Analysis · EWO 5/35</span><strong id="bnb-elliott-value">—</strong></div>
             <div class="indicator-canvas" id="bnb-elliott-chart"></div>
@@ -1364,6 +1429,12 @@
             <div class="indicator-canvas" id="bnb-velocity-chart"></div>
           </div>
         </div>
+          </div>
+        </section>
+        <section class="v560-macd-below" id="bnb-macd-below" aria-label="Terzo indicatore MACD 12/26/9">
+          <div class="indicator-panel primary">
+            <div class="indicator-head" style="--indicator-color:#f59e0b"><span>MACD · 12/26/9</span><strong id="bnb-macd-value">—</strong></div>
+            <div class="indicator-canvas" id="bnb-macd-chart"></div>
           </div>
         </section>
       </section>
@@ -1422,10 +1493,7 @@
             <div class="indicator-head" style="--indicator-color:#06b6d4"><span>Stoch RSI · 14/14/3/3</span><strong id="sol-stoch-value">—</strong></div>
             <div class="indicator-canvas" id="sol-stoch-chart"></div>
           </div>
-          <div class="indicator-panel primary">
-            <div class="indicator-head" style="--indicator-color:#f59e0b"><span>MACD · 12/26/9</span><strong id="sol-macd-value">—</strong></div>
-            <div class="indicator-canvas" id="sol-macd-chart"></div>
-          </div>
+
           <div class="indicator-panel">
             <div class="indicator-head" style="--indicator-color:#a78bfa"><span>Elliott Wave Analysis · EWO 5/35</span><strong id="sol-elliott-value">—</strong></div>
             <div class="indicator-canvas" id="sol-elliott-chart"></div>
@@ -1443,6 +1511,12 @@
             <div class="indicator-canvas" id="sol-velocity-chart"></div>
           </div>
         </div>
+          </div>
+        </section>
+        <section class="v560-macd-below" id="sol-macd-below" aria-label="Terzo indicatore MACD 12/26/9">
+          <div class="indicator-panel primary">
+            <div class="indicator-head" style="--indicator-color:#f59e0b"><span>MACD · 12/26/9</span><strong id="sol-macd-value">—</strong></div>
+            <div class="indicator-canvas" id="sol-macd-chart"></div>
           </div>
         </section>
       </section>
@@ -1501,10 +1575,7 @@
             <div class="indicator-head" style="--indicator-color:#06b6d4"><span>Stoch RSI · 14/14/3/3</span><strong id="ray-stoch-value">—</strong></div>
             <div class="indicator-canvas" id="ray-stoch-chart"></div>
           </div>
-          <div class="indicator-panel primary">
-            <div class="indicator-head" style="--indicator-color:#f59e0b"><span>MACD · 12/26/9</span><strong id="ray-macd-value">—</strong></div>
-            <div class="indicator-canvas" id="ray-macd-chart"></div>
-          </div>
+
           <div class="indicator-panel">
             <div class="indicator-head" style="--indicator-color:#a78bfa"><span>Elliott Wave Analysis · EWO 5/35</span><strong id="ray-elliott-value">—</strong></div>
             <div class="indicator-canvas" id="ray-elliott-chart"></div>
@@ -1522,6 +1593,12 @@
             <div class="indicator-canvas" id="ray-velocity-chart"></div>
           </div>
         </div>
+          </div>
+        </section>
+        <section class="v560-macd-below" id="ray-macd-below" aria-label="Terzo indicatore MACD 12/26/9">
+          <div class="indicator-panel primary">
+            <div class="indicator-head" style="--indicator-color:#f59e0b"><span>MACD · 12/26/9</span><strong id="ray-macd-value">—</strong></div>
+            <div class="indicator-canvas" id="ray-macd-chart"></div>
           </div>
         </section>
       </section>
@@ -1580,10 +1657,7 @@
             <div class="indicator-head" style="--indicator-color:#06b6d4"><span>Stoch RSI · 14/14/3/3</span><strong id="inj-stoch-value">—</strong></div>
             <div class="indicator-canvas" id="inj-stoch-chart"></div>
           </div>
-          <div class="indicator-panel primary">
-            <div class="indicator-head" style="--indicator-color:#f59e0b"><span>MACD · 12/26/9</span><strong id="inj-macd-value">—</strong></div>
-            <div class="indicator-canvas" id="inj-macd-chart"></div>
-          </div>
+
           <div class="indicator-panel">
             <div class="indicator-head" style="--indicator-color:#a78bfa"><span>Elliott Wave Analysis · EWO 5/35</span><strong id="inj-elliott-value">—</strong></div>
             <div class="indicator-canvas" id="inj-elliott-chart"></div>
@@ -1601,6 +1675,12 @@
             <div class="indicator-canvas" id="inj-velocity-chart"></div>
           </div>
         </div>
+          </div>
+        </section>
+        <section class="v560-macd-below" id="inj-macd-below" aria-label="Terzo indicatore MACD 12/26/9">
+          <div class="indicator-panel primary">
+            <div class="indicator-head" style="--indicator-color:#f59e0b"><span>MACD · 12/26/9</span><strong id="inj-macd-value">—</strong></div>
+            <div class="indicator-canvas" id="inj-macd-chart"></div>
           </div>
         </section>
       </section>
@@ -1659,10 +1739,7 @@
             <div class="indicator-head" style="--indicator-color:#06b6d4"><span>Stoch RSI · 14/14/3/3</span><strong id="ore-stoch-value">—</strong></div>
             <div class="indicator-canvas" id="ore-stoch-chart"></div>
           </div>
-          <div class="indicator-panel primary">
-            <div class="indicator-head" style="--indicator-color:#f59e0b"><span>MACD · 12/26/9</span><strong id="ore-macd-value">—</strong></div>
-            <div class="indicator-canvas" id="ore-macd-chart"></div>
-          </div>
+
           <div class="indicator-panel">
             <div class="indicator-head" style="--indicator-color:#a78bfa"><span>Elliott Wave Analysis · EWO 5/35</span><strong id="ore-elliott-value">—</strong></div>
             <div class="indicator-canvas" id="ore-elliott-chart"></div>
@@ -1680,6 +1757,12 @@
             <div class="indicator-canvas" id="ore-velocity-chart"></div>
           </div>
         </div>
+          </div>
+        </section>
+        <section class="v560-macd-below" id="ore-macd-below" aria-label="Terzo indicatore MACD 12/26/9">
+          <div class="indicator-panel primary">
+            <div class="indicator-head" style="--indicator-color:#f59e0b"><span>MACD · 12/26/9</span><strong id="ore-macd-value">—</strong></div>
+            <div class="indicator-canvas" id="ore-macd-chart"></div>
           </div>
         </section>
       </section>
@@ -1739,10 +1822,7 @@
             <div class="indicator-head" style="--indicator-color:#06b6d4"><span>Stoch RSI · 14/14/3/3</span><strong id="tai-stoch-value">—</strong></div>
             <div class="indicator-canvas" id="tai-stoch-chart"></div>
           </div>
-          <div class="indicator-panel primary">
-            <div class="indicator-head" style="--indicator-color:#f59e0b"><span>MACD · 12/26/9</span><strong id="tai-macd-value">—</strong></div>
-            <div class="indicator-canvas" id="tai-macd-chart"></div>
-          </div>
+
           <div class="indicator-panel">
             <div class="indicator-head" style="--indicator-color:#a78bfa"><span>Elliott Wave Analysis · EWO 5/35</span><strong id="tai-elliott-value">—</strong></div>
             <div class="indicator-canvas" id="tai-elliott-chart"></div>
@@ -1760,6 +1840,12 @@
             <div class="indicator-canvas" id="tai-velocity-chart"></div>
           </div>
         </div>
+          </div>
+        </section>
+        <section class="v560-macd-below" id="tai-macd-below" aria-label="Terzo indicatore MACD 12/26/9">
+          <div class="indicator-panel primary">
+            <div class="indicator-head" style="--indicator-color:#f59e0b"><span>MACD · 12/26/9</span><strong id="tai-macd-value">—</strong></div>
+            <div class="indicator-canvas" id="tai-macd-chart"></div>
           </div>
         </section>
       </section>
@@ -1817,10 +1903,7 @@
             <div class="indicator-head" style="--indicator-color:#06b6d4"><span>Stoch RSI · 14/14/3/3</span><strong id="virtual-stoch-value">—</strong></div>
             <div class="indicator-canvas" id="virtual-stoch-chart"></div>
           </div>
-          <div class="indicator-panel primary">
-            <div class="indicator-head" style="--indicator-color:#f59e0b"><span>MACD · 12/26/9</span><strong id="virtual-macd-value">—</strong></div>
-            <div class="indicator-canvas" id="virtual-macd-chart"></div>
-          </div>
+
           <div class="indicator-panel">
             <div class="indicator-head" style="--indicator-color:#a78bfa"><span>Elliott Wave Analysis · EWO 5/35</span><strong id="virtual-elliott-value">—</strong></div>
             <div class="indicator-canvas" id="virtual-elliott-chart"></div>
@@ -1838,6 +1921,12 @@
             <div class="indicator-canvas" id="virtual-velocity-chart"></div>
           </div>
         </div>
+          </div>
+        </section>
+        <section class="v560-macd-below" id="virtual-macd-below" aria-label="Terzo indicatore MACD 12/26/9">
+          <div class="indicator-panel primary">
+            <div class="indicator-head" style="--indicator-color:#f59e0b"><span>MACD · 12/26/9</span><strong id="virtual-macd-value">—</strong></div>
+            <div class="indicator-canvas" id="virtual-macd-chart"></div>
           </div>
         </section>
       </section>
@@ -1897,10 +1986,7 @@
             <div class="indicator-head" style="--indicator-color:#06b6d4"><span>Stoch RSI · 14/14/3/3</span><strong id="wld-stoch-value">—</strong></div>
             <div class="indicator-canvas" id="wld-stoch-chart"></div>
           </div>
-          <div class="indicator-panel primary">
-            <div class="indicator-head" style="--indicator-color:#f59e0b"><span>MACD · 12/26/9</span><strong id="wld-macd-value">—</strong></div>
-            <div class="indicator-canvas" id="wld-macd-chart"></div>
-          </div>
+
           <div class="indicator-panel">
             <div class="indicator-head" style="--indicator-color:#a78bfa"><span>Elliott Wave Analysis · EWO 5/35</span><strong id="wld-elliott-value">—</strong></div>
             <div class="indicator-canvas" id="wld-elliott-chart"></div>
@@ -1918,6 +2004,12 @@
             <div class="indicator-canvas" id="wld-velocity-chart"></div>
           </div>
         </div>
+          </div>
+        </section>
+        <section class="v560-macd-below" id="wld-macd-below" aria-label="Terzo indicatore MACD 12/26/9">
+          <div class="indicator-panel primary">
+            <div class="indicator-head" style="--indicator-color:#f59e0b"><span>MACD · 12/26/9</span><strong id="wld-macd-value">—</strong></div>
+            <div class="indicator-canvas" id="wld-macd-chart"></div>
           </div>
         </section>
       </section>
@@ -1977,10 +2069,7 @@
             <div class="indicator-head" style="--indicator-color:#06b6d4"><span>Stoch RSI · 14/14/3/3</span><strong id="orai-stoch-value">—</strong></div>
             <div class="indicator-canvas" id="orai-stoch-chart"></div>
           </div>
-          <div class="indicator-panel primary">
-            <div class="indicator-head" style="--indicator-color:#f59e0b"><span>MACD · 12/26/9</span><strong id="orai-macd-value">—</strong></div>
-            <div class="indicator-canvas" id="orai-macd-chart"></div>
-          </div>
+
           <div class="indicator-panel">
             <div class="indicator-head" style="--indicator-color:#a78bfa"><span>Elliott Wave Analysis · EWO 5/35</span><strong id="orai-elliott-value">—</strong></div>
             <div class="indicator-canvas" id="orai-elliott-chart"></div>
@@ -1998,6 +2087,12 @@
             <div class="indicator-canvas" id="orai-velocity-chart"></div>
           </div>
         </div>
+          </div>
+        </section>
+        <section class="v560-macd-below" id="orai-macd-below" aria-label="Terzo indicatore MACD 12/26/9">
+          <div class="indicator-panel primary">
+            <div class="indicator-head" style="--indicator-color:#f59e0b"><span>MACD · 12/26/9</span><strong id="orai-macd-value">—</strong></div>
+            <div class="indicator-canvas" id="orai-macd-chart"></div>
           </div>
         </section>
       </section>
@@ -2057,10 +2152,7 @@
             <div class="indicator-head" style="--indicator-color:#06b6d4"><span>Stoch RSI · 14/14/3/3</span><strong id="tao-stoch-value">—</strong></div>
             <div class="indicator-canvas" id="tao-stoch-chart"></div>
           </div>
-          <div class="indicator-panel primary">
-            <div class="indicator-head" style="--indicator-color:#f59e0b"><span>MACD · 12/26/9</span><strong id="tao-macd-value">—</strong></div>
-            <div class="indicator-canvas" id="tao-macd-chart"></div>
-          </div>
+
           <div class="indicator-panel">
             <div class="indicator-head" style="--indicator-color:#a78bfa"><span>Elliott Wave Analysis · EWO 5/35</span><strong id="tao-elliott-value">—</strong></div>
             <div class="indicator-canvas" id="tao-elliott-chart"></div>
@@ -2078,6 +2170,12 @@
             <div class="indicator-canvas" id="tao-velocity-chart"></div>
           </div>
         </div>
+          </div>
+        </section>
+        <section class="v560-macd-below" id="tao-macd-below" aria-label="Terzo indicatore MACD 12/26/9">
+          <div class="indicator-panel primary">
+            <div class="indicator-head" style="--indicator-color:#f59e0b"><span>MACD · 12/26/9</span><strong id="tao-macd-value">—</strong></div>
+            <div class="indicator-canvas" id="tao-macd-chart"></div>
           </div>
         </section>
       </section>
@@ -2135,10 +2233,7 @@
             <div class="indicator-head" style="--indicator-color:#06b6d4"><span>Stoch RSI · 14/14/3/3</span><strong id="lunc-stoch-value">—</strong></div>
             <div class="indicator-canvas" id="lunc-stoch-chart"></div>
           </div>
-          <div class="indicator-panel primary">
-            <div class="indicator-head" style="--indicator-color:#f59e0b"><span>MACD · 12/26/9</span><strong id="lunc-macd-value">—</strong></div>
-            <div class="indicator-canvas" id="lunc-macd-chart"></div>
-          </div>
+
           <div class="indicator-panel">
             <div class="indicator-head" style="--indicator-color:#a78bfa"><span>Elliott Wave Analysis · EWO 5/35</span><strong id="lunc-elliott-value">—</strong></div>
             <div class="indicator-canvas" id="lunc-elliott-chart"></div>
@@ -2156,6 +2251,12 @@
             <div class="indicator-canvas" id="lunc-velocity-chart"></div>
           </div>
         </div>
+          </div>
+        </section>
+        <section class="v560-macd-below" id="lunc-macd-below" aria-label="Terzo indicatore MACD 12/26/9">
+          <div class="indicator-panel primary">
+            <div class="indicator-head" style="--indicator-color:#f59e0b"><span>MACD · 12/26/9</span><strong id="lunc-macd-value">—</strong></div>
+            <div class="indicator-canvas" id="lunc-macd-chart"></div>
           </div>
         </section>
       </section>
@@ -2214,10 +2315,7 @@
             <div class="indicator-head" style="--indicator-color:#06b6d4"><span>Stoch RSI · 14/14/3/3</span><strong id="luna-stoch-value">—</strong></div>
             <div class="indicator-canvas" id="luna-stoch-chart"></div>
           </div>
-          <div class="indicator-panel primary">
-            <div class="indicator-head" style="--indicator-color:#f59e0b"><span>MACD · 12/26/9</span><strong id="luna-macd-value">—</strong></div>
-            <div class="indicator-canvas" id="luna-macd-chart"></div>
-          </div>
+
           <div class="indicator-panel">
             <div class="indicator-head" style="--indicator-color:#a78bfa"><span>Elliott Wave Analysis · EWO 5/35</span><strong id="luna-elliott-value">—</strong></div>
             <div class="indicator-canvas" id="luna-elliott-chart"></div>
@@ -2235,6 +2333,12 @@
             <div class="indicator-canvas" id="luna-velocity-chart"></div>
           </div>
         </div>
+          </div>
+        </section>
+        <section class="v560-macd-below" id="luna-macd-below" aria-label="Terzo indicatore MACD 12/26/9">
+          <div class="indicator-panel primary">
+            <div class="indicator-head" style="--indicator-color:#f59e0b"><span>MACD · 12/26/9</span><strong id="luna-macd-value">—</strong></div>
+            <div class="indicator-canvas" id="luna-macd-chart"></div>
           </div>
         </section>
       </section>
@@ -3445,8 +3549,11 @@
     if(!macd||!stoch)return;
     const macdPanel=macd.closest('.indicator-panel');
     const stochPanel=stoch.closest('.indicator-panel');
-    if(macdPanel&&stochPanel&&macdPanel!==stochPanel&&stochPanel.nextElementSibling!==macdPanel){
-      stochPanel.insertAdjacentElement('afterend',macdPanel);
+    // Il MACD resta nel suo contenitore esterno sempre visibile, non torna
+    // dentro lo stack che nasconde i vecchi indicatori aggiuntivi.
+    const macdBottom=document.getElementById(assetId+'-macd-below');
+    if(macdPanel&&macdBottom&&macdPanel.parentElement!==macdBottom){
+      macdBottom.appendChild(macdPanel);
     }
     if(macdPanel){
       macdPanel.classList.add('v559-macd-visible');
