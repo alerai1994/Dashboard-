@@ -566,3 +566,49 @@ body.theme-light .market-panel .instrument-row:hover{background:#e7f1f9}
 @media(max-width:880px){.market-live-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:550px){.market-live-strip{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}.market-data-pill{padding:7px 8px}.market-data-pill strong{font-size:10px}.market-data-pill small{font-size:9px}.market-panel .section-topline .market-feed-pill{max-width:155px;font-size:8px}}
 @media(prefers-reduced-motion:reduce){.market-data-pill,.market-feed-pill{transition:none}}
+
+
+/* Markets: all-asset chart gallery (prices remain sourced from actual market feeds) */
+.markets-gallery{padding:16px;min-width:0}
+.markets-gallery .filter-row{gap:12px;margin-bottom:9px}
+.markets-gallery-info{margin:5px 0 18px;font-size:11px;color:var(--muted);line-height:1.5}
+.market-chart-section{min-width:0;margin:0 0 24px}
+.market-chart-section:last-child{margin-bottom:3px}
+.market-chart-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 12px;padding:0 2px 9px;border-bottom:1px solid var(--line-soft)}
+.market-chart-section-head h3{font-size:15px;letter-spacing:-.02em;font-weight:760;margin:0;color:var(--text)}
+.market-chart-section-head span{font-size:10px;color:var(--muted);font-weight:680;white-space:nowrap}
+.market-chart-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+.market-chart-card{
+ display:flex;flex-direction:column;min-width:0;min-height:254px;
+ background:linear-gradient(155deg,#0d273a,#081b2c);border:1px solid #2c4a62;
+ border-radius:11px;color:var(--text);padding:13px;text-align:left;
+ box-shadow:0 3px 12px #00111d20;transition:border-color .15s ease,box-shadow .15s ease;
+ cursor:pointer;overflow:hidden;
+}
+.market-chart-card:hover,.market-chart-card:focus-visible{
+ border-color:#5b9bd3;box-shadow:0 0 0 1px #5b9bd333,0 10px 22px #00152655;outline:none;
+}
+.market-chart-top{display:flex;align-items:center;gap:9px;min-width:0;min-height:30px}
+.market-chart-top>.asset-logo,.market-chart-top>.forex-pair-logo{flex-shrink:0}
+.market-chart-title{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.market-chart-title strong{font-size:12px;font-weight:760;max-width:100%;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.market-chart-title small{font-size:10px;color:var(--muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.market-chart-values{display:flex;align-items:baseline;gap:9px;justify-content:space-between;flex-wrap:wrap;margin:13px 0 5px}
+.market-chart-values .asset-price{font-size:16px;font-weight:790;letter-spacing:-.025em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.market-chart-values .asset-change{font-size:11px;font-weight:780;white-space:nowrap;font-variant-numeric:tabular-nums}
+.market-mini-chart{
+ display:flex;flex-direction:column;justify-content:center;min-width:0;
+ height:150px;flex:1;color:#84adca;
+}
+.market-mini-chart svg{display:block;flex:1;min-width:0;width:100%;height:125px;max-height:142px}
+.market-chart-note{display:block;margin-top:3px;font-size:9px;color:var(--muted);font-variant-numeric:tabular-nums}
+.market-chart-unavailable{display:flex;align-items:center;justify-content:center;text-align:center;min-height:120px;border:1px dashed #3b5a6b;border-radius:7px;padding:12px;color:#96aec0;font-size:11px;line-height:1.5}
+.market-chart-open{display:block;margin-top:10px;padding-top:9px;border-top:1px solid var(--line-soft);font-size:9px;font-weight:690;color:#6dbee9;letter-spacing:.005em}
+.market-chart-card[data-trend="up"] .market-chart-values .asset-change{color:var(--green)}
+.market-chart-card[data-trend="down"] .market-chart-values .asset-change{color:var(--red)}
+.theme-light .market-chart-card{background:linear-gradient(145deg,#f5faff,#e9f3fb);border-color:#c6d8e4;color:#16324a}
+.theme-light .market-chart-card:hover,.theme-light .market-chart-card:focus-visible{border-color:#3b86b5}
+.theme-light .market-chart-unavailable{color:#526f80;border-color:#aac0cb}
+@media(max-width:1260px){.market-chart-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.market-chart-grid{grid-template-columns:1fr;gap:9px}.market-chart-card{min-height:246px;padding:11px}.markets-gallery{padding:11px}.market-chart-section-head h3{font-size:14px}}
+@media(prefers-reduced-motion:reduce){.market-chart-card{transition:none}}
