@@ -146,30 +146,97 @@ def yahoo_quote(pair):
     return entry
 
 def crypto_quotes():
-    items = {cid: {"id": cid, "symbol": token.upper(), "value": None,
-                   "change": None, "currency": "USD", "history": [], "candles": [], "time": None}
-             for cid, token in CRYPTO}
+    """Return verified prices and image URLs for the configured CoinGecko coin IDs.
+
+    One batched /coins/markets request supplies both metadata and market data.
+    Fall back to /simple/price if the markets endpoint is denied or incomplete.
+    """
+    items = {
+        cid: {"id": cid, "symbol": token.upper(), "value": None,
+              "change": None, "currency": "USD", "history": [],
+              "candles": [], "time": None, "logo": None}
+        for cid, token in CRYPTO
+    }
     ids = ",".join(token for _, token in CRYPTO)
-    url = "https://api.coingecko.com/api/v3/simple/price?" + urlencode({
+    by_coingecko_id = {token: cid for cid, token in CRYPTO}
+    markets_url = "https://api.coingecko.com/api/v3/coins/markets?" + urlencode({
+        "vs_currency": "usd",
         "ids": ids,
-        "vs_currencies": "usd",
-        "include_24hr_change": "true",
-        "include_last_updated_at": "true",
+        "per_page": min(250, len(CRYPTO)),
+        "page": 1,
+        "sparkline": "false",
     })
     try:
-        payload = request_json(url)
-        for cid, token in CRYPTO:
-            data = payload.get(token, {})
-            price = valid(data.get("usd"))
-            if price is None or price <= 0:
+        data = request_json(markets_url)
+        if not isinstance(data, list):
+            raise ValueError("CoinGecko markets payload is not a list")
+        for market in data:
+            if not isinstance(market, dict):
                 continue
-            items[cid]["value"] = price
-            items[cid]["change"] = valid(data.get("usd_24h_change"))
-            when = data.get("last_updated_at")
-            items[cid]["time"] = datetime.fromtimestamp(when, timezone.utc).isoformat() if when else None
+            cid = by_coingecko_id.get(market.get("id"))
+            if cid is None:
+                continue
+            url = market.get("image")
+            if isinstance(url, str) and url.startswith(
+                    ("https://coin-images.coingecko.com/",
+                     "https://assets.coingecko.com/")):
+                items[cid]["logo"] = url
+            price = valid(market.get("current_price"))
+            if price is not None and price > 0:
+                items[cid]["value"] = price
+                items[cid]["change"] = valid(market.get("price_change_percentage_24h"))
+                updated = market.get("last_updated")
+                if isinstance(updated, str) and updated:
+                    items[cid]["time"] = updated
     except (HTTPError, URLError, TimeoutError, ValueError, TypeError) as e:
-        print("CoinGecko unavailable", type(e).__name__)
-    # Price/24h change remains from CoinGecko; historical OHLC comes from Yahoo Finance.
+        print("CoinGecko /coins/markets unavailable:", type(e).__name__)
+
+    missing = [(cid, token) for cid, token in CRYPTO if items[cid]["value"] is None]
+    if missing:
+        # Keep existing price coverage if some assets are absent from /coins/markets.
+        simple_url = "https://api.coingecko.com/api/v3/simple/price?" + urlencode({
+            "ids": ",".join(token for _, token in missing),
+            "vs_currencies": "usd",
+            "include_24hr_change": "true",
+            "include_last_updated_at": "true",
+        })
+        try:
+            data = request_json(simple_url)
+            if not isinstance(data, dict):
+                raise ValueError("CoinGecko simple price payload is not an object")
+            for cid, token in missing:
+                market = data.get(token)
+                if not isinstance(market, dict):
+                    continue
+                price = valid(market.get("usd"))
+                if price is None or price <= 0:
+                    continue
+                items[cid]["value"] = price
+                items[cid]["change"] = valid(market.get("usd_24h_change"))
+                updated = market.get("last_updated_at")
+                if updated:
+                    items[cid]["time"] = datetime.fromtimestamp(
+                        updated, timezone.utc).isoformat()
+        except (HTTPError, URLError, TimeoutError, ValueError, TypeError, OSError) as e:
+            print("CoinGecko /simple/price fallback unavailable:", type(e).__name__)
+
+    # Reuse previously verified image URLs when a refresh fails temporarily.
+    if OUTPUT.exists():
+        try:
+            previous = json.loads(OUTPUT.read_text(encoding="utf-8"))
+            for old in previous.get("crypto", []):
+                if not isinstance(old, dict):
+                    continue
+                cid, url = old.get("id"), old.get("logo")
+                if cid in items and not items[cid]["logo"] and isinstance(url, str) \
+                        and url.startswith(("https://coin-images.coingecko.com/",
+                                            "https://assets.coingecko.com/")):
+                    items[cid]["logo"] = url
+        except (OSError, ValueError, TypeError):
+            pass
+    print("CoinGecko crypto logos:",
+          sum(bool(item["logo"]) for item in items.values()), "/", len(items))
+    # Historical OHLC stays with Yahoo Finance; CoinGecko provides prices and logos.
     history_symbols = {
         "btc": "BTC-USD", "eth": "ETH-USD", "sol": "SOL-USD",
         "inj": "INJ-USD", "bnb": "BNB-USD",

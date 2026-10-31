@@ -350,3 +350,34 @@ body.theme-light .market-panel .instrument-row:hover{background:#e7f1f9}
 .sector-footnote{color:var(--subtle);font-size:10px;line-height:1.5;margin:9px 2px}
 @media(max-width:1160px){.sector-overview-grid{grid-template-columns:1fr}.sector-tech-cards{grid-template-columns:repeat(3,minmax(0,1fr))}.sector-bigtech-cards{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:650px){.sector-heading{align-items:flex-start;flex-direction:column}.sector-actions{width:100%}.sector-tech-cards,.sector-bigtech-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.sector-card-grid .index-mini{min-width:0;flex:initial}.sector-panel{padding:10px}}
+
+/* Real crypto logos from CoinGecko with glyph fallback for missing or broken images */
+.asset-logo.crypto-logo{
+ position:relative;display:grid;place-items:center;flex:0 0 auto;
+ width:26px;height:26px;min-width:26px;min-height:26px;
+ overflow:hidden;border-radius:50%;
+ background:linear-gradient(135deg,#19364e,#0c2238);
+ border:1px solid rgba(153,196,221,.23);isolation:isolate;
+}
+.crypto-logo .crypto-logo-fallback{display:grid;place-items:center;position:absolute;inset:0;line-height:1;color:#d9edfb;font-size:11px;font-weight:800;z-index:0}
+.crypto-logo .crypto-logo-image{display:block;position:absolute;inset:0;z-index:1;width:100%;height:100%;border-radius:50%;object-fit:contain;background:#0b1928}
+.market-table-asset{display:flex;align-items:center;gap:9px;min-width:0}
+.market-table-asset>span:last-child{min-width:0}
+.market-table-asset .crypto-logo{width:24px;height:24px;min-width:24px;min-height:24px}
+.search-asset-label{display:flex;align-items:center;gap:9px;min-width:0}
+.search-asset-label>span:last-child{min-width:0}
+.search-asset-label .crypto-logo{width:24px;height:24px;min-width:24px;min-height:24px}
+.index-mini .crypto-mini-title{display:flex;align-items:center;gap:7px;min-width:0}
+.index-mini .crypto-mini-title>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.index-mini .crypto-mini-title .crypto-logo{width:18px;height:18px;min-width:18px;min-height:18px}
+.index-mini .crypto-mini-title .crypto-logo-fallback{font-size:9px}
+.holding-asset-selector{display:flex;align-items:center;gap:9px;min-width:0}
+.holding-asset-selector>select{flex:1;min-width:0}
+.holding-asset-selector .crypto-logo{width:27px;height:27px;min-width:27px}
+.dialog-header h2:has(.crypto-logo){display:flex;align-items:center;gap:10px}
+.dialog-header h2 .crypto-logo{width:31px;height:31px;min-width:31px;min-height:31px}
+.theme-light .crypto-logo .crypto-logo-image{background:#eaf1f9}
+@media(max-width:650px){
+ .asset-logo.crypto-logo{width:23px;height:23px;min-width:23px;min-height:23px}
+ .market-table-asset .crypto-logo{width:22px;height:22px;min-width:22px;min-height:22px}
+}
