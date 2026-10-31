@@ -26821,6 +26821,10 @@ window.__V375LiveView={open,close};
   const CACHE_KEY='dashboard_market_v480_top200_v1';
   const HISTORY_CACHE='dashboard_market_v480_history_v1';
   const CACHE_AGE=60*1000, AUTO_REFRESH=60*1000;
+  // Aggiorna dati in memoria anche mentre la dashboard principale è visibile.
+  const BACKGROUND_REFRESH=75*1000;
+  let backgroundTimer=null, backgroundWarmup=null;
+  function marketVisible(){return !!(marketPanel && !marketPanel.hidden && document.body.classList.contains('v442-market-open'));}
 
   let coins=[], fetchedAt=0, lastAttempt=0, loading=false, timer=null, firstOpened=false, previousFocus=null;
   let histories={}, historyQueue=[], historyFailures=0;
@@ -27038,7 +27042,7 @@ window.__V375LiveView={open,close};
     return true;
   }
   function applyStream(data){
-    if(!Array.isArray(data)||!coins.length)return;
+    if(!Array.isArray(data)||!coins.length||document.hidden)return;
     const bySymbol=new Map(), ambiguous=new Set();
     coins.forEach(c=>{
       const symbol=String(c.symbol||'').trim().toUpperCase();
@@ -27065,6 +27069,10 @@ window.__V375LiveView={open,close};
     }
     if(!touched)return;
     streamedCount=touched;lastStreamAt=now;
+    if(!document.body.classList.contains('v442-market-open')){
+      pendingLiveRows.clear();
+      return; // Dati aggiornati in memoria senza ricostruire il Market nascosto.
+    }
     // V519: raggruppa tick WebSocket in una sola scrittura DOM per frame.
     // Mantiene tutti i tick e i colori; limita soltanto il costo visivo.
     if(!marketRenderTimer){
@@ -27083,7 +27091,7 @@ window.__V375LiveView={open,close};
     }
   }
   function connectMarketStream(){
-    if(marketSocket||!document.body.classList.contains('v442-market-open')||!coins.length||typeof WebSocket==='undefined')return;
+    if(marketSocket||document.hidden||navigator.onLine===false||!coins.length||typeof WebSocket==='undefined')return;
     try{
       const ws=new WebSocket(streamEndpoints[streamEndpointIndex]);
       marketSocket=ws;
@@ -27096,7 +27104,7 @@ window.__V375LiveView={open,close};
       ws.onclose=()=>{
         socketConnected=false;
         if(marketSocket===ws)marketSocket=null;
-        if(document.body.classList.contains('v442-market-open')){
+        if(!document.hidden && navigator.onLine!==false){
           clearTimeout(marketSocketRetry);
           streamEndpointIndex=(streamEndpointIndex+1)%streamEndpoints.length;
           marketSocketRetry=setTimeout(connectMarketStream,8000);
@@ -28406,9 +28414,10 @@ window.__V375LiveView={open,close};
     const indicator=document.createElement('small');
     const tickAt=Number(coin._liveUpdatedAt||0);
     const isStreamed=tickAt>0&&Date.now()-tickAt<30000;
-    indicator.className=isStreamed?'v480-market-source v480-live':'v480-market-source v480-api';
-    indicator.textContent=isStreamed?'● LIVE':'● API AUTO';
-    indicator.title=isStreamed?'Ultima quotazione ricevuta da Binance via WebSocket (USDT ≈ USD)':'Quotazione sincronizzata con API periodica; streaming non disponibile per questa moneta';
+    const freshApi=Number(fetchedAt)>0 && Date.now()-fetchedAt<=125000;
+    indicator.className=isStreamed?'v480-market-source v480-live':freshApi?'v480-market-source v480-api':'v480-market-source v542-stale';
+    indicator.textContent=isStreamed?'● LIVE':freshApi?'● API':'● NON AGGIORNATO';
+    indicator.title=isStreamed?'Ultimo tick Binance WebSocket (USDT ≈ USD)':freshApi?'Ultimo dato API recente':'Ultimo dato conservato: feed non aggiornato';
     priceWrap.appendChild(indicator);
     return priceWrap;
   }
@@ -28482,7 +28491,7 @@ window.__V375LiveView={open,close};
       return;
     }
     loading=true; lastAttempt=Date.now();
-    if(!coins.length)setStatus('Caricamento Market Top 200…');
+    if(!coins.length && marketVisible())setStatus('Connessione alle quotazioni · aggiornamento automatico.');
     const controller=new AbortController(); const timeout=setTimeout(()=>controller.abort(),18000);
     try{
       const response=await fetch(SOURCE,{headers:{'Accept':'application/json'},mode:'cors',credentials:'omit',cache:'no-store',signal:controller.signal});
@@ -28688,7 +28697,7 @@ window.__V375LiveView={open,close};
     const sequence=++v516Sequence;
     v516ClearTimers();
     menu.setAttribute('aria-expanded','false');
-    stopTimer();disconnectMarketStream();
+    stopTimer(); // Mantieni i dati live anche a Market chiuso.
     document.body.classList.add('v514-menu-leaving');
     drawer.dataset.v516Motion='closing';
     // Fine al transitionend; questo timer è solo un ripiego per Safari/reduced motion.
@@ -28732,8 +28741,17 @@ window.__V375LiveView={open,close};
     clearTimeout(historyScrollTimer);
     historyScrollTimer=setTimeout(queueVisibleHistories,160);
   },{passive:true});
-  window.addEventListener('online',()=>{if(document.body.classList.contains('v442-market-open')){failedSymbols.clear();historyFailures=0;fetchMarket(true);connectMarketStream();}},{passive:true});
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&document.body.classList.contains('v442-market-open')){if(Date.now()-fetchedAt>=CACHE_AGE)fetchMarket();connectMarketStream();}});
+  window.addEventListener('online',()=>{
+    failedSymbols.clear();historyFailures=0;
+    if(!loading && Date.now()-lastAttempt>=CACHE_AGE)fetchMarket();
+    connectMarketStream();
+  },{passive:true});
+  window.addEventListener('offline',disconnectMarketStream,{passive:true});
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden){disconnectMarketStream();return;}
+    if(!loading&&Date.now()-fetchedAt>=CACHE_AGE&&Date.now()-lastAttempt>=CACHE_AGE)fetchMarket();
+    connectMarketStream();
+  });
   drawer.addEventListener('keydown',ev=>{
     if(ev.key==='Escape'){ ev.preventDefault(); hide(); return; }
     if(ev.key!=='Tab') return;
@@ -28743,6 +28761,31 @@ window.__V375LiveView={open,close};
     if(ev.shiftKey && document.activeElement===first){ ev.preventDefault(); last.focus(); }
     if(!ev.shiftKey && document.activeElement===last){ ev.preventDefault(); first.focus(); }
   });
+  // La classifica Top 200 si aggiorna in background senza schermate di caricamento.
+  function backgroundUpdate(){
+    if(document.hidden||navigator.onLine===false)return;
+    if(coins.length)connectMarketStream();
+    if(!loading && Date.now()-lastAttempt>=BACKGROUND_REFRESH &&
+       (!fetchedAt||Date.now()-fetchedAt>=BACKGROUND_REFRESH))fetchMarket();
+  }
+  backgroundWarmup=setTimeout(()=>{
+    backgroundWarmup=null;
+    if(!coins.length)cacheRead();
+    if(coins.length)connectMarketStream();
+    backgroundUpdate();
+    if(!backgroundTimer)backgroundTimer=setInterval(backgroundUpdate,BACKGROUND_REFRESH);
+  },1800);
+  window.addEventListener('pageshow',()=>{
+    if(document.hidden)return;
+    backgroundUpdate();
+    if(!backgroundTimer)backgroundTimer=setInterval(backgroundUpdate,BACKGROUND_REFRESH);
+  },{passive:true});
+  window.addEventListener('pagehide',()=>{
+    clearTimeout(backgroundWarmup);
+    clearInterval(backgroundTimer);backgroundTimer=null;
+    disconnectMarketStream();
+  },{passive:true});
+
 })();
 
 
