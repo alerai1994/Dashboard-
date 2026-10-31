@@ -890,7 +890,7 @@ function marketChartPlot(id){
    return '<path d="M'+x.toFixed(2)+' '+y(Number(c.h)).toFixed(2)+'V'+y(Number(c.l)).toFixed(2)+'" stroke="'+co+'" stroke-width="1.15"/>'+
     '<rect x="'+(x-cw/2).toFixed(2)+'" y="'+Math.min(yo,yc).toFixed(2)+'" width="'+cw.toFixed(2)+'" height="'+Math.max(1,Math.abs(yo-yc)).toFixed(2)+'" rx=".5" fill="'+co+'"/>';
   }).join('');
-  return plot(paths,'Candele OHLC · '+candles.length+' sedute');
+  return plot(paths,'Candele OHLC · '+candles.length+' barre'+(q&&q.candleSource?' · '+esc(q.candleSource):''));
  }
  return '<span class="market-chart-unavailable">Candele OHLC non disponibili per questo strumento</span>'+
   '<span class="market-chart-note">Nessun grafico a linee o candele simulate</span>';
@@ -1193,12 +1193,12 @@ function refreshDialog(){
  $('#dialogWatch').textContent=(isWatch?'★ Rimuovi dalla Watchlist':'☆ Aggiungi alla Watchlist');
  const candleAvailable=q&&Array.isArray(q.candles)&&q.candles.length>=2;
  $('#dialogBody').innerHTML='<div class="dialog-stats"><strong>'+assetValue(a)+'</strong><span class="change '+classArrow(a.id)+'">'+pct(q&&q.change)+'</span><span class="dialog-meta">Ultima quotazione: '+esc(refTime(a.id))+'</span></div>'+
- '<div class="chart-toolbar"><div class="chart-legend"><span><i style="background:#74b2ff"></i>EMA 12</span><span><i style="background:#f1ba55"></i>EMA 26</span><span><i style="background:#b382ee"></i>EMA 50</span><span><i style="background:#ef7192"></i>EMA 200</span></div><span class="badge">'+(candleAvailable?'Candele OHLC · giornaliero':'Candele OHLC non disponibili')+'</span></div>'+
+ '<div class="chart-toolbar"><div class="chart-legend"><span><i style="background:#74b2ff"></i>EMA 12</span><span><i style="background:#f1ba55"></i>EMA 26</span><span><i style="background:#b382ee"></i>EMA 50</span><span><i style="background:#ef7192"></i>EMA 200</span></div><span class="badge">'+(candleAvailable?'Candele OHLC · storico':'Candele OHLC non disponibili')+'</span></div>'+
  '<div class="chart-frame"><canvas id="detailChart" width="900" height="470" role="img" aria-label="Grafico di '+esc(a.name)+', medie mobili e indicatori" tabindex="0"></canvas></div>'+
  '<div class="chart-toolbar"><div class="chart-legend"><span>RSI (14)</span><span>Stochastic RSI (14/14/3/3)</span><span>MACD (12/26/9)</span></div>'+
  '<div><button class="btn btn-small" type="button" data-pan="-20">◀ Storico</button> <button class="btn btn-small" type="button" data-pan="20">Recenti ▶</button> <button class="btn btn-small" type="button" data-pan="reset">Oggi</button></div></div>'+
  '<div class="chart-help">Trascina il grafico in orizzontale per scorrere lo storico. Nessuno zoom. Le medie e gli indicatori sono mostrati solo quando le serie contengono dati sufficienti.</div>'+
- '<div class="chart-source"><span>Fonte: '+(a.group==='crypto'?(q&&q.live?'Binance Spot in USDT (prezzo ≈ USD), CoinGecko/Yahoo Finance (storico)':'CoinGecko (prezzo), Yahoo Finance (storico quando disponibile)'):'Yahoo Finance')+' · snapshot e grafici storici non sono tick live.</span>'+
+ '<div class="chart-source"><span>Prezzi: '+(a.group==='crypto'?'CoinGecko o Binance Spot (secondo disponibilità)':'Yahoo Finance')+'. Candele OHLC: '+esc(q&&q.candleSource||'Yahoo Finance, se disponibile')+'. Storico non necessariamente in tempo reale.</span>'+
  '<a href="'+esc(externalUrl(a))+'" target="_blank" rel="noopener noreferrer">Apri fonte '+sym('external')+'</a></div>';
  requestAnimationFrame(drawChart);
 }
@@ -1271,7 +1271,7 @@ const round=(x,n=2)=>x.toFixed(n);
 function drawChart(){
  if(!state.dialogId)return;
  const canvas=$('#detailChart');if(!canvas||!canvas.isConnected)return;
- const q=quote(state.dialogId),candles=getCandles(state.dialogId),ctx=canvas.getContext('2d');if(!ctx)return;
+ const candles=getCandles(state.dialogId),ctx=canvas.getContext('2d');if(!ctx)return;
  const rect=canvas.getBoundingClientRect();
  const width=Math.max(360,Math.floor(rect.width)),height=470,dpr=Math.min(2,window.devicePixelRatio||1);
  canvas.width=Math.floor(width*dpr);canvas.height=Math.floor(height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);
