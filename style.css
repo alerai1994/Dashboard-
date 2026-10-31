@@ -612,3 +612,17 @@ body.theme-light .market-panel .instrument-row:hover{background:#e7f1f9}
 @media(max-width:1260px){.market-chart-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.market-chart-grid{grid-template-columns:1fr;gap:9px}.market-chart-card{min-height:246px;padding:11px}.markets-gallery{padding:11px}.market-chart-section-head h3{font-size:14px}}
 @media(prefers-reduced-motion:reduce){.market-chart-card{transition:none}}
+
+/* Settings — accessible display modes and optional subtle click sound. */
+.settings-preferences{max-width:760px;padding:20px;margin-bottom:14px}
+.settings-preferences h3{margin:0 0 6px;font-size:16px;font-weight:760}
+.settings-preferences .subnote{font-size:12px;line-height:1.55;color:var(--muted);margin:0}
+.settings-theme-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:16px}
+.settings-theme-option{display:flex;align-items:center;justify-content:center;gap:10px;min-height:56px;padding:12px 10px;border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--text);font-size:13px;font-weight:710;transition:border-color .16s ease,background .16s ease}
+.settings-theme-option:hover{border-color:var(--brand)}
+.settings-theme-option.is-selected{background:color-mix(in srgb,var(--brand) 15%,var(--panel));border-color:var(--brand);box-shadow:inset 0 0 0 1px var(--brand)}
+.settings-choice-icon{font-size:20px;line-height:1}
+.settings-sound-row{display:flex;justify-content:space-between;align-items:center;gap:20px}
+.settings-sound-toggle{flex:0 0 auto;min-width:92px;min-height:41px;border:1px solid var(--line);border-radius:99px;background:var(--surface);color:var(--muted);font-weight:730}
+.settings-sound-toggle.is-on{border-color:var(--brand);background:color-mix(in srgb,var(--brand) 16%,var(--panel));color:var(--text)}
+@media(max-width:520px){.settings-preferences{padding:14px}.settings-theme-options{gap:7px}.settings-theme-option{flex-direction:column;gap:6px;padding:9px 6px;min-height:72px;font-size:11px}.settings-sound-row{gap:10px}}

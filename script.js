@@ -132,17 +132,24 @@ const FALLBACK_LAND=[
 const CITY_MARKETS=[
 [-74,40.7,'sp500'],[-79.38,43.65,'tsx'],[-46.63,-23.55,'ibov'],[-0.13,51.51,'ftse'],[8.68,50.11,'dax'],[2.35,48.86,'cac'],[28.04,-26.2,'jse'],[46.7,24.7,'tadawul'],[139.7,35.7,'nikkei'],[114.17,22.31,'hsi'],[72.8,19.1,'nifty'],[126.9,37.5,'kospi'],[151.2,-33.87,'asx']
 ];
+const deviceThemeQuery=typeof window.matchMedia==='function'?window.matchMedia('(prefers-color-scheme: dark)'):null;
+function resolvedTheme(mode){
+ if(mode==='auto')return deviceThemeQuery&&deviceThemeQuery.matches?'dark':'light';
+ return mode==='light'?'light':'dark';
+}
 const state={
  page:(location.hash||'#global').slice(1).toLowerCase(),quotes:{},feedTime:null,feedError:false,loading:true,
  watch:Array.isArray(load('watch',[]))?load('watch',[]):[],
  holdings:Array.isArray(load('holdings',[]))?load('holdings',[]):[],
  alerts:Array.isArray(load('alerts',[]))?load('alerts',[]):[],
- theme:load('theme','dark'),region:null,marketFilter:'all',marketSearch:'',dialogId:null,chartShift:0,chartHover:null,
+ theme:load('theme','dark'),themeMode:load('themeMode',load('theme','dark')),clickSound:load('clickSound',true),region:null,marketFilter:'all',marketSearch:'',dialogId:null,chartShift:0,chartHover:null,
  land:'',searchResults:[],errorText:'',cryptoExpanded:false,
  solarLastRoot:null,solarLastUpdate:0,solarLastStatus:0
 };
 if(!SECTIONS[state.page])state.page='global';
-if(!['dark','light'].includes(state.theme))state.theme='dark';
+if(!['dark','light','auto'].includes(state.themeMode))state.themeMode='dark';
+state.theme=resolvedTheme(state.themeMode);
+state.clickSound=state.clickSound!==false;
 document.body.className='theme-'+state.theme;
 const safeDate=t=>{const d=new Date(t);return Number.isFinite(d.getTime())?d:null};
 const localeDate=(t,opts)=>{const d=safeDate(t);return d?new Intl.DateTimeFormat('it-IT',opts).format(d):'n.d.'};
@@ -1022,7 +1029,14 @@ function alertsPage(){
  (state.alerts.length?state.alerts.map((x,i)=>'<div class="alert-row"><div><strong>'+esc(ASSET_BY_ID[x.id]?.name||x.id)+' · '+(x.operator==='above'?'≥':'≤')+' '+Number(x.value).toLocaleString('it-IT')+'</strong><small>'+esc(alertState(x))+' · Prezzo '+assetValue(ASSET_BY_ID[x.id]||{id:x.id,group:'markets'})+'</small></div><button type="button" data-delete-alert="'+i+'">Rimuovi</button></div>').join(''):'<div class="empty-state"><h3>Nessun alert</h3><p>Aggiungi una soglia per monitorarla quando usi la dashboard.</p></div>')+'</section>'+feedStatus();
 }
 function settingsPage(){
- return secHeader('Impostazioni','');
+ const choices=[['light','☀','Chiaro'],['dark','☾','Scuro'],['auto','◐','Automatico']];
+ return secHeader('Impostazioni','Personalizza aspetto e suoni della dashboard')+
+ '<section class="content-card panel settings-preferences"><h3>Modalità schermo</h3><p class="subnote">Scegli il tema chiaro, scuro oppure la luminosità automatica: in automatico, la dashboard segue il tema impostato sul dispositivo.</p>'+
+ '<div class="settings-theme-options" role="group" aria-label="Tema della dashboard">'+
+ choices.map(([mode,icon,label])=>'<button type="button" data-theme-mode="'+mode+'" class="settings-theme-option'+(state.themeMode===mode?' is-selected':'')+'" aria-pressed="'+(state.themeMode===mode)+'"><span class="settings-choice-icon" aria-hidden="true">'+icon+'</span><span>'+label+'</span></button>').join('')+
+ '</div></section>'+
+ '<section class="content-card panel settings-preferences"><div class="settings-sound-row"><div><h3>Suono al clic</h3><p class="subnote">Un breve suono quando premi i pulsanti. Puoi disattivarlo quando vuoi.</p></div>'+
+ '<button type="button" data-sound-toggle="1" class="settings-sound-toggle'+(state.clickSound?' is-on':'')+'" role="switch" aria-checked="'+state.clickSound+'" aria-label="Suono al clic">'+(state.clickSound?'Attivo':'Disattivo')+'</button></div></section>';
 }
 const PAGE_RENDERERS={home:homePage,global:globalPage,markets:marketsPage,watchlist:watchlistPage,portfolio:portfolioPage,news:newsPage,analytics:analyticsPage,alerts:alertsPage,settings:settingsPage};
 function updateNav(){
@@ -1049,13 +1063,47 @@ function navigate(page){
  render();
  window.scrollTo({top:0,behavior:'auto'});
 }
-function setTheme(val){
- state.theme=val==='light'?'light':'dark';
- document.body.className='theme-'+state.theme;
+function applyTheme(){
+ state.theme=resolvedTheme(state.themeMode);
+ document.body.classList.toggle('theme-dark',state.theme==='dark');
+ document.body.classList.toggle('theme-light',state.theme==='light');
+ const switchEl=$('#themeSwitch'),toggle=$('#themeToggle');
+ if(switchEl)switchEl.classList.toggle('on',state.theme==='dark');
+ if(toggle){
+  toggle.setAttribute('aria-label',state.theme==='dark'?'Attiva modalità chiara':'Attiva modalità scura');
+  const name=toggle.querySelector('span:not(.switch)');
+  if(name)name.textContent=state.themeMode==='auto'?'Tema automatico':state.theme==='dark'?'Tema scuro':'Tema chiaro';
+ }
+}
+function setTheme(mode){
+ state.themeMode=['light','dark','auto'].includes(mode)?mode:'dark';
+ applyTheme();
+ save('themeMode',state.themeMode);
  save('theme',state.theme);
- $('#themeSwitch').classList.toggle('on',state.theme==='dark');
- $('#themeToggle').setAttribute('aria-label',state.theme==='dark'?'Attiva modalità chiara':'Attiva modalità scura');
  if(state.page==='settings')render();
+}
+let clickAudioContext=null;
+function playClickSound(){
+ if(!state.clickSound)return;
+ try{
+  const Audio=window.AudioContext||window.webkitAudioContext;
+  if(!Audio)return;
+  if(!clickAudioContext)clickAudioContext=new Audio();
+  if(clickAudioContext.state==='suspended')clickAudioContext.resume().catch(()=>{});
+  const t=clickAudioContext.currentTime;
+  const tone=clickAudioContext.createOscillator();
+  const volume=clickAudioContext.createGain();
+  tone.type='sine';
+  tone.frequency.setValueAtTime(680,t);
+  tone.frequency.exponentialRampToValueAtTime(490,t+0.05);
+  volume.gain.setValueAtTime(0.0001,t);
+  volume.gain.exponentialRampToValueAtTime(0.020,t+0.006);
+  volume.gain.exponentialRampToValueAtTime(0.0001,t+0.065);
+  tone.connect(volume);
+  volume.connect(clickAudioContext.destination);
+  tone.start(t);
+  tone.stop(t+0.07);
+ }catch(e){/* Audio is optional; dashboard remains usable without it. */}
 }
 function toast(message){
  const el=$('#toast');el.textContent=String(message);el.hidden=false;clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.hidden=true,3400);
@@ -1385,6 +1433,16 @@ function setupCanvasInteractions(){
  dlg.addEventListener('wheel',e=>{if(e.target.id==='detailChart')e.preventDefault()},{passive:false});
 }
 function setupEvents(){
+ // A single delegated handler also covers buttons added when pages are rendered.
+ document.addEventListener('click',e=>{
+  const target=e.target instanceof Element?e.target.closest('button,a[href],tr[data-asset]'):null;
+  if(target&&!target.disabled&&target.getAttribute('aria-disabled')!=='true')playClickSound();
+ },true);
+ if(deviceThemeQuery){
+  const updateAutoTheme=()=>{if(state.themeMode==='auto'){applyTheme();if(state.page==='settings')render();}};
+  if(deviceThemeQuery.addEventListener)deviceThemeQuery.addEventListener('change',updateAutoTheme);
+  else if(deviceThemeQuery.addListener)deviceThemeQuery.addListener(updateAutoTheme);
+ }
  document.addEventListener('error',e=>{
   const img=e.target;
   if(img&&img.tagName==='IMG'&&(img.classList.contains('crypto-logo-image')||img.classList.contains('forex-flag-image')||img.classList.contains('bigtech-logo-image')||img.classList.contains('market-index-logo-image')))img.remove();
@@ -1409,6 +1467,14 @@ function setupEvents(){
  $('#pageContainer').addEventListener('click',e=>{
   const btn=e.target.closest('button,a,tr[data-asset]');
   if(!btn)return;
+  if(btn.dataset.themeMode){setTheme(btn.dataset.themeMode);return;}
+  if(btn.dataset.soundToggle){
+   const previous=state.clickSound;
+   state.clickSound=!state.clickSound;
+   save('clickSound',state.clickSound);
+   if(!previous&&state.clickSound)playClickSound();
+   render();return;
+  }
   if(btn.dataset.cryptoExpand){state.cryptoExpanded=!state.cryptoExpanded;render();return;}
   if(btn.dataset.asset){openAsset(btn.dataset.asset);return;}
   if(btn.dataset.region){selectRegion(btn.dataset.region);return;}
@@ -1459,7 +1525,7 @@ function setupEvents(){
  window.addEventListener('hashchange',()=>navigate(location.hash.slice(1)));
 }
 function init(){
- setupEvents();setTheme(state.theme);updateClock();
+ setupEvents();applyTheme();updateClock();
  setInterval(updateClock,30000);
  setInterval(updateWorldSunlight,1000);
  render();
