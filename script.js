@@ -391,11 +391,44 @@ function forexPairLogo(a){
    '<img class="forex-flag-image" src="https://flagcdn.com/w40/'+code+'.png" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">'+
   '</span>').join('')+'</span>';
 }
-function showAssetLogo(a){return a&&['crypto','forex'].includes(a.group);}
+
+/* Big Tech: official-domain favicon with ticker fallback when the image is unavailable. */
+const BIGTECH_DOMAINS={
+ nvda:'nvidia.com',msft:'microsoft.com',aapl:'apple.com',googl:'google.com',
+ amzn:'amazon.com',meta:'meta.com',tsla:'tesla.com',avgo:'broadcom.com',
+ amd:'amd.com',orcl:'oracle.com',tsm:'tsmc.com',asml:'asml.com'
+};
+function bigTechLogo(a){
+ const domain=BIGTECH_DOMAINS[a.id],fallback=esc((a.symbol||a.short||'?').slice(0,2));
+ if(!domain)return '<span class="asset-logo" aria-hidden="true">'+fallback+'</span>';
+ const image='https://www.google.com/s2/favicons?domain='+encodeURIComponent(domain)+'&sz=64';
+ return '<span class="asset-logo bigtech-logo asset-'+esc(a.id)+'" aria-hidden="true">'+
+  '<span class="bigtech-logo-fallback">'+fallback+'</span>'+
+  '<img class="bigtech-logo-image" src="'+esc(image)+'" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"></span>';
+}
+/* Commodities have no corporate brand: use distinct lightweight SVG pictograms. */
+const COMMODITY_ICONS={
+ gold:'<path d="M6 13h20l3 11H3z" fill="#f0b943"/><path d="M6 13l5-7h10l5 7z" fill="#ffe49b"/><path d="M10 13l-2 11M22 13l2 11" stroke="#b77513" stroke-width="1.4" fill="none"/>',
+ silver:'<path d="M6 13h20l3 11H3z" fill="#b8c9d6"/><path d="M6 13l5-7h10l5 7z" fill="#f1f8fc"/><path d="M10 13l-2 11M22 13l2 11" stroke="#768f9e" stroke-width="1.4" fill="none"/>',
+ brent:'<path d="M16 3C12 10 7 14 7 20a9 9 0 0 0 18 0c0-6-5-10-9-17z" fill="#2298ca"/><path d="M10 20c0 3.8 2.5 6.3 5.8 6.5" stroke="#afe8fb" stroke-width="2" fill="none" stroke-linecap="round"/>',
+ wti:'<rect x="9" y="5" width="14" height="22" rx="3" fill="#406eaa"/><path d="M9 10h14M9 22h14" stroke="#9bc7ef" stroke-width="2"/><path d="M16 12c-2 3-4 5-4 7a4 4 0 0 0 8 0c0-2-2-4-4-7z" fill="#bde9ff"/>',
+ naturalgas:'<path d="M17 2c1 7-4 8-3 13-3-1-4-4-4-6-4 5-5 8-5 13a11 11 0 0 0 22 0c0-7-4-11-10-20z" fill="#ee8b32"/><path d="M17 15c0 5-5 6-5 10a5 5 0 0 0 10 0c0-4-3-7-5-10z" fill="#ffd275"/>',
+ copper:'<circle cx="16" cy="16" r="12" fill="none" stroke="#ae5b35" stroke-width="5"/><circle cx="16" cy="16" r="8" fill="none" stroke="#e3a477" stroke-width="3"/><circle cx="16" cy="16" r="4" fill="#f4be89"/><path d="M9 7l13 18" stroke="#954526" stroke-width="1" opacity=".55"/>'
+};
+function commodityLogo(a){
+ const art=COMMODITY_ICONS[a.id];
+ if(!art)return '<span class="asset-logo" aria-hidden="true">'+esc(a.icon||a.short)+'</span>';
+ return '<span class="asset-logo commodity-logo commodity-'+esc(a.id)+'" aria-hidden="true">'+
+  '<svg viewBox="0 0 32 32" focusable="false">'+art+'</svg></span>';
+}
+
+function showAssetLogo(a){return a&&['crypto','forex','bigtech','commodities'].includes(a.group);}
 
 function assetLogo(a){
  const fallback=esc(a.icon||(a.short||a.name||'?').trim().charAt(0));
  if(a.group==='forex')return forexPairLogo(a);
+ if(a.group==='bigtech')return bigTechLogo(a);
+ if(a.group==='commodities')return commodityLogo(a);
  if(a.group!=='crypto')return '<span class="asset-logo asset-'+esc(a.id)+'">'+fallback+'</span>';
  const q=quote(a.id),logo=coinLogoUrl(q&&q.logo);
  return '<span class="asset-logo crypto-logo asset-'+esc(a.id)+'" aria-hidden="true">'+
@@ -1269,7 +1302,7 @@ function setupCanvasInteractions(){
 function setupEvents(){
  document.addEventListener('error',e=>{
   const img=e.target;
-  if(img&&img.tagName==='IMG'&&(img.classList.contains('crypto-logo-image')||img.classList.contains('forex-flag-image')))img.remove();
+  if(img&&img.tagName==='IMG'&&(img.classList.contains('crypto-logo-image')||img.classList.contains('forex-flag-image')||img.classList.contains('bigtech-logo-image')))img.remove();
  },true);
  $$('.side-link[data-page]').forEach(btn=>btn.addEventListener('click',()=>navigate(btn.dataset.page)));
  $('#menuToggle').addEventListener('click',()=>$('#sidebar').classList.toggle('open'));
