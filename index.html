@@ -399,7 +399,33 @@
       .v550-market-tape-scroll{overflow-x:auto;scrollbar-width:thin;mask-image:none;-webkit-mask-image:none}
       .v551-ticker-set[aria-hidden="true"]{display:none}
     }
-  </style>
+      /* V552: settori distinti, ticker formato pillola con movimento continuo. */
+    .v550-market-tape-label{padding:0 13px;font-size:9px}
+    .v551-ticker-track{animation-duration:var(--v551-duration,42s)}
+    .v551-quote-pill{gap:8px;min-height:36px;padding:0 11px}
+    .v551-sector-tag{
+      display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;
+      padding:3px 6px;min-width:39px;border-radius:999px;
+      font-size:8px;font-weight:850;letter-spacing:.055em;
+      background:rgba(83,157,254,.13);color:#75a9ff
+    }
+    .v551-quote-pill[data-v551-sector="tech"] .v551-sector-tag{
+      background:rgba(176,114,255,.13);color:#c5a2ff
+    }
+    .v551-quote-pill[data-v551-sector="market"] .v551-sector-tag{
+      background:rgba(32,181,142,.12);color:#39c5a3
+    }
+    body.light .v551-sector-tag{color:#1351a6;background:rgba(20,90,190,.10)}
+    body.light .v551-quote-pill[data-v551-sector="tech"] .v551-sector-tag{color:#7441b8;background:rgba(116,65,184,.09)}
+    body.light .v551-quote-pill[data-v551-sector="market"] .v551-sector-tag{color:#137c5d;background:rgba(19,124,93,.10)}
+    .v551-quote-pill .v551-price{min-width:47px;text-align:right}
+    @media(max-width:600px){
+      .v551-sector-tag{font-size:7px;min-width:0;padding:3px 5px}
+      .v551-quote-pill{padding:0 8px;gap:6px;min-height:34px}
+      .v550-market-tape-label{font-size:8px;padding:0 8px}
+      .v551-ticker-track{animation-duration:var(--v551-duration,40s)}
+    }
+</style>
 </head>
 <body>
 <div class="v442-market-shade" id="v442MarketShade" hidden></div>
@@ -808,7 +834,7 @@
 
     <!-- V551 ticker pill personalizzato, dati da API pubbliche -->
     <section class="v550-market-tape" id="v550MarketTape" aria-label="Criptovalute e mercati: prezzi a scorrimento continuo">
-      <div class="v550-market-tape-label"><span class="v550-market-dot" aria-hidden="true"></span><span>CRYPTO <b>&amp;</b> MERCATI</span></div>
+      <div class="v550-market-tape-label"><span class="v550-market-dot" aria-hidden="true"></span><span>MERCATI <b>·</b> TECH <b>·</b> CRYPTO</span></div>
       <div class="v550-market-tape-scroll" id="v551TickerViewport">
         <div class="v551-ticker-track" id="v551TickerTrack">
           <div class="v551-ticker-set" id="v551TickerSet"></div>
@@ -3127,126 +3153,148 @@
   const track=document.getElementById('v551TickerTrack');
   if(!root||!first||!track||root.dataset.ready==='1')return;
   root.dataset.ready='1';
-  // Nessun valore inventato: trattino finché la sorgente non risponde.
   const items=[
-    {key:'BTC',label:'BTC',symbol:'BTCUSDT',type:'crypto'},
-    {key:'ETH',label:'ETH',symbol:'ETHUSDT',type:'crypto'},
-    {key:'SOL',label:'SOL',symbol:'SOLUSDT',type:'crypto'},
-    {key:'BNB',label:'BNB',symbol:'BNBUSDT',type:'crypto'},
-    {key:'INJ',label:'INJ',symbol:'INJUSDT',type:'crypto'},
-    {key:'SP500',label:'S&P 500',type:'market'},
-    {key:'NASDAQ',label:'NASDAQ 100',type:'market'},
-    {key:'DOW',label:'DOW JONES',type:'market'},
-    {key:'GOLD',label:'ORO',type:'market',symbol:'XAUUSD'},
-    {key:'EURUSD',label:'EUR/USD',type:'market',symbol:'EURUSD'}
+    {key:'BTC',label:'BTC',sector:'crypto',symbol:'BTCUSDT'},
+    {key:'ETH',label:'ETH',sector:'crypto',symbol:'ETHUSDT'},
+    {key:'SOL',label:'SOL',sector:'crypto',symbol:'SOLUSDT'},
+    {key:'BNB',label:'BNB',sector:'crypto',symbol:'BNBUSDT'},
+    {key:'INJ',label:'INJ',sector:'crypto',symbol:'INJUSDT'},
+    {key:'AAPL',label:'APPLE',sector:'tech',yahoo:'AAPL'},
+    {key:'NVDA',label:'NVIDIA',sector:'tech',yahoo:'NVDA'},
+    {key:'MSFT',label:'MICROSOFT',sector:'tech',yahoo:'MSFT'},
+    {key:'GOOGL',label:'GOOGLE',sector:'tech',yahoo:'GOOGL'},
+    {key:'AMZN',label:'AMAZON',sector:'tech',yahoo:'AMZN'},
+    {key:'META',label:'META',sector:'tech',yahoo:'META'},
+    {key:'TSLA',label:'TESLA',sector:'tech',yahoo:'TSLA'},
+    {key:'AMD',label:'AMD',sector:'tech',yahoo:'AMD'},
+    {key:'SP500',label:'S&P 500',sector:'market',yahoo:'^GSPC'},
+    {key:'NASDAQ',label:'NASDAQ 100',sector:'market',yahoo:'^NDX'},
+    {key:'DOW',label:'DOW JONES',sector:'market',yahoo:'^DJI'},
+    {key:'GOLD',label:'ORO',sector:'market',biquote:'XAUUSD'},
+    {key:'EURUSD',label:'EUR/USD',sector:'market',biquote:'EURUSD'}
   ];
-  const encoded=(s)=>String(s).replace(/[&<>"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const entities={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+  const escapeText=(s)=>String(s).replace(/[&<>"']/g,(ch)=>entities[ch]);
   first.innerHTML=items.map(item=>
-    '<span class="v551-quote-pill" data-v551-key="'+encoded(item.key)+'" title="'+encoded(item.label)+': dati in aggiornamento">'+
-    '<strong class="v551-symbol">'+encoded(item.label)+'</strong>'+
-    '<span class="v551-price">—</span>'+
-    '<span class="v551-change" data-trend="neutral">—</span></span>'
+    '<span class="v551-quote-pill" data-v551-key="'+escapeText(item.key)+'" data-v551-sector="'+escapeText(item.sector)+'" title="'+escapeText(item.label)+' · quotazione in caricamento">'+
+      '<span class="v551-sector-tag">'+(item.sector==='crypto'?'CRYPTO':item.sector==='tech'?'TECH':'MERCATI')+'</span>'+
+      '<strong class="v551-symbol">'+escapeText(item.label)+'</strong>'+
+      '<span class="v551-price">—</span>'+
+      '<span class="v551-change" data-trend="neutral">—</span>'+
+    '</span>'
   ).join('');
   const clone=first.cloneNode(true);
   clone.removeAttribute('id');
   clone.setAttribute('aria-hidden','true');
   clone.inert=true;
   track.appendChild(clone);
-  function money(value,fx){
-    const v=Number(value);
-    if(!Number.isFinite(v)||v<=0)return '—';
-    const decimals=fx?5:v<0.01?6:v<1?4:2;
-    return (fx?'':'$')+v.toLocaleString('en-US',{minimumFractionDigits:decimals,maximumFractionDigits:decimals});
+  const width=first.getBoundingClientRect().width;
+  if(width>0)track.style.setProperty('--v551-duration',Math.max(26,Math.round(width/84))+'s');
+  function formatPrice(raw,item){
+    const price=Number(raw);
+    if(!Number.isFinite(price)||price<=0)return null;
+    const decimals=item.key==='EURUSD'?5:price<0.01?6:price<1?4:2;
+    const prefix=(item.sector==='market'&&item.key!=='GOLD')?'':'$';
+    return prefix+price.toLocaleString('en-US',{minimumFractionDigits:decimals,maximumFractionDigits:decimals});
   }
-  function update(key,value,change,closed,description){
-    const val=money(value,key==='EURUSD');
-    if(val==='—')return;
-    const percent=Number(change);
-    const valid=Number.isFinite(percent);
-    const diff=closed?'CHIUSO':valid?((percent>0?'+':'')+percent.toFixed(2)+'%'):'—';
-    const trend=closed?'closed':valid?(percent>0?'up':percent<0?'down':'neutral'):'neutral';
-    track.querySelectorAll('[data-v551-key="'+key+'"]').forEach((node)=>{
-      node.querySelector('.v551-price').textContent=val;
-      const n=node.querySelector('.v551-change');
-      n.textContent=diff;n.dataset.trend=trend;
-      node.title=(description||key)+': '+val+(closed?' · mercato chiuso':valid?' · '+diff:'');
+  function update(item,price,change,closed,provider){
+    const displayed=formatPrice(price,item);
+    if(displayed===null)return;
+    const pct=Number(change);
+    const valid=change!==null&&change!==undefined&&Number.isFinite(pct);
+    const changeText=closed?'CHIUSO':valid?(pct>0?'+':'')+pct.toFixed(2)+'%':'—';
+    const direction=closed?'closed':valid?(pct>0?'up':pct<0?'down':'neutral'):'neutral';
+    track.querySelectorAll('[data-v551-key="'+item.key+'"]').forEach((node)=>{
+      const p=node.querySelector('.v551-price');
+      const d=node.querySelector('.v551-change');
+      p.textContent=displayed;
+      d.textContent=changeText;
+      d.dataset.trend=direction;
+      node.title=item.label+' · '+displayed+
+        (closed?' · mercato chiuso, ultimo prezzo disponibile':valid?' · variazione '+changeText:'')+
+        (provider?' · '+provider:'');
     });
   }
-  async function getJSON(url){
-    const ctl=new AbortController();
-    const timeout=setTimeout(()=>ctl.abort(),9000);
+  async function json(url){
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),11000);
     try{
-      const res=await fetch(url,{signal:ctl.signal,cache:'no-store',mode:'cors'});
-      if(!res.ok)throw new Error('HTTP '+res.status);
-      return await res.json();
+      const response=await fetch(url,{signal:controller.signal,cache:'no-store',credentials:'omit'});
+      if(!response.ok)throw new Error('HTTP '+response.status);
+      return await response.json();
     }finally{clearTimeout(timeout)}
   }
   async function loadCrypto(){
-    const symbols=items.filter(x=>x.type==='crypto').map(x=>x.symbol);
-    const query=encodeURIComponent(JSON.stringify(symbols));
-    const hosts=['https://api.binance.com','https://data-api.binance.vision'];
-    for(const host of hosts){
+    const coins=items.filter(item=>item.sector==='crypto');
+    const encoded=encodeURIComponent(JSON.stringify(coins.map(item=>item.symbol)));
+    for(const host of ['https://data-api.binance.vision','https://api.binance.com']){
       try{
-        const rows=await getJSON(host+'/api/v3/ticker/24hr?symbols='+query);
-        if(!Array.isArray(rows)||!rows.length)continue;
-        rows.forEach(row=>{
-          const item=items.find(i=>i.symbol===row.symbol&&i.type==='crypto');
-          if(item)update(item.key,row.lastPrice,row.priceChangePercent,false,item.label+' · Binance · var. 24h');
+        const data=await json(host+'/api/v3/ticker/24hr?symbols='+encoded);
+        if(!Array.isArray(data))continue;
+        data.forEach(quote=>{
+          const item=coins.find(c=>c.symbol===quote.symbol);
+          if(item)update(item,quote.lastPrice,quote.priceChangePercent,false,'Binance · 24h');
         });
-        return;
-      }catch(_e){/* Fonte successiva senza numeri simulati. */}
+        if(data.length)return;
+      }catch(_e){/* Se non raggiungibile, nessuna quotazione inventata. */}
     }
   }
-  let marketSymbols=null;
-  function matchIndex(list,match){
-    const row=list.find(x=>match.test(String(x.name||'')+' '+String(x.description||'')));
-    return row&&row.name;
-  }
-  async function resolveMarkets(){
-    if(marketSymbols)return marketSymbols;
-    marketSymbols={SP500:'US500',NASDAQ:'NAS100',DOW:'US30',GOLD:'XAUUSD',EURUSD:'EURUSD'};
-    try{
-      const catalog=await getJSON('https://biquote.io/api/active');
-      if(Array.isArray(catalog)){
-        marketSymbols.SP500=matchIndex(catalog,/S&P\s*500|SPX500|US500|SP500/i)||marketSymbols.SP500;
-        marketSymbols.NASDAQ=matchIndex(catalog,/NASDAQ\s*100|NAS100|US100|USTEC|NDX100/i)||marketSymbols.NASDAQ;
-        marketSymbols.DOW=matchIndex(catalog,/DOW\s*JONES|US30|DJ30|WALL\s*STREET\s*30/i)||marketSymbols.DOW;
+  async function loadYahoo(){
+    const queue=items.filter(item=>Boolean(item.yahoo));
+    async function worker(){
+      while(queue.length&&!document.hidden){
+        const item=queue.shift();
+        const target='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(item.yahoo)+'?range=1d&interval=1d';
+        try{
+          const payload=await json('https://proxy.cors.dev/'+target);
+          const result=payload&&payload.chart&&payload.chart.result&&payload.chart.result[0];
+          const meta=result&&result.meta;
+          if(!meta)continue;
+          const price=Number(meta.regularMarketPrice);
+          const prev=Number(meta.previousClose||meta.chartPreviousClose);
+          const change=prev>0?(price-prev)/prev*100:null;
+          const seconds=Number(meta.regularMarketTime);
+          const closed=seconds>0&&(Date.now()/1000-seconds>7200);
+          update(item,price,change,closed,'Yahoo Finance · dati eventualmente ritardati');
+        }catch(_e){/* Lascia — se la fonte è temporaneamente indisponibile. */}
       }
-    }catch(_e){/* Alias comuni, nessun dato fittizio. */}
-    return marketSymbols;
-  }
-  async function loadMarkets(){
-    const named=await resolveMarkets();
-    const symbols=[...new Set(Object.values(named))];
-    const params=new URLSearchParams();
-    symbols.forEach(s=>params.append('symbols',s));
-    try{
-      const response=await getJSON('https://biquote.io/api/latest?'+params.toString());
-      const rows=Array.isArray(response)?response:
-        (response&&Array.isArray(response.data))?response.data:
-        (response&&Array.isArray(response.items))?response.items:
-        (response&&typeof response==='object'
-          ?Object.entries(response).filter(([_,v])=>v&&typeof v==='object').map(([symbol,v])=>Object.assign({symbol},v))
-          :[]);
-      const bySymbol=new Map(rows.map(x=>[String(x.symbol||'').toUpperCase(),x]));
-      Object.entries(named).forEach(([key,symbol])=>{
-        const row=bySymbol.get(String(symbol).toUpperCase());
-        if(!row)return;
-        const p=Number(row.mid)>0?Number(row.mid):Number(row.last)>0?Number(row.last):(Number(row.bid)+Number(row.ask))/2;
-        const closed=row.marketState==='closed'||row.stale===true;
-        update(key,p,closed?NaN:row.dayDiffPercent,closed,(key==='GOLD'?'Oro':key==='EURUSD'?'EUR/USD':key)+' · biquote');
-      });
-    }catch(_e){
-      // Batch non raggiungibile: proveremo ancora al prossimo aggiornamento.
     }
+    await Promise.all([worker(),worker(),worker(),worker()]);
   }
-  function refresh(){
-    if(document.hidden)return;
-    loadCrypto();loadMarkets();
+  async function loadOtherMarkets(){
+    const requested=items.filter(item=>Boolean(item.biquote));
+    const params=new URLSearchParams();
+    requested.forEach(item=>params.append('symbols',item.biquote));
+    try{
+      const result=await json('https://biquote.io/api/latest?'+params.toString());
+      const data=Array.isArray(result)?result:
+        Array.isArray(result&&result.data)?result.data:
+        Array.isArray(result&&result.items)?result.items:
+        result&&typeof result==='object'?
+        Object.entries(result).filter(([k,v])=>v&&typeof v==='object'&&!Array.isArray(v))
+          .map(([symbol,v])=>Object.assign({symbol},v)):[];
+      const bySymbol=new Map(data.map(v=>[String(v.symbol||'').toUpperCase(),v]));
+      requested.forEach(item=>{
+        const tick=bySymbol.get(item.biquote.toUpperCase());
+        if(!tick)return;
+        const mid=Number(tick.mid);
+        const last=Number(tick.last);
+        const bid=Number(tick.bid),ask=Number(tick.ask);
+        const price=mid>0?mid:last>0?last:(bid>0&&ask>0?(bid+ask)/2:NaN);
+        const closed=tick.marketState==='closed'||tick.stale===true;
+        update(item,price,closed?null:tick.dayDiffPercent,closed,'biquote');
+      });
+    }catch(_e){/* Dati non disponibili: resta il trattino. */}
   }
-  refresh();
-  setInterval(refresh,45000);
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh()});
+  function refreshCrypto(){if(!document.hidden)loadCrypto()}
+  function refreshTraditional(){if(!document.hidden){loadYahoo();loadOtherMarkets()}}
+  refreshCrypto();
+  refreshTraditional();
+  setInterval(refreshCrypto,45000);
+  setInterval(refreshTraditional,120000);
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden){refreshCrypto();refreshTraditional()}
+  });
 })();
 </script>
 </body>
