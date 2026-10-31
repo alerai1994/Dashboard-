@@ -453,6 +453,53 @@
       white-space:nowrap!important;
     }
 </style>
+  <style id="v559MacdVisibilityStyles">
+    /* MACD come terzo pannello, subito sotto Stochastic RSI, su tutte le schede. */
+    body .market-card .v439-indicator-content .indicator-stack{
+      display:flex!important;
+      flex-direction:column!important;
+      align-items:stretch!important;
+      overflow:visible!important;
+      height:auto!important;
+    }
+    body .market-card .v439-indicator-content .indicator-stack>.indicator-panel:nth-child(1){
+      order:1!important;
+    }
+    body .market-card .v439-indicator-content .indicator-stack>.indicator-panel:nth-child(2){
+      order:2!important;
+    }
+    body .market-card .v439-indicator-content .indicator-stack>.indicator-panel:nth-child(3){
+      display:block!important;
+      order:3!important;
+      position:relative!important;
+      visibility:visible!important;
+      opacity:1!important;
+      width:100%!important;
+      height:auto!important;
+      min-height:140px!important;
+      flex:0 0 auto!important;
+      overflow:hidden!important;
+      border-left:2px solid #f59e0b!important;
+    }
+    body .market-card .v439-indicator-content .indicator-stack>.indicator-panel:nth-child(n+4){
+      display:none!important;
+    }
+    body .market-card .v439-indicator-content .indicator-stack>.indicator-panel:nth-child(3) .indicator-canvas{
+      display:block!important;
+      visibility:visible!important;
+      opacity:1!important;
+      width:100%!important;
+      height:110px!important;
+      min-height:110px!important;
+      overflow:hidden!important;
+    }
+    .v559-macd-loading{
+      display:flex;align-items:center;justify-content:center;
+      min-height:100px;width:100%;
+      color:var(--muted,#8b93a1);
+      font-size:12px;
+    }
+  </style>
 </head>
 <body>
 <div class="v442-market-shade" id="v442MarketShade" hidden></div>
@@ -3391,6 +3438,29 @@
   };
   const assetIds=[...document.querySelectorAll('[id$="-macd-chart"]')].map(el=>el.id.replace(/-macd-chart$/,''));
   if(!assetIds.length)return;
+  // Monta esplicitamente il MACD subito dopo lo Stoch RSI e mostra il caricamento.
+  assetIds.forEach(assetId=>{
+    const macd=document.getElementById(assetId+'-macd-chart');
+    const stoch=document.getElementById(assetId+'-stoch-chart');
+    if(!macd||!stoch)return;
+    const macdPanel=macd.closest('.indicator-panel');
+    const stochPanel=stoch.closest('.indicator-panel');
+    if(macdPanel&&stochPanel&&macdPanel!==stochPanel&&stochPanel.nextElementSibling!==macdPanel){
+      stochPanel.insertAdjacentElement('afterend',macdPanel);
+    }
+    if(macdPanel){
+      macdPanel.classList.add('v559-macd-visible');
+      macdPanel.style.setProperty('display','block','important');
+      macdPanel.style.setProperty('visibility','visible','important');
+      macdPanel.style.setProperty('opacity','1','important');
+    }
+    if(!macd.hasChildNodes()){
+      const message=document.createElement('span');
+      message.className='v559-macd-loading';
+      message.textContent='Caricamento MACD 12/26/9…';
+      macd.appendChild(message);
+    }
+  });
   const hostNames=['https://data-api.binance.vision','https://api.binance.com'];
   const cache=new Map();
   const intervalMap={'1m':'1m','5m':'5m','15m':'15m','30m':'30m',
