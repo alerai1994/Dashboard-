@@ -145,6 +145,67 @@ def yahoo_quote(pair):
             print("Yahoo unavailable", symbol, domain, type(e).__name__)
     return entry
 
+def real_ohlc_rows(rows, source, time_unit="ms"):
+    """Validate real OHLC readings; never infer highs/lows from close prices."""
+    out = []
+    for raw in rows:
+        if not isinstance(raw, (list, tuple)) or len(raw) < 5:
+            continue
+        try:
+            stamp = int(raw[0])
+            o, h, l, c = (valid(raw[i]) for i in range(1, 5))
+            if None in (o, h, l, c) or min(o, h, l, c) <= 0:
+                continue
+            if h < max(o, c) or l > min(o, c):
+                continue
+            out.append({"t": stamp // 1000 if time_unit == "ms" else stamp,
+                        "o": o, "h": h, "l": l, "c": c})
+        except (ValueError, TypeError, OverflowError):
+            continue
+    out.sort(key=lambda row: row["t"])
+    # Remove duplicate timestamps while keeping the latest verified reading.
+    return list({row["t"]: row for row in out}.values())[-260:]
+
+
+def binance_daily_candles(symbol):
+    """Binance public daily OHLC for crypto pairs listed against USDT (not USD)."""
+    url = "https://data-api.binance.vision/api/v3/klines?" + urlencode({
+        "symbol": symbol, "interval": "1d", "limit": 260
+    })
+    try:
+        result = request_json(url)
+        if not isinstance(result, list):
+            return []
+        return real_ohlc_rows(result, "Binance USDT")
+    except (HTTPError, URLError, TimeoutError, ValueError, TypeError, OSError):
+        return []
+
+
+def coingecko_daily_candles(token):
+    """CoinGecko OHLC provides actual open/high/low/close data in USD."""
+    url = "https://api.coingecko.com/api/v3/coins/" + quote(token, safe="") + "/ohlc?" + urlencode({
+        "vs_currency": "usd", "days": "30"
+    })
+    try:
+        result = request_json(url)
+        if not isinstance(result, list):
+            return []
+        return real_ohlc_rows(result, "CoinGecko USD")
+    except (HTTPError, URLError, TimeoutError, ValueError, TypeError, OSError):
+        return []
+
+
+def previous_crypto_snapshot():
+    if not OUTPUT.exists():
+        return {}
+    try:
+        data = json.loads(OUTPUT.read_text(encoding="utf-8"))
+        return {row["id"]: row for row in data.get("crypto", [])
+                if isinstance(row, dict) and isinstance(row.get("id"), str)}
+    except (OSError, ValueError, TypeError, KeyError):
+        return {}
+
+
 def crypto_quotes():
     """Return verified prices and image URLs for the configured CoinGecko coin IDs.
 
@@ -243,7 +304,16 @@ def crypto_quotes():
             pass
     print("CoinGecko crypto logos:",
           sum(bool(item["logo"]) for item in items.values()), "/", len(items))
-    # Historical OHLC stays with Yahoo Finance; CoinGecko provides prices and logos.
+    # Daily OHLC from Yahoo Finance; unsupported pairs use verified Binance/CoinGecko candles.
+    old_candles = previous_crypto_snapshot()
+    now_utc = datetime.now(timezone.utc)
+    try:
+        for cid, _ in CRYPTO:
+            old = old_candles.get(cid, {})
+            if not items[cid]["logo"] and old.get("logo"):
+                items[cid]["logo"] = old["logo"]
+    except (KeyError, TypeError):
+        pass
     history_symbols = {
         "btc": "BTC-USD", "eth": "ETH-USD", "sol": "SOL-USD",
         "inj": "INJ-USD", "bnb": "BNB-USD",
@@ -266,6 +336,65 @@ def crypto_quotes():
                     items[cid]["candles"] = row["candles"]
     except Exception as e:
         print("Crypto historical data unavailable:", type(e).__name__)
+
+    # Use cached authentic OHLC in case an upstream data provider is temporarily unavailable.
+    # Refresh cached fallback OHLC at most once per 6 hours to limit public API traffic.
+    missing = [(cid, token) for cid, token in CRYPTO if len(items[cid]["candles"]) < 2]
+    fallback_symbols = {
+        "btc": "BTCUSDT", "eth": "ETHUSDT", "sol": "SOLUSDT",
+        "inj": "INJUSDT", "bnb": "BNBUSDT", "xrp": "XRPUSDT",
+        "doge": "DOGEUSDT", "ada": "ADAUSDT", "avax": "AVAXUSDT",
+        "link": "LINKUSDT", "dot": "DOTUSDT", "trx": "TRXUSDT",
+        "ton": "TONUSDT", "sui": "SUIUSDT", "ltc": "LTCUSDT",
+        "bch": "BCHUSDT", "xlm": "XLMUSDT", "hbar": "HBARUSDT",
+        "near": "NEARUSDT", "apt": "APTUSDT", "atom": "ATOMUSDT",
+        "uni": "UNIUSDT", "aave": "AAVEUSDT", "arb": "ARBUSDT",
+        "op": "OPUSDT", "shib": "SHIBUSDT", "pepe": "PEPEUSDT",
+        "render": "RENDERUSDT", "ray": "RAYUSDT",
+        "lunc": "LUNCUSDT", "hot": "HOTUSDT", "wlfi": "WLFIUSDT",
+        "vra": "VRAUSDT"
+    }
+    for cid, token in missing:
+        old = old_candles.get(cid, {})
+        old_rows = old.get("candles") if isinstance(old.get("candles"), list) else []
+        # Only trust fully validated OHLC, including older persisted observations.
+        old_rows = real_ohlc_rows(
+            [[r.get("t"), r.get("o"), r.get("h"), r.get("l"), r.get("c")]
+             for r in old_rows if isinstance(r, dict)], "cache", time_unit="s")
+        last_check = old.get("ohlcCheckedAt")
+        try:
+            last_check = datetime.fromisoformat(last_check.replace("Z", "+00:00")) if last_check else None
+            if last_check and last_check.tzinfo is None:
+                last_check = last_check.replace(tzinfo=timezone.utc)
+        except (ValueError, TypeError, AttributeError):
+            last_check = None
+        recent = bool(last_check and (now_utc - last_check).total_seconds() < 6 * 3600)
+        rows = []
+        source = None
+        if not recent:
+            symbol = fallback_symbols.get(cid)
+            if symbol:
+                rows = binance_daily_candles(symbol)
+                if len(rows) >= 2:
+                    source = "Binance Spot USDT"
+            if len(rows) < 2:
+                rows = coingecko_daily_candles(token)
+                if len(rows) >= 2:
+                    source = "CoinGecko USD"
+        if len(rows) >= 2:
+            items[cid]["candles"] = rows
+            items[cid]["candleSource"] = source
+        elif len(old_rows) >= 2:
+            items[cid]["candles"] = old_rows
+            items[cid]["candleSource"] = old.get("candleSource") or "Storico verificato"
+        if recent:
+            if last_check:
+                items[cid]["ohlcCheckedAt"] = last_check.isoformat()
+        else:
+            items[cid]["ohlcCheckedAt"] = now_utc.isoformat()
+
+    print("Crypto OHLC coverage:",
+          sum(len(row["candles"]) >= 2 for row in items.values()), "/", len(items))
     return [items[cid] for cid, _ in CRYPTO]
 
 def fetch_group(pairs):
