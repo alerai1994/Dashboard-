@@ -432,6 +432,45 @@ body.theme-light .market-panel .instrument-row:hover{background:#e7f1f9}
  }
 }
 
+
+/* Market index and Tech ETF logos: visible on desktop and mobile, including offline fallback. */
+.asset-logo.market-index-logo{
+ position:relative;display:inline-grid;place-items:center;flex:0 0 auto;
+ width:26px;height:26px;min-width:26px;min-height:26px;
+ border:1px solid #5182a5;border-radius:50%;overflow:hidden;box-sizing:border-box;
+ background:linear-gradient(135deg,#153f67,#0b2440);isolation:isolate;
+}
+.market-index-logo.market-tech-logo{
+ border-color:#5675c3;background:linear-gradient(135deg,#263f78,#17214a);
+}
+.market-index-logo-fallback{
+ position:absolute;inset:0;display:grid;place-items:center;z-index:0;
+ color:#e9f5ff;font-size:9px;font-weight:800;letter-spacing:-.05em;
+ text-shadow:0 1px 2px #03132199;
+}
+.market-index-logo-image{
+ position:absolute;inset:0;display:block;width:100%;height:100%;
+ z-index:1;object-fit:contain;padding:2px;box-sizing:border-box;background:#f8fafc;
+}
+.instrument-row .asset-logo.market-index-logo{
+ width:21px;height:21px;min-width:21px;min-height:21px;
+}
+.instrument-row .market-index-logo-fallback{font-size:8px}
+.market-table-asset .market-index-logo,.search-asset-label .market-index-logo{
+ width:26px;height:26px;min-width:26px;min-height:26px;
+}
+.index-mini .crypto-mini-title .market-index-logo{
+ width:20px;height:20px;min-width:20px;min-height:20px;
+}
+.index-mini .crypto-mini-title .market-index-logo-fallback{font-size:7px}
+.dialog-header h2:has(.market-index-logo){display:flex;align-items:center;gap:10px}
+.dialog-header h2 .market-index-logo{width:31px;height:31px;min-width:31px;min-height:31px}
+@media(max-width:650px){
+ .market-table-asset .market-index-logo{
+  width:23px;height:23px;min-width:23px;min-height:23px;
+ }
+}
+
 /* Forex logo pair: base and quote flags, in all Forex views */
 .forex-pair-logo{position:relative;display:inline-block;flex:0 0 30px;width:30px;min-width:30px;height:26px;vertical-align:middle}
 .forex-pair-part{position:absolute;top:3px;display:grid;place-items:center;width:20px;height:20px;border:1.5px solid var(--panel);border-radius:50%;overflow:hidden;background:#15304a;box-shadow:0 1px 4px #0005}
