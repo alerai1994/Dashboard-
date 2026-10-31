@@ -1056,9 +1056,10 @@ function updateNav(){
 function render(){
  const page=SECTIONS[state.page]||SECTIONS.global;
  $('#pageTitle').textContent=page[0];$('#pageSubtitle').textContent=page[1];
+ const hideSearch=state.page==='settings'||state.page==='analytics';
  const searchWrap=$('.search-wrap');
- if(searchWrap)searchWrap.hidden=state.page==='settings';
- if(state.page==='settings'){
+ if(searchWrap)searchWrap.hidden=hideSearch;
+ if(hideSearch){
   const searchMenu=$('#searchMenu');
   if(searchMenu)searchMenu.hidden=true;
   const searchInput=$('#searchInput');
