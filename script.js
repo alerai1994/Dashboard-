@@ -142,7 +142,7 @@ const state={
  watch:Array.isArray(load('watch',[]))?load('watch',[]):[],
  holdings:Array.isArray(load('holdings',[]))?load('holdings',[]):[],
  alerts:Array.isArray(load('alerts',[]))?load('alerts',[]):[],
- theme:load('theme','dark'),themeMode:load('themeMode',load('theme','dark')),clickSound:load('clickSound',true),clickVolume:load('clickVolume',70),region:null,marketFilter:'all',marketSearch:'',dialogId:null,chartShift:0,chartHover:null,
+ theme:load('theme','dark'),themeMode:load('themeMode',load('theme','dark')),clickSound:load('clickSound',true),clickVolume:load('clickVolume',70),brightness:load('brightness',100),region:null,marketFilter:'all',marketSearch:'',dialogId:null,chartShift:0,chartHover:null,
  land:'',searchResults:[],errorText:'',cryptoExpanded:false,
  solarLastRoot:null,solarLastUpdate:0,solarLastStatus:0
 };
@@ -151,6 +151,7 @@ if(!['dark','light','auto'].includes(state.themeMode))state.themeMode='dark';
 state.theme=resolvedTheme(state.themeMode);
 state.clickSound=state.clickSound!==false;
 state.clickVolume=Number.isFinite(Number(state.clickVolume))?Math.min(100,Math.max(0,Math.round(Number(state.clickVolume)))):70;
+state.brightness=Number.isFinite(Number(state.brightness))?Math.min(100,Math.max(0,Math.round(Number(state.brightness)))):100;
 document.body.className='theme-'+state.theme;
 const safeDate=t=>{const d=new Date(t);return Number.isFinite(d.getTime())?d:null};
 const localeDate=(t,opts)=>{const d=safeDate(t);return d?new Intl.DateTimeFormat('it-IT',opts).format(d):'n.d.'};
@@ -1035,7 +1036,11 @@ function settingsPage(){
  '<section class="content-card panel settings-preferences"><h3>Modalità schermo</h3><p class="subnote">Scegli il tema chiaro, scuro oppure la luminosità automatica: in automatico, la dashboard segue il tema impostato sul dispositivo.</p>'+
  '<div class="settings-theme-options" role="group" aria-label="Tema della dashboard">'+
  choices.map(([mode,icon,label])=>'<button type="button" data-theme-mode="'+mode+'" class="settings-theme-option'+(state.themeMode===mode?' is-selected':'')+'" aria-pressed="'+(state.themeMode===mode)+'"><span class="settings-choice-icon" aria-hidden="true">'+icon+'</span><span>'+label+'</span></button>').join('')+
- '</div></section>'+
+ '</div>'+
+ '<div class="settings-volume settings-brightness"><div class="settings-volume-heading"><label for="brightnessSlider">Luminosità della dashboard</label><output id="brightnessValue" for="brightnessSlider">'+state.brightness+'%</output></div>'+
+ '<input type="range" id="brightnessSlider" min="0" max="100" step="1" value="'+state.brightness+'" style="--volume-progress:'+state.brightness+'%" aria-label="Luminosità della dashboard">'+
+ '<div class="settings-volume-scale"><span>0%</span><span>100%</span></div>'+
+ '<p class="subnote">Regola la luminosità della pagina, non quella fisica dello schermo. Al minimo resta leggibile per poterla aumentare di nuovo.</p></div></section>'+
  '<section class="content-card panel settings-preferences"><div class="settings-sound-row"><div><h3>Suono al clic</h3><p class="subnote">Un breve suono quando premi i pulsanti. Puoi disattivarlo quando vuoi.</p></div>'+
  '<button type="button" data-sound-toggle="1" class="settings-sound-toggle'+(state.clickSound?' is-on':'')+'" role="switch" aria-checked="'+state.clickSound+'" aria-label="Suono al clic">'+(state.clickSound?'Attivo':'Disattivo')+'</button></div>'+
  '<div class="settings-volume"><div class="settings-volume-heading"><label for="clickVolumeSlider">Volume dei clic</label><output id="clickVolumeValue" for="clickVolumeSlider">'+state.clickVolume+'%</output></div>'+
@@ -1066,6 +1071,10 @@ function navigate(page){
  $('#sidebar').classList.remove('open');
  render();
  window.scrollTo({top:0,behavior:'auto'});
+}
+function applyBrightness(){
+ // 0% is the darkest usable dashboard level; retain visibility of the slider.
+ document.documentElement.style.setProperty('--dashboard-dim-opacity',String((1-state.brightness/100)*0.82));
 }
 function applyTheme(){
  state.theme=resolvedTheme(state.themeMode);
@@ -1497,6 +1506,15 @@ function setupEvents(){
   }
  });
  $('#pageContainer').addEventListener('input',e=>{
+  if(e.target.id==='brightnessSlider'){
+   state.brightness=Math.min(100,Math.max(0,Math.round(Number(e.target.value)||0)));
+   const output=$('#brightnessValue');
+   if(output)output.textContent=state.brightness+'%';
+   e.target.style.setProperty('--volume-progress',state.brightness+'%');
+   applyBrightness();
+   save('brightness',state.brightness);
+   return;
+  }
   if(e.target.id==='clickVolumeSlider'){
    state.clickVolume=Math.min(100,Math.max(0,Math.round(Number(e.target.value)||0)));
    const value=$('#clickVolumeValue');
@@ -1540,7 +1558,7 @@ function setupEvents(){
  window.addEventListener('hashchange',()=>navigate(location.hash.slice(1)));
 }
 function init(){
- setupEvents();applyTheme();updateClock();
+ setupEvents();applyTheme();applyBrightness();updateClock();
  setInterval(updateClock,30000);
  setInterval(updateWorldSunlight,1000);
  render();
