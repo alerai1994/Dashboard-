@@ -1,6 +1,9 @@
 /* V532 — Workspace: ORAI e TAI, candele OHLC autentiche KuCoin/Gate.io/CoinGecko/GeckoTerminal, cache. */
 (()=>{
  'use strict';
+ // One workspace controller per page, including after dynamic script reinjection.
+ if (window.__dashboardWorkspaceControllerActive) return;
+ window.__dashboardWorkspaceControllerActive = true;
  const $=id=>document.getElementById(id);
  const panel=$('v525WorkspacePanel'),canvas=$('v525WorkspaceCanvas'),add=$('v525WorkspaceAdd'),
    picker=$('v525WorkspaceSettings'),choose=$('v525CardType'),confirm=$('v525ConfirmAdd'),
@@ -291,9 +294,9 @@
    if(!intervals.includes(c.interval))c.interval='1h';
    if(![5,10,20].includes(Number(c.depth)))c.depth=10;
    c.chartStyle='candles';
-   // Stessa crypto e timeframe: riutilizza il grafico, non duplicare la card.
+   // Un solo grafico dettagliato per crypto, anche se viene richiesto con un timeframe diverso.
    if(cardKind(c)==='chart'){
-     const existing=cards.find(old=>cardKind(old)==='chart'&&cardAsset(old)===cardAsset(c)&&old.interval===c.interval);
+     const existing=cards.find(old=>cardKind(old)==='chart'&&cardAsset(old)===cardAsset(c));
      if(existing){
        const element=findElement(existing.id);
        if(element && visible()) element.scrollIntoView({block:'nearest',inline:'nearest',behavior:'auto'});
