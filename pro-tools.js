@@ -124,7 +124,7 @@
       const rows = tableRows();
       if (!rows.length) { coverage.textContent = ''; return; }
       const ready = rows.filter(r => r.querySelector('svg[data-period="7d"]')).length;
-      coverage.textContent = ' · Grafici 7G: ' + ready + '/' + rows.length + (ready < rows.length ? ' (in caricamento)' : '');
+      coverage.textContent = ' · Grafici 7G: ' + ready + '/' + rows.length + (ready < rows.length ? ' · storico parziale' : '');
     }
     setInterval(updateCoverage, 2500);
     updateCoverage();
@@ -132,4 +132,72 @@
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initMarketTools, { once:true });
   else initMarketTools();
+})();
+
+
+/* V542: un solo elemento grafico per ogni contenitore; non reinizializza il feed live. */
+(() => {
+  'use strict';
+  if (window.__v542ChartDedupStarted) return;
+  window.__v542ChartDedupStarted = true;
+  let scheduled = false;
+  function clean() {
+    const grid = document.querySelector('.market-grid');
+    if (grid) {
+      const cardIds = new Set();
+      for (const card of Array.from(grid.children)) {
+        if (!card.classList?.contains('market-card')) continue;
+        if (card.id && cardIds.has(card.id)) { card.remove(); continue; }
+        if (card.id) cardIds.add(card.id);
+        const wrap = card.querySelector(':scope > .chart-wrap');
+        if (wrap) {
+          const chartHolders = Array.from(wrap.querySelectorAll(':scope > .chart'));
+          for (const surplus of chartHolders.slice(1)) surplus.remove();
+        }
+        for (const holder of card.querySelectorAll('.chart, .indicator-canvas')) {
+          const duplicateRoots = Array.from(holder.querySelectorAll(':scope > .tv-lightweight-charts'));
+          // Conserva l'istanza grafica più recente se una libreria ne ha create più di una.
+          for (const root of duplicateRoots.slice(0, -1)) root.remove();
+        }
+      }
+    }
+    const canvas = document.getElementById('v525WorkspaceCanvas');
+    if (canvas) {
+      const cardIds = new Set();
+      for (const card of canvas.querySelectorAll(':scope > .v525-widget')) {
+        const id = card.dataset.cardId;
+        if (!id) continue;
+        if (cardIds.has(id)) card.remove();
+        else cardIds.add(id);
+      }
+    }
+  }
+  function schedule() {
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(() => { scheduled = false; clean(); });
+  }
+  function relevant(mutation) {
+    if (mutation.type !== 'childList' || !mutation.addedNodes.length) return false;
+    const target = mutation.target;
+    if (target?.matches?.('.market-grid, .chart, .indicator-canvas, .chart-wrap, #v525WorkspaceCanvas')) return true;
+    return Array.from(mutation.addedNodes).some(node => node.nodeType === 1 && (
+      node.matches?.('.market-card, .v525-widget, .tv-lightweight-charts, .chart') ||
+      node.querySelector?.('.tv-lightweight-charts, .market-card, .v525-widget')
+    ));
+  }
+  function start() {
+    const grid = document.querySelector('.market-grid');
+    const workspace = document.getElementById('v525WorkspaceCanvas');
+    if (!grid && !workspace) return;
+    const observer = new MutationObserver(records => {
+      if (records.some(relevant)) schedule();
+    });
+    if (grid) observer.observe(grid, { childList: true, subtree: true });
+    if (workspace) observer.observe(workspace, { childList: true });
+    window.addEventListener('pageshow', schedule, { passive: true });
+    schedule();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
+  else start();
 })();
