@@ -395,3 +395,32 @@ html body.v442-market-open #v442MarketDrawer{left:0!important}
  .v538-dock button{width:44px;padding:0;justify-content:center}
  .v538-dock button span{display:none}
 }
+
+/* V556 — Dock 5 colonne: Dashboard esattamente tra Market e Crypto A/B */
+.v538-dock{
+  display:grid!important;
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  gap:5px!important;
+  width:min(680px,calc(100vw - 16px))!important;
+  max-width:calc(100vw - 16px)!important;
+  box-sizing:border-box;
+}
+.v538-dock button{
+  width:100%!important;
+  min-width:0!important;
+  flex:none!important;
+  justify-content:center!important;
+  box-sizing:border-box;
+  padding:0 8px!important;
+}
+.v538-dock button svg{flex:0 0 21px}
+.v538-dock button[data-v538-go="etf"]{order:1}
+.v538-dock button[data-v538-go="market"]{order:2}
+.v538-dock button[data-v538-go="home"]{order:3}
+.v538-dock button[data-v538-go="compare"]{order:4}
+.v538-dock button[data-v538-go="workspace"]{order:5}
+@media(max-width:700px){
+  .v538-dock{gap:3px!important;padding:4px!important}
+  .v538-dock button{height:44px!important;padding:0!important}
+  .v538-dock button span{display:none!important}
+}
