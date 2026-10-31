@@ -189,7 +189,7 @@ function photoCard(r){
  const lead=ASSET_BY_ID[r.lead],q=quote(r.lead);
  return '<button type="button" class="photo-card" data-region="'+r.id+'" data-trend="'+trend(q&&q.change)+'" data-id="'+r.id+'" aria-label="Apri '+esc(r.name)+'">'+
  '<span class="photo-cover" aria-hidden="true"></span><span class="photo-card-body"><span class="photo-card-title">'+esc(r.name)+'</span>'+
- '<span class="photo-card-metrics"><strong>'+meanPrice(r)+'</strong><span class="change '+trendClass(meanRegion(r))+'">'+pct(meanRegion(r))+'</span></span>'+sparkLine(r.lead,120,32)+'</span></button>';
+ '<span class="photo-card-metrics"><strong>'+meanPrice(r)+'</strong><span class="change '+trendClass(change(r.lead))+'">'+pct(change(r.lead))+'</span></span>'+sparkLine(r.lead,120,32)+'</span></button>';
 }
 function feedStatus(){
  const when=state.feedTime?localeDate(state.feedTime,{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'non disponibile';
