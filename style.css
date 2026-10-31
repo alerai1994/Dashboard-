@@ -308,3 +308,13 @@ body.theme-light .market-panel .instrument-row:hover{background:#e7f1f9}
 .photo-card[data-id="north-america"] .photo-cover{background-image:url("https://images.unsplash.com/photo-1518391846015-55a9cc003b25?w=450&h=270&fit=crop&auto=format")}
 .photo-card .photo-cover{background-color:#20465a}
 @media(prefers-reduced-motion:reduce){.map-pin:before{animation:none}}
+
+/* Crypto panel: expandable catalog without disturbing the reference layout */
+.crypto-market-panel .crypto-counter{font-size:10px;font-weight:700;color:var(--brand);border:1px solid var(--line);border-radius:12px;padding:2px 6px;margin-left:2px}
+.crypto-expand-btn{width:100%;margin-top:7px;background:linear-gradient(125deg,rgba(40,105,145,.21),rgba(15,46,73,.13));border:1px solid var(--line);border-radius:8px;min-height:36px;padding:8px 10px;font-size:11px;color:var(--brand);font-weight:680;transition:border-color .15s ease,background .15s ease}
+.crypto-expand-btn:hover,.crypto-expand-btn:focus-visible{border-color:var(--brand);background:var(--surface)}
+.crypto-market-panel .instrument-rows{min-width:0}
+.crypto-market-panel .instrument-row{grid-template-columns:25px minmax(0,1fr) auto auto}
+.crypto-market-panel .instrument-row .asset-label{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.crypto-market-panel .instrument-row .asset-logo{font-size:12px;font-weight:780}
+@media(max-width:600px){.crypto-market-panel .instrument-row{min-height:39px}}

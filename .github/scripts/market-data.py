@@ -31,6 +31,32 @@ CRYPTO = [
     ("btc", "bitcoin"), ("eth", "ethereum"), ("sol", "solana"),
     ("inj", "injective-protocol"), ("bnb", "binancecoin"),
     ("xrp", "ripple"), ("doge", "dogecoin"),
+    ("ada", "cardano"),
+    ("avax", "avalanche-2"),
+    ("link", "chainlink"),
+    ("dot", "polkadot"),
+    ("trx", "tron"),
+    ("ton", "the-open-network"),
+    ("sui", "sui"),
+    ("ltc", "litecoin"),
+    ("bch", "bitcoin-cash"),
+    ("xlm", "stellar"),
+    ("hbar", "hedera-hashgraph"),
+    ("near", "near"),
+    ("apt", "aptos"),
+    ("atom", "cosmos"),
+    ("uni", "uniswap"),
+    ("aave", "aave"),
+    ("arb", "arbitrum"),
+    ("op", "optimism"),
+    ("shib", "shiba-inu"),
+    ("pepe", "pepe"),
+    ("render", "render-token"),
+    ("ray", "raydium"),
+    ("lunc", "terra-luna"),
+    ("vra", "verasity"),
+    ("wlfi", "world-liberty-financial"),
+    ("hot", "holotoken"),
 ]
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (compatible; GlobalMarketsDashboard/1.0; +https://github.com/)",
@@ -125,10 +151,14 @@ def crypto_quotes():
     history_symbols = {
         "btc": "BTC-USD", "eth": "ETH-USD", "sol": "SOL-USD",
         "inj": "INJ-USD", "bnb": "BNB-USD",
-        "xrp": "XRP-USD", "doge": "DOGE-USD"
+        "xrp": "XRP-USD", "doge": "DOGE-USD",
+        "ada": "ADA-USD", "avax": "AVAX-USD", "link": "LINK-USD",
+        "dot": "DOT-USD", "trx": "TRX-USD", "sui": "SUI-USD",
+        "ltc": "LTC-USD", "hbar": "HBAR-USD", "ray": "RAY-USD",
+        "lunc": "LUNC-USD"
     }
     try:
-        histories = fetch_group([(cid, history_symbols[cid]) for cid, _ in CRYPTO])
+        histories = fetch_group([(cid, history_symbols[cid]) for cid, _ in CRYPTO if cid in history_symbols])
         for row in histories:
             cid = row["id"]
             if cid in items:

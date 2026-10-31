@@ -44,7 +44,33 @@ const ASSETS=[
 {id:'xrp',name:'XRP',short:'XRP',group:'crypto',symbol:'XRP-USD',icon:'✕',currency:'USD'},
 {id:'bnb',name:'BNB',short:'BNB',group:'crypto',symbol:'BNB-USD',icon:'⬡',currency:'USD'},
 {id:'doge',name:'Dogecoin (DOGE)',short:'Dogecoin',group:'crypto',symbol:'DOGE-USD',icon:'Ð',currency:'USD'},
-{id:'inj',name:'Injective (INJ)',short:'Injective',group:'crypto',symbol:'INJ-USD',icon:'∿',currency:'USD'}
+{id:'inj',name:'Injective (INJ)',short:'Injective',group:'crypto',symbol:'INJ-USD',icon:'∿',currency:'USD'},
+{id:'ada',name:'Cardano (ADA)',short:'Cardano',group:'crypto',symbol:'ADA-USD',icon:'₳',currency:'USD',coingeckoId:'cardano'},
+{id:'avax',name:'Avalanche (AVAX)',short:'Avalanche',group:'crypto',symbol:'AVAX-USD',icon:'▲',currency:'USD',coingeckoId:'avalanche-2'},
+{id:'link',name:'Chainlink (LINK)',short:'Chainlink',group:'crypto',symbol:'LINK-USD',icon:'⬡',currency:'USD',coingeckoId:'chainlink'},
+{id:'dot',name:'Polkadot (DOT)',short:'Polkadot',group:'crypto',symbol:'DOT-USD',icon:'●',currency:'USD',coingeckoId:'polkadot'},
+{id:'trx',name:'TRON (TRX)',short:'TRON',group:'crypto',symbol:'TRX-USD',icon:'△',currency:'USD',coingeckoId:'tron'},
+{id:'ton',name:'Toncoin (TON)',short:'Toncoin',group:'crypto',symbol:'TON-USD',icon:'◇',currency:'USD',coingeckoId:'the-open-network'},
+{id:'sui',name:'Sui (SUI)',short:'Sui',group:'crypto',symbol:'SUI-USD',icon:'◈',currency:'USD',coingeckoId:'sui'},
+{id:'ltc',name:'Litecoin (LTC)',short:'Litecoin',group:'crypto',symbol:'LTC-USD',icon:'Ł',currency:'USD',coingeckoId:'litecoin'},
+{id:'bch',name:'Bitcoin Cash (BCH)',short:'Bitcoin Cash',group:'crypto',symbol:'BCH-USD',icon:'₿',currency:'USD',coingeckoId:'bitcoin-cash'},
+{id:'xlm',name:'Stellar (XLM)',short:'Stellar',group:'crypto',symbol:'XLM-USD',icon:'✦',currency:'USD',coingeckoId:'stellar'},
+{id:'hbar',name:'Hedera (HBAR)',short:'Hedera',group:'crypto',symbol:'HBAR-USD',icon:'ℏ',currency:'USD',coingeckoId:'hedera-hashgraph'},
+{id:'near',name:'NEAR Protocol (NEAR)',short:'NEAR',group:'crypto',symbol:'NEAR-USD',icon:'N',currency:'USD',coingeckoId:'near'},
+{id:'apt',name:'Aptos (APT)',short:'Aptos',group:'crypto',symbol:'APT-USD',icon:'A',currency:'USD',coingeckoId:'aptos'},
+{id:'atom',name:'Cosmos (ATOM)',short:'Cosmos',group:'crypto',symbol:'ATOM-USD',icon:'⚛',currency:'USD',coingeckoId:'cosmos'},
+{id:'uni',name:'Uniswap (UNI)',short:'Uniswap',group:'crypto',symbol:'UNI-USD',icon:'U',currency:'USD',coingeckoId:'uniswap'},
+{id:'aave',name:'Aave (AAVE)',short:'Aave',group:'crypto',symbol:'AAVE-USD',icon:'A',currency:'USD',coingeckoId:'aave'},
+{id:'arb',name:'Arbitrum (ARB)',short:'Arbitrum',group:'crypto',symbol:'ARB-USD',icon:'◉',currency:'USD',coingeckoId:'arbitrum'},
+{id:'op',name:'Optimism (OP)',short:'Optimism',group:'crypto',symbol:'OP-USD',icon:'OP',currency:'USD',coingeckoId:'optimism'},
+{id:'shib',name:'Shiba Inu (SHIB)',short:'Shiba Inu',group:'crypto',symbol:'SHIB-USD',icon:'S',currency:'USD',coingeckoId:'shiba-inu'},
+{id:'pepe',name:'Pepe (PEPE)',short:'Pepe',group:'crypto',symbol:'PEPE-USD',icon:'P',currency:'USD',coingeckoId:'pepe'},
+{id:'render',name:'Render (RENDER)',short:'Render',group:'crypto',symbol:'RENDER-USD',icon:'R',currency:'USD',coingeckoId:'render-token'},
+{id:'ray',name:'Raydium (RAY)',short:'Raydium',group:'crypto',symbol:'RAY-USD',icon:'R',currency:'USD',coingeckoId:'raydium'},
+{id:'lunc',name:'Terra Luna Classic (LUNC)',short:'Luna Classic',group:'crypto',symbol:'LUNC-USD',icon:'L',currency:'USD',coingeckoId:'terra-luna'},
+{id:'vra',name:'Verasity (VRA)',short:'Verasity',group:'crypto',symbol:'VRA-USD',icon:'V',currency:'USD',coingeckoId:'verasity'},
+{id:'wlfi',name:'World Liberty Financial (WLFI)',short:'WLFI',group:'crypto',symbol:'WLFI-USD',icon:'W',currency:'USD',coingeckoId:'world-liberty-financial'},
+{id:'hot',name:'Holo (HOT)',short:'Holo',group:'crypto',symbol:'HOT-USD',icon:'H',currency:'USD',coingeckoId:'holotoken'}
 ];
 const ASSET_BY_ID=Object.fromEntries(ASSETS.map(a=>[a.id,a]));
 const SECTIONS={
@@ -71,7 +97,7 @@ const REGION_BY_ID=Object.fromEntries(REGIONS.map(r=>[r.id,r]));
 const QUOTE_GROUPS=[
 {group:'commodities',title:'Commodities',icon:'🌐',ids:['gold','brent','wti','silver','naturalgas','copper']},
 {group:'forex',title:'Forex',icon:'🌐',ids:['eurusd','gbpusd','usdjpy','usdchf','audusd','usdcny']},
-{group:'crypto',title:'Crypto',icon:'🌐',ids:['btc','eth','sol','xrp','bnb','doge']}
+{group:'crypto',title:'Crypto',icon:'🌐',ids:ASSETS.filter(a=>a.group==='crypto').map(a=>a.id)}
 ];
 const TOP_IDS=['sp500','nasdaq','ftse','dax','nikkei','hsi'];
 const FALLBACK_LAND=[
@@ -92,7 +118,7 @@ const state={
  holdings:Array.isArray(load('holdings',[]))?load('holdings',[]):[],
  alerts:Array.isArray(load('alerts',[]))?load('alerts',[]):[],
  theme:load('theme','dark'),region:null,marketFilter:'all',marketSearch:'',dialogId:null,chartShift:0,chartHover:null,
- land:'',searchResults:[],errorText:''
+ land:'',searchResults:[],errorText:'',cryptoExpanded:false
 };
 if(!SECTIONS[state.page])state.page='global';
 if(!['dark','light'].includes(state.theme))state.theme='dark';
@@ -109,7 +135,7 @@ const formatValue=(v,a)=>{
  if(!num(v))return '—';
  if(a&&a.group==='forex')return v.toLocaleString('it-IT',{minimumFractionDigits:v>=100?2:4,maximumFractionDigits:v>=100?3:5});
  if(a&&a.group==='markets')return v.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
- const digits=Math.abs(v)<1?4:Math.abs(v)<10?3:2;
+ const digits=Math.abs(v)<0.00001?10:Math.abs(v)<0.001?8:Math.abs(v)<0.1?6:Math.abs(v)<1?5:Math.abs(v)<10?3:2;
  return (a&&(a.group==='crypto'||a.group==='commodities')?'$':'')+v.toLocaleString('it-IT',{minimumFractionDigits:digits,maximumFractionDigits:digits});
 };
 const assetValue=a=>formatValue(quote(a.id)&&quote(a.id).value,a);
@@ -203,12 +229,16 @@ function regionList(){
 }
 function assetLogo(a){return '<span class="asset-logo asset-'+esc(a.id)+'">'+esc(a.icon||'◉')+'</span>';}
 function sidePanel(group){
- return '<section class="market-panel panel"><div class="section-topline"><h3>'+sym('globe')+' '+esc(group.title)+'</h3><button type="button" class="text-action" data-page="markets" data-category="'+group.group+'">View All</button></div>'+
- '<div class="instrument-rows">'+group.ids.map(id=>{
+ const crypto=group.group==='crypto';
+ const visible=crypto&&!state.cryptoExpanded?group.ids.slice(0,8):group.ids;
+ const count=group.ids.length;
+ return '<section class="market-panel panel'+(crypto?' crypto-market-panel':'')+'"><div class="section-topline"><h3>'+sym('globe')+' '+esc(group.title)+(crypto?'<span class="crypto-counter">'+count+'</span>':'')+'</h3><button type="button" class="text-action" data-page="markets" data-category="'+group.group+'">View All</button></div>'+
+ '<div class="instrument-rows">'+visible.map(id=>{
  const a=ASSET_BY_ID[id],q=quote(id);
  return '<button type="button" class="instrument-row" data-asset="'+id+'" aria-label="Apri '+esc(a.name)+'">'+assetLogo(a)+'<span class="asset-label">'+esc(a.name)+'</span>'+
  '<span class="asset-price">'+assetValue(a)+'</span><span class="asset-change '+classArrow(id)+'">'+pct(q&&q.change)+'</span></button>';
- }).join('')+'</div></section>';
+ }).join('')+'</div>'+
+ (crypto?'<button type="button" class="crypto-expand-btn" data-crypto-expand="1" aria-expanded="'+String(state.cryptoExpanded)+'">'+(state.cryptoExpanded?'− Mostra meno':'＋ Mostra altre '+(count-visible.length)+' crypto')+'</button>':'')+'</section>';
 }
 function photoCard(r){
  const lead=ASSET_BY_ID[r.lead],q=quote(r.lead);
@@ -448,6 +478,7 @@ function loadWorldShape(){
  }).catch(()=>{});
 }
 function externalUrl(a){
+ if(a.group==='crypto' && a.coingeckoId)return 'https://www.coingecko.com/en/coins/'+encodeURIComponent(a.coingeckoId);
  return 'https://finance.yahoo.com/quote/'+encodeURIComponent(a.symbol)+'/';
 }
 function openAsset(id){
@@ -691,6 +722,7 @@ function setupEvents(){
  $('#pageContainer').addEventListener('click',e=>{
   const btn=e.target.closest('button,a,tr[data-asset]');
   if(!btn)return;
+  if(btn.dataset.cryptoExpand){state.cryptoExpanded=!state.cryptoExpanded;render();return;}
   if(btn.dataset.asset){openAsset(btn.dataset.asset);return;}
   if(btn.dataset.region){selectRegion(btn.dataset.region);return;}
   if(btn.dataset.page){if(btn.dataset.category)state.marketFilter=btn.dataset.category;navigate(btn.dataset.page);return;}
