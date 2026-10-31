@@ -452,3 +452,36 @@ body,button,input,select,textarea,#v442MarketDrawer{font-family:Inter,ui-sans-se
 @media(max-width:700px){.v538-dock button[data-v538-go="global"] svg{width:20px;height:20px}.v560-global{padding-bottom:40px}.v560-instruments{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:420px){.v560-instruments{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.v560-global,.v560-region-tabs button,.v560-instruments a{animation:none!important;transition:none!important}}
+
+
+/* V562: INJ Mode Home typography, cards and responsive section hub */
+:root{--inj-accent:#72adff}
+#brandMainTitle{font-weight:750!important;letter-spacing:-.025em!important}
+.app .brand-mark{border-radius:15px!important;background:linear-gradient(135deg,rgba(114,173,255,.2),rgba(84,216,192,.12))!important;border:1px solid rgba(114,173,255,.35)!important}
+#v442MarketDrawer,.app .topbar,.inj-home-hub,.v538-dock{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif!important}
+.inj-home-hub{margin:0 0 15px;padding:18px;border-radius:20px;border:1px solid var(--border,rgba(142,169,204,.2));background:var(--panel,#111e2e);color:var(--text,#edf4ff);box-shadow:0 10px 36px rgba(2,8,20,.12);animation:injHomeEnter .35s ease both}
+.inj-home-hub[hidden],.inj-home-panel[hidden]{display:none!important}
+.inj-home-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:15px}
+.inj-home-heading small{font-size:10px;font-weight:750;letter-spacing:.16em;color:var(--v534-brand,#72adff)}
+.inj-home-heading h2{font-size:clamp(20px,2vw,28px);line-height:1.15;letter-spacing:-.03em;margin:5px 0 5px}
+.inj-home-heading p,.inj-home-panel p{font-size:13px;color:var(--muted,#9cacc3);margin:0}
+.inj-home-heading>b{display:grid;place-items:center;min-width:44px;height:44px;font-size:23px;border-radius:13px;background:rgba(114,173,255,.13);color:var(--v534-brand,#72adff)}
+.inj-home-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.inj-home-nav button{display:flex;flex-direction:column;text-align:left;gap:7px;min-width:0;min-height:74px;padding:15px;border:1px solid var(--border,rgba(142,169,204,.2));border-radius:14px;color:var(--text,#edf4ff);background:var(--panel-2,#142337);cursor:pointer;transition:transform .22s ease,border-color .22s ease,background .22s ease}
+.inj-home-nav button strong{font-size:13px;line-height:1.25}
+.inj-home-nav button small{font-size:11px;color:var(--muted,#9cacc3)}
+.inj-home-nav button:hover,.inj-home-nav button:focus-visible{border-color:var(--v534-brand,#72adff);transform:translateY(-2px)}
+.inj-home-nav button.is-selected{border-color:rgba(114,173,255,.8);background:rgba(114,173,255,.13)}
+.inj-home-panel{margin-top:12px;border:1px solid var(--border,rgba(142,169,204,.18));padding:15px;border-radius:14px;animation:injHomeEnter .25s ease both}
+.inj-home-panel h3{font-size:16px;margin:0 0 6px}
+.inj-home-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:13px}
+.inj-home-actions button{border-radius:10px;padding:10px 13px;background:var(--panel-2,#142337);border:1px solid var(--border,#334155);color:var(--text,#edf4ff);font:inherit;font-size:12px;cursor:pointer}
+.inj-home-actions button:hover{border-color:var(--inj-accent)}
+.inj-home-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+.inj-home-fields label{font-size:12px;color:var(--muted,#9cacc3)}
+.inj-home-fields input{display:block;width:100%;box-sizing:border-box;min-height:39px;margin-top:6px;border:1px solid var(--border,#334155);border-radius:9px;padding:8px;color:var(--text,#edf4ff);background:var(--panel-2,#142337);font:inherit}
+.inj-home-panel output{display:block;margin-top:12px;font-size:14px;font-weight:750;color:var(--text,#edf4ff)}
+@keyframes injHomeEnter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:850px){.inj-home-nav{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.inj-home-hub{padding:12px}.inj-home-nav{gap:6px}.inj-home-nav button{padding:10px}.inj-home-fields{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.inj-home-hub,.inj-home-panel,.inj-home-nav button{animation:none!important;transition:none!important}}
