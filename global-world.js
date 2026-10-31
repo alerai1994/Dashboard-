@@ -63,13 +63,13 @@
     const q=mark(m.id),d=direction(q);
     return '<button type="button" class="v564-index-card" data-market="'+m.id+'" data-dir="'+d+'" aria-label="Apri '+esc(m.name)+'">'+
       '<span class="v564-index-title">'+esc(m.name)+'</span><span class="v564-index-place">'+esc(m.place)+'</span>'+
-      '<strong class="v564-index-value">'+fmt(q&&q.value,q&&q.currency)+'</strong><b class="v564-delta">'+pct(q&&q.change)+'</b>'+spark(q)+'</button>';
+      '<strong class="v564-index-value">'+fmt(q&&q.value,null)+'</strong><b class="v564-delta">'+pct(q&&q.change)+'</b>'+spark(q)+'</button>';
   }
   function panelList(group){
     return '<section class="v564-side-card"><div class="v564-side-head"><h3>'+esc(group.title)+'</h3><span>Var. 24 h / ultima seduta</span></div>'+
       group.items.map(([id,label])=>{
         const q=item(group.id,id),d=direction(q);
-        return '<div class="v564-quote-row" data-dir="'+d+'"><span class="v564-symbol">'+esc(label)+'</span><span class="v564-price">'+fmt(q&&q.value,q&&q.currency)+'</span><b class="v564-delta">'+pct(q&&q.change)+'</b></div>';
+        return '<div class="v564-quote-row" data-dir="'+d+'"><span class="v564-symbol">'+esc(label)+'</span><span class="v564-price">'+fmt(q&&q.value,group.id==='forex'?'RATIO':q&&q.currency)+'</span><b class="v564-delta">'+pct(q&&q.change)+'</b></div>';
       }).join('')+'</section>';
   }
   function drawPins(){
@@ -84,7 +84,7 @@
     const m=MARKETS.find(m=>m.id===state.selected)||MARKETS[0],q=mark(m.id);
     const u='https://finance.yahoo.com/quote/'+encodeURIComponent(q&&q.symbol||'')+'/';
     return '<div class="v564-focus" data-dir="'+direction(q)+'"><div><small>MERCATO SELEZIONATO</small><h3>'+esc(m.name)+'</h3><p>'+esc(m.place)+'</p></div>'+
-      '<div class="v564-focus-price"><strong>'+fmt(q&&q.value,q&&q.currency)+'</strong><b class="v564-delta">'+pct(q&&q.change)+'</b></div>'+
+      '<div class="v564-focus-price"><strong>'+fmt(q&&q.value,null)+'</strong><b class="v564-delta">'+pct(q&&q.change)+'</b></div>'+
       (q&&q.symbol?'<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer" aria-label="Apri quotazione di '+esc(m.name)+'">Fonte ↗</a>':'')+'</div>';
   }
   function buildMap(){
