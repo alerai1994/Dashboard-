@@ -1022,10 +1022,7 @@ function alertsPage(){
  (state.alerts.length?state.alerts.map((x,i)=>'<div class="alert-row"><div><strong>'+esc(ASSET_BY_ID[x.id]?.name||x.id)+' · '+(x.operator==='above'?'≥':'≤')+' '+Number(x.value).toLocaleString('it-IT')+'</strong><small>'+esc(alertState(x))+' · Prezzo '+assetValue(ASSET_BY_ID[x.id]||{id:x.id,group:'markets'})+'</small></div><button type="button" data-delete-alert="'+i+'">Rimuovi</button></div>').join(''):'<div class="empty-state"><h3>Nessun alert</h3><p>Aggiungi una soglia per monitorarla quando usi la dashboard.</p></div>')+'</section>'+feedStatus();
 }
 function settingsPage(){
- const readable=state.feedTime?localeDate(state.feedTime,{dateStyle:'medium',timeStyle:'short'}):'Non disponibile';
- return secHeader('Impostazioni','Preferenze locali e trasparenza delle fonti')+
- '<section class="content-card panel"><h3>Aspetto</h3><p>La dashboard si adatta automaticamente a PC, tablet e smartphone.</p><button class="btn" type="button" data-toggle-theme="1">'+sym('moon')+' '+(state.theme==='dark'?'Attiva tema chiaro':'Attiva tema scuro')+'</button></section>'+
- '<section class="content-card panel" style="margin-top:14px"><h3>Dati finanziari</h3><p class="muted">Indici, materie prime e Forex: Yahoo Finance. Criptovalute: CoinGecko. Snapshot aggiornato da GitHub Actions ogni 30 minuti circa, soggetto a limiti delle API e ritardi delle borse.</p><p>Ultimo feed: <strong>'+readable+'</strong></p><button type="button" class="btn" data-refresh="1">'+sym('refresh')+' Ricarica snapshot</button></section>';
+ return secHeader('Impostazioni','');
 }
 const PAGE_RENDERERS={home:homePage,global:globalPage,markets:marketsPage,watchlist:watchlistPage,portfolio:portfolioPage,news:newsPage,analytics:analyticsPage,alerts:alertsPage,settings:settingsPage};
 function updateNav(){
