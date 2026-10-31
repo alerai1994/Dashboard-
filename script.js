@@ -983,19 +983,80 @@ function portfolioPage(){
  }).join('')+'</tbody></table></div>':'<div class="empty-state"><h3>Nessuna posizione</h3><p>Inserisci un asset, la quantità e il prezzo di carico.</p></div>')+
  '<p class="notice">Questi sono calcoli indicativi su dati pubblici, non un rendiconto fiscale o patrimoniale. Informazioni conservate solo sul dispositivo.</p></section>';
 }
-function newsPage(){
- const sites=[
- ['Reuters Markets','Notizie sui mercati finanziari internazionali','https://www.reuters.com/markets/'],
- ['CNBC Markets','Copertura di mercati, economia e società quotate','https://www.cnbc.com/markets/'],
- ['Bloomberg Markets','Analisi e cronaca finanziaria','https://www.bloomberg.com/markets'],
- ['Il Sole 24 Ore','Mercati e finanza in italiano','https://www.ilsole24ore.com/finanza'],
- ['Yahoo Finance','Quotazioni, grafici e notizie sugli asset','https://finance.yahoo.com/'],
- ['CoinDesk','Notizie e approfondimenti sulle criptovalute','https://www.coindesk.com/']
- ];
- return secHeader('Financial News','Fonti esterne: qui non vengono inventati titoli o notizie')+
- '<div class="card-links">'+sites.map(([name,description,link])=>'<a class="news-link" href="'+esc(link)+'" target="_blank" rel="noopener noreferrer"><span><strong>'+esc(name)+'</strong><small>'+esc(description)+'</small></span>'+sym('external')+'</a>').join('')+'</div>'+
- '<p class="data-footnote">Le notizie si aprono sui rispettivi siti. Nessun contenuto di terzi viene ripubblicato senza autorizzazione.</p>';
+const SEC_CATEGORIES=[
+ ['all','Tutte le notizie'],['press','Comunicati'],['speeches','Discorsi e dichiarazioni'],
+ ['testimony','Testimonianze'],['litigation','Azioni legali'],
+ ['administrative','Procedimenti'],['suspensions','Sospensioni'],
+ ['rules','Regolamentazione'],['investors','Avvisi investitori'],['edgar','Depositi EDGAR']
+];
+const secNewsState={items:[],loading:false,loaded:false,error:'',updatedAt:null,seedDate:null,selected:'all',visible:20};
+function secNewsDate(value){
+ const d=new Date(value);
+ return Number.isFinite(d.getTime())?new Intl.DateTimeFormat('it-IT',{day:'2-digit',month:'short',year:'numeric',timeZone:'Europe/Rome'}).format(d):'Data non disponibile';
 }
+function secNewsSafeLink(value){
+ try{const url=new URL(String(value));
+  return url.protocol==='https:'&&(url.hostname==='sec.gov'||url.hostname.endsWith('.sec.gov')||url.hostname==='investor.gov'||url.hostname.endsWith('.investor.gov'))?url.href:'';
+ }catch(e){return ''}
+}
+function secNewsCards(items){
+ if(!items.length)return '<div class="empty-state"><h3>Nessuna notizia disponibile per questa categoria</h3><p>Prova a scegliere un’altra categoria o visita il sito ufficiale della SEC.</p></div>';
+ return items.map(item=>{
+  const url=secNewsSafeLink(item.url);
+  if(!url)return '';
+  const category=SEC_CATEGORIES.find(c=>c[0]===item.category)?.[1]||'SEC';
+  return '<article class="sec-news-card"><div class="sec-news-meta"><span class="sec-news-tag">'+esc(category)+'</span><time>'+esc(secNewsDate(item.date))+'</time></div>'+
+   '<h3><a href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">'+esc(item.title)+'</a></h3>'+
+   (item.summary?'<p>'+esc(item.summary)+'</p>':'')+
+   '<a class="sec-news-source" href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">Leggi la fonte ufficiale SEC '+sym('external')+'</a></article>';
+ }).join('');
+}
+function newsPage(){
+ const total=secNewsState.items.length;
+ const categories=SEC_CATEGORIES.filter(([id])=>id==='all'||secNewsState.items.some(item=>item.category===id));
+ const chosen=secNewsState.selected;
+ const selected=chosen==='all'?secNewsState.items:secNewsState.items.filter(item=>item.category===chosen);
+ const visible=selected.slice(0,secNewsState.visible);
+ const stamp=secNewsState.updatedAt?'Feed aggiornati: '+secNewsDate(secNewsState.updatedAt):
+             secNewsState.seedDate?'Archivio iniziale verificato il '+secNewsDate(secNewsState.seedDate):'In attesa dei dati SEC';
+ return secHeader('SEC · Notizie ufficiali','Comunicati, provvedimenti, dichiarazioni e depositi EDGAR pubblicati dalla SEC')+
+ '<section class="content-card panel sec-news-panel">'+
+ '<div class="sec-news-heading"><div><h2>Ultimi aggiornamenti SEC</h2><p class="subnote">'+esc(stamp)+' · '+total+' elementi in archivio · fonte: SEC.gov</p></div>'+
+ '<button class="btn btn-small" data-sec-refresh="1" type="button"'+(secNewsState.loading?' disabled':'')+'>'+sym('refresh')+' '+(secNewsState.loading?'Caricamento…':'Aggiorna elenco')+'</button></div>'+
+ (secNewsState.error?'<p class="sec-news-warning" role="status">'+esc(secNewsState.error)+'</p>':'')+
+ '<div class="sec-news-filters" role="group" aria-label="Filtra notizie SEC">'+
+ categories.map(([id,label])=>'<button type="button" data-sec-category="'+id+'" aria-pressed="'+(chosen===id)+'" class="'+(chosen===id?'active':'')+'">'+esc(label)+(id==='all'?' ('+total+')':'')+'</button>').join('')+
+ '</div>'+
+ (secNewsState.loading&&!secNewsState.loaded?'<p class="subnote">Caricamento delle pubblicazioni ufficiali SEC…</p>':
+   '<div class="sec-news-grid">'+secNewsCards(visible)+'</div>')+
+ (selected.length>visible.length?'<div class="sec-news-more"><button class="btn" type="button" data-sec-more="1">Carica altre ('+(selected.length-visible.length)+' rimanenti)</button></div>':'')+
+ '<p class="data-footnote">Pubblicazioni originali in inglese. La lista raccoglie i feed ufficiali SEC disponibili e non rappresenta l’intero archivio storico. Gli aggiornamenti periodici possono subire ritardi.</p>'+
+ '<p class="data-footnote"><a href="https://www.sec.gov/about/rss-feeds" target="_blank" rel="noopener noreferrer">Feed ufficiali SEC</a> · <a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent" target="_blank" rel="noopener noreferrer">Ultimi depositi EDGAR</a></p></section>';
+}
+async function loadSecNews(force=false){
+ if(secNewsState.loading||(secNewsState.loaded&&!force))return;
+ secNewsState.loading=true;
+ if(state.page==='news')render();
+ try{
+  const response=await fetch('./sec-news.json?v='+(force?Date.now():Math.floor(Date.now()/600000)),{cache:'no-store'});
+  if(!response.ok)throw new Error('HTTP '+response.status);
+  const result=await response.json();
+  if(!result||!Array.isArray(result.items))throw new Error('Formato SEC non valido');
+  const parsed=result.items.filter(item=>item&&typeof item.title==='string'&&typeof item.date==='string'&&secNewsSafeLink(item.url)&&typeof item.category==='string')
+   .sort((a,b)=>Date.parse(b.date)-Date.parse(a.date));
+  secNewsState.items=parsed;
+  secNewsState.updatedAt=result.updated_at||null;
+  secNewsState.seedDate=result.seed_date||null;
+  secNewsState.loaded=true;
+  secNewsState.error='';
+ }catch(e){
+  secNewsState.error=secNewsState.loaded?'Impossibile aggiornare il feed: sono visibili gli ultimi dati salvati.':'Feed SEC temporaneamente non disponibile. Apri i collegamenti SEC per leggere le novità.';
+ }finally{
+  secNewsState.loading=false;
+  if(state.page==='news')render();
+ }
+}
+
 function analyticsPage(){
  const s=countMarketMood(),total=s.up+s.down;const r=REGIONS.map(x=>({name:x.italian,avg:meanRegion(x),available:x.ids.filter(id=>num(change(id))).length}));
  return secHeader('Global Analytics','Panoramica calcolata dalle variazioni effettivamente disponibili',
@@ -1068,6 +1129,7 @@ function render(){
  const main=$('#pageContainer');
  main.innerHTML=PAGE_RENDERERS[state.page]();
  updateNav();
+ if(state.page==='news'&&!secNewsState.loaded&&!secNewsState.loading)loadSecNews();
  if(state.page==='global'){
   if(!state.land)loadWorldShape();
   updateWorldSunlight(true);
@@ -1489,6 +1551,9 @@ function setupEvents(){
  $('#pageContainer').addEventListener('click',e=>{
   const btn=e.target.closest('button,a,tr[data-asset]');
   if(!btn)return;
+  if(btn.dataset.secCategory){secNewsState.selected=btn.dataset.secCategory;secNewsState.visible=20;render();return;}
+  if(btn.dataset.secMore){secNewsState.visible+=20;render();return;}
+  if(btn.dataset.secRefresh){loadSecNews(true);return;}
   if(btn.dataset.themeMode){setTheme(btn.dataset.themeMode);return;}
   if(btn.dataset.soundToggle){
    const previous=state.clickSound;

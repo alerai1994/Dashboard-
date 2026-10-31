@@ -644,3 +644,26 @@ body::after{content:"";position:fixed;inset:0;z-index:9999;pointer-events:none;b
 .settings-brightness{margin-top:18px}
 .settings-brightness .subnote{margin-top:13px;max-width:630px}
 @media(prefers-reduced-motion:reduce){body::after{transition:none}}
+
+/* Official SEC newsroom aggregator */
+.sec-news-panel{padding:19px}
+.sec-news-heading{display:flex;justify-content:space-between;align-items:center;gap:18px}
+.sec-news-heading h2{font-size:19px;line-height:1.2;margin:0 0 6px}
+.sec-news-heading .subnote{margin:0;color:var(--muted)}
+.sec-news-heading .btn{flex-shrink:0}
+.sec-news-filters{display:flex;flex-wrap:wrap;gap:7px;margin:21px 0 18px}
+.sec-news-filters button{border:1px solid var(--line);border-radius:99px;background:var(--surface);color:var(--muted);font-size:12px;padding:8px 12px;font-weight:650}
+.sec-news-filters button.active{background:color-mix(in srgb,var(--brand) 17%,var(--panel));border-color:var(--brand);color:var(--text)}
+.sec-news-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.sec-news-card{min-width:0;border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--surface);display:flex;flex-direction:column;gap:9px}
+.sec-news-meta{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap;font-size:11px;color:var(--muted)}
+.sec-news-tag{background:color-mix(in srgb,var(--brand) 12%,var(--panel));padding:4px 8px;border-radius:99px;color:var(--brand);font-weight:720}
+.sec-news-card h3{font-size:14px;line-height:1.45;margin:1px 0;font-weight:725}
+.sec-news-card h3 a{text-decoration:none}
+.sec-news-card h3 a:hover{color:var(--brand);text-decoration:underline}
+.sec-news-card p{font-size:12px;color:var(--muted);line-height:1.5;margin:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+.sec-news-source{display:inline-flex;align-items:center;gap:6px;margin-top:auto;padding-top:6px;font-size:11px;color:var(--brand);font-weight:700;text-decoration:none}
+.sec-news-source .icon{width:13px;height:13px}
+.sec-news-more{margin:18px 0;display:flex;justify-content:center}
+.sec-news-warning{padding:11px 13px;border:1px solid var(--yellow);border-radius:8px;color:var(--text);font-size:12px}
+@media(max-width:860px){.sec-news-grid{grid-template-columns:1fr}.sec-news-panel{padding:12px}.sec-news-heading{align-items:flex-start;flex-direction:column;gap:12px}.sec-news-filters{gap:6px}.sec-news-filters button{font-size:11px;padding:7px 10px}}
