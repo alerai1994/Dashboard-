@@ -263,3 +263,25 @@ a{color:inherit}
 @media (max-width:850px){.global-grid{grid-template-columns:1fr;grid-template-areas:"map" "regions" "aside" "photocards"}.global-regions .region-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px}.aside-stack{grid-template-columns:1fr 1fr}.region-photo-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.world-map-panel{min-height:440px}.map-stage{min-height:420px}.topbar{gap:12px}.top-actions{gap:4px}.top-actions .search-wrap{width:clamp(180px,32vw,310px)}.live-clock{display:none}.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.content-two-col{grid-template-columns:1fr}.analytics-grid{grid-template-columns:1fr}.quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:600px){.app-shell{display:block}.sidebar{position:fixed;left:0;top:0;width:226px;transform:translateX(-100%);transition:transform .25s ease;box-shadow:0 0 40px #0008}.sidebar.open{transform:translateX(0)}.sidebar .brand{justify-content:flex-start;padding:3px 8px 23px}.sidebar .brand span,.sidebar .side-link>span:not(.switch):not(.nav-alert-count){display:inline}.sidebar .side-link{justify-content:flex-start;padding:12px}.sidebar-bottom .side-link{justify-content:flex-start}.sidebar .switch{display:inline-block}.sidebar .legacy-link{display:flex}.mobile-logo{display:flex;gap:9px;align-items:center;color:var(--brand);font-size:13px;font-weight:700;margin-bottom:5px}.mobile-logo button{border:0;background:transparent;color:var(--text);padding:0;display:grid;place-items:center}.mobile-logo .icon{height:18px;width:18px}.main-content{padding:14px 10px 25px}.topbar{flex-wrap:wrap;min-height:110px;align-items:end}.page-heading h1{font-size:29px;margin:0 0 3px}.page-heading p{font-size:11px;max-width:345px}.top-actions{width:100%;justify-content:space-between}.top-actions .search-wrap{flex:1;width:auto}.avatar-button{width:33px;height:33px}.topbar .icon-button{width:30px}.market-index-strip{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding:0 0 8px;gap:8px}.index-mini{min-width:170px;flex:0 0 170px;scroll-snap-align:start}.global-grid{gap:11px}.map-stage{min-height:0;aspect-ratio:1000 / 600}.world-map-panel{min-height:0}.map-callout{min-width:0;padding:5px 6px;border-radius:6px}.map-callout strong{font-size:8px}.map-callout span{font-size:10px;margin-top:3px}.map-pin{width:13px;height:13px}.map-pin:before{width:12px;height:12px;border-width:1.5px}.map-pin:after{width:5px;height:5px}.global-regions .region-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:0 6px}.region-list-item .region-glyph{width:25px;font-size:19px}.region-list-item strong{font-size:11px}.aside-stack{grid-template-columns:1fr}.instrument-row{min-height:38px}.region-photo-grid{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:8px}.photo-card{flex:0 0 142px;scroll-snap-align:start}.photo-cover{height:105px}.photo-card{min-height:213px}.content-heading{align-items:start;flex-direction:column}.card-links,.quick-grid,.form-grid{grid-template-columns:1fr}.summary-grid{grid-template-columns:1fr 1fr;gap:8px}.summary-card{padding:13px}.summary-card strong{font-size:19px}.dialog-inner{padding:14px}.dialog-header{align-items:flex-start}.dialog-header h2{font-size:18px}.dialog-actions .outline-button{font-size:10px;padding:7px}.chart-frame canvas{height:440px}.dialog-stats strong{font-size:21px}}
 @media (prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+
+
+/* Selected map region details */
+.region-insight{position:relative;z-index:7;margin:0 10px 11px;padding:10px 12px;border:1px solid #29617b;background:#102d42dd;border-radius:9px;box-shadow:0 7px 24px #0005}
+.region-insight strong{display:block;font-size:12px;color:#e9f8ff}
+.region-insight small{display:block;font-size:10px;margin-top:4px;color:#83b0cc}
+.region-insight-markets{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
+.region-insight-markets button{border:1px solid #386481;border-radius:7px;color:#e6f3ff;background:#132d42;padding:7px 9px;font-size:10px;display:flex;gap:8px}
+.region-insight-markets button:hover{border-color:#7cb8d6}
+.asset-logo.asset-btc{background:#f7931a;color:white;font-weight:800;font-size:15px}
+.asset-logo.asset-eth{background:#556caa;color:white}
+.asset-logo.asset-sol{background:#251b39;color:#53e3c1}
+.asset-logo.asset-xrp{background:#263543;color:white}
+.asset-logo.asset-bnb{background:#f0b522;color:#213451}
+.asset-logo.asset-doge{background:#b9a36b;color:#252f3b}
+.asset-logo.asset-inj{background:#1c3a6b;color:#66b9ff}
+body.theme-light .map-legend{color:#adc9da}
+body.theme-light .region-insight{color:#e7f5fc}
+body.theme-light .world-map-panel .map-callout{color:#f0f8ff}
+body.theme-light .photo-card{color:white}
+body.theme-light .market-panel .instrument-row:hover{background:#e7f1f9}
+@media (max-width:600px){.region-insight{margin:0 7px 7px}.region-insight-markets button{flex:1 1 38%;justify-content:space-between}}
