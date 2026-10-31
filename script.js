@@ -419,7 +419,7 @@ function sidePanel(group){
  const crypto=group.group==='crypto';
  const visible=crypto&&!state.cryptoExpanded?group.ids.slice(0,8):group.ids;
  const count=group.ids.length;
- return '<section class="market-panel panel'+(crypto?' crypto-market-panel':'')+'"><div class="section-topline"><h3>'+sym('globe')+' '+esc(group.title)+(crypto?'<span class="crypto-counter">'+count+'</span><span class="crypto-stream-status" aria-label="Stato streaming">'+liveLabel()+'</span>':'')+'</h3><button type="button" class="text-action" data-page="markets" data-category="'+group.group+'">View All</button></div>'+
+ return '<section class="market-panel panel'+(crypto?' crypto-market-panel':'')+'"><div class="section-topline"><h3>'+sym('globe')+' '+esc(group.title)+(crypto?'<span class="crypto-counter">'+count+'</span>':'')+'<span class="market-feed-pill" data-market-group="'+group.group+'">'+marketGroupStatus(group.group)+'</span>'+'</h3><button type="button" class="text-action" data-page="markets" data-category="'+group.group+'">View All</button></div>'+
  '<div class="instrument-rows">'+visible.map(id=>{
  const a=ASSET_BY_ID[id],q=quote(id);
  return '<button type="button" class="instrument-row" data-asset="'+id+'" aria-label="Apri '+esc(a.name)+'">'+assetLogo(a)+'<span class="asset-label">'+esc(a.name)+'</span>'+
@@ -453,32 +453,137 @@ function liveLabel(){
  const active=liveConnected(),count=[...streamStatus.seen].filter(id=>STREAM_OVERLAY.has(id)&&Date.now()-STREAM_OVERLAY.get(id).received<90000).length;
  return active?'● LIVE crypto: '+count+' coppie Binance Spot (USDT)':'○ Crypto: '+(streamStatus.connected?'in attesa dei tick':'connessione / riconnessione');
 }
+function snapshotAgeMinutes(){
+ const t=Date.parse(state.feedTime||'');
+ return Number.isFinite(t)?Math.max(0,Math.round((Date.now()-t)/60000)):null;
+}
+function marketGroupStatus(group){
+ const age=snapshotAgeMinutes();
+ const missing=state.feedError||age===null,stale=age!==null&&age>18;
+ if(group==='crypto'){
+  if(liveConnected())return '● LIVE Binance · '+streamStatus.seen.size+' / '+Object.keys(STREAM_PAIRS).length;
+  if(missing)return '◌ Crypto · feed non disponibile';
+  return '↻ Crypto · CoinGecko ~5 min';
+ }
+ if(group==='forex'){
+  if(fxConnected())return '● LIVE FX · broker MT5';
+  if(missing)return '◌ Forex · feed non disponibile';
+  return stale?'◌ Forex · ultimo dato '+age+' min':'↻ Forex · auto ~5 min';
+ }
+ if(missing)return '◌ Dati non disponibili';
+ if(stale)return '◌ Ultimo snapshot '+age+' min fa';
+ return '↻ Auto ~5 min · possibili ritardi';
+}
+function marketGroupLive(group){return group==='crypto'?liveConnected():group==='forex'?fxConnected():false}
+function marketStatusStrip(){
+ const groups=[['markets','Indici'],['tech','Tech'],['bigtech','Big Tech'],['forex','Forex'],['commodities','Commodities'],['crypto','Crypto']];
+ return '<div class="market-live-strip" aria-label="Aggiornamento automatico dei mercati">'+
+ groups.map(([key,name])=>'<span class="market-data-pill'+(marketGroupLive(key)?' live':'')+'" data-market-group="'+key+'"><strong>'+name+'</strong><small>'+marketGroupStatus(key)+'</small></span>').join('')+
+ '</div>';
+}
+function feedSummaryLabel(){
+ const stamp=state.feedTime?localeDate(state.feedTime,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'n.d.';
+ return (state.feedError?'Connessione al feed non riuscita':'Dati disponibili: '+dataCount()+'/'+ASSETS.length)+' · Snapshot '+stamp;
+}
 function updateLiveBadges(){
+ document.querySelectorAll('[data-market-group]').forEach(n=>{
+  const group=n.dataset.marketGroup;
+  if(!group)return;
+  const body=n.querySelector('small');
+  if(body)body.textContent=marketGroupStatus(group);else n.textContent=marketGroupStatus(group);
+  n.classList.toggle('live',marketGroupLive(group));
+  n.classList.toggle('stale',!marketGroupLive(group)&&(snapshotAgeMinutes()===null||snapshotAgeMinutes()>18));
+  n.title=group==='crypto'?'Tick Binance/USDT dove disponibili, altri asset CoinGecko.':group==='forex'?'FX broker MT5 streaming quando disponibile; fallback Yahoo Finance.':'Yahoo Finance: dati aggiornati automaticamente, ma potenzialmente ritardati.';
+ });
  document.querySelectorAll('.crypto-stream-status').forEach(n=>{
-  n.textContent=liveLabel();
-  n.classList.toggle('live-online',liveConnected());
+  n.textContent=liveLabel();n.classList.toggle('live-online',liveConnected());
  });
  document.querySelectorAll('.live-stream-note').forEach(n=>{
-  n.textContent=liveLabel()+' · Indici, Forex e materie prime: quotazioni ritardate, aggiornate dal feed quando disponibili.';
+  n.textContent=(liveConnected()?'Crypto Binance in streaming':'Crypto CoinGecko · refresh automatico')+
+   ' · '+(fxConnected()?'Forex broker MT5 in streaming':'Forex snapshot automatico')+
+   ' · Indici, Tech, Big Tech e Commodities: Yahoo Finance, anche ritardato.';
  });
+ document.querySelectorAll('.feed-summary-text').forEach(n=>n.textContent=feedSummaryLabel());
+ document.querySelectorAll('.data-status').forEach(n=>n.classList.toggle('error',state.feedError));
+}
+
+function setMovementClass(element,value){
+ if(!element)return;
+ const classes=['color-up','color-down','color-flat','color-unknown'];
+ element.classList.remove(...classes);
+ element.classList.add(trendClass(value));
+}
+function patchRegions(){
+ if(state.page!=='global')return;
+ for(const r of REGIONS){
+  const avg=meanRegion(r),lead=ASSET_BY_ID[r.lead],leadQuote=quote(r.lead);
+  document.querySelectorAll('#pageContainer .region-list-item[data-region="'+r.id+'"]').forEach(el=>{
+   el.dataset.trend=trend(avg);
+   const d=el.querySelector('.region-change'),i=el.querySelector('.region-glyph');
+   if(d){d.textContent=pct(avg);setMovementClass(d,avg)}
+   setMovementClass(i,avg);
+  });
+  document.querySelectorAll('#worldMap .map-callout[data-region="'+r.id+'"]').forEach(el=>{
+   el.dataset.trend=trend(avg);
+   const v=el.querySelector('span');if(v)v.textContent=pct(avg);
+  });
+  document.querySelectorAll('#worldMap .map-pin[data-region="'+r.id+'"]').forEach(el=>el.dataset.trend=trend(avg));
+  document.querySelectorAll('#pageContainer .photo-card[data-region="'+r.id+'"]').forEach(el=>{
+   el.dataset.trend=trend(change(r.lead));
+   const v=el.querySelector('.photo-card-metrics strong'),p=el.querySelector('.photo-card-metrics .change');
+   if(v&&lead)v.textContent=assetValue(lead);
+   if(p){p.textContent=pct(leadQuote&&leadQuote.change);setMovementClass(p,leadQuote&&leadQuote.change)}
+  });
+ }
+}
+function patchPortfolio(){
+ if(state.page!=='portfolio')return;
+ const totals=portfolioTotals(),profit=totals.value-totals.cost,stats=document.querySelectorAll('#pageContainer .summary-grid .summary-card strong');
+ const approximate=state.holdings.some(h=>quote(h.id)&&quote(h.id).currency==='USDT')?'≈':'';
+ if(stats[0])stats[0].textContent=approximate+formatValue(totals.value,{group:'crypto'});
+ if(stats[1])stats[1].textContent=formatValue(totals.cost,{group:'crypto'});
+ if(stats[2]){stats[2].textContent=approximate+formatValue(profit,{group:'crypto'});setMovementClass(stats[2],profit)}
+ const rows=document.querySelectorAll('#pageContainer .data-table tbody tr');
+ let i=0;
+ for(const h of state.holdings){
+  const a=ASSET_BY_ID[h.id];if(!a)continue;
+  const q=quote(h.id),row=rows[i++];if(!row)continue;
+  const td=row.querySelectorAll('td');
+  if(td[3])td[3].textContent=assetValue(a);
+  if(td[4])td[4].textContent=num(q&&q.value)?(q.currency==='USDT'?'≈':'')+'$'+(q.value*Number(h.qty)).toLocaleString('it-IT',PREC):'—';
+ }
+}
+function patchSummary(){
+ if(state.page!=='home'&&state.page!=='analytics')return;
+ const c=countMarketMood(),stats=document.querySelectorAll('#pageContainer .summary-grid .summary-card strong');
+ if(state.page==='home'){
+  if(stats[0])stats[0].textContent=dataCount()+'/'+ASSETS.length;
+  if(stats[1])stats[1].textContent=String(c.up);
+  if(stats[2])stats[2].textContent=String(c.down);
+ }else{
+  if(stats[0])stats[0].textContent=String(c.up);
+  if(stats[1])stats[1].textContent=String(c.down);
+  if(stats[2])stats[2].textContent=String(c.flat);
+  if(stats[3])stats[3].textContent=c.total+'/'+ASSETS.length;
+ }
 }
 function updatePriceDom(){
  const ids=[...streamStatus.dirty];streamStatus.dirty.clear();
+ if(document.hidden)return;
  for(const id of ids){
   const a=ASSET_BY_ID[id],q=quote(id);
   if(!a||!q)continue;
   document.querySelectorAll('#pageContainer [data-asset="'+id+'"]').forEach(el=>{
-   const price=el.querySelector('.asset-price,.mini-price');
-   const delta=el.querySelector('.asset-change,.mini-change');
+   const price=el.querySelector('.asset-price,.mini-price,.tech-asset-value');
+   const delta=el.querySelector('.asset-change,.mini-change,.tech-asset-change');
    if(price)price.textContent=assetValue(a);
-   if(delta){delta.textContent=pct(q.change);delta.classList.remove('color-up','color-down','color-flat','color-unknown');delta.classList.add(trendClass(q.change))}
+   if(delta){delta.textContent=pct(q.change);setMovementClass(delta,q.change)}
    if(el.matches('tr[data-asset]')){
     const cells=el.querySelectorAll('td');
     if(cells.length>=3){
      cells[1].textContent=assetValue(a);
      cells[2].textContent=pct(q.change);
-     cells[2].classList.remove('color-up','color-down','color-flat','color-unknown');
-     cells[2].classList.add(trendClass(q.change));
+     setMovementClass(cells[2],q.change);
     }
    }
    if(el.hasAttribute('data-trend'))el.dataset.trend=trend(q.change);
@@ -488,12 +593,17 @@ function updatePriceDom(){
    const c=document.querySelector('#dialogBody .dialog-stats .change');
    const m=document.querySelector('#dialogBody .dialog-meta');
    if(p)p.textContent=assetValue(a);
-   if(c){c.textContent=pct(q.change);c.classList.remove('color-up','color-down','color-flat','color-unknown');c.classList.add(trendClass(q.change))}
-   if(m)m.textContent='Binance Spot USDT · '+refTime(id)+' · prezzo streaming';
+   if(c){c.textContent=pct(q.change);setMovementClass(c,q.change)}
+   if(m)m.textContent=(q.live?'Tick '+(q.source||'streaming')+' · ':'Ultimo prezzo · ')+refTime(id);
   }
  }
+ if(ids.length){
+  patchRegions();
+  patchPortfolio();
+  patchSummary();
+  if(state.alerts.length)updateNav();
+ }
  updateLiveBadges();
- if(ids.length&&state.alerts.length)updateNav();
 }
 function scheduleLivePaint(){
  if(streamStatus.flushTimer)return;
@@ -560,6 +670,79 @@ function keepStreamAlive(){
  }else if(!streamStatus.socket)connectCryptoStream();
  updateLiveBadges();
 }
+
+/* Optional independent FX broker streaming (MT5 quotes, not official exchange mid).
+   The dashboard keeps its Yahoo snapshot when this service is offline/unavailable.
+   No secrets are embedded in the public website. */
+const FX_STREAM_IDS={EURUSD:'eurusd',GBPUSD:'gbpusd',USDJPY:'usdjpy',USDCHF:'usdchf',AUDUSD:'audusd',USDCNY:'usdcny'};
+const FX_OVERLAY=new Map();
+const fxStatus={connection:null,connected:false,last:0,seen:new Set(),connecting:false,activeSince:0,retryAt:0};
+function fxConnected(){
+ return fxStatus.connected&&Date.now()-fxStatus.last<45000;
+}
+function fxLabel(){
+ if(fxConnected())return '● FX LIVE · '+fxStatus.seen.size+'/6 coppie · broker MT5';
+ if(fxStatus.connected)return '◌ FX connesso · nessun tick recente';
+ return '◌ FX automatico · snapshot / connessione';
+}
+function forexTick(tick){
+ const id=FX_STREAM_IDS[String(tick&&tick.symbol||'').replace('/','').toUpperCase()];
+ if(!id||tick.marketState==='closed'||tick.stale===true)return;
+ const mid=Number(tick.mid),bid=Number(tick.bid),ask=Number(tick.ask);
+ const value=Number.isFinite(mid)&&mid>0?mid:(Number.isFinite(bid)&&Number.isFinite(ask)&&bid>0&&ask>=bid?(bid+ask)/2:null);
+ if(!Number.isFinite(value)||value<=0)return;
+ const sent=Date.parse(tick.timestamp);
+ if(!Number.isFinite(sent)||sent>Date.now()+60000||Date.now()-sent>45000)return;
+ const changePct=Number(tick.dayDiffPercent);
+ const fresh={
+  value,change:Number.isFinite(changePct)?changePct:null,
+  currency:'RATIO',time:new Date(sent).toISOString(),live:true,
+  source:'biquote · broker Forex MT5',received:Date.now(),marketState:'open'
+ };
+ FX_OVERLAY.set(id,fresh);
+ state.quotes[id]={...(state.quotes[id]||{id,history:[],candles:[]}),...fresh};
+ fxStatus.last=Date.now();fxStatus.seen.add(id);
+ streamStatus.dirty.add(id);scheduleLivePaint();
+}
+function preserveForexQuotes(snapshot){
+ const now=Date.now();
+ for(const [id,fx] of FX_OVERLAY){
+  if(now-fx.received<90000&&snapshot[id])snapshot[id]={...snapshot[id],...fx};
+  else if(now-fx.received>=90000)FX_OVERLAY.delete(id);
+ }
+ return snapshot;
+}
+function connectForexStream(){
+ if(document.hidden||!navigator.onLine||!window.signalR||fxStatus.connection||fxStatus.connecting||Date.now()<fxStatus.retryAt)return;
+ fxStatus.connecting=true;
+ let connection;
+ try{
+  connection=new window.signalR.HubConnectionBuilder()
+   .withUrl('https://biquote.io/hubs/tick')
+   .withAutomaticReconnect([0,2500,10000,30000])
+   .build();
+ }catch(e){fxStatus.connecting=false;fxStatus.retryAt=Date.now()+60000;return}
+ fxStatus.connection=connection;
+ const subscribe=()=>connection.invoke('Subscribe',Object.keys(FX_STREAM_IDS)).catch(()=>{});
+ connection.on('ReceiveTick',forexTick);
+ connection.onreconnecting(()=>{fxStatus.connected=false;updateLiveBadges()});
+ connection.onreconnected(()=>{fxStatus.connected=true;subscribe();updateLiveBadges()});
+ connection.onclose(()=>{if(fxStatus.connection!==connection)return;fxStatus.connection=null;fxStatus.connected=false;fxStatus.connecting=false;fxStatus.retryAt=Date.now()+45000;updateLiveBadges()});
+ connection.start().then(()=>{
+  if(fxStatus.connection!==connection)return;
+  fxStatus.connecting=false;fxStatus.connected=true;fxStatus.activeSince=Date.now();
+  subscribe();updateLiveBadges();
+ }).catch(()=>{
+  if(fxStatus.connection===connection)fxStatus.connection=null;
+  fxStatus.connected=false;fxStatus.connecting=false;fxStatus.retryAt=Date.now()+45000;
+  updateLiveBadges();
+ });
+}
+function disconnectForexStream(){
+ const old=fxStatus.connection;fxStatus.connection=null;fxStatus.connected=false;fxStatus.connecting=false;
+ if(old)old.stop().catch(()=>{});
+}
+
 function preserveStreamingQuotes(snapshot){
  const now=Date.now();
  for(const [id,live] of STREAM_OVERLAY){
@@ -570,25 +753,25 @@ function preserveStreamingQuotes(snapshot){
 }
 
 function feedStatus(){
- const when=state.feedTime?localeDate(state.feedTime,{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'non disponibile';
- return '<div class="data-footnote"><span class="data-status'+(state.feedError?' error':'')+'"><i></i> '+(state.feedError?'Feed non raggiungibile':'Dati disponibili: '+dataCount()+'/'+ASSETS.length)+' · Ultimo snapshot '+when+'</span>'+
- '<span class="live-stream-note">'+liveLabel()+' · Indici, Forex e materie prime: feed ritardato, aggiornato automaticamente.</span><span>Mercati chiusi = ultima seduta. <button type="button" data-refresh="1">'+sym('refresh')+' Aggiorna</button></span></div>';
+ return '<div class="data-footnote"><span class="data-status'+(state.feedError?' error':'')+'"><i></i><span class="feed-summary-text">'+feedSummaryLabel()+'</span></span>'+
+ '<span class="live-stream-note">Crypto: Binance quando disponibile · Forex: broker MT5 quando disponibile · altri mercati: Yahoo Finance, ritardati.</span>'+
+ '<span>Mercati chiusi = ultima seduta. <button type="button" data-refresh="1">'+sym('refresh')+' Verifica ora</button></span></div>';
 }
 function techBigTechOverview(){
  return '<section class="sector-overview" aria-label="Mercato Tech e Big Tech">'+
  '<div class="sector-heading"><div><span class="eyebrow">TECHNOLOGY MARKETS</span><h2>Mercato Tech <span>&amp;</span> Big Tech</h2><p>Indici tecnologici, ETF e grandi aziende quotate.</p></div>'+
  '<div class="sector-actions"><button type="button" class="btn btn-small" data-page="markets" data-category="tech">Mercato Tech</button>'+
  '<button type="button" class="btn btn-small" data-page="markets" data-category="bigtech">Big Tech</button></div></div>'+
- '<div class="sector-overview-grid"><div class="panel sector-panel"><h3>'+sym('trend')+' Indici e ETF Tech</h3>'+
+ '<div class="sector-overview-grid"><div class="panel sector-panel"><h3>'+sym('trend')+' Indici e ETF Tech <span class="market-feed-pill" data-market-group="tech">'+marketGroupStatus('tech')+'</span></h3>'+
  '<div class="sector-card-grid sector-tech-cards">'+TECH_IDS.map(indexCard).join('')+'</div></div>'+
- '<div class="panel sector-panel"><h3>'+sym('bars')+' Big Tech · Azioni</h3>'+
+ '<div class="panel sector-panel"><h3>'+sym('bars')+' Big Tech · Azioni <span class="market-feed-pill" data-market-group="bigtech">'+marketGroupStatus('bigtech')+'</span></h3>'+
  '<div class="sector-card-grid sector-bigtech-cards">'+BIGTECH_IDS.slice(0,7).map(indexCard).join('')+'</div>'+
  '<button type="button" class="text-action sector-view-all" data-page="markets" data-category="bigtech">Vedi tutte le '+BIGTECH_IDS.length+' aziende →</button></div></div>'+
  '<p class="sector-footnote">Nasdaq-100 e PHLX SOX sono indici; XLK, QQQ e SMH sono ETF. Le Big Tech sono azioni. Prezzi da Yahoo Finance, anche ritardati.</p></section>';
 }
 
 function globalPage(){
- return '<section class="market-index-strip">'+TOP_IDS.map(indexCard).join('')+'</section>'+
+ return marketStatusStrip()+'<section class="market-index-strip">'+TOP_IDS.map(indexCard).join('')+'</section>'+
  '<div class="global-grid">'+regionList()+mapPanel()+
  '<aside class="aside-stack">'+QUOTE_GROUPS.map(sidePanel).join('')+'</aside>'+
  '<div class="region-photo-grid" aria-label="Panoramica fotografica delle regioni">'+REGIONS.map(photoCard).join('')+'</div></div>'+
@@ -621,7 +804,7 @@ function tableForAssets(items,emptyTitle){
  return '<div class="data-table-scroll"><table class="data-table"><thead><tr><th>Strumento</th><th>Ultimo prezzo</th><th>Variazione</th><th>Storico</th><th>Fonte</th></tr></thead><tbody>'+
  items.map(a=>'<tr tabindex="0" data-asset="'+a.id+'" aria-label="Dettagli '+esc(a.name)+'"><td><span class="market-table-asset">'+(showAssetLogo(a)?assetLogo(a):'')+'<span><strong>'+esc(a.name)+'</strong><small>'+esc(a.symbol)+'</small></span></span></td>'+
  '<td>'+assetValue(a)+'</td><td class="'+classArrow(a.id)+'">'+pct(change(a.id))+'</td>'+
- '<td class="'+classArrow(a.id)+'">'+sparkLine(a.id,90,26)+'</td><td><small>'+esc(a.group==='crypto'?'CoinGecko':'Yahoo Finance')+'</small></td></tr>').join('')+
+ '<td class="'+classArrow(a.id)+'">'+sparkLine(a.id,90,26)+'</td><td><small>'+esc(a.group==='crypto'?'Binance/CoinGecko':a.group==='forex'?'Broker MT5/Yahoo':'Yahoo Finance')+'</small></td></tr>').join('')+
  '</tbody></table></div>';
 }
 function marketFilterMatch(asset){
@@ -636,7 +819,7 @@ function marketsPage(){
  const filtered=ASSETS.filter(a=>marketFilterMatch(a)&&(!text||(a.name+' '+a.symbol+' '+(a.country||'')).toLowerCase().includes(text)));
  return secHeader('Esplora tutti i mercati','Seleziona uno strumento per aprire il grafico storico e gli indicatori',
  '<a class="btn btn-small" href="#global">'+sym('globe')+' Mappa mondiale</a>')+
- '<section class="content-card panel"><div class="filter-row"><div class="tab-filters" role="group" aria-label="Categorie mercati">'+
+ marketStatusStrip()+'<section class="content-card panel"><div class="filter-row"><div class="tab-filters" role="group" aria-label="Categorie mercati">'+
  options.map(([id,label])=>'<button type="button" data-filter="'+id+'" class="'+(state.marketFilter===id?'active':'')+'">'+label+'</button>').join('')+
  '</div><input class="filter-input" type="search" id="marketSearch" value="'+esc(state.marketSearch)+'" placeholder="Cerca per nome o ticker..." aria-label="Filtra strumenti"></div><div id="marketRows">'+tableForAssets(filtered,'Nessun risultato')+'</div></section>'+feedStatus();
 }
@@ -772,23 +955,70 @@ function updateClock(){
  $('#localDate').textContent=new Intl.DateTimeFormat('it-IT',{weekday:'short',day:'2-digit',month:'short',year:'numeric',timeZone:'Europe/Rome'}).format(now);
  $('#localTime').textContent=new Intl.DateTimeFormat('it-IT',{hour:'2-digit',minute:'2-digit',hourCycle:'h23',timeZone:'Europe/Rome'}).format(now)+' (Roma)';
 }
+/* GitHub Pages serves static snapshots. A cheap HEAD check avoids downloading
+   the 2MB historic-data file every minute when the snapshot has not changed. */
+const snapshotFetch={busy:false,etag:null,age:null};
 async function fetchQuotes(isManual=false){
- const oldSnapshot=state.feedTime,wasLoading=state.loading,wasError=state.feedError;
+ if(snapshotFetch.busy)return;
+ snapshotFetch.busy=true;
+ const wasLoading=state.loading,wasError=state.feedError;
  try{
-  const response=await fetch('./market-data.json?cache='+Date.now(),{cache:'no-store'});
-  if(!response.ok)throw new Error('HTTP '+response.status);
+  const url='./market-data.json?v='+Math.floor(Date.now()/30000);
+  if(state.feedTime&&!isManual){
+   let same=false;
+   try{
+    const head=await fetch(url,{method:'HEAD',cache:'no-store'});
+    if(head.ok){
+     const etag=head.headers.get('etag')||head.headers.get('last-modified');
+     if(etag&&snapshotFetch.etag&&etag===snapshotFetch.etag)same=true;
+    }
+   }catch(e){/* Some CDNs do not support HEAD; GET remains the fallback. */}
+   if(same){
+    state.feedError=false;
+    updateLiveBadges();
+    return;
+   }
+  }
+  const response=await fetch(url,{cache:'no-store'});
+  if(!response.ok)throw new Error('Feed HTTP '+response.status);
   const data=await response.json();
-  if(!data||!Array.isArray(data.markets))throw new Error('Invalid format');
+  if(!data||!Array.isArray(data.markets)||!Array.isArray(data.crypto))throw new Error('Invalid market snapshot');
   const all=[...(data.markets||[]),...(data.bigtech||[]),...(data.commodities||[]),...(data.forex||[]),...(data.crypto||[])];
-  state.quotes=preserveStreamingQuotes(Object.fromEntries(all.filter(x=>x&&x.id&&ASSET_BY_ID[x.id]).map(x=>[x.id,x])));
-  state.feedTime=data.generatedAt||null;
+  const next=preserveForexQuotes(preserveStreamingQuotes(Object.fromEntries(
+   all.filter(x=>x&&x.id&&ASSET_BY_ID[x.id]).map(x=>[x.id,x])
+  )));
+  const changed=[];
+  for(const [id,value] of Object.entries(next)){
+   const old=state.quotes[id];
+   if(!old||old.value!==value.value||old.change!==value.change||old.time!==value.time||
+      old.logo!==value.logo||old.live!==value.live||old.source!==value.source)changed.push(id);
+  }
+  for(const id of Object.keys(state.quotes)){
+   if(!next[id])changed.push(id);
+  }
+  state.quotes=next;
+  state.feedTime=data.generatedAt||state.feedTime;
   state.feedError=false;state.loading=false;
-  if(isManual)toast('Snapshot dei mercati ricaricato; streaming crypto indipendente.');
- }catch(e){state.feedError=true;state.loading=false;if(isManual)toast('Impossibile ricaricare il feed.');}
- if(isManual||wasLoading||wasError!==state.feedError||oldSnapshot!==state.feedTime)render();
- if(state.dialogId)refreshDialog();
- updateLiveBadges();
+  snapshotFetch.etag=response.headers.get('etag')||response.headers.get('last-modified')||null;
+  snapshotFetch.age=Date.now();
+  if(wasLoading)render();
+  else{
+   changed.forEach(id=>streamStatus.dirty.add(id));
+   if(changed.length)updatePriceDom();
+   else updateLiveBadges();
+  }
+  if(isManual)toast(changed.length?'Quotazioni aggiornate da tutte le fonti disponibili.':'Feed controllato: nessuna nuova quotazione disponibile.');
+ }catch(e){
+  state.feedError=true;state.loading=false;
+  if(wasLoading)render();
+  else updateLiveBadges();
+  if(isManual)toast('Feed non raggiungibile. Gli ultimi prezzi verificati restano visibili.');
+ }finally{
+  snapshotFetch.busy=false;
+  if(wasError!==state.feedError)updateLiveBadges();
+ }
 }
+
 function findAssets(term){
  const needle=term.trim().toLowerCase();
  if(needle.length<1)return [];
@@ -1140,14 +1370,16 @@ function init(){
  render();
  fetchQuotes();
  connectCryptoStream();
- setInterval(()=>{if(!document.hidden)fetchQuotes()},60000);
+ connectForexStream();
+ setInterval(()=>{if(!document.hidden)fetchQuotes()},30000);
  setInterval(keepStreamAlive,15000);
+ setInterval(()=>{if(!document.hidden)connectForexStream();updateLiveBadges()},15000);
  document.addEventListener('visibilitychange',()=>{
-  if(document.hidden)closeStream();
-  else {connectCryptoStream();fetchQuotes();}
+  if(document.hidden){closeStream();disconnectForexStream()}
+  else {connectCryptoStream();connectForexStream();fetchQuotes();}
  });
- window.addEventListener('online',()=>{connectCryptoStream();fetchQuotes()});
- window.addEventListener('offline',()=>{closeStream();updateLiveBadges()});
+ window.addEventListener('online',()=>{connectCryptoStream();connectForexStream();fetchQuotes()});
+ window.addEventListener('offline',()=>{closeStream();disconnectForexStream();updateLiveBadges()});
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
