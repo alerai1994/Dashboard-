@@ -12,7 +12,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 
-OUTPUT = Path("global-quotes.json")
+OUTPUT = Path("market-data.json")
 MARKETS = [
     ("sp500", "^GSPC"), ("nasdaq", "^IXIC"), ("tsx", "^GSPTSE"),
     ("ibov", "^BVSP"), ("ftse", "^FTSE"), ("dax", "^GDAXI"),

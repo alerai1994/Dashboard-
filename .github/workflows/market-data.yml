@@ -1,0 +1,40 @@
+name: Vertex Global Market Data
+on:
+  push:
+    branches: [main]
+    paths: [index.html, style.css, script.js, .github/scripts/market-data.py, .github/workflows/market-data.yml]
+  schedule:
+    - cron: '13,43 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: vertex-market-data
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate JavaScript
+        run: node --check script.js
+      - name: Validate Python
+        run: python3 -m py_compile .github/scripts/market-data.py
+      - name: Collect market quotes
+        run: python3 .github/scripts/market-data.py
+      - name: Commit updated snapshot
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add market-data.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data: refresh market quotes [skip ci]"
+          for attempt in 1 2 3 4; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep 2
+          done
+          exit 1
