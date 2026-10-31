@@ -890,20 +890,10 @@ function marketChartPlot(id){
    return '<path d="M'+x.toFixed(2)+' '+y(Number(c.h)).toFixed(2)+'V'+y(Number(c.l)).toFixed(2)+'" stroke="'+co+'" stroke-width="1.15"/>'+
     '<rect x="'+(x-cw/2).toFixed(2)+'" y="'+Math.min(yo,yc).toFixed(2)+'" width="'+cw.toFixed(2)+'" height="'+Math.max(1,Math.abs(yo-yc)).toFixed(2)+'" rx=".5" fill="'+co+'"/>';
   }).join('');
-  return plot(paths,'Candele giornaliere · '+candles.length+' sedute');
+  return plot(paths,'Candele OHLC · '+candles.length+' sedute');
  }
- const values=q&&Array.isArray(q.history)?q.history.filter(v=>num(v)&&v>0).slice(-70):[];
- if(values.length>=2){
-  const low=Math.min(...values),high=Math.max(...values),pad=Math.max((high-low)*.1,high*.0005);
-  const min=low-pad,max=high+pad;
-  const points=values.map((v,i)=>[L+i/(values.length-1)*chartW,T+(max-v)/(max-min)*chartH]);
-  const d=points.map(([x,y],i)=>(i?'L':'M')+x.toFixed(2)+' '+y.toFixed(2)).join(' ');
-  const color=values.at(-1)>=values[0]?'#18d8a0':'#f57185';
-  return plot('<path d="'+d+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
-   'Storico prezzi · '+values.length+' punti');
- }
- return '<span class="market-chart-unavailable">Storico non disponibile per questo strumento</span>'+
-  '<span class="market-chart-note">In attesa di dati storici verificati</span>';
+ return '<span class="market-chart-unavailable">Candele OHLC non disponibili per questo strumento</span>'+
+  '<span class="market-chart-note">Nessun grafico a linee o candele simulate</span>';
 }
 function marketChartCard(a){
  const q=quote(a.id),cat=marketCategory(a);
@@ -943,7 +933,7 @@ function marketsPage(){
  marketStatusStrip()+'<section class="content-card panel markets-gallery"><div class="filter-row"><div class="tab-filters" role="group" aria-label="Categorie mercati">'+
  options.map(([id,label])=>'<button type="button" data-filter="'+id+'" class="'+(state.marketFilter===id?'active':'')+'">'+label+'</button>').join('')+
  '</div><input class="filter-input" type="search" id="marketSearch" value="'+esc(state.marketSearch)+'" placeholder="Cerca per nome o ticker..." aria-label="Filtra strumenti"></div>'+
- '<p class="markets-gallery-info">Grafici basati su dati storici verificati. I mercati possono essere ritardati; nessun grafico simulato.</p>'+
+ '<p class="markets-gallery-info">Solo candele OHLC reali. Se la fonte non fornisce apertura, massimo, minimo e chiusura, viene indicata la mancata disponibilità.</p>'+
  '<div id="marketRows">'+marketsCards(filtered)+'</div></section>'+feedStatus();
 }
 
@@ -1201,10 +1191,9 @@ function refreshDialog(){
  $('#dialogCategory').textContent=a.group.toUpperCase()+' · '+a.symbol;
  $('#dialogSubtitle').textContent=a.where||'Quotazione di mercato';
  $('#dialogWatch').textContent=(isWatch?'★ Rimuovi dalla Watchlist':'☆ Aggiungi alla Watchlist');
- const candleAvailable=q&&Array.isArray(q.candles)&&q.candles.length>=20;
- const lineAvailable=q&&Array.isArray(q.history)&&q.history.length>1;
+ const candleAvailable=q&&Array.isArray(q.candles)&&q.candles.length>=2;
  $('#dialogBody').innerHTML='<div class="dialog-stats"><strong>'+assetValue(a)+'</strong><span class="change '+classArrow(a.id)+'">'+pct(q&&q.change)+'</span><span class="dialog-meta">Ultima quotazione: '+esc(refTime(a.id))+'</span></div>'+
- '<div class="chart-toolbar"><div class="chart-legend"><span><i style="background:#74b2ff"></i>EMA 12</span><span><i style="background:#f1ba55"></i>EMA 26</span><span><i style="background:#b382ee"></i>EMA 50</span><span><i style="background:#ef7192"></i>EMA 200</span></div><span class="badge">'+(candleAvailable?'Candele · 1D':lineAvailable?'Storico prezzi':'Storico non disponibile')+'</span></div>'+
+ '<div class="chart-toolbar"><div class="chart-legend"><span><i style="background:#74b2ff"></i>EMA 12</span><span><i style="background:#f1ba55"></i>EMA 26</span><span><i style="background:#b382ee"></i>EMA 50</span><span><i style="background:#ef7192"></i>EMA 200</span></div><span class="badge">'+(candleAvailable?'Candele OHLC · giornaliero':'Candele OHLC non disponibili')+'</span></div>'+
  '<div class="chart-frame"><canvas id="detailChart" width="900" height="470" role="img" aria-label="Grafico di '+esc(a.name)+', medie mobili e indicatori" tabindex="0"></canvas></div>'+
  '<div class="chart-toolbar"><div class="chart-legend"><span>RSI (14)</span><span>Stochastic RSI (14/14/3/3)</span><span>MACD (12/26/9)</span></div>'+
  '<div><button class="btn btn-small" type="button" data-pan="-20">◀ Storico</button> <button class="btn btn-small" type="button" data-pan="20">Recenti ▶</button> <button class="btn btn-small" type="button" data-pan="reset">Oggi</button></div></div>'+
@@ -1223,12 +1212,12 @@ function toggleWatch(id){
 }
 function getCandles(id){
  const q=quote(id);
- if(q&&Array.isArray(q.candles)&&q.candles.length){
-  return q.candles.map(x=>({t:x.t,o:Number(x.o),h:Number(x.h),l:Number(x.l),c:Number(x.c)})).filter(x=>[x.o,x.h,x.l,x.c].every(num)&&x.h>=x.l&&x.h>0);
- }
- if(q&&Array.isArray(q.history))return q.history.filter(num).map((c,i)=>({t:i,o:c,h:c,l:c,c}));
- return [];
+ if(!q||!Array.isArray(q.candles))return [];
+ return q.candles.map(x=>({t:Number(x.t),o:Number(x.o),h:Number(x.h),l:Number(x.l),c:Number(x.c)}))
+  .filter(x=>[x.o,x.h,x.l,x.c].every(num)&&x.o>0&&x.h>0&&x.l>0&&x.c>0&&
+   x.h>=Math.max(x.o,x.c)&&x.l<=Math.min(x.o,x.c));
 }
+
 function ema(values,length){
  const arr=Array(values.length).fill(null);if(values.length<length)return arr;
  let start=0;
@@ -1300,7 +1289,7 @@ function drawChart(){
   for(let k=0;k<=3;k++){const y=p.top+(p.bottom-p.top)*k/3;line(left,y,width-right+4,y,grid,.6)}
   text(p.label,left+3,p.top+11,'left',9);
  }
- if(!sample.length){text('Storico non disponibile da fonte dati.',width/2,130,'center',13);return;}
+ if(!sample.length){text('Candele OHLC non disponibili da fonti dati.',width/2,130,'center',13);return;}
  const ix=i=>left+(i-start+.5)*chartW/sample.length;
  const closes=candles.map(x=>x.c);
  const emaSets=[{values:ema(closes,12),color:'#6fb2ff'},{values:ema(closes,26),color:'#f1b954'},{values:ema(closes,50),color:'#b18aff'},{values:ema(closes,200),color:'#e96798'}];
@@ -1310,18 +1299,13 @@ function drawChart(){
  const min=lo-pad,max=hi+pad;
  const yPrice=v=>regions[0].bottom-(v-min)/(max-min)*(regions[0].bottom-regions[0].top);
  const step=chartW/sample.length,cw=Math.max(2,Math.min(9,step*.58));
- if(candles.length>1&&q&&Array.isArray(q.candles)&&q.candles.length>8){
-  sample.forEach((c,i)=>{
+ sample.forEach((c,i)=>{
    const x=ix(start+i),up=c.c>=c.o;
    const colorC=up?'#18df9d':'#f75d72';
    line(x,yPrice(c.h),x,yPrice(c.l),colorC,1);
    ctx.fillStyle=colorC;const top=yPrice(Math.max(c.o,c.c)),bottom=yPrice(Math.min(c.o,c.c));
    ctx.fillRect(x-cw/2,top,cw,Math.max(1,bottom-top));
   });
- }else{
-  ctx.beginPath();sample.forEach((c,i)=>{const x=ix(start+i),y=yPrice(c.c);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)});
-  ctx.strokeStyle='#25dbab';ctx.lineWidth=1.8;ctx.stroke();
- }
  emaSets.forEach(a=>{
   ctx.beginPath();let started=false;
   for(let i=start;i<end;i++){
