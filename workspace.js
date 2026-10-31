@@ -803,7 +803,7 @@
    const record=bestCandles(cardAsset(c),c.interval);
    if(!record?.data?.length){host.textContent='In attesa di candele OHLC reali…';return;}
    const s=chartIndicators(record.data),last=a=>{const v=a.at(-1);return Number.isFinite(v)?v.toFixed(3):'—';};
-   const values=[['MACD (12,26,9)',last(s.macd)+' / '+last(s.signal)],['Stoch RSI (14,14)',last(s.stoch)],['RSI (14)',last(s.rsi)]];
+   const values=[['RSI (14)',last(s.rsi)],['Stoch RSI (14,14)',last(s.stoch)],['MACD (12,26,9)',last(s.macd)+' / '+last(s.signal)]];
    host.replaceChildren(...values.map(([label,value])=>{const item=document.createElement('div');item.className='v526-stat';const l=document.createElement('span');l.textContent=label;const v=document.createElement('strong');v.textContent=value;item.append(l,v);return item;}));
    source.textContent='Solo MACD, Stochastic RSI e RSI · '+record.data.length+' candele OHLC · '+(record.source||'API');
  }
