@@ -138,9 +138,12 @@ const state={
  holdings:Array.isArray(load('holdings',[]))?load('holdings',[]):[],
  alerts:Array.isArray(load('alerts',[]))?load('alerts',[]):[],
  theme:load('theme','dark'),region:null,marketFilter:'all',marketSearch:'',dialogId:null,chartShift:0,chartHover:null,
- land:'',searchResults:[],errorText:'',cryptoExpanded:false
+ land:'',searchResults:[],errorText:'',cryptoExpanded:false,
+ solarMode:load('solarMode',typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches?'real':'cycle'),
+ solarEpoch:Date.now(),solarStart:Date.now(),solarLastRoot:null,solarLastUpdate:0,solarLastStatus:0
 };
 if(!SECTIONS[state.page])state.page='global';
+if(!['cycle','real'].includes(state.solarMode))state.solarMode='cycle';
 if(!['dark','light'].includes(state.theme))state.theme='dark';
 document.body.className='theme-'+state.theme;
 const safeDate=t=>{const d=new Date(t);return Number.isFinite(d.getTime())?d:null};
@@ -187,6 +190,120 @@ function mapArc(a,b,red){
  const s=coord(...a.pin),e=coord(...b.pin),cx=(s[0]+e[0])/2,cy=(s[1]+e[1])/2-65;
  return '<path class="region-arc'+(red?' red':'')+'" d="M'+s.map(x=>x.toFixed(1)).join(' ')+' Q'+cx.toFixed(1)+' '+cy.toFixed(1)+' '+e.map(x=>x.toFixed(1)).join(' ')+'"/>';
 }
+/* World map daylight animation — NOAA approximate solar coordinates.
+   "Ciclo animato" is explicitly a 24h/120s timelapse; "Ora reale" uses the actual UTC clock. */
+const SOLAR_RADIANS=Math.PI/180;
+const SOLAR_DAY=86400000;
+const SOLAR_CYCLE_DURATION=120000;
+const SOLAR_CITY_POINTS=[
+ [-122.4,37.8],[-118.2,34.1],[-74,40.7],[-87.6,41.9],[-99.1,19.4],
+ [-79.4,43.7],[-46.6,-23.5],[-58.4,-34.6],[-0.13,51.5],[2.35,48.86],
+ [8.68,50.11],[12.5,41.9],[13.4,52.5],[-3.7,40.4],[28,-26.2],
+ [31.2,30],[28.9,41],[46.7,24.7],[55.3,25.2],[51.4,35.7],
+ [72.9,19.1],[77.2,28.6],[90.4,23.8],[103.8,1.35],[100.5,13.75],
+ [114.2,22.3],[121.5,31.2],[116.4,39.9],[126.9,37.5],[139.7,35.7],
+ [135.5,34.7],[151.2,-33.9],[144.9,-37.8],[174.8,-36.9]
+];
+function solarStarsSvg(){
+ let out='';
+ const fract=n=>{const v=Math.sin(n*127.1+91.3)*43758.5453;return v-Math.floor(v)};
+ for(let i=0;i<128;i++){
+  const x=(fract(i*13+1)*1000).toFixed(1),y=(fract(i*13+2)*580).toFixed(1);
+  const radius=(.35+fract(i*13+3)*.8).toFixed(2);
+  const opacity=(.2+fract(i*13+4)*.42).toFixed(2);
+  out+='<circle class="solar-star" cx="'+x+'" cy="'+y+'" r="'+radius+'" opacity="'+opacity+'" style="animation-delay:-'+(i%9*.7).toFixed(1)+'s"/>';
+ }
+ return out;
+}
+function solarNightCitiesSvg(){
+ return SOLAR_CITY_POINTS.map(([lon,lat],i)=>{
+  const c=coord(lon,lat),x=c[0].toFixed(1),y=c[1].toFixed(1);
+  const small=(i%3)+1;
+  return '<g class="solar-night-city" data-lon="'+lon+'" data-lat="'+lat+'" opacity="0">'+
+   '<circle cx="'+x+'" cy="'+y+'" r="'+(4+small)+'" fill="#ffcb73" opacity=".40" filter="url(#city-glow)"/>'+
+   '<circle cx="'+x+'" cy="'+y+'" r="'+(1.2+small*.16)+'" fill="#ffe6a1" opacity=".9"/>'+
+   '<circle cx="'+(c[0]+3).toFixed(1)+'" cy="'+(c[1]-2).toFixed(1)+'" r=".65" fill="#ffd28d" opacity=".75"/>'+
+   '</g>';
+ }).join('');
+}
+function solarClock(){
+ if(state.solarMode==='real')return new Date();
+ const d=new Date(state.solarStart);
+ const midnight=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate());
+ const startOffset=state.solarStart-midnight;
+ const advanced=Math.max(0,Date.now()-state.solarEpoch)*(SOLAR_DAY/SOLAR_CYCLE_DURATION);
+ return new Date(midnight+(startOffset+advanced)%SOLAR_DAY);
+}
+function solarCoordinates(date){
+ const year=date.getUTCFullYear(),month=date.getUTCMonth(),day=date.getUTCDate();
+ const daysInYear=(Date.UTC(year+1,0,1)-Date.UTC(year,0,1))/SOLAR_DAY;
+ const dayOfYear=(Date.UTC(year,month,day)-Date.UTC(year,0,1))/SOLAR_DAY+1;
+ const utcHour=date.getUTCHours()+date.getUTCMinutes()/60+date.getUTCSeconds()/3600+date.getUTCMilliseconds()/3600000;
+ const gamma=2*Math.PI/daysInYear*(dayOfYear-1+(utcHour-12)/24);
+ const decl=.006918-.399912*Math.cos(gamma)+.070257*Math.sin(gamma)
+  -.006758*Math.cos(2*gamma)+.000907*Math.sin(2*gamma)
+  -.002697*Math.cos(3*gamma)+.00148*Math.sin(3*gamma);
+ const eqtime=229.18*(.000075+.001868*Math.cos(gamma)-.032077*Math.sin(gamma)
+  -.014615*Math.cos(2*gamma)-.040849*Math.sin(2*gamma));
+ const longitude=((180-(utcHour*60+eqtime)/4+540)%360)-180;
+ return {lat:decl,lon:longitude};
+}
+function solarAltitudeSin(lon,lat,sun){
+ const phi=lat*SOLAR_RADIANS;
+ return Math.sin(phi)*Math.sin(sun.lat)+Math.cos(phi)*Math.cos(sun.lat)*Math.cos((lon-sun.lon)*SOLAR_RADIANS);
+}
+function solarTerminatorPath(sun,side='night',overshoot=0){
+ const northSun=sun.lat>=0,night=side==='night';
+ const includeBottom=night?northSun:!northSun;
+ const curve=[];
+ const sine=Math.sin(sun.lat),den=Math.abs(sine)<.001?(northSun?.001:-.001):sine;
+ for(let x=0;x<=1000;x+=5){
+  const lon=-180+x*.36,ha=(lon-sun.lon)*SOLAR_RADIANS;
+  const latitude=Math.atan(-Math.cos(sun.lat)*Math.cos(ha)/den)/SOLAR_RADIANS;
+  const y=Math.max(0,Math.min(580,(90-latitude)*580/180+(includeBottom?-overshoot:overshoot)));
+  curve.push((x===0?'L':'L')+x+' '+y.toFixed(2));
+ }
+ return 'M0 '+(includeBottom?580:0)+' '+curve.join(' ')+' L1000 '+(includeBottom?580:0)+' Z';
+}
+function updateWorldSunlight(force=false){
+ if(state.page!=='global'||document.hidden)return;
+ const root=$('#worldMap');if(!root)return;
+ const now=Date.now();
+ const same=state.solarLastRoot===root;
+ const delay=state.solarMode==='cycle'?105:15000;
+ if(!force&&same&&now-state.solarLastUpdate<delay)return;
+ const night=root.querySelector('#worldNightPath'),day=root.querySelector('#worldDayPath');
+ const twilight=root.querySelector('#worldTwilightPath'),nightClip=root.querySelector('#worldNightClipPath');
+ if(!night||!day||!twilight||!nightClip)return;
+ const date=solarClock(),sun=solarCoordinates(date);
+ const nightGeometry=solarTerminatorPath(sun,'night');
+ night.setAttribute('d',nightGeometry);
+ nightClip.setAttribute('d',nightGeometry);
+ twilight.setAttribute('d',solarTerminatorPath(sun,'night',14));
+ day.setAttribute('d',solarTerminatorPath(sun,'day'));
+ const sunP=coord(sun.lon,sun.lat/SOLAR_RADIANS);
+ const moonLon=((sun.lon+360)%360)-180; // antipodal longitude
+ const moonP=coord(moonLon,-sun.lat/SOLAR_RADIANS);
+ const sunNode=root.querySelector('#worldSunMarker'),moonNode=root.querySelector('#worldMoonMarker');
+ if(sunNode)sunNode.setAttribute('transform','translate('+sunP[0].toFixed(2)+' '+sunP[1].toFixed(2)+')');
+ if(moonNode)moonNode.setAttribute('transform','translate('+moonP[0].toFixed(2)+' '+moonP[1].toFixed(2)+')');
+ root.querySelectorAll('.solar-night-city').forEach(city=>{
+  const altitude=solarAltitudeSin(Number(city.dataset.lon),Number(city.dataset.lat),sun);
+  const opacity=Math.max(0,Math.min(.97,(-altitude+.01)*6));
+  city.setAttribute('opacity',opacity.toFixed(2));
+ });
+ if(force||now-state.solarLastStatus>950){
+  const displayTime=new Intl.DateTimeFormat('it-IT',{timeZone:'UTC',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(date);
+  const label=root.querySelector('#worldSolarStatus');
+  if(label)label.textContent=(state.solarMode==='cycle'?'Time-lapse simulato · ':'Ora solare approssimata · ')+displayTime+' UTC';
+  const help=root.querySelector('#worldSolarHelp');
+  if(help)help.textContent=state.solarMode==='cycle'?'24 ore in 2 minuti · passa a Ora reale per la luce attuale':'Posizione del Sole basata sull’ora UTC attuale';
+  state.solarLastStatus=now;
+ }
+ state.solarLastRoot=root;
+ state.solarLastUpdate=now;
+}
+
 function svgMap(){
  let graticule='';
  for(let lon=-150;lon<=150;lon+=30){const x=coord(lon,0)[0];graticule+='<path class="longitude" d="M'+x+' 0V580"/>';}
@@ -205,21 +322,38 @@ function svgMap(){
   return '<circle cx="'+c[0]+'" cy="'+c[1]+'" r="17" fill="'+color+'" opacity=".15" filter="url(#city-glow)"/><circle cx="'+c[0]+'" cy="'+c[1]+'" r="3.4" fill="'+color+'"/>'+dots;
  }).join('');
  return '<svg class="map-svg" viewBox="0 0 1000 580" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Mappa interattiva dei mercati mondiali">'+
- '<defs><radialGradient id="globeGrad"><stop offset="0" stop-color="#103b52"/><stop offset=".64" stop-color="#0a263b"/><stop offset="1" stop-color="#061524"/></radialGradient><filter id="city-glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="5"/></filter></defs>'+
+ '<defs><radialGradient id="globeGrad"><stop offset="0" stop-color="#103b52"/><stop offset=".64" stop-color="#0a263b"/><stop offset="1" stop-color="#061524"/></radialGradient>'+
+ '<radialGradient id="sunLightGlow"><stop stop-color="#ffe0a3" stop-opacity=".44"/><stop offset=".4" stop-color="#8ed9de" stop-opacity=".17"/><stop offset="1" stop-color="#8ed9de" stop-opacity="0"/></radialGradient>'+
+ '<filter id="city-glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="5"/></filter>'+
+ '<filter id="solarHazeBlur" x="-20%" y="-30%" width="140%" height="160%"><feGaussianBlur stdDeviation="8"/></filter>'+
+ '<clipPath id="worldNightClip"><path id="worldNightClipPath" d=""/></clipPath></defs>'+
  '<rect width="1000" height="580" fill="url(#globeGrad)"/><g class="graticule">'+graticule+'</g>'+
  '<g class="land-group" id="landGroup">'+(state.land||FALLBACK_LAND.map(d=>'<path class="land" d="'+d+'"/>').join(''))+'</g>'+
+ '<g class="world-solar-illumination" aria-hidden="true" pointer-events="none">'+
+ '<path id="worldDayPath" fill="#76bac4" opacity=".13" d=""/>'+
+ '<path id="worldTwilightPath" fill="#375c70" opacity=".38" filter="url(#solarHazeBlur)" d=""/>'+
+ '<path id="worldNightPath" fill="#010816" opacity=".77" d=""/>'+
+ '</g>'+
+ '<g class="world-night-stars" clip-path="url(#worldNightClip)" pointer-events="none" aria-hidden="true">'+solarStarsSvg()+'</g>'+
+ '<g class="world-night-cities" pointer-events="none" aria-hidden="true">'+solarNightCitiesSvg()+'</g>'+
+ '<g id="worldSunMarker" class="world-sun-marker" pointer-events="none" aria-hidden="true"><circle r="43" fill="url(#sunLightGlow)"/><circle r="3.8" fill="#ffdc91" opacity=".87"/><circle r="7.5" fill="none" stroke="#ffdc91" stroke-opacity=".34"/></g>'+
+ '<g id="worldMoonMarker" class="world-moon-marker" pointer-events="none" aria-hidden="true"><circle r="6" fill="#a6c7ef" opacity=".23"/><path d="M-1 -6A6 6 0 1 0 6 2A5 5 0 0 1-1 -6Z" fill="#c8dcf3" opacity=".72"/></g>'+
  '<g>'+arcs+'</g><g aria-hidden="true">'+lights+'</g></svg>';
 }
 
 function mapPanel(){
  return '<section class="world-map-panel" id="worldMap" aria-label="Mappa dei mercati mondiali">'+
- '<div class="world-map-header"><span>WORLD MARKET MAP</span></div><div class="map-stage">'+svgMap()+
+ '<div class="world-map-header"><span>WORLD MARKET MAP</span><div class="world-solar-controls" role="group" aria-label="Modalità illuminazione mappa">'+
+ '<button type="button" class="world-solar-btn'+(state.solarMode==='cycle'?' active':'')+'" data-solar-mode="cycle" aria-pressed="'+(state.solarMode==='cycle')+'" title="Ciclo giorno e notte accelerato">◉ Ciclo animato</button>'+
+ '<button type="button" class="world-solar-btn'+(state.solarMode==='real'?' active':'')+'" data-solar-mode="real" aria-pressed="'+(state.solarMode==='real')+'" title="Illuminazione secondo l’ora UTC attuale">◷ Ora reale</button>'+
+ '</div></div><div class="map-stage">'+svgMap()+
  REGIONS.map(r=>{
  const p=coord(...r.pin),avg=meanRegion(r),tr=trend(avg),selected=state.region===r.id;
  return '<button type="button" class="map-pin'+(selected?' selected':'')+'" data-region="'+r.id+'" data-trend="'+tr+'" style="left:'+(p[0]/10).toFixed(2)+'%;top:'+(p[1]/5.8).toFixed(2)+'%" aria-label="'+esc(r.italian)+': '+pct(avg)+'" title="'+esc(r.italian)+'"></button>'+
  '<button type="button" class="map-callout'+(selected?' selected':'')+'" data-region="'+r.id+'" data-trend="'+tr+'" style="left:'+r.callout[0]+'%;top:'+r.callout[1]+'%" aria-label="Apri '+esc(r.italian)+'"><strong>'+esc(r.name)+'</strong><span>'+pct(avg)+'</span></button>';
  }).join('')+
- '<div class="map-hint">● Seleziona una regione · media degli indici disponibili</div></div>'+geographicLegend()+
+ '<div class="map-hint">● Seleziona una regione · media degli indici disponibili</div></div>'+
+ '<div class="world-solar-statusbar"><span class="world-solar-status" id="worldSolarStatus">Illuminazione terrestre…</span><span class="world-solar-help" id="worldSolarHelp">Ciclo giorno/notte</span></div>'+geographicLegend()+
  (state.region?regionInsight(REGION_BY_ID[state.region]):'')+'</section>';
 }
 function regionInsight(r){
@@ -609,7 +743,10 @@ function render(){
  const main=$('#pageContainer');
  main.innerHTML=PAGE_RENDERERS[state.page]();
  updateNav();
- if(state.page==='global'&&!state.land)loadWorldShape();
+ if(state.page==='global'){
+  if(!state.land)loadWorldShape();
+  updateWorldSunlight(true);
+ }
 }
 function navigate(page){
  if(!SECTIONS[page])page='global';
@@ -937,6 +1074,16 @@ function setupEvents(){
  $('#pageContainer').addEventListener('click',e=>{
   const btn=e.target.closest('button,a,tr[data-asset]');
   if(!btn)return;
+  if(btn.dataset.solarMode){
+   const mode=btn.dataset.solarMode;
+   if(mode==='cycle'||mode==='real'){
+    state.solarMode=mode;save('solarMode',mode);
+    state.solarEpoch=Date.now();state.solarStart=Date.now();
+    $$('#worldMap [data-solar-mode]').forEach(b=>{const active=b.dataset.solarMode===mode;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active))});
+    updateWorldSunlight(true);
+   }
+   return;
+  }
   if(btn.dataset.cryptoExpand){state.cryptoExpanded=!state.cryptoExpanded;render();return;}
   if(btn.dataset.asset){openAsset(btn.dataset.asset);return;}
   if(btn.dataset.region){selectRegion(btn.dataset.region);return;}
@@ -989,6 +1136,7 @@ function setupEvents(){
 function init(){
  setupEvents();setTheme(state.theme);updateClock();
  setInterval(updateClock,30000);
+ setInterval(()=>{if(state.page==='global'&&!document.hidden)updateWorldSunlight()},120);
  render();
  fetchQuotes();
  connectCryptoStream();

@@ -397,3 +397,58 @@ body.theme-light .market-panel .instrument-row:hover{background:#e7f1f9}
 .dialog-header h2 .forex-pair-logo{width:38px;min-width:38px;flex-basis:38px;height:32px}
 .dialog-header h2 .forex-pair-part{width:26px;height:26px}
 @media(max-width:650px){.forex-pair-logo{flex-basis:27px;min-width:27px;width:27px}.forex-pair-part{width:19px;height:19px}}
+
+
+/* World markets: animated day/night sunlight terminator and night-time city glow */
+.world-map-header{
+ top:9px;left:13px;right:13px;display:flex;align-items:center;
+ justify-content:space-between;gap:9px;flex-wrap:wrap;pointer-events:auto;z-index:8;
+}
+.world-map-header>span{flex:0 0 auto;letter-spacing:.12em;color:#83bfd3;font-weight:770}
+.world-solar-controls{
+ display:inline-flex;align-items:center;gap:3px;
+ padding:3px;border-radius:9px;border:1px solid #36566c;
+ background:#061724e6;box-shadow:0 5px 14px #0109115e;
+}
+.world-solar-btn{
+ appearance:none;display:inline-flex;align-items:center;justify-content:center;
+ background:transparent;border:1px solid transparent;border-radius:6px;
+ color:#8bb4c9;padding:6px 9px;font-size:10px;line-height:1;
+ font-weight:690;white-space:nowrap;transition:color .2s ease,background .2s ease,border-color .2s ease;
+}
+.world-solar-btn:hover{color:#e2f7ff;background:#214258}
+.world-solar-btn.active{
+ background:linear-gradient(120deg,#1d527a,#173950);
+ border-color:#3c7898;color:#e9faff;box-shadow:inset 0 0 0 1px #4fa5d322;
+}
+.world-night-stars .solar-star{fill:#b6e4fa;animation:solarStarTwinkle 4.5s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:center}
+@keyframes solarStarTwinkle{from{opacity:.08;transform:scale(.8)}to{opacity:.78;transform:scale(1.18)}}
+.world-solar-illumination,.world-night-stars,.world-night-cities,.world-sun-marker,.world-moon-marker{pointer-events:none}
+.world-night-cities .solar-night-city circle{filter:drop-shadow(0 0 2px #ffb85344)}
+.world-solar-statusbar{
+ display:flex;align-items:center;justify-content:space-between;gap:12px;
+ flex-wrap:wrap;padding:8px 12px 6px;border-top:1px solid #17374a;
+ background:linear-gradient(90deg,#06192bd9,#081d2ad9);
+ font-size:10px;line-height:1.5;
+}
+.world-solar-status{color:#e9c886;font-variant-numeric:tabular-nums;font-weight:740}
+.world-solar-status:before{content:"☀";font-size:12px;margin-right:7px;color:#f7d38b}
+.world-solar-help{font-size:10px;color:#82adc1}
+.world-map-panel .map-legend{padding-top:7px}
+.theme-light .world-solar-controls{background:#10283de9}
+.theme-light .world-solar-statusbar{color:#effaff}
+@media(max-width:650px){
+ .world-map-header{left:7px;right:7px;top:5px;gap:3px}
+ .world-map-header>span{font-size:8px}
+ .world-solar-controls{gap:1px;padding:2px}
+ .world-solar-btn{font-size:9px;padding:5px 6px}
+ .world-solar-statusbar{gap:3px;padding:7px 9px}
+ .world-solar-status,.world-solar-help{font-size:9px}
+ .world-map-panel .map-hint{bottom:10px;left:8px;font-size:8px}
+}
+@media(max-width:385px){
+ .world-map-header>span{display:none}
+ .world-map-header{justify-content:flex-end}
+ .world-solar-help{display:none}
+}
+@media(prefers-reduced-motion:reduce){.world-night-stars .solar-star{animation:none}}
