@@ -381,3 +381,19 @@ body.theme-light .market-panel .instrument-row:hover{background:#e7f1f9}
  .asset-logo.crypto-logo{width:23px;height:23px;min-width:23px;min-height:23px}
  .market-table-asset .crypto-logo{width:22px;height:22px;min-width:22px;min-height:22px}
 }
+
+/* Forex logo pair: base and quote flags, in all Forex views */
+.forex-pair-logo{position:relative;display:inline-block;flex:0 0 30px;width:30px;min-width:30px;height:26px;vertical-align:middle}
+.forex-pair-part{position:absolute;top:3px;display:grid;place-items:center;width:20px;height:20px;border:1.5px solid var(--panel);border-radius:50%;overflow:hidden;background:#15304a;box-shadow:0 1px 4px #0005}
+.forex-part-0{left:0;z-index:1}
+.forex-part-1{right:0;z-index:2}
+.forex-flag-fallback{position:absolute;inset:0;display:grid;place-items:center;font-size:14px;line-height:1}
+.forex-flag-image{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:cover}
+.instrument-row:has(.forex-pair-logo){grid-template-columns:30px minmax(0,1fr) auto auto}
+.market-table-asset .forex-pair-logo,.search-asset-label .forex-pair-logo{flex-basis:30px}
+.index-mini .crypto-mini-title .forex-pair-logo{flex-basis:26px;width:26px;min-width:26px;height:20px}
+.index-mini .crypto-mini-title .forex-pair-part{width:18px;height:18px;top:1px}
+.dialog-header h2:has(.forex-pair-logo){display:flex;align-items:center;gap:10px}
+.dialog-header h2 .forex-pair-logo{width:38px;min-width:38px;flex-basis:38px;height:32px}
+.dialog-header h2 .forex-pair-part{width:26px;height:26px}
+@media(max-width:650px){.forex-pair-logo{flex-basis:27px;min-width:27px;width:27px}.forex-pair-part{width:19px;height:19px}}

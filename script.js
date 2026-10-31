@@ -178,7 +178,7 @@ function selectRegion(id){state.region=state.region===id?null:id;render();const 
 function indexCard(id){
  const a=ASSET_BY_ID[id],q=quote(id),tr=trend(q&&q.change);
  return '<button class="index-mini panel" type="button" data-asset="'+esc(id)+'" data-trend="'+tr+'" aria-label="Apri '+esc(a.name)+'">'+
- '<span class="mini-title'+(a.group==='crypto'?' crypto-mini-title':'')+'">'+(a.group==='crypto'?assetLogo(a):'')+'<span>'+esc(a.short)+'</span></span><span class="mini-price mono">'+assetValue(a)+'</span><span class="mini-country">'+esc(a.group==='crypto'?'Crypto':a.country||'')+'</span>'+
+ '<span class="mini-title'+(showAssetLogo(a)?' crypto-mini-title':'')+'">'+(showAssetLogo(a)?assetLogo(a):'')+'<span>'+esc(a.short)+'</span></span><span class="mini-price mono">'+assetValue(a)+'</span><span class="mini-country">'+esc(a.group==='crypto'?'Crypto':a.country||'')+'</span>'+
  '<b class="mini-change change">'+pct(q&&q.change)+'</b>'+sparkLine(id)+'</button>';
 }
 function geographicLegend(){return '<div class="map-legend"><span style="color:var(--green)"><i></i> Rialzo</span><span style="color:var(--red)"><i></i> Ribasso</span><span style="color:var(--muted)"><i></i> N/D</span></div>';}
@@ -254,8 +254,27 @@ function coinLogoUrl(url){
   return ['coin-images.coingecko.com','assets.coingecko.com'].includes(parsed.hostname)&&parsed.protocol==='https:'?parsed.href:'';
  }catch(e){return ''}
 }
+const FOREX_FLAGS={
+ eurusd:[['eu','🇪🇺'],['us','🇺🇸']],
+ gbpusd:[['gb','🇬🇧'],['us','🇺🇸']],
+ usdjpy:[['us','🇺🇸'],['jp','🇯🇵']],
+ usdchf:[['us','🇺🇸'],['ch','🇨🇭']],
+ audusd:[['au','🇦🇺'],['us','🇺🇸']],
+ usdcny:[['us','🇺🇸'],['cn','🇨🇳']]
+};
+function forexPairLogo(a){
+ const countries=FOREX_FLAGS[a.id];
+ if(!countries)return '<span class="asset-logo" aria-hidden="true">⇄</span>';
+ return '<span class="forex-pair-logo" aria-hidden="true">'+countries.map(([code,emoji],i)=>
+  '<span class="forex-pair-part forex-part-'+i+'"><span class="forex-flag-fallback">'+emoji+'</span>'+
+   '<img class="forex-flag-image" src="https://flagcdn.com/w40/'+code+'.png" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">'+
+  '</span>').join('')+'</span>';
+}
+function showAssetLogo(a){return a&&['crypto','forex'].includes(a.group);}
+
 function assetLogo(a){
  const fallback=esc(a.icon||(a.short||a.name||'?').trim().charAt(0));
+ if(a.group==='forex')return forexPairLogo(a);
  if(a.group!=='crypto')return '<span class="asset-logo asset-'+esc(a.id)+'">'+fallback+'</span>';
  const q=quote(a.id),logo=coinLogoUrl(q&&q.logo);
  return '<span class="asset-logo crypto-logo asset-'+esc(a.id)+'" aria-hidden="true">'+
@@ -466,7 +485,7 @@ function homePage(){
 function tableForAssets(items,emptyTitle){
  if(!items.length)return '<div class="empty-state"><h3>'+esc(emptyTitle||'Nessun mercato da mostrare')+'</h3><p>Modifica la ricerca o aggiungi strumenti alla watchlist.</p></div>';
  return '<div class="data-table-scroll"><table class="data-table"><thead><tr><th>Strumento</th><th>Ultimo prezzo</th><th>Variazione</th><th>Storico</th><th>Fonte</th></tr></thead><tbody>'+
- items.map(a=>'<tr tabindex="0" data-asset="'+a.id+'" aria-label="Dettagli '+esc(a.name)+'"><td><span class="market-table-asset">'+(a.group==='crypto'?assetLogo(a):'')+'<span><strong>'+esc(a.name)+'</strong><small>'+esc(a.symbol)+'</small></span></span></td>'+
+ items.map(a=>'<tr tabindex="0" data-asset="'+a.id+'" aria-label="Dettagli '+esc(a.name)+'"><td><span class="market-table-asset">'+(showAssetLogo(a)?assetLogo(a):'')+'<span><strong>'+esc(a.name)+'</strong><small>'+esc(a.symbol)+'</small></span></span></td>'+
  '<td>'+assetValue(a)+'</td><td class="'+classArrow(a.id)+'">'+pct(change(a.id))+'</td>'+
  '<td class="'+classArrow(a.id)+'">'+sparkLine(a.id,90,26)+'</td><td><small>'+esc(a.group==='crypto'?'CoinGecko':'Yahoo Finance')+'</small></td></tr>').join('')+
  '</tbody></table></div>';
@@ -520,7 +539,7 @@ function portfolioPage(){
  '<section class="content-card panel" style="margin-top:13px"><h3>Le tue posizioni</h3>'+
  (state.holdings.length?'<div class="data-table-scroll"><table class="data-table"><thead><tr><th>Strumento</th><th>Quantità</th><th>Carico</th><th>Prezzo attuale</th><th>Valore stimato</th><th></th></tr></thead><tbody>'+
  state.holdings.map((h,i)=>{const a=ASSET_BY_ID[h.id],q=quote(h.id);if(!a)return '';
- return '<tr><td><span class="market-table-asset">'+(a.group==='crypto'?assetLogo(a):'')+'<strong>'+esc(a.name)+'</strong></span></td><td>'+Number(h.qty).toLocaleString('it-IT')+'</td><td>$'+Number(h.cost).toLocaleString('it-IT',PREC)+'</td><td>'+assetValue(a)+'</td><td>'+(num(q&&q.value)?'$'+(q.value*Number(h.qty)).toLocaleString('it-IT',PREC):'—')+'</td><td><button class="btn btn-small" data-delete-holding="'+i+'">Rimuovi</button></td></tr>';
+ return '<tr><td><span class="market-table-asset">'+(showAssetLogo(a)?assetLogo(a):'')+'<strong>'+esc(a.name)+'</strong></span></td><td>'+Number(h.qty).toLocaleString('it-IT')+'</td><td>$'+Number(h.cost).toLocaleString('it-IT',PREC)+'</td><td>'+assetValue(a)+'</td><td>'+(num(q&&q.value)?'$'+(q.value*Number(h.qty)).toLocaleString('it-IT',PREC):'—')+'</td><td><button class="btn btn-small" data-delete-holding="'+i+'">Rimuovi</button></td></tr>';
  }).join('')+'</tbody></table></div>':'<div class="empty-state"><h3>Nessuna posizione</h3><p>Inserisci un asset, la quantità e il prezzo di carico.</p></div>')+
  '<p class="notice">Questi sono calcoli indicativi su dati pubblici, non un rendiconto fiscale o patrimoniale. Informazioni conservate solo sul dispositivo.</p></section>';
 }
@@ -642,7 +661,7 @@ function updateSearch(){
  const input=$('#searchInput'),menu=$('#searchMenu'),matches=findAssets(input.value);
  state.searchResults=matches;
  if(!matches.length){menu.hidden=true;input.setAttribute('aria-expanded','false');return}
- menu.innerHTML=matches.map(a=>'<button type="button" data-asset="'+a.id+'"><span class="search-asset-label">'+(a.group==='crypto'?assetLogo(a):'')+'<span><strong>'+esc(a.name)+'</strong><small>'+esc(a.group.toUpperCase()+' · '+a.symbol)+'</small></span></span><span class="'+classArrow(a.id)+'">'+assetValue(a)+'</span></button>').join('');
+ menu.innerHTML=matches.map(a=>'<button type="button" data-asset="'+a.id+'"><span class="search-asset-label">'+(showAssetLogo(a)?assetLogo(a):'')+'<span><strong>'+esc(a.name)+'</strong><small>'+esc(a.group.toUpperCase()+' · '+a.symbol)+'</small></span></span><span class="'+classArrow(a.id)+'">'+assetValue(a)+'</span></button>').join('');
  menu.hidden=false;input.setAttribute('aria-expanded','true');
 }
 function loadWorldShape(){
@@ -686,7 +705,7 @@ function refreshDialog(){
  const a=ASSET_BY_ID[state.dialogId];if(!a)return;
  const q=quote(a.id),isWatch=state.watch.includes(a.id);
  $('#dialogTitle').textContent=a.name;
- if(a.group==='crypto')$('#dialogTitle').insertAdjacentHTML('afterbegin',assetLogo(a));
+ if(showAssetLogo(a))$('#dialogTitle').insertAdjacentHTML('afterbegin',assetLogo(a));
  $('#dialogCategory').textContent=a.group.toUpperCase()+' · '+a.symbol;
  $('#dialogSubtitle').textContent=a.where||'Quotazione di mercato';
  $('#dialogWatch').textContent=(isWatch?'★ Rimuovi dalla Watchlist':'☆ Aggiungi alla Watchlist');
@@ -896,7 +915,7 @@ function setupCanvasInteractions(){
 function setupEvents(){
  document.addEventListener('error',e=>{
   const img=e.target;
-  if(img&&img.tagName==='IMG'&&img.classList.contains('crypto-logo-image'))img.remove();
+  if(img&&img.tagName==='IMG'&&(img.classList.contains('crypto-logo-image')||img.classList.contains('forex-flag-image')))img.remove();
  },true);
  $$('.side-link[data-page]').forEach(btn=>btn.addEventListener('click',()=>navigate(btn.dataset.page)));
  $('#menuToggle').addEventListener('click',()=>$('#sidebar').classList.toggle('open'));
