@@ -44,5 +44,16 @@ jobs:
           git add global-quotes.json
           if ! git diff --cached --quiet; then
             git commit -m "data(global): refresh verified market quotes [skip ci]"
-            git push
+            for attempt in 1 2 3 4; do
+              git fetch origin main
+              git rebase origin/main
+              if git push origin HEAD:main; then
+                echo "Market data published on attempt $attempt"
+                exit 0
+              fi
+              echo "Remote advanced during quote refresh; retrying"
+              sleep 2
+            done
+            echo "Could not publish after four non-destructive retries"
+            exit 1
           fi
