@@ -139,11 +139,9 @@ const state={
  alerts:Array.isArray(load('alerts',[]))?load('alerts',[]):[],
  theme:load('theme','dark'),region:null,marketFilter:'all',marketSearch:'',dialogId:null,chartShift:0,chartHover:null,
  land:'',searchResults:[],errorText:'',cryptoExpanded:false,
- solarMode:load('solarMode',typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches?'real':'cycle'),
- solarEpoch:Date.now(),solarStart:Date.now(),solarLastRoot:null,solarLastUpdate:0,solarLastStatus:0
+ solarLastRoot:null,solarLastUpdate:0,solarLastStatus:0
 };
 if(!SECTIONS[state.page])state.page='global';
-if(!['cycle','real'].includes(state.solarMode))state.solarMode='cycle';
 if(!['dark','light'].includes(state.theme))state.theme='dark';
 document.body.className='theme-'+state.theme;
 const safeDate=t=>{const d=new Date(t);return Number.isFinite(d.getTime())?d:null};
@@ -190,11 +188,10 @@ function mapArc(a,b,red){
  const s=coord(...a.pin),e=coord(...b.pin),cx=(s[0]+e[0])/2,cy=(s[1]+e[1])/2-65;
  return '<path class="region-arc'+(red?' red':'')+'" d="M'+s.map(x=>x.toFixed(1)).join(' ')+' Q'+cx.toFixed(1)+' '+cy.toFixed(1)+' '+e.map(x=>x.toFixed(1)).join(' ')+'"/>';
 }
-/* World map daylight animation — NOAA approximate solar coordinates.
-   "Ciclo animato" is explicitly a 24h/120s timelapse; "Ora reale" uses the actual UTC clock. */
+/* Earth day/night follows the real current UTC time using approximate NOAA solar coordinates.
+   No accelerated or simulated day/night cycle. */
 const SOLAR_RADIANS=Math.PI/180;
 const SOLAR_DAY=86400000;
-const SOLAR_CYCLE_DURATION=120000;
 const SOLAR_CITY_POINTS=[
  [-122.4,37.8],[-118.2,34.1],[-74,40.7],[-87.6,41.9],[-99.1,19.4],
  [-79.4,43.7],[-46.6,-23.5],[-58.4,-34.6],[-0.13,51.5],[2.35,48.86],
@@ -225,14 +222,6 @@ function solarNightCitiesSvg(){
    '<circle cx="'+(c[0]+3).toFixed(1)+'" cy="'+(c[1]-2).toFixed(1)+'" r=".65" fill="#ffd28d" opacity=".75"/>'+
    '</g>';
  }).join('');
-}
-function solarClock(){
- if(state.solarMode==='real')return new Date();
- const d=new Date(state.solarStart);
- const midnight=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate());
- const startOffset=state.solarStart-midnight;
- const advanced=Math.max(0,Date.now()-state.solarEpoch)*(SOLAR_DAY/SOLAR_CYCLE_DURATION);
- return new Date(midnight+(startOffset+advanced)%SOLAR_DAY);
 }
 function solarCoordinates(date){
  const year=date.getUTCFullYear(),month=date.getUTCMonth(),day=date.getUTCDate();
@@ -270,38 +259,38 @@ function updateWorldSunlight(force=false){
  const root=$('#worldMap');if(!root)return;
  const now=Date.now();
  const same=state.solarLastRoot===root;
- const delay=state.solarMode==='cycle'?105:15000;
- if(!force&&same&&now-state.solarLastUpdate<delay)return;
- const night=root.querySelector('#worldNightPath'),day=root.querySelector('#worldDayPath');
- const twilight=root.querySelector('#worldTwilightPath'),nightClip=root.querySelector('#worldNightClipPath');
- if(!night||!day||!twilight||!nightClip)return;
- const date=solarClock(),sun=solarCoordinates(date);
- const nightGeometry=solarTerminatorPath(sun,'night');
- night.setAttribute('d',nightGeometry);
- nightClip.setAttribute('d',nightGeometry);
- twilight.setAttribute('d',solarTerminatorPath(sun,'night',14));
- day.setAttribute('d',solarTerminatorPath(sun,'day'));
- const sunP=coord(sun.lon,sun.lat/SOLAR_RADIANS);
- const moonLon=((sun.lon+360)%360)-180; // antipodal longitude
- const moonP=coord(moonLon,-sun.lat/SOLAR_RADIANS);
- const sunNode=root.querySelector('#worldSunMarker'),moonNode=root.querySelector('#worldMoonMarker');
- if(sunNode)sunNode.setAttribute('transform','translate('+sunP[0].toFixed(2)+' '+sunP[1].toFixed(2)+')');
- if(moonNode)moonNode.setAttribute('transform','translate('+moonP[0].toFixed(2)+' '+moonP[1].toFixed(2)+')');
- root.querySelectorAll('.solar-night-city').forEach(city=>{
-  const altitude=solarAltitudeSin(Number(city.dataset.lon),Number(city.dataset.lat),sun);
-  const opacity=Math.max(0,Math.min(.97,(-altitude+.01)*6));
-  city.setAttribute('opacity',opacity.toFixed(2));
- });
- if(force||now-state.solarLastStatus>950){
-  const displayTime=new Intl.DateTimeFormat('it-IT',{timeZone:'UTC',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(date);
+ // Compute solar geometry every 10 seconds; show actual UTC time every second.
+ if(force||!same||now-state.solarLastUpdate>=10000){
+  const night=root.querySelector('#worldNightPath'),day=root.querySelector('#worldDayPath');
+  const twilight=root.querySelector('#worldTwilightPath'),nightClip=root.querySelector('#worldNightClipPath');
+  if(!night||!day||!twilight||!nightClip)return;
+  const sun=solarCoordinates(new Date(now));
+  const nightGeometry=solarTerminatorPath(sun,'night');
+  night.setAttribute('d',nightGeometry);
+  nightClip.setAttribute('d',nightGeometry);
+  twilight.setAttribute('d',solarTerminatorPath(sun,'night',14));
+  day.setAttribute('d',solarTerminatorPath(sun,'day'));
+  const sunP=coord(sun.lon,sun.lat/SOLAR_RADIANS);
+  const sunNode=root.querySelector('#worldSunMarker');
+  if(sunNode)sunNode.setAttribute('transform','translate('+sunP[0].toFixed(2)+' '+sunP[1].toFixed(2)+')');
+  root.querySelectorAll('.solar-night-city').forEach(city=>{
+   const altitude=solarAltitudeSin(Number(city.dataset.lon),Number(city.dataset.lat),sun);
+   const opacity=Math.max(0,Math.min(.97,(-altitude+.01)*6));
+   city.setAttribute('opacity',opacity.toFixed(2));
+  });
+  state.solarLastRoot=root;
+  state.solarLastUpdate=now;
+ }
+ if(force||!same||now-state.solarLastStatus>=950){
+  const displayTime=new Intl.DateTimeFormat('it-IT',{
+   timeZone:'UTC',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'
+  }).format(new Date(now));
   const label=root.querySelector('#worldSolarStatus');
-  if(label)label.textContent=(state.solarMode==='cycle'?'Time-lapse simulato · ':'Ora solare approssimata · ')+displayTime+' UTC';
+  if(label)label.textContent='● LIVE · Sole reale · '+displayTime+' UTC';
   const help=root.querySelector('#worldSolarHelp');
-  if(help)help.textContent=state.solarMode==='cycle'?'24 ore in 2 minuti · passa a Ora reale per la luce attuale':'Posizione del Sole basata sull’ora UTC attuale';
+  if(help)help.textContent='Giorno e notte sincronizzati con la Terra · stima astronomica';
   state.solarLastStatus=now;
  }
- state.solarLastRoot=root;
- state.solarLastUpdate=now;
 }
 
 function svgMap(){
@@ -337,15 +326,13 @@ function svgMap(){
  '<g class="world-night-stars" clip-path="url(#worldNightClip)" pointer-events="none" aria-hidden="true">'+solarStarsSvg()+'</g>'+
  '<g class="world-night-cities" pointer-events="none" aria-hidden="true">'+solarNightCitiesSvg()+'</g>'+
  '<g id="worldSunMarker" class="world-sun-marker" pointer-events="none" aria-hidden="true"><circle r="43" fill="url(#sunLightGlow)"/><circle r="3.8" fill="#ffdc91" opacity=".87"/><circle r="7.5" fill="none" stroke="#ffdc91" stroke-opacity=".34"/></g>'+
- '<g id="worldMoonMarker" class="world-moon-marker" pointer-events="none" aria-hidden="true"><circle r="6" fill="#a6c7ef" opacity=".23"/><path d="M-1 -6A6 6 0 1 0 6 2A5 5 0 0 1-1 -6Z" fill="#c8dcf3" opacity=".72"/></g>'+
  '<g>'+arcs+'</g><g aria-hidden="true">'+lights+'</g></svg>';
 }
 
 function mapPanel(){
  return '<section class="world-map-panel" id="worldMap" aria-label="Mappa dei mercati mondiali">'+
- '<div class="world-map-header"><span>WORLD MARKET MAP</span><div class="world-solar-controls" role="group" aria-label="Modalità illuminazione mappa">'+
- '<button type="button" class="world-solar-btn'+(state.solarMode==='cycle'?' active':'')+'" data-solar-mode="cycle" aria-pressed="'+(state.solarMode==='cycle')+'" title="Ciclo giorno e notte accelerato">◉ Ciclo animato</button>'+
- '<button type="button" class="world-solar-btn'+(state.solarMode==='real'?' active':'')+'" data-solar-mode="real" aria-pressed="'+(state.solarMode==='real')+'" title="Illuminazione secondo l’ora UTC attuale">◷ Ora reale</button>'+
+ '<div class="world-map-header"><span>WORLD MARKET MAP</span><div class="world-solar-controls" role="status" aria-label="Illuminazione terrestre in tempo reale">'+
+ '<span class="world-solar-btn active" title="Giorno e notte secondo la posizione reale del Sole">● LIVE · ORA REALE</span>'+
  '</div></div><div class="map-stage">'+svgMap()+
  REGIONS.map(r=>{
  const p=coord(...r.pin),avg=meanRegion(r),tr=trend(avg),selected=state.region===r.id;
@@ -1304,16 +1291,6 @@ function setupEvents(){
  $('#pageContainer').addEventListener('click',e=>{
   const btn=e.target.closest('button,a,tr[data-asset]');
   if(!btn)return;
-  if(btn.dataset.solarMode){
-   const mode=btn.dataset.solarMode;
-   if(mode==='cycle'||mode==='real'){
-    state.solarMode=mode;save('solarMode',mode);
-    state.solarEpoch=Date.now();state.solarStart=Date.now();
-    $$('#worldMap [data-solar-mode]').forEach(b=>{const active=b.dataset.solarMode===mode;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active))});
-    updateWorldSunlight(true);
-   }
-   return;
-  }
   if(btn.dataset.cryptoExpand){state.cryptoExpanded=!state.cryptoExpanded;render();return;}
   if(btn.dataset.asset){openAsset(btn.dataset.asset);return;}
   if(btn.dataset.region){selectRegion(btn.dataset.region);return;}
@@ -1366,7 +1343,7 @@ function setupEvents(){
 function init(){
  setupEvents();setTheme(state.theme);updateClock();
  setInterval(updateClock,30000);
- setInterval(()=>{if(state.page==='global'&&!document.hidden)updateWorldSunlight()},120);
+ setInterval(updateWorldSunlight,1000);
  render();
  fetchQuotes();
  connectCryptoStream();
@@ -1376,7 +1353,7 @@ function init(){
  setInterval(()=>{if(!document.hidden)connectForexStream();updateLiveBadges()},15000);
  document.addEventListener('visibilitychange',()=>{
   if(document.hidden){closeStream();disconnectForexStream()}
-  else {connectCryptoStream();connectForexStream();fetchQuotes();}
+  else {connectCryptoStream();connectForexStream();fetchQuotes();updateWorldSunlight(true);}
  });
  window.addEventListener('online',()=>{connectCryptoStream();connectForexStream();fetchQuotes()});
  window.addEventListener('offline',()=>{closeStream();disconnectForexStream();updateLiveBadges()});
