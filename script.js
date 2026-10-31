@@ -1056,7 +1056,7 @@ function updateNav(){
 function render(){
  const page=SECTIONS[state.page]||SECTIONS.global;
  $('#pageTitle').textContent=page[0];$('#pageSubtitle').textContent=page[1];
- const hideSearch=state.page==='settings'||state.page==='analytics';
+ const hideSearch=['settings','analytics','news'].includes(state.page);
  const searchWrap=$('.search-wrap');
  if(searchWrap)searchWrap.hidden=hideSearch;
  if(hideSearch){
