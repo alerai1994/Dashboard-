@@ -564,6 +564,7 @@ function updateClock(){
  $('#localTime').textContent=new Intl.DateTimeFormat('it-IT',{hour:'2-digit',minute:'2-digit',hourCycle:'h23',timeZone:'Europe/Rome'}).format(now)+' (Roma)';
 }
 async function fetchQuotes(isManual=false){
+ const oldSnapshot=state.feedTime,wasLoading=state.loading,wasError=state.feedError;
  try{
   const response=await fetch('./market-data.json?cache='+Date.now(),{cache:'no-store'});
   if(!response.ok)throw new Error('HTTP '+response.status);
@@ -575,7 +576,7 @@ async function fetchQuotes(isManual=false){
   state.feedError=false;state.loading=false;
   if(isManual)toast('Snapshot dei mercati ricaricato; streaming crypto indipendente.');
  }catch(e){state.feedError=true;state.loading=false;if(isManual)toast('Impossibile ricaricare il feed.');}
- if(isManual||state.page==='global'||state.page==='home'||state.page==='analytics'||state.page==='markets'||state.page==='watchlist'||state.page==='portfolio'||state.page==='alerts'||state.page==='settings')render();
+ if(isManual||wasLoading||wasError!==state.feedError||oldSnapshot!==state.feedTime)render();
  if(state.dialogId)refreshDialog();
  updateLiveBadges();
 }
@@ -901,7 +902,6 @@ function setupEvents(){
  setupCanvasInteractions();
  window.addEventListener('resize',()=>{if(state.dialogId)requestAnimationFrame(drawChart)});
  window.addEventListener('hashchange',()=>navigate(location.hash.slice(1)));
- document.addEventListener('visibilitychange',()=>{if(!document.hidden)fetchQuotes()});
 }
 function init(){
  setupEvents();setTheme(state.theme);updateClock();
