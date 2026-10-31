@@ -49,7 +49,7 @@ const ASSETS=[
 const ASSET_BY_ID=Object.fromEntries(ASSETS.map(a=>[a.id,a]));
 const SECTIONS={
 home:['Home','La tua panoramica dei mercati e degli strumenti.'],
-global:['Global','Real-time market data across every region, market and asset class.'],
+global:['Global','Global market data across every region, market and asset class.'],
 markets:['Markets','Prezzi, variazioni, grafici e mercati mondiali.'],
 watchlist:['Watchlist','I mercati che vuoi seguire, salvati sul tuo dispositivo.'],
 portfolio:['Portfolio','Tieni traccia delle posizioni inserite manualmente.'],
@@ -354,7 +354,7 @@ function navigate(page){
  if(location.hash!=='#'+page)history.replaceState(null,'','#'+page);
  $('#sidebar').classList.remove('open');
  render();
- window.scrollTo({top:0,behavior:'instant'});
+ window.scrollTo({top:0,behavior:'auto'});
 }
 function setTheme(val){
  state.theme=val==='light'?'light':'dark';
