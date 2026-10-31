@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - global-world.js
+      - vertex.js
+      - vertex.css
+      - vertex-preview.html
       - global-world.css
       - global-quotes.json
       - .github/scripts/global_quotes.py
@@ -28,6 +31,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Validate new frontend JavaScript
+        run: node --check vertex.js
+      - name: Validate market collector Python
+        run: python3 -m py_compile .github/scripts/global_quotes.py
       - name: Collect verified market data
         run: python3 .github/scripts/global_quotes.py
       - name: Publish quote snapshot
