@@ -1,0 +1,43 @@
+name: Update live crypto market feed
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/live-market-v542.yml"
+      - ".github/scripts/v542_market_live_patch.py"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dashboard-market-v542
+  cancel-in-progress: false
+
+jobs:
+  patch-market:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout production source
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: true
+      - name: Patch Top 200 refresh and streaming
+        run: python3 .github/scripts/v542_market_live_patch.py
+      - name: Verify JavaScript syntax
+        run: node --check script.js
+      - name: Commit only the market runtime update
+        shell: bash
+        run: |
+          if git diff --quiet -- script.js; then
+            echo "Market runtime already updated."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add script.js
+          git commit -m "Market Top 200: aggiorna quotazioni live in background e mostra dati stale"
+          git push origin HEAD:main
