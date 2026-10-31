@@ -16,20 +16,21 @@ OUTPUT = Path("global-quotes.json")
 MARKETS = [
     ("sp500", "^GSPC"), ("nasdaq", "^IXIC"), ("tsx", "^GSPTSE"),
     ("ibov", "^BVSP"), ("ftse", "^FTSE"), ("dax", "^GDAXI"),
-    ("cac", "^FCHI"), ("jse", "J200.JO"), ("nikkei", "^N225"),
+    ("cac", "^FCHI"), ("jse", "J200.JO"), ("tadawul", "^TASI.SR"), ("nikkei", "^N225"),
     ("hsi", "^HSI"), ("nifty", "^NSEI"), ("kospi", "^KS11"), ("asx", "^AXJO"),
 ]
 COMMODITIES = [
     ("gold", "GC=F"), ("silver", "SI=F"), ("brent", "BZ=F"),
-    ("wti", "CL=F"), ("naturalgas", "NG=F")
+    ("wti", "CL=F"), ("naturalgas", "NG=F"), ("copper", "HG=F")
 ]
 FOREX = [
     ("eurusd", "EURUSD=X"), ("gbpusd", "GBPUSD=X"), ("usdjpy", "JPY=X"),
-    ("usdchf", "CHF=X"), ("audusd", "AUDUSD=X")
+    ("usdchf", "CHF=X"), ("audusd", "AUDUSD=X"), ("usdcny", "CNY=X")
 ]
 CRYPTO = [
     ("btc", "bitcoin"), ("eth", "ethereum"), ("sol", "solana"),
     ("inj", "injective-protocol"), ("bnb", "binancecoin"),
+    ("xrp", "ripple"), ("doge", "dogecoin"),
 ]
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (compatible; GlobalMarketsDashboard/1.0; +https://github.com/)",
@@ -51,12 +52,12 @@ def request_json(url):
 def yahoo_quote(pair):
     identity, symbol = pair
     entry = {"id": identity, "symbol": symbol, "value": None,
-             "change": None, "currency": None, "history": [], "time": None}
+             "change": None, "currency": None, "history": [], "candles": [], "time": None}
     for domain in ("query1.finance.yahoo.com", "query2.finance.yahoo.com"):
         try:
             url = (
                 "https://" + domain + "/v8/finance/chart/" + quote(symbol, safe="")
-                + "?" + urlencode({"range": "1mo", "interval": "1d"})
+                + "?" + urlencode({"range": "1y", "interval": "1d"})
             )
             payload = request_json(url)
             result = (payload.get("chart", {}).get("result") or [])[0]
@@ -75,7 +76,18 @@ def yahoo_quote(pair):
                 continue
             entry["value"] = last
             entry["currency"] = str(meta.get("currency") or "USD")
-            entry["history"] = closes[-12:]
+            entry["history"] = closes[-40:]
+            quotes = result.get("indicators", {}).get("quote", [{}])[0]
+            stamps = result.get("timestamp", [])
+            opens, highs, lows = (quotes.get(key, []) for key in ("open", "high", "low"))
+            candles = []
+            for ts, op, hi, lo, cl in zip(stamps, opens, highs, lows, samples):
+                o, h, l, c = valid(op), valid(hi), valid(lo), valid(cl)
+                if None in (o, h, l, c) or l <= 0 or h < l or not ts:
+                    continue
+                candles.append({"t": int(ts), "o": round(o, 6), "h": round(h, 6),
+                                "l": round(l, 6), "c": round(c, 6)})
+            entry["candles"] = candles[-260:]
             t = meta.get("regularMarketTime")
             entry["time"] = datetime.fromtimestamp(t, timezone.utc).isoformat() if t else None
             if previous and previous > 0:
@@ -87,7 +99,7 @@ def yahoo_quote(pair):
 
 def crypto_quotes():
     items = {cid: {"id": cid, "symbol": token.upper(), "value": None,
-                   "change": None, "currency": "USD", "history": [], "time": None}
+                   "change": None, "currency": "USD", "history": [], "candles": [], "time": None}
              for cid, token in CRYPTO}
     ids = ",".join(token for _, token in CRYPTO)
     url = "https://api.coingecko.com/api/v3/simple/price?" + urlencode({
@@ -109,6 +121,21 @@ def crypto_quotes():
             items[cid]["time"] = datetime.fromtimestamp(when, timezone.utc).isoformat() if when else None
     except (HTTPError, URLError, TimeoutError, ValueError, TypeError) as e:
         print("CoinGecko unavailable", type(e).__name__)
+    # Price/24h change remains from CoinGecko; historical OHLC comes from Yahoo Finance.
+    history_symbols = {
+        "btc": "BTC-USD", "eth": "ETH-USD", "sol": "SOL-USD",
+        "inj": "INJ-USD", "bnb": "BNB-USD",
+        "xrp": "XRP-USD", "doge": "DOGE-USD"
+    }
+    try:
+        histories = fetch_group([(cid, history_symbols[cid]) for cid, _ in CRYPTO])
+        for row in histories:
+            cid = row["id"]
+            if cid in items:
+                items[cid]["history"] = row.get("history", [])
+                items[cid]["candles"] = row.get("candles", [])
+    except Exception as e:
+        print("Crypto historical data unavailable:", type(e).__name__)
     return [items[cid] for cid, _ in CRYPTO]
 
 def fetch_group(pairs):
