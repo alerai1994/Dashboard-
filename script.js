@@ -1008,36 +1008,153 @@ function watchlistPage(){
  '<section class="content-card panel"><h3>Strumenti preferiti ('+assets.length+')</h3>'+tableForAssets(assets,'La watchlist è vuota')+
  '<p class="subnote">Apri uno strumento e premi ☆ Watchlist per salvarlo o rimuoverlo.</p></section>'+feedStatus();
 }
-function portfolioTotals(){
- let value=0,cost=0,available=0;
- for(const h of state.holdings){
-  const q=quote(h.id),a=ASSET_BY_ID[h.id];
-  if(!a||!num(q&&q.value))continue;
-  const qty=Math.max(0,Number(h.qty)||0),basis=Math.max(0,Number(h.cost)||0);
-  if(!num(qty)||!num(basis))continue;
-  value+=qty*q.value;cost+=qty*basis;available++;
+// Portfolio records remain local to the browser. Every add/edit/delete writes
+// a complete validated next array before changing in-memory holdings.
+let portfolioEditIndex=-1;
+function parsePortfolioNumber(value){
+ const raw=String(value==null?'':value).trim().replace(/[\s\u00a0]/g,'');
+ if(!raw||!/^[0-9.,]+$/.test(raw))return NaN;
+ const commas=(raw.match(/,/g)||[]).length,dots=(raw.match(/\./g)||[]).length;
+ let normalized=raw;
+ if(commas&&dots){
+  // Accept both Italian "1.234,56" and English "1,234.56".
+  const decimal=raw.lastIndexOf(',')>raw.lastIndexOf('.')?',':'.';
+  normalized=raw.split(decimal==='.'?',':'.').join('').replace(decimal,'.');
+ }else if(commas>1||dots>1){
+  const sep=commas?',':'.';
+  if(!new RegExp('^\\d{1,3}(?:\\'+sep+'\\d{3})+$').test(raw))return NaN;
+  normalized=raw.split(sep).join('');
+ }else if(commas){
+  normalized=raw.replace(',','.');
  }
- return {value,cost,available};
+ if(!/^\d+(?:\.\d+)?$/.test(normalized))return NaN;
+ const n=Number(normalized);
+ return Number.isFinite(n)?n:NaN;
+}
+function portfolioUsd(value){
+ if(!Number.isFinite(value))return '—';
+ return (value<0?'-':'')+'$'+Math.abs(value).toLocaleString('it-IT',
+  {minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function portfolioQuantity(value){
+ return Number.isFinite(value)?value.toLocaleString('it-IT',
+  {minimumFractionDigits:0,maximumFractionDigits:12}):'—';
+}
+function portfolioUnitUsd(value){
+ return Number.isFinite(value)?formatValue(value,{group:'crypto'}):'—';
+}
+function portfolioEligible(id){
+ const a=ASSET_BY_ID[id];
+ return !!a&&['crypto','commodities','bigtech'].includes(a.group);
+}
+function portfolioRow(holding,index){
+ const h=holding&&typeof holding==='object'?holding:{};
+ const a=ASSET_BY_ID[h.id]||null;
+ const qty=Number(h.qty),cost=Number(h.cost);
+ const valid=portfolioEligible(h.id)&&Number.isFinite(qty)&&qty>0&&
+  Number.isFinite(cost)&&cost>=0&&Number.isFinite(qty*cost);
+ const invested=valid?qty*cost:null;
+ const override=h.manualPrice!==null&&h.manualPrice!==undefined&&h.manualPrice!=='';
+ const manual=override?Number(h.manualPrice):null;
+ const manualValid=override&&Number.isFinite(manual)&&manual>0;
+ const q=quote(h.id),market=q&&Number(q.value);
+ const marketValid=Number.isFinite(market)&&market>0;
+ const price=valid?(manualValid?manual:marketValid?market:null):null;
+ const hasPrice=Number.isFinite(price)&&price>0&&Number.isFinite(price*qty);
+ const value=hasPrice?price*qty:null;
+ const pnl=hasPrice?value-invested:null;
+ const source=manualValid?'Manuale':marketValid?'Mercato':'Senza quotazione';
+ const time=manualValid?h.manualUpdatedAt:(q&&q.time);
+ return {h,index,a,qty,cost,valid,invested,price,hasPrice,value,pnl,source,time};
+}
+function portfolioTotals(){
+ const rows=state.holdings.map(portfolioRow);
+ let invested=0,pricedCost=0,value=0,priced=0,invalid=0;
+ for(const row of rows){
+  if(!row.valid){invalid++;continue}
+  invested+=row.invested;
+  if(row.hasPrice){value+=row.value;pricedCost+=row.invested;priced++}
+ }
+ return {invested,value,pricedCost,pnl:value-pricedCost,
+  priced,missing:rows.length-priced-invalid,invalid,count:rows.length};
+}
+function persistPortfolio(next){
+ try{
+  localStorage.setItem(STORE+'holdings',JSON.stringify(next));
+  state.holdings=next;
+  return true;
+ }catch(_error){
+  toast('Salvataggio non riuscito. Verifica lo spazio disponibile nel browser.');
+  return false;
+ }
 }
 function portfolioPage(){
- const total=portfolioTotals(),pnl=total.value-total.cost;
- const opts=ASSETS.filter(a=>a.group==='crypto'||a.group==='commodities'||a.group==='bigtech').map(a=>'<option value="'+a.id+'">'+esc(a.name)+'</option>').join('');
- return secHeader('Portfolio','Monitoraggio manuale, senza collegamento a conti o exchange')+
- '<div class="summary-grid">'+overviewCard('Valore delle posizioni con quotazione',formatValue(total.value,{group:'crypto'}),'Asset con prezzo disponibile')+
- overviewCard('Capitale di carico',formatValue(total.cost,{group:'crypto'}),'Somma dei costi inseriti')+
- overviewCard('Differenza stimata',formatValue(pnl,{group:'crypto'}),'Non considera commissioni o tasse',trendClass(pnl))+
- overviewCard('Posizioni',String(state.holdings.length),'In questo browser')+'</div>'+
- '<section class="content-card panel"><h3>Aggiungi una posizione</h3><form id="portfolioForm" class="form-grid">'+
- '<div class="form-field"><label for="holdingAsset">Strumento</label><div class="holding-asset-selector"><span id="holdingAssetLogo">'+assetLogo(ASSETS.find(a=>a.group==='crypto')||ASSETS[0])+'</span><select id="holdingAsset" name="id" required>'+opts+'</select></div></div>'+
- '<div class="form-field"><label for="holdingQty">Quantità</label><input id="holdingQty" type="number" name="qty" placeholder="0,00" min=".00000001" step="any" required></div>'+
- '<div class="form-field"><label for="holdingCost">Prezzo medio di carico (USD)</label><input id="holdingCost" type="number" name="cost" placeholder="0,00" min="0" step="any" required></div>'+
- '<div class="form-actions"><button class="btn btn-primary" type="submit">'+sym('plus')+' Aggiungi</button></div></form></section>'+
- '<section class="content-card panel" style="margin-top:13px"><h3>Le tue posizioni</h3>'+
- (state.holdings.length?'<div class="data-table-scroll"><table class="data-table"><thead><tr><th>Strumento</th><th>Quantità</th><th>Carico</th><th>Prezzo attuale</th><th>Valore stimato</th><th></th></tr></thead><tbody>'+
- state.holdings.map((h,i)=>{const a=ASSET_BY_ID[h.id],q=quote(h.id);if(!a)return '';
- return '<tr><td><span class="market-table-asset">'+(showAssetLogo(a)?assetLogo(a):'')+'<strong>'+esc(a.name)+'</strong></span></td><td>'+Number(h.qty).toLocaleString('it-IT')+'</td><td>$'+Number(h.cost).toLocaleString('it-IT',PREC)+'</td><td>'+assetValue(a)+'</td><td>'+(num(q&&q.value)?'$'+(q.value*Number(h.qty)).toLocaleString('it-IT',PREC):'—')+'</td><td><button class="btn btn-small" data-delete-holding="'+i+'">Rimuovi</button></td></tr>';
- }).join('')+'</tbody></table></div>':'<div class="empty-state"><h3>Nessuna posizione</h3><p>Inserisci un asset, la quantità e il prezzo di carico.</p></div>')+
- '<p class="notice">Questi sono calcoli indicativi su dati pubblici, non un rendiconto fiscale o patrimoniale. Informazioni conservate solo sul dispositivo.</p></section>';
+ const total=portfolioTotals(),editing=Number.isInteger(portfolioEditIndex)&&
+  portfolioEditIndex>=0&&portfolioEditIndex<state.holdings.length;
+ const edit=editing?state.holdings[portfolioEditIndex]:null;
+ const chosen=editing&&portfolioEligible(edit.id)?edit.id:
+  (ASSETS.find(a=>a.group==='crypto')||ASSETS[0]).id;
+ const opts=ASSETS.filter(a=>portfolioEligible(a.id)).map(a=>
+  '<option value="'+esc(a.id)+'"'+(a.id===chosen?' selected':'')+'>'+esc(a.name)+'</option>').join('');
+ const rows=state.holdings.map(portfolioRow);
+ const missingText=total.missing||total.invalid?
+  ' · '+total.missing+' senza prezzo'+(total.invalid?' · '+total.invalid+' da correggere':''):'';
+ return secHeader('Portfolio','Inserisci, modifica e monitora le tue posizioni con prezzi di mercato o manuali.')+
+ '<div class="summary-grid portfolio-summary">'+
+ overviewCard('Valore delle posizioni quotate',total.priced?portfolioUsd(total.value):'—',total.priced+'/'+(total.count-total.invalid)+' con prezzo disponibile')+
+ overviewCard('Capitale di carico',portfolioUsd(total.invested),'Include anche le posizioni senza quotazione')+
+ overviewCard('Profitto / perdita stimato',total.priced?portfolioUsd(total.pnl):'—','Solo posizioni con prezzo disponibile',total.priced?trendClass(total.pnl):'')+
+ overviewCard('Posizioni',String(total.count),total.priced+' valutate'+missingText)+
+ '</div>'+
+ '<section class="content-card panel portfolio-editor" id="portfolioEditor">'+
+ '<div class="portfolio-section-heading"><div><h3 id="portfolioFormTitle">'+(editing?'Modifica posizione':'Aggiungi una posizione')+'</h3>'+
+ '<p>Quantità e prezzi in USD. Puoi usare la virgola o il punto come separatore decimale.</p></div>'+
+ '<button type="button" class="btn btn-small" data-portfolio-refresh="1">'+sym('refresh')+' Aggiorna prezzi</button></div>'+
+ '<form id="portfolioForm" class="form-grid">'+
+ '<div class="form-field"><label for="holdingAsset">Criptovaluta o strumento</label>'+
+ '<div class="holding-asset-selector"><span id="holdingAssetLogo">'+assetLogo(ASSET_BY_ID[chosen])+'</span>'+
+ '<select id="holdingAsset" name="id" required>'+opts+'</select></div></div>'+
+ '<div class="form-field"><label for="holdingQty">Quantità posseduta</label>'+
+ '<input id="holdingQty" type="text" inputmode="decimal" autocomplete="off" name="qty" placeholder="Es. 1,25" value="'+
+ esc(edit?String(edit.qty):'')+'" required></div>'+
+ '<div class="form-field"><label for="holdingCost">Prezzo medio di acquisto (USD per unità)</label>'+
+ '<input id="holdingCost" type="text" inputmode="decimal" autocomplete="off" name="cost" placeholder="Es. 125,50" value="'+
+ esc(edit?String(edit.cost):'')+'" required></div>'+
+ '<div class="form-field"><label for="holdingManualPrice">Prezzo attuale manuale (USD, facoltativo)</label>'+
+ '<input id="holdingManualPrice" type="text" inputmode="decimal" autocomplete="off" name="manualPrice" placeholder="Vuoto = prezzo di mercato" value="'+
+ esc(edit&&edit.manualPrice!==undefined&&edit.manualPrice!==null?String(edit.manualPrice):'')+'">'+
+ '<small>Se inserito, prevale sul prezzo di mercato finché non lo cancelli. È un dato manuale, non live.</small></div>'+
+ '<div class="portfolio-entry-preview"><span>Capitale di carico della posizione</span>'+
+ '<output id="holdingCostPreview">'+(editing&&portfolioRow(edit,portfolioEditIndex).valid?
+  portfolioUsd(portfolioRow(edit,portfolioEditIndex).invested):'—')+'</output></div>'+
+ '<div class="form-actions"><button class="btn btn-primary" type="submit">'+sym(editing?'check':'plus')+
+ (editing?' Salva modifiche':' Aggiungi posizione')+'</button>'+
+ (editing?'<button type="button" class="btn btn-small" data-portfolio-cancel="1">Annulla modifica</button>':'')+
+ '</div></form></section>'+
+ '<section class="content-card panel portfolio-positions" style="margin-top:13px">'+
+ '<div class="portfolio-section-heading"><div><h3>Le tue posizioni</h3><p>Valore e risultato aggiornati quando cambiano le quotazioni disponibili.</p></div></div>'+
+ (rows.length?'<div class="data-table-scroll"><table class="data-table portfolio-table">'+
+ '<thead><tr><th>Strumento</th><th>Quantità</th><th>Carico unit.</th><th>Investito</th>'+
+ '<th>Prezzo attuale</th><th>Valore</th><th>P/L</th><th>Azioni</th></tr></thead><tbody>'+
+ rows.map(r=>{
+  const h=r.h,a=r.a;
+  return '<tr data-portfolio-row="'+r.index+'">'+
+   '<td><span class="market-table-asset">'+(a&&showAssetLogo(a)?assetLogo(a):'')+
+   '<strong>'+esc(a?a.name:(h.id||'Strumento sconosciuto'))+'</strong></span>'+
+   (!r.valid?'<small class="portfolio-quote-status portfolio-invalid">Dati da correggere</small>':'')+'</td>'+
+   '<td>'+portfolioQuantity(r.valid?r.qty:NaN)+'</td>'+
+   '<td>'+portfolioUnitUsd(r.valid?r.cost:NaN)+'</td>'+
+   '<td>'+portfolioUsd(r.invested)+'</td>'+
+   '<td data-portfolio-price="'+r.index+'">'+portfolioUnitUsd(r.hasPrice?r.price:NaN)+
+   '<small class="portfolio-quote-status">'+esc(r.source)+(r.source==='Manuale'?' · non live':'')+'</small></td>'+
+   '<td data-portfolio-value="'+r.index+'">'+portfolioUsd(r.value)+'</td>'+
+   '<td data-portfolio-pnl="'+r.index+'" class="'+(r.hasPrice?trendClass(r.pnl):'color-unknown')+'">'+portfolioUsd(r.pnl)+'</td>'+
+   '<td><div class="portfolio-row-actions"><button class="btn btn-small" type="button" data-edit-holding="'+r.index+'">Modifica</button>'+
+   '<button class="btn btn-small" type="button" data-delete-holding="'+r.index+'">Rimuovi</button></div></td></tr>';
+ }).join('')+'</tbody></table></div>':
+ '<div class="empty-state"><h3>Nessuna posizione</h3><p>Seleziona uno strumento e inserisci la quantità e il prezzo di acquisto.</p></div>')+
+ '<p class="notice">I dati del portafoglio sono salvati soltanto in questo browser. Prezzi di mercato disponibili secondo la fonte, anche ritardati; quelli manuali non si aggiornano da soli. P/L escluso per le posizioni senza prezzo. Non include commissioni, imposte o cambi valutari.</p>'+
+ '</section>';
 }
 const SEC_CATEGORIES=[
  ['all','Tutte le notizie'],['press','Comunicati'],['speeches','Discorsi e dichiarazioni'],
