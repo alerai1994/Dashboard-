@@ -1178,3 +1178,18 @@ body.theme-light .vertex-boot-note{color:#56738f}
 @media(prefers-reduced-motion:reduce){
  .market-fullscreen .chart-period{transition:none}
 }
+
+
+/* First recorded candle / last recorded candle for maximum history range. */
+.market-fullscreen .chart-coverage{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:7px 11px;margin:3px 0 9px;
+  border:1px solid var(--line);border-radius:9px;
+  background:var(--surface);color:var(--muted);
+  font-size:12px;font-weight:560;font-variant-numeric:tabular-nums;
+}
+.market-fullscreen .chart-coverage[hidden],
+.chart-coverage[hidden]{display:none!important}
+@media(max-width:760px){
+ .market-fullscreen .chart-coverage{font-size:11px;line-height:1.5}
+}
