@@ -1167,7 +1167,7 @@ function orderBookPage(){
  '<small>'+esc(source?source.venue+' · '+source.pair:'Coppia Spot non verificata')+'</small></div></div>'+
  '<button class="btn btn-small" type="button" data-order-book-refresh="1" aria-label="Aggiorna order book">'+sym('refresh')+' Aggiorna</button></div>'+
  '<div class="ob-content" id="orderBookContent" aria-live="polite">'+orderBookDisplay()+'</div>'+
- '<p class="ob-footnote">Snapshot di ordini limite Spot: solo il mercato indicato, non tutti gli exchange. Aggiornamento diretto ogni 15 secondi se disponibile; per ORE è previsto anche un backup verificato ogni circa 5 minuti. Le quantità e i totali non sono ordini eseguiti; dati soggetti a variazioni.</p>'+
+ '<p class="ob-footnote">Snapshot di ordini limite Spot: solo il mercato indicato, non tutti gli exchange. Per ORE: ordini Spot reali da LBank pubblicati su GitHub ogni circa 5 minuti; fallback diretto se lo snapshot non è disponibile. Aggiornamento automatico della vista ogni 15 secondi. Le quantità e i totali non sono ordini eseguiti; dati soggetti a variazioni.</p>'+
  '</section></div>';
 }
 function orderBookNumber(v,price=false){
@@ -1210,7 +1210,7 @@ function orderBookDisplay(){
  const sum=totalBids+totalAsks,ratio=sum>0?totalBids/sum*100:50;
  const stamp=orderBookState.updatedAt?new Intl.DateTimeFormat('it-IT',{hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date(orderBookState.updatedAt)):'—';
  const changed=orderBookState.error?'<div class="ob-inline-warning">'+esc(orderBookState.error)+'</div>':'';
- return '<div class="ob-market-status">'+(orderBookState.mode==='snapshot'?'◌ Snapshot verificato · backup circa 5 min':orderBookState.busy?'↻ Aggiornamento in corso':stale?'◌ Ultimo book disponibile':'● Book diretto')+
+ return '<div class="ob-market-status">'+(orderBookState.mode==='snapshot'?'● Snapshot Spot verificato · circa 5 min':orderBookState.busy?'↻ Aggiornamento in corso':stale?'◌ Ultimo book disponibile':'● Book diretto')+
  ' · '+esc(orderBookState.venue||src.venue)+' · '+stamp+'</div>'+changed+
  '<div class="ob-summary"><div><small>Miglior BID</small><strong class="color-up">'+orderBookNumber(bid,true)+'</strong></div>'+
  '<div><small>Miglior ASK</small><strong class="color-down">'+orderBookNumber(ask,true)+'</strong></div>'+
@@ -1239,33 +1239,53 @@ function selectOrderBookAsset(id){
  if(state.page==='orderbook')render();
 }
 // GitHub Pages serves the last VERIFIED LBank depth snapshot when browser CORS blocks the API.
+// GitHub Actions publishes real ORE/USDT Spot depth. Same-origin works online;
+// raw.githubusercontent.com works when index.html is opened as file:// on any OS.
 async function loadOreBookSnapshot(serial,coin){
  if(coin!=='ore')return false;
- const response=await fetch('ore-orderbook.json?t='+Date.now(),{cache:'no-store'});
- if(!response.ok)throw Error('Snapshot non ancora pubblicato (HTTP '+response.status+')');
- const payload=await response.json(),src=orderBookSource('ore');
- if(payload.mint!==src.mint||payload.pair!=='ORE/USDT')throw Error('Identità del mercato non verificata');
- const updated=Date.parse(payload.capturedAt||'');
- if(!Number.isFinite(updated)||updated>Date.now()+60000||Date.now()-updated>30*60*1000)
-  throw Error('Snapshot non recente');
- const levels=(rows,descending)=>{
-  if(!Array.isArray(rows))return [];
-  return rows.map(row=>[Number(row[0]),Number(row[1])])
-   .filter(([price,qty])=>Number.isFinite(price)&&Number.isFinite(qty)&&price>0&&qty>0)
-   .sort((a,b)=>descending?b[0]-a[0]:a[0]-b[0]).slice(0,20);
- };
- const bids=levels(payload.bids,true),asks=levels(payload.asks,false);
- if(!bids.length||!asks.length||bids[0][0]>=asks[0][0])throw Error('Livelli non validi');
- if(serial!==orderBookState.serial||coin!==orderBookState.id)return false;
- orderBookState.data={bids,asks,unit:'ORE'};
- orderBookState.updatedAt=updated;
- orderBookState.venue='LBank Spot · GitHub';
- orderBookState.mode='snapshot';
- orderBookState.error=null;
- paintOrderBook();
- return true;
+ const root='https://raw.githubusercontent.com/alerai1994/Dashboard-/main/ore-orderbook.json';
+ const cdn='https://cdn.jsdelivr.net/gh/alerai1994/Dashboard-@main/ore-orderbook.json';
+ const urls=location.protocol==='file:'?[root,cdn]:['ore-orderbook.json',root,cdn];
+ const src=orderBookSource('ore');
+ const errors=[];
+ for(const url of urls){
+  try{
+   const controller=new AbortController();
+   const timeout=setTimeout(()=>controller.abort(),5500);
+   let response;
+   try{
+    const separator=url.includes('?')?'&':'?';
+    response=await fetch(url+separator+'t='+Date.now(),{cache:'no-store',signal:controller.signal});
+   }finally{clearTimeout(timeout);}
+   if(!response.ok)throw Error('HTTP '+response.status);
+   const payload=await response.json();
+   if(payload.mint!==src.mint||payload.pair!=='ORE/USDT')throw Error('Mercato ORE non verificato');
+   const updated=Date.parse(payload.capturedAt||'');
+   if(!Number.isFinite(updated)||updated>Date.now()+60000||Date.now()-updated>30*60*1000)
+    throw Error('Snapshot troppo vecchio');
+   const levels=(rows,descending)=>{
+    if(!Array.isArray(rows))return [];
+    return rows.map(row=>[Number(row[0]),Number(row[1])])
+     .filter(([price,qty])=>Number.isFinite(price)&&Number.isFinite(qty)&&price>0&&qty>0)
+     .sort((a,b)=>descending?b[0]-a[0]:a[0]-b[0]).slice(0,20);
+   };
+   const bids=levels(payload.bids,true),asks=levels(payload.asks,false);
+   if(!bids.length||!asks.length||bids[0][0]>=asks[0][0])throw Error('Livelli BID/ASK non validi');
+   if(serial!==orderBookState.serial||coin!==orderBookState.id)return false;
+   orderBookState.data={bids,asks,unit:'ORE'};
+   orderBookState.updatedAt=updated;
+   orderBookState.venue=payload.venue||'LBank Spot';
+   orderBookState.mode='snapshot';
+   orderBookState.error=null;
+   paintOrderBook();
+   return true;
+  }catch(err){
+   if(serial!==orderBookState.serial)return false;
+   errors.push(err&&err.message?err.message:'connessione fallita');
+  }
+ }
+ throw Error('Backup verificato non raggiungibile: '+errors.join('; '));
 }
-
 async function refreshOrderBook(force=false){
  if(state.page!=='orderbook'||document.hidden)return;
  if(orderBookState.busy&&!force)return;
@@ -1276,11 +1296,23 @@ async function refreshOrderBook(force=false){
  const serial=++orderBookState.serial,coin=orderBookState.id;
  orderBookState.busy=true;orderBookState.lastTry=Date.now();orderBookState.error=null;
  paintOrderBook();
- if(coin==='ore'&&(!orderBookState.data||orderBookState.mode==='snapshot')){
-  try{await loadOreBookSnapshot(serial,coin);}catch(err){/* Keep trying live depth; no fake fallback. */}
+ // Prefer a CORS-safe, GitHub-published verified snapshot on all browsers/OS.
+ // Only try LBank directly if no fresh verified snapshot is reachable.
+ let backupFailure='';
+ if(coin==='ore'){
+  try{
+   if(await loadOreBookSnapshot(serial,coin)){
+    if(serial===orderBookState.serial){
+     orderBookState.lastTry=Date.now();
+     orderBookState.busy=false;
+     paintOrderBook();
+    }
+    return;
+   }
+  }catch(err){backupFailure=err&&err.message?err.message:'Backup non disponibile';}
   if(serial!==orderBookState.serial)return;
  }
- let success=false,failure='La fonte non risponde o blocca le richieste dal browser.';
+ let success=false,failure=backupFailure||'La fonte non risponde o blocca le richieste dal browser.';
  for(const url of src.urls){
   const controller=new AbortController();
   orderBookState.abort=controller;
@@ -1319,7 +1351,7 @@ async function refreshOrderBook(force=false){
   }
  }
  if(serial===orderBookState.serial&&!success&&coin==='ore'&&(!orderBookState.data||Date.now()-orderBookState.updatedAt>90000)){
-  try{success=await loadOreBookSnapshot(serial,coin);}catch(err){failure+=' Backup: '+(err&&err.message?err.message:'non disponibile')+'.';}
+  try{success=await loadOreBookSnapshot(serial,coin);}catch(err){failure+=' · '+(err&&err.message?err.message:'backup non disponibile')+'.';}
  }
  if(serial===orderBookState.serial&&!success)orderBookState.error=failure;
  // Old direct books expire in 90s; verified ORE backup in 30m.
