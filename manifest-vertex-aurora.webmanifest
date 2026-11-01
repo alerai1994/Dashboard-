@@ -1,0 +1,25 @@
+{
+  "name": "Vertex · Global Markets",
+  "short_name": "Vertex",
+  "description": "Dashboard dei mercati e delle criptovalute",
+  "id": "./?vertexIcon=aurora",
+  "start_url": "./?vertexIcon=aurora",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#07111d",
+  "theme_color": "#07111d",
+  "icons": [
+    {
+      "src": "./icons/vertex-aurora-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/vertex-aurora-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

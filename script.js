@@ -11,6 +11,39 @@ const PREC={maximumFractionDigits:2,minimumFractionDigits:2};
 const STORE='vertex-global-v2-';
 const load=(key,fallback)=>{try{const v=localStorage.getItem(STORE+key);return v===null?fallback:JSON.parse(v)}catch(e){return fallback}};
 const save=(key,value)=>{try{localStorage.setItem(STORE+key,JSON.stringify(value))}catch(e){}};
+const VERTEX_APP_ICONS=Object.freeze({
+ original:{label:'Vertex',description:'Logo ufficiale'},
+ minimal:{label:'Minimal',description:'Bianco e blu'},
+ aurora:{label:'Aurora',description:'Viola e turchese'},
+ pulse:{label:'Pulse',description:'Blu e neon'}
+});
+const incomingVertexIcon=new URLSearchParams(location.search).get('vertexIcon');
+let selectedVertexIcon=Object.hasOwn(VERTEX_APP_ICONS,incomingVertexIcon)?incomingVertexIcon:load('appIcon','original');
+if(!Object.hasOwn(VERTEX_APP_ICONS,selectedVertexIcon))selectedVertexIcon='original';
+function vertexIconPath(name){return 'icons/vertex-'+selectedVertexIcon+'-'+name+'.png'}
+function updateVertexAppIcon(){
+ const favicon=document.querySelector('link[rel="icon"]');
+ const apple=document.querySelector('link[rel="apple-touch-icon"]');
+ const manifest=document.querySelector('link[rel="manifest"]');
+ if(favicon)favicon.href=vertexIconPath('192');
+ if(apple)apple.href=vertexIconPath('192');
+ if(manifest)manifest.href='manifest-vertex-'+selectedVertexIcon+'.webmanifest';
+}
+function vertexInstallLink(){
+ const url=new URL(location.href);
+ url.searchParams.set('vertexIcon',selectedVertexIcon);
+ url.hash='';
+ return url.href;
+}
+function setVertexAppIcon(id){
+ if(!Object.hasOwn(VERTEX_APP_ICONS,id))return;
+ selectedVertexIcon=id;
+ save('appIcon',id);
+ updateVertexAppIcon();
+ if(state.page==='settings')render();
+ toast('Logo '+VERTEX_APP_ICONS[id].label+' selezionato per Vertex.');
+}
+
 const ASSETS=[
 {id:'sp500',name:'S&P 500',short:'S&P 500',group:'markets',symbol:'^GSPC',country:'USA',where:'New York · USA'},
 {id:'nasdaq',name:'NASDAQ Composite',short:'NASDAQ',group:'markets',symbol:'^IXIC',country:'USA',where:'New York · USA'},
@@ -2022,7 +2055,7 @@ function alertsPage(){
 }
 function settingsPage(){
  const choices=[['light','☀','Chiaro','Bianco e azzurro'],['dark','☾','Scuro','Blu notte'],['ocean','◈','Oceano','Blu e turchese'],['emerald','❖','Smeraldo','Verde elegante'],['violet','✦','Viola','Viola moderno']];
- return secHeader('Impostazioni','Personalizza aspetto e suoni della dashboard')+
+ return secHeader('Impostazioni','Personalizza aspetto, icona e suoni della dashboard')+
  '<section class="content-card panel settings-preferences"><h3>Temi della dashboard</h3><p class="subnote">Scegli fra cinque stili. Il tema cambia subito in tutte le sezioni e la tua preferenza rimane salvata.</p>'+
  '<div class="settings-theme-options" role="group" aria-label="Scegli uno dei cinque temi">'+
  choices.map(([mode,icon,label,description])=>'<button type="button" data-theme-mode="'+mode+'" class="settings-theme-option'+(state.themeMode===mode?' is-selected':'')+'" aria-label="'+label+': '+description+'" aria-pressed="'+(state.themeMode===mode)+'"><span class="settings-theme-swatch theme-swatch-'+mode+'" aria-hidden="true"><span>'+icon+'</span></span><span class="settings-theme-caption"><strong>'+label+'</strong><small>'+description+'</small></span></button>').join('')+
@@ -2035,6 +2068,17 @@ function settingsPage(){
  '<input type="range" id="brightnessSlider" min="0" max="100" step="1" value="'+effectiveBrightness()+'" style="--volume-progress:'+effectiveBrightness()+'%" aria-label="Luminosità della dashboard" '+(state.adaptiveBrightness?'disabled':'')+'>'+
  '<div class="settings-volume-scale"><span>0%</span><span>100%</span></div>'+
  '<p class="subnote">'+(state.adaptiveBrightness?'Luminosità adattiva attiva: la pagina cambia automaticamente tra giorno, sera e notte. Disattivala per riprendere il controllo manuale.':'Regola la luminosità della pagina, non quella fisica dello schermo. Al minimo resta leggibile per poterla aumentare di nuovo.')+'</p></div></section>'+
+
+ '<section class="content-card panel settings-preferences settings-app-icon-section">'+
+ '<div class="settings-app-icon-heading"><div><h3>Icona app · Vertex</h3><p class="subnote">Personalizza il logo dell’app. Scegli lo stile da utilizzare per l’icona e per le nuove installazioni.</p></div>'+
+ '<img class="settings-app-icon-current" src="'+vertexIconPath('192')+'" alt="Anteprima icona Vertex selezionata"></div>'+
+ '<div class="settings-app-icon-grid" role="group" aria-label="Scegli icona dell’app Vertex">'+
+ Object.entries(VERTEX_APP_ICONS).map(([id,info])=>
+  '<button type="button" data-vertex-icon="'+id+'" class="settings-app-icon-option'+(selectedVertexIcon===id?' is-selected':'')+'" aria-pressed="'+(selectedVertexIcon===id)+'">'+
+  '<img src="icons/vertex-'+id+'-192.png" alt="" loading="lazy"><span class="settings-app-icon-label"><strong>'+info.label+'</strong><small>'+info.description+'</small></span>'+
+  '<span class="settings-app-icon-dot" aria-hidden="true"></span></button>').join('')+
+ '</div><p class="settings-app-icon-note">La favicon cambia subito. Su Android, per aggiornare l’icona nella schermata Home, apri la pagina in Chrome e installa nuovamente l’app: le icone già installate non si aggiornano automaticamente.</p>'+
+ '<button type="button" class="btn btn-small settings-app-icon-copy" data-copy-vertex-install="1">Copia link per installare questa icona in Chrome</button></section>'+
  '<section class="content-card panel settings-preferences"><div class="settings-sound-row"><div><h3>Suono al clic</h3><p class="subnote">Un breve suono quando premi i pulsanti. Puoi disattivarlo quando vuoi.</p></div>'+
  '<button type="button" data-sound-toggle="1" class="settings-sound-toggle'+(state.clickSound?' is-on':'')+'" role="switch" aria-checked="'+state.clickSound+'" aria-label="Suono al clic">'+(state.clickSound?'Attivo':'Disattivo')+'</button></div>'+
  '<div class="settings-volume"><div class="settings-volume-heading"><label for="clickVolumeSlider">Volume dei clic</label><output id="clickVolumeValue" for="clickVolumeSlider">'+state.clickVolume+'%</output></div>'+
@@ -3140,6 +3184,14 @@ function setupEvents(){
   }
   if(btn.dataset.orderBookAsset){selectOrderBookAsset(btn.dataset.orderBookAsset);return;}
   if(btn.dataset.orderBookRefresh){startOrderBookLive(true);refreshOrderBook(true);return;}
+  if(btn.dataset.vertexIcon){setVertexAppIcon(btn.dataset.vertexIcon);return;}
+  if(btn.dataset.copyVertexInstall){
+   const link=vertexInstallLink();
+   if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(link).then(()=>toast('Link copiato: aprilo in Chrome e installa l’app.'),()=>window.prompt('Copia questo link e aprilo in Chrome:',link));
+   }else window.prompt('Copia questo link e aprilo in Chrome:',link);
+   return;
+  }
   if(btn.dataset.themeMode){setTheme(btn.dataset.themeMode);return;}
   if(btn.dataset.soundToggle){
    const previous=state.clickSound;
@@ -3293,7 +3345,7 @@ function dismissVertexBoot(){
  }else afterPaint();
 }
 function init(){
- setupEvents();applyTheme();applyBrightness();updateClock();
+ setupEvents();updateVertexAppIcon();applyTheme();applyBrightness();updateClock();
  setInterval(updateClock,30000);
  setInterval(()=>{if(state.adaptiveBrightness&&!document.hidden)applyBrightness()},60000);
  setInterval(updateWorldSunlight,1000);

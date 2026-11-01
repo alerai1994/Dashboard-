@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Vertex Pulse">
+<defs><linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#061b2a"/><stop offset="1" stop-color="#0a3142"/></linearGradient></defs>
+<rect width="512" height="512" rx="108" fill="url(#bg)"/>
+
+<rect x="18" y="18" width="476" height="476" rx="94" fill="none" stroke="#529ac5" stroke-opacity=".24" stroke-width="3"/>
+<path d="M48 261h93l22-35 24 70 27-53h63l22-27 22 46h143" fill="none" stroke="#39e4d5" stroke-opacity=".5" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+<g transform="translate(76 72) scale(9)">
+<path d="M3 7h12l7 18 9-18h6L20 36z" fill="#43d8ee"/>
+<path d="M3 7h12l5 12H8z" fill="#9ef9fb"/>
+<path d="M24 7h13l-4 8h-9z" fill="#278bcb"/>
+</g>
+</svg>
