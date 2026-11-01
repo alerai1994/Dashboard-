@@ -9,6 +9,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 OUTPUT = Path("ore-orderbook.json")
+JAVASCRIPT_OUTPUT = Path("ore-orderbook-data.js")
 MINT = "oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp"
 URLS = (
     "https://api.lbank.info/v2/depth.do?symbol=ore_usdt&size=20",
@@ -72,7 +73,13 @@ def main():
     for url in URLS:
         try:
             data = read_depth(url)
-            OUTPUT.write_text(json.dumps(data, separators=(",", ":")) + "\n", encoding="utf-8")
+            compact = json.dumps(data, separators=(",", ":"), ensure_ascii=False)
+            OUTPUT.write_text(compact + "\n", encoding="utf-8")
+            # Script-tag fallback for file://, strict browser CORS, and other OSes.
+            # This contains ONLY genuine LBank depth with its UTC capture time.
+            JAVASCRIPT_OUTPUT.write_text(
+                "window.__VERTEX_ORE_BOOK__ = " + compact + ";\n", encoding="utf-8"
+            )
             print("Verified live ORE book:", len(data["bids"]), "bids", len(data["asks"]), "asks", data["source"])
             return 0
         except (HTTPError, URLError, OSError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
