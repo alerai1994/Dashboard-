@@ -2351,9 +2351,12 @@ function updateChartHistoryStatus(){
    info&&info.error?info.error:'Dati storici non ancora disponibili per '+chartRange;
  }
 }
+function chartSupportsRanges(asset){
+ return !!asset&&['markets','bigtech','commodities','forex','crypto'].includes(asset.group);
+}
 function selectChartRange(range){
  const a=ASSET_BY_ID[state.dialogId];
- if(!a||a.group!=='crypto'||!CHART_PERIOD_BY_ID[range])return;
+ if(!chartSupportsRanges(a)||!CHART_PERIOD_BY_ID[range])return;
  chartRange=range;
  state.chartShift=0;state.chartHover=null;
  $('#assetDialog [data-chart-range]').forEach(button=>{
@@ -2361,7 +2364,7 @@ function selectChartRange(range){
   button.classList.toggle('active',active);
   button.setAttribute('aria-pressed',String(active));
  });
- loadCryptoChartHistory();
+ loadChartHistory();
 }
 async function loadCryptoChartHistory(force=false){
  const asset=ASSET_BY_ID[state.dialogId];
@@ -2426,6 +2429,106 @@ async function loadCryptoChartHistory(force=false){
  updateChartHistoryStatus();
  requestAnimationFrame(drawChart);
 }
+// Shared timeframe controls for every asset class; crypto continues to use
+// its Binance/LBank route, while other markets use verified Yahoo snapshots.
+function loadChartHistory(force=false){
+ const asset=ASSET_BY_ID[state.dialogId];
+ if(!chartSupportsRanges(asset))return;
+ return asset.group==='crypto'?loadCryptoChartHistory(force):loadMarketChartHistory(force);
+}
+function chartMarketInterval(period){
+ if(period.months)return '1d';
+ if(period.ms<=18000000)return '1m';
+ if(period.ms<=259200000)return '5m';
+ return '60m';
+}
+function chartDailyCandles(asset){
+ const q=quote(asset.id);
+ const source=Array.isArray(q&&q.candles)?q.candles:[];
+ return source.map(row=>({
+  t:Number(row.t),o:Number(row.o),h:Number(row.h),
+  l:Number(row.l),c:Number(row.c)
+ })).filter(row=>
+  [row.t,row.o,row.h,row.l,row.c].every(Number.isFinite)&&
+  row.t>946684800&&row.o>0&&row.h>0&&row.l>0&&row.c>0&&
+  row.h>=Math.max(row.o,row.c)&&row.l<=Math.min(row.o,row.c)
+ ).sort((a,b)=>a.t-b.t);
+}
+async function loadMarketChartHistory(force=false){
+ const asset=ASSET_BY_ID[state.dialogId];
+ if(!asset||asset.group==='crypto'||!chartSupportsRanges(asset))return;
+ const selected=chartRange,period=CHART_PERIOD_BY_ID[selected];
+ if(!period)return;
+ const seq=++chartFetchState.sequence;
+ if(chartFetchState.abort)chartFetchState.abort.abort();
+ chartFetchState.abort=null;
+ const key=asset.id+':'+selected,cached=chartFetchState.cache.get(key);
+ if(!force&&cached&&Date.now()-cached.loadedAt<120000){
+  chartSeries={...cached,id:asset.id,range:selected,loading:false,error:''};
+  updateChartHistoryStatus();
+  requestAnimationFrame(drawChart);
+  return;
+ }
+ chartSeries={id:asset.id,range:selected,candles:[],source:'',loading:true,error:'',partial:false};
+ updateChartHistoryStatus();
+ requestAnimationFrame(drawChart);
+ let candles=[],source='',failure='';
+ const now=Date.now();
+ if(period.months){
+  // The main dashboard already publishes a complete, verified daily OHLC
+  // series. Filtering actual daily candles avoids fictitious hourly prices.
+  const daily=chartDailyCandles(asset);
+  const newest=daily.length?daily[daily.length-1].t*1000:now;
+  const from=chartStartTime(period,newest);
+  candles=daily.filter(row=>row.t*1000>=from&&row.t*1000<=now);
+  source='Yahoo Finance · candele giornaliere';
+  if(candles.length<2)failure='Candele giornaliere non disponibili per '+selected+'.';
+ }else{
+  const interval=chartMarketInterval(period);
+  const controller=new AbortController();
+  chartFetchState.abort=controller;
+  const timer=setTimeout(()=>controller.abort(),9500);
+  try{
+   const url='./chart-history/'+encodeURIComponent(asset.id)+'.json?v='+
+    Math.floor(now/120000);
+   const response=await fetch(url,{cache:'no-store',signal:controller.signal});
+   if(!response.ok)throw Error('Snapshot storico HTTP '+response.status);
+   const payload=await response.json();
+   if(!payload||payload.id!==asset.id||payload.symbol!==asset.symbol||
+      !payload.sets||!payload.sets[interval])throw Error('Nessuno storico verificato');
+   const entry=payload.sets[interval];
+   const bars=chartNormalizeCandles(entry.candles,'Yahoo',0,now,period.step);
+   if(bars.length<2)throw Error('Candele OHLC insufficienti');
+   const latest=bars[bars.length-1].t*1000;
+   const from=chartStartTime(period,latest);
+   candles=bars.filter(row=>row.t*1000>=from&&row.t*1000<=now);
+   if(candles.length<2)throw Error('Nessuna candela nel periodo '+selected);
+   const delayed=now-latest>4*3600000;
+   const date=new Intl.DateTimeFormat('it-IT',{
+    day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'
+   }).format(new Date(latest));
+   source='Yahoo Finance · '+interval+' · '+(delayed?'ultima sessione':'ultima candela')+' '+date;
+  }catch(error){
+   failure='Storico '+interval+' non disponibile per '+asset.name+
+    '. Controlla il feed Yahoo Finance o riprova più tardi.';
+  }finally{clearTimeout(timer)}
+ }
+ if(seq!==chartFetchState.sequence)return;
+ if(candles.length<2){
+  chartSeries={id:asset.id,range:selected,candles:[],source:'',
+   loading:false,error:failure||'Storico OHLC non disponibile',partial:false};
+ }else{
+  const result={id:asset.id,range:selected,candles,source,
+   loading:false,error:'',partial:false,loadedAt:Date.now()};
+  chartSeries=result;
+  chartFetchState.cache.set(key,result);
+  if(chartFetchState.cache.size>90){
+   chartFetchState.cache.delete(chartFetchState.cache.keys().next().value);
+  }
+ }
+ updateChartHistoryStatus();
+ requestAnimationFrame(drawChart);
+}
 function openAsset(id){
  const a=ASSET_BY_ID[id];if(!a)return;
  chartFetchState.sequence++;
@@ -2434,11 +2537,11 @@ function openAsset(id){
  chartSeries={id:null,range:null,candles:[],source:'',loading:false,error:'',partial:false};
  state.dialogId=id;state.chartShift=0;state.chartHover=null;
  const dlg=$('#assetDialog');
- dlg.classList.toggle('crypto-fullscreen',a.group==='crypto');
+ dlg.classList.toggle('market-fullscreen',chartSupportsRanges(a));
  refreshDialog();
  if(!dlg.open)dlg.showModal();
- if(a.group==='crypto'){
-  loadCryptoChartHistory();
+ if(chartSupportsRanges(a)){
+  loadChartHistory();
   // Native fullscreen when permitted by the browser; viewport-filling CSS
   // remains the reliable fallback on mobile and restricted browsers.
   if(typeof dlg.requestFullscreen==='function'){
@@ -2456,7 +2559,7 @@ function closeAsset(){
  if(document.fullscreenElement===dlg&&typeof document.exitFullscreen==='function'){
   try{const request=document.exitFullscreen();if(request&&request.catch)request.catch(()=>{});}catch(_error){}
  }
- dlg.classList.remove('crypto-fullscreen');
+ dlg.classList.remove('market-fullscreen');
  state.dialogId=null;state.chartHover=null;
 }
 function refreshDialog(){
@@ -2467,7 +2570,7 @@ function refreshDialog(){
  $('#dialogCategory').textContent=a.group.toUpperCase()+' · '+a.symbol;
  $('#dialogSubtitle').textContent=a.where||'Quotazione di mercato';
  $('#dialogWatch').textContent=(isWatch?'★ Rimuovi dalla Watchlist':'☆ Aggiungi alla Watchlist');
- const isCrypto=a.group==='crypto';
+ const isCrypto=chartSupportsRanges(a);
  const candleAvailable=isCrypto?
   (chartSeries.id===a.id&&chartSeries.range===chartRange&&chartSeries.candles.length>=2):
   (q&&Array.isArray(q.candles)&&q.candles.length>=2);
@@ -2481,7 +2584,7 @@ function refreshDialog(){
    '">'+period.id+'</button>').join('')+
   '<button class="chart-period chart-period-refresh" type="button" data-chart-refresh="1" title="Aggiorna le candele del periodo selezionato">↻ Aggiorna</button></div>':
   '<div><button class="btn btn-small" type="button" data-pan="-20">◀ Storico</button> <button class="btn btn-small" type="button" data-pan="20">Recenti ▶</button> <button class="btn btn-small" type="button" data-pan="reset">Oggi</button></div>')+'</div>'+
- '<div class="chart-help">'+(isCrypto?'Seleziona un periodo da 1h a 3M; le candele sono richieste dalla fonte per l’intervallo scelto. ':'')+'Trascina il grafico in orizzontale per scorrere lo storico. Nessuno zoom. Le medie e gli indicatori sono mostrati solo quando le serie contengono dati sufficienti.</div>'+
+ '<div class="chart-help">'+(isCrypto?'Seleziona un periodo da 1h a 3M. Fuori orario di mercato, i periodi brevi mostrano l’ultima sessione disponibile, con data indicata. ':'')+'Trascina il grafico in orizzontale per scorrere lo storico. Nessuno zoom. Le medie e gli indicatori sono mostrati solo quando le serie contengono dati sufficienti.</div>'+
  '<div class="chart-source"><span'+(isCrypto?' id="chartHistorySource" role="status" aria-live="polite"':'')+'>'+(isCrypto?'Caricamento delle candele del periodo '+chartRange+'…':
   'Prezzi: Yahoo Finance. Candele OHLC: '+esc(q&&q.candleSource||'Yahoo Finance, se disponibile')+'. Storico non necessariamente in tempo reale.')+'</span>'+
  '<a href="'+esc(externalUrl(a))+'" target="_blank" rel="noopener noreferrer">Apri fonte '+sym('external')+'</a></div>';
@@ -2497,7 +2600,7 @@ function toggleWatch(id){
  if(state.page==='watchlist'||state.page==='home')render();
 }
 function getCandles(id){
- if(ASSET_BY_ID[id]&&ASSET_BY_ID[id].group==='crypto'){
+ if(chartSupportsRanges(ASSET_BY_ID[id])){
   return chartSeries.id===id&&chartSeries.range===chartRange?chartSeries.candles:[];
  }
  const q=quote(id);
@@ -2900,7 +3003,7 @@ function setupEvents(){
   const btn=e.target.closest('button');
   if(!btn)return;
   if(btn.dataset.chartRange){selectChartRange(btn.dataset.chartRange);return;}
-  if(btn.dataset.chartRefresh){loadCryptoChartHistory(true);return;}
+  if(btn.dataset.chartRefresh){loadChartHistory(true);return;}
   if(btn.dataset.pan){
    if(btn.dataset.pan==='reset')state.chartShift=0;else state.chartShift+=Number(btn.dataset.pan);
    drawChart();
@@ -2912,7 +3015,7 @@ function setupEvents(){
   if(document.fullscreenElement===$('#assetDialog')&&document.exitFullscreen){
    try{const request=document.exitFullscreen();if(request&&request.catch)request.catch(()=>{});}catch(_error){}
   }
-  $('#assetDialog').classList.remove('crypto-fullscreen');
+  $('#assetDialog').classList.remove('market-fullscreen');
   state.dialogId=null;state.chartHover=null;
  });
  $('#dialogWatch').addEventListener('click',()=>state.dialogId&&toggleWatch(state.dialogId));
