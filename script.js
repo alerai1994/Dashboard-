@@ -686,7 +686,7 @@ function patchPortfolio(){
  const coverage=cards[0]?.querySelector('.micro-note');
  if(coverage)coverage.textContent=totals.priced+'/'+(totals.count-totals.invalid)+' con prezzo disponibile';
  const costNote=cards[1]?.querySelector('.micro-note');
- if(costNote)costNote.textContent=totals.costed+' posizioni con costo registrato';
+ if(costNote)costNote.textContent=totals.costed+' posizioni con importo investito';
  const pnlNote=cards[2]?.querySelector('.micro-note');
  if(pnlNote)pnlNote.textContent=totals.pnlCount+' con prezzo e costo disponibili';
  const positionsNote=cards[3]?.querySelector('.micro-note');
@@ -1122,13 +1122,17 @@ function portfolioRow(holding,index){
  const h=holding&&typeof holding==='object'?holding:{};
  const a=ASSET_BY_ID[h.id]||null;
  const qty=Number(h.qty);
- const costStored=h.cost!==undefined&&h.cost!==null&&h.cost!=='';
- const rawCost=costStored?Number(h.cost):null;
  const valid=portfolioEligible(h.id)&&Number.isFinite(qty)&&qty>0;
- const hasCost=valid&&costStored&&Number.isFinite(rawCost)&&rawCost>=0&&
-  Number.isFinite(qty*rawCost);
- const cost=hasCost?rawCost:null;
- const invested=hasCost?qty*cost:null;
+ // The amount invested in USD is authoritative for new positions.
+ // Previous records with only a unit acquisition cost remain compatible.
+ const hasInvestedField=Object.prototype.hasOwnProperty.call(h,'investedUsd');
+ const directAmount=hasInvestedField&&h.investedUsd!==null&&h.investedUsd!==''?Number(h.investedUsd):null;
+ const directValid=valid&&directAmount!==null&&Number.isFinite(directAmount)&&directAmount>=0;
+ const legacyCost=!hasInvestedField&&h.cost!==undefined&&h.cost!==null&&h.cost!==''?Number(h.cost):null;
+ const legacyValid=valid&&legacyCost!==null&&Number.isFinite(legacyCost)&&legacyCost>=0&&Number.isFinite(qty*legacyCost);
+ const hasCost=directValid||legacyValid;
+ const invested=directValid?directAmount:(legacyValid?qty*legacyCost:null);
+ const cost=hasCost?invested/qty:null;
  const override=h.manualPrice!==null&&h.manualPrice!==undefined&&h.manualPrice!=='';
  const manual=override?Number(h.manualPrice):null;
  const manualValid=override&&Number.isFinite(manual)&&manual>0;
@@ -1200,13 +1204,13 @@ function portfolioPage(){
  return secHeader('Portfolio','Inserisci, modifica e monitora le tue posizioni con le quotazioni di mercato disponibili.')+
  '<div class="summary-grid portfolio-summary">'+
  overviewCard('Valore delle posizioni quotate',total.priced?portfolioUsd(total.value):'—',total.priced+'/'+(total.count-total.invalid)+' con prezzo disponibile')+
- overviewCard('Capitale di carico registrato',total.costed?portfolioUsd(total.invested):'—',total.costed+' posizioni con costo registrato')+
+ overviewCard('Capitale investito (USD)',total.costed?portfolioUsd(total.invested):'—',total.costed+' posizioni con importo investito')+
  overviewCard('Profitto / perdita stimato',total.pnlCount?portfolioUsd(total.pnl):'—',total.pnlCount+' con prezzo e costo disponibili',total.pnlCount?trendClass(total.pnl):'')+
  overviewCard('Posizioni',String(total.count),total.priced+' valutate'+missingText)+
  '</div>'+
  '<section class="content-card panel portfolio-editor" id="portfolioEditor">'+
  '<div class="portfolio-section-heading"><div><h3 id="portfolioFormTitle">'+(editing?'Modifica posizione':'Aggiungi una posizione')+'</h3>'+
- '<p>Inserisci la quantità che possiedi. Puoi usare la virgola o il punto come separatore decimale.</p></div>'+
+ '<p>Inserisci la quantità posseduta e l’importo investito in dollari. Puoi usare la virgola o il punto come separatore decimale.</p></div>'+
  '<button type="button" class="btn btn-small" data-portfolio-refresh="1">'+sym('refresh')+' Aggiorna prezzi</button></div>'+
  '<form id="portfolioForm" class="form-grid" novalidate>'+
  '<div class="form-field"><label for="holdingAsset">Criptovaluta o strumento</label>'+
@@ -1215,6 +1219,10 @@ function portfolioPage(){
  '<div class="form-field"><label for="holdingQty">Quantità posseduta</label>'+
  '<input id="holdingQty" type="text" inputmode="decimal" autocomplete="off" name="qty" placeholder="Es. 1,25" value="'+
  esc(edit?String(edit.qty):'')+'" required></div>'+
+ '<div class="form-field"><label for="holdingInvestedUsd">Importo investito (USD)</label>'+
+ '<input id="holdingInvestedUsd" type="text" inputmode="decimal" autocomplete="off" name="investedUsd" placeholder="Es. 1500,00" value="'+
+ esc(edit&&portfolioRow(edit,portfolioEditIndex).hasCost?String(portfolioRow(edit,portfolioEditIndex).invested):'')+'">'+
+ '<small>Inserisci il totale dei dollari investiti, non il prezzo per unità. Facoltativo.</small></div>'+
  '<div id="portfolioFormFeedback" class="portfolio-form-feedback" role="alert" hidden></div>'+
  '<div class="form-actions"><button class="btn btn-primary" type="submit" data-portfolio-save="1">'+sym(editing?'check':'plus')+
  (editing?' Salva modifiche':' Aggiungi posizione')+'</button>'+
@@ -1223,7 +1231,7 @@ function portfolioPage(){
  '<section class="content-card panel portfolio-positions" style="margin-top:13px">'+
  '<div class="portfolio-section-heading"><div><h3>Le tue posizioni</h3><p>Valore e risultato aggiornati quando cambiano le quotazioni disponibili.</p></div></div>'+
  (rows.length?'<div class="data-table-scroll"><table class="data-table portfolio-table">'+
- '<thead><tr><th>Strumento</th><th>Quantità</th><th>Carico unit.</th><th>Investito</th>'+
+ '<thead><tr><th>Strumento</th><th>Quantità</th><th>Costo unit. calc.</th><th>Investito (USD)</th>'+
  '<th>Prezzo attuale</th><th>Valore</th><th>P/L</th><th>Azioni</th></tr></thead><tbody>'+
  rows.map(r=>{
   const h=r.h,a=r.a;
@@ -1241,9 +1249,9 @@ function portfolioPage(){
    '<td><div class="portfolio-row-actions"><button class="btn btn-small" type="button" data-edit-holding="'+r.index+'">Modifica</button>'+
    '<button class="btn btn-small" type="button" data-delete-holding="'+r.index+'">Rimuovi</button></div></td></tr>';
  }).join('')+'</tbody></table></div>':
- '<div class="empty-state"><h3>Nessuna posizione</h3><p>Seleziona uno strumento e inserisci la quantità posseduta.</p></div>')+
+ '<div class="empty-state"><h3>Nessuna posizione</h3><p>Seleziona uno strumento, inserisci la quantità e, se lo conosci, l’importo investito in USD.</p></div>')+
  portfolioStorageWarning()+
- '<p class="notice">Le posizioni sono salvate soltanto in questo browser. Il valore segue le quotazioni disponibili, anche ritardate. Per le nuove posizioni senza costo di acquisto, il capitale investito e il P/L non sono calcolabili: i vecchi costi già registrati restano visibili. Non include commissioni, imposte o cambi valutari.</p>'+
+ '<p class="notice">Le posizioni sono salvate soltanto in questo browser. Il valore segue le quotazioni disponibili, anche ritardate. Il costo unitario è calcolato dividendo i dollari investiti per la quantità. Senza un importo investito non è possibile calcolare il profitto/perdita. I vecchi importi di carico rimangono disponibili. Non include commissioni, imposte o cambi valutari.</p>'+
  '</section>';
 }
 const SEC_CATEGORIES=[
@@ -2485,9 +2493,8 @@ function savePortfolioForm(formElement){
    const idx=portfolioEditIndex;
    const editing=Number.isInteger(idx)&&idx>=0&&idx<state.holdings.length;
    const prev=editing?state.holdings[idx]:null;
-   // An edited legacy position retains its historical cost; new ones do not
-   // invent an acquisition price, so no fictitious P/L is displayed.
-   const cost=prev&&prev.id===id&&prev.cost!==undefined?prev.cost:null;
+   const investedRaw=String(form.get('investedUsd')??'').trim();
+   const investedUsd=investedRaw?parsePortfolioNumber(investedRaw):null;
    const manualField=form.get('manualPrice');
    const manualRaw=manualField===null?'':String(manualField).trim();
    const manualPrice=manualField===null?
@@ -2499,6 +2506,10 @@ function savePortfolioForm(formElement){
    if(!Number.isFinite(qty)||qty<=0){
     portfolioFormError('Inserisci una quantità valida e maggiore di zero. Puoi usare virgola o punto.','holdingQty');return;
    }
+   if(investedRaw&&(!Number.isFinite(investedUsd)||investedUsd<0||
+      !Number.isFinite(investedUsd/qty))){
+    portfolioFormError('Inserisci un importo investito valido in dollari (USD), uguale o superiore a zero.','holdingInvestedUsd');return;
+   }
    if(manualRaw&&(!Number.isFinite(manualPrice)||manualPrice<=0||
       !Number.isFinite(qty*manualPrice))){
     portfolioFormError('Il prezzo attuale manuale deve essere maggiore di zero. Oppure lascia il campo vuoto.','holdingManualPrice');return;
@@ -2506,7 +2517,8 @@ function savePortfolioForm(formElement){
    const manualUpdatedAt=manualPrice===null?null:
     prev&&prev.id===id&&Number(prev.manualPrice)===manualPrice&&prev.manualUpdatedAt?
      prev.manualUpdatedAt:new Date().toISOString();
-   const holding={...(prev||{}),id,qty,cost,manualPrice,manualUpdatedAt};
+   const cost=investedUsd===null?null:investedUsd/qty;
+   const holding={...(prev||{}),id,qty,investedUsd,cost,manualPrice,manualUpdatedAt};
    const next=state.holdings.slice();
    if(editing)next[idx]=holding;else next.push(holding);
    if(!persistPortfolio(next))return;
