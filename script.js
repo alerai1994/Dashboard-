@@ -676,15 +676,19 @@ function patchPortfolio(){
  if(state.page!=='portfolio')return;
  const totals=portfolioTotals(),stats=document.querySelectorAll('#pageContainer .portfolio-summary .summary-card strong');
  if(stats[0])stats[0].textContent=totals.priced?portfolioUsd(totals.value):'—';
- if(stats[1])stats[1].textContent=portfolioUsd(totals.invested);
+ if(stats[1])stats[1].textContent=totals.costed?portfolioUsd(totals.invested):'—';
  if(stats[2]){
-  stats[2].textContent=totals.priced?portfolioUsd(totals.pnl):'—';
-  setMovementClass(stats[2],totals.priced?totals.pnl:NaN);
+  stats[2].textContent=totals.pnlCount?portfolioUsd(totals.pnl):'—';
+  setMovementClass(stats[2],totals.pnlCount?totals.pnl:NaN);
  }
  if(stats[3])stats[3].textContent=String(totals.count);
  const cards=document.querySelectorAll('#pageContainer .portfolio-summary .summary-card');
  const coverage=cards[0]?.querySelector('.micro-note');
  if(coverage)coverage.textContent=totals.priced+'/'+(totals.count-totals.invalid)+' con prezzo disponibile';
+ const costNote=cards[1]?.querySelector('.micro-note');
+ if(costNote)costNote.textContent=totals.costed+' posizioni con costo registrato';
+ const pnlNote=cards[2]?.querySelector('.micro-note');
+ if(pnlNote)pnlNote.textContent=totals.pnlCount+' con prezzo e costo disponibili';
  const positionsNote=cards[3]?.querySelector('.micro-note');
  if(positionsNote)positionsNote.textContent=totals.priced+' valutate'+
   (totals.missing?' · '+totals.missing+' senza prezzo':'')+
@@ -700,7 +704,7 @@ function patchPortfolio(){
   if(value)value.textContent=portfolioUsd(r.value);
   if(pnl){
    pnl.textContent=portfolioUsd(r.pnl);
-   setMovementClass(pnl,r.hasPrice?r.pnl:NaN);
+   setMovementClass(pnl,r.pnl!==null?r.pnl:NaN);
   }
  });
 }
@@ -1117,10 +1121,14 @@ function portfolioEligible(id){
 function portfolioRow(holding,index){
  const h=holding&&typeof holding==='object'?holding:{};
  const a=ASSET_BY_ID[h.id]||null;
- const qty=Number(h.qty),cost=Number(h.cost);
- const valid=portfolioEligible(h.id)&&Number.isFinite(qty)&&qty>0&&
-  Number.isFinite(cost)&&cost>=0&&Number.isFinite(qty*cost);
- const invested=valid?qty*cost:null;
+ const qty=Number(h.qty);
+ const costStored=h.cost!==undefined&&h.cost!==null&&h.cost!=='';
+ const rawCost=costStored?Number(h.cost):null;
+ const valid=portfolioEligible(h.id)&&Number.isFinite(qty)&&qty>0;
+ const hasCost=valid&&costStored&&Number.isFinite(rawCost)&&rawCost>=0&&
+  Number.isFinite(qty*rawCost);
+ const cost=hasCost?rawCost:null;
+ const invested=hasCost?qty*cost:null;
  const override=h.manualPrice!==null&&h.manualPrice!==undefined&&h.manualPrice!=='';
  const manual=override?Number(h.manualPrice):null;
  const manualValid=override&&Number.isFinite(manual)&&manual>0;
@@ -1129,21 +1137,25 @@ function portfolioRow(holding,index){
  const price=valid?(manualValid?manual:marketValid?market:null):null;
  const hasPrice=Number.isFinite(price)&&price>0&&Number.isFinite(price*qty);
  const value=hasPrice?price*qty:null;
- const pnl=hasPrice?value-invested:null;
+ const pnl=hasPrice&&hasCost?value-invested:null;
  const source=manualValid?'Manuale':marketValid?'Mercato':'Senza quotazione';
  const time=manualValid?h.manualUpdatedAt:(q&&q.time);
- return {h,index,a,qty,cost,valid,invested,price,hasPrice,value,pnl,source,time};
+ return {h,index,a,qty,cost,valid,hasCost,invested,price,hasPrice,value,pnl,source,time};
 }
 function portfolioTotals(){
  const rows=state.holdings.map(portfolioRow);
- let invested=0,pricedCost=0,value=0,priced=0,invalid=0;
+ let invested=0,pricedCost=0,value=0,pnl=0,priced=0,costed=0,pnlCount=0,invalid=0;
  for(const row of rows){
   if(!row.valid){invalid++;continue}
-  invested+=row.invested;
-  if(row.hasPrice){value+=row.value;pricedCost+=row.invested;priced++}
+  if(row.hasCost){invested+=row.invested;costed++}
+  if(row.hasPrice){
+   value+=row.value;priced++;
+   if(row.hasCost){pricedCost+=row.invested;pnl+=row.pnl;pnlCount++}
+  }
  }
- return {invested,value,pricedCost,pnl:value-pricedCost,
-  priced,missing:rows.length-priced-invalid,invalid,count:rows.length};
+ return {invested,value,pricedCost,pnl,priced,costed,pnlCount,
+  missing:rows.length-priced-invalid,missingCost:rows.length-costed-invalid,
+  invalid,count:rows.length};
 }
 function persistPortfolio(next){
  const serialized=JSON.stringify(next),key=STORE+'holdings';
@@ -1188,13 +1200,13 @@ function portfolioPage(){
  return secHeader('Portfolio','Inserisci, modifica e monitora le tue posizioni con le quotazioni di mercato disponibili.')+
  '<div class="summary-grid portfolio-summary">'+
  overviewCard('Valore delle posizioni quotate',total.priced?portfolioUsd(total.value):'—',total.priced+'/'+(total.count-total.invalid)+' con prezzo disponibile')+
- overviewCard('Capitale di carico',portfolioUsd(total.invested),'Include anche le posizioni senza quotazione')+
- overviewCard('Profitto / perdita stimato',total.priced?portfolioUsd(total.pnl):'—','Solo posizioni con prezzo disponibile',total.priced?trendClass(total.pnl):'')+
+ overviewCard('Capitale di carico registrato',total.costed?portfolioUsd(total.invested):'—',total.costed+' posizioni con costo registrato')+
+ overviewCard('Profitto / perdita stimato',total.pnlCount?portfolioUsd(total.pnl):'—',total.pnlCount+' con prezzo e costo disponibili',total.pnlCount?trendClass(total.pnl):'')+
  overviewCard('Posizioni',String(total.count),total.priced+' valutate'+missingText)+
  '</div>'+
  '<section class="content-card panel portfolio-editor" id="portfolioEditor">'+
  '<div class="portfolio-section-heading"><div><h3 id="portfolioFormTitle">'+(editing?'Modifica posizione':'Aggiungi una posizione')+'</h3>'+
- '<p>Quantità e prezzi in USD. Puoi usare la virgola o il punto come separatore decimale.</p></div>'+
+ '<p>Inserisci la quantità che possiedi. Puoi usare la virgola o il punto come separatore decimale.</p></div>'+
  '<button type="button" class="btn btn-small" data-portfolio-refresh="1">'+sym('refresh')+' Aggiorna prezzi</button></div>'+
  '<form id="portfolioForm" class="form-grid" novalidate>'+
  '<div class="form-field"><label for="holdingAsset">Criptovaluta o strumento</label>'+
@@ -1203,12 +1215,6 @@ function portfolioPage(){
  '<div class="form-field"><label for="holdingQty">Quantità posseduta</label>'+
  '<input id="holdingQty" type="text" inputmode="decimal" autocomplete="off" name="qty" placeholder="Es. 1,25" value="'+
  esc(edit?String(edit.qty):'')+'" required></div>'+
- '<div class="form-field"><label for="holdingCost">Prezzo medio di acquisto (USD per unità)</label>'+
- '<input id="holdingCost" type="text" inputmode="decimal" autocomplete="off" name="cost" placeholder="Es. 125,50" value="'+
- esc(edit?String(edit.cost):'')+'" required></div>'+
- '<div class="portfolio-entry-preview"><span>Capitale di carico della posizione</span>'+
- '<output id="holdingCostPreview">'+(editing&&portfolioRow(edit,portfolioEditIndex).valid?
-  portfolioUsd(portfolioRow(edit,portfolioEditIndex).invested):'—')+'</output></div>'+
  '<div id="portfolioFormFeedback" class="portfolio-form-feedback" role="alert" hidden></div>'+
  '<div class="form-actions"><button class="btn btn-primary" type="submit" data-portfolio-save="1">'+sym(editing?'check':'plus')+
  (editing?' Salva modifiche':' Aggiungi posizione')+'</button>'+
@@ -1226,18 +1232,18 @@ function portfolioPage(){
    '<strong>'+esc(a?a.name:(h.id||'Strumento sconosciuto'))+'</strong></span>'+
    (!r.valid?'<small class="portfolio-quote-status portfolio-invalid">Dati da correggere</small>':'')+'</td>'+
    '<td>'+portfolioQuantity(r.valid?r.qty:NaN)+'</td>'+
-   '<td>'+portfolioUnitUsd(r.valid?r.cost:NaN)+'</td>'+
+   '<td>'+portfolioUnitUsd(r.hasCost?r.cost:NaN)+'</td>'+
    '<td>'+portfolioUsd(r.invested)+'</td>'+
    '<td data-portfolio-price="'+r.index+'">'+portfolioUnitUsd(r.hasPrice?r.price:NaN)+
    '<small class="portfolio-quote-status">'+esc(r.source)+(r.source==='Manuale'?' · non live':'')+'</small></td>'+
    '<td data-portfolio-value="'+r.index+'">'+portfolioUsd(r.value)+'</td>'+
-   '<td data-portfolio-pnl="'+r.index+'" class="'+(r.hasPrice?trendClass(r.pnl):'color-unknown')+'">'+portfolioUsd(r.pnl)+'</td>'+
+   '<td data-portfolio-pnl="'+r.index+'" class="'+(r.pnl!==null?trendClass(r.pnl):'color-unknown')+'">'+portfolioUsd(r.pnl)+'</td>'+
    '<td><div class="portfolio-row-actions"><button class="btn btn-small" type="button" data-edit-holding="'+r.index+'">Modifica</button>'+
    '<button class="btn btn-small" type="button" data-delete-holding="'+r.index+'">Rimuovi</button></div></td></tr>';
  }).join('')+'</tbody></table></div>':
- '<div class="empty-state"><h3>Nessuna posizione</h3><p>Seleziona uno strumento e inserisci la quantità e il prezzo di acquisto.</p></div>')+
+ '<div class="empty-state"><h3>Nessuna posizione</h3><p>Seleziona uno strumento e inserisci la quantità posseduta.</p></div>')+
  portfolioStorageWarning()+
- '<p class="notice">I dati del portafoglio sono salvati soltanto in questo browser. Prezzi di mercato disponibili secondo la fonte, anche ritardati; quelli manuali non si aggiornano da soli. P/L escluso per le posizioni senza prezzo. Non include commissioni, imposte o cambi valutari.</p>'+
+ '<p class="notice">Le posizioni sono salvate soltanto in questo browser. Il valore segue le quotazioni disponibili, anche ritardate. Per le nuove posizioni senza costo di acquisto, il capitale investito e il P/L non sono calcolabili: i vecchi costi già registrati restano visibili. Non include commissioni, imposte o cambi valutari.</p>'+
  '</section>';
 }
 const SEC_CATEGORIES=[
@@ -2475,25 +2481,28 @@ function setupCanvasInteractions(){
 function savePortfolioForm(formElement){
  if(!formElement)return;
    const form=new FormData(formElement),id=String(form.get('id')||'');
-   const qty=parsePortfolioNumber(form.get('qty')),cost=parsePortfolioNumber(form.get('cost'));
-   const manualRaw=String(form.get('manualPrice')||'').trim();
-   const manualPrice=manualRaw?parsePortfolioNumber(manualRaw):null;
+   const qty=parsePortfolioNumber(form.get('qty'));
+   const idx=portfolioEditIndex;
+   const editing=Number.isInteger(idx)&&idx>=0&&idx<state.holdings.length;
+   const prev=editing?state.holdings[idx]:null;
+   // An edited legacy position retains its historical cost; new ones do not
+   // invent an acquisition price, so no fictitious P/L is displayed.
+   const cost=prev&&prev.id===id&&prev.cost!==undefined?prev.cost:null;
+   const manualField=form.get('manualPrice');
+   const manualRaw=manualField===null?'':String(manualField).trim();
+   const manualPrice=manualField===null?
+    (prev&&prev.id===id&&prev.manualPrice!==undefined?prev.manualPrice:null):
+    (manualRaw?parsePortfolioNumber(manualRaw):null);
    if(!portfolioEligible(id)){
     portfolioFormError('Seleziona una criptovaluta o uno strumento valido.','holdingAsset');return;
    }
    if(!Number.isFinite(qty)||qty<=0){
     portfolioFormError('Inserisci una quantità valida e maggiore di zero. Puoi usare virgola o punto.','holdingQty');return;
    }
-   if(!Number.isFinite(cost)||cost<0||!Number.isFinite(qty*cost)){
-    portfolioFormError('Inserisci il prezzo medio di acquisto (USD) valido: zero o superiore.','holdingCost');return;
-   }
    if(manualRaw&&(!Number.isFinite(manualPrice)||manualPrice<=0||
       !Number.isFinite(qty*manualPrice))){
     portfolioFormError('Il prezzo attuale manuale deve essere maggiore di zero. Oppure lascia il campo vuoto.','holdingManualPrice');return;
    }
-   const idx=portfolioEditIndex;
-   const editing=Number.isInteger(idx)&&idx>=0&&idx<state.holdings.length;
-   const prev=editing?state.holdings[idx]:null;
    const manualUpdatedAt=manualPrice===null?null:
     prev&&prev.id===id&&Number(prev.manualPrice)===manualPrice&&prev.manualUpdatedAt?
      prev.manualUpdatedAt:new Date().toISOString();
@@ -2618,14 +2627,6 @@ function setupEvents(){
    e.target.removeAttribute('aria-invalid');
    const message=$('#portfolioFormFeedback');
    if(message){message.hidden=true;message.textContent='';message.classList.remove('is-error')}
-  }
-  if(e.target.id==='holdingQty'||e.target.id==='holdingCost'){
-   const qty=parsePortfolioNumber($('#holdingQty')?.value);
-   const cost=parsePortfolioNumber($('#holdingCost')?.value);
-   const output=$('#holdingCostPreview');
-   if(output)output.textContent=Number.isFinite(qty)&&qty>0&&Number.isFinite(cost)&&cost>=0&&
-    Number.isFinite(qty*cost)?portfolioUsd(qty*cost):'—';
-   return;
   }
   if(e.target.id==='orderBookSearch'){
    orderBookState.search=e.target.value;
