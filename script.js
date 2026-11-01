@@ -2694,6 +2694,24 @@ function setupEvents(){
  window.addEventListener('resize',()=>{if(state.dialogId)requestAnimationFrame(drawChart)});
  window.addEventListener('hashchange',()=>navigate(location.hash.slice(1)));
 }
+function dismissVertexBoot(){
+ const screen=$('#vertexBootScreen');
+ if(!screen)return;
+ const finish=()=>{
+  if(!screen.isConnected)return;
+  clearTimeout(window.__vertexBootFailsafe);
+  screen.classList.add('is-dismissing');
+  window.setTimeout(()=>{if(screen.isConnected)screen.remove()},550);
+ };
+ const started=Number(window.__vertexBootStartedAt)||Date.now();
+ const minimumVisibleMs=900;
+ const wait=Math.max(0,minimumVisibleMs-(Date.now()-started));
+ // First paint the functional dashboard, then fade the loading logo out.
+ const afterPaint=()=>window.setTimeout(finish,wait);
+ if(typeof requestAnimationFrame==='function'){
+  requestAnimationFrame(()=>requestAnimationFrame(afterPaint));
+ }else afterPaint();
+}
 function init(){
  setupEvents();applyTheme();applyBrightness();updateClock();
  setInterval(updateClock,30000);
@@ -2706,6 +2724,7 @@ function init(){
   }
  },5000);
  render();
+ dismissVertexBoot();
  fetchQuotes();
  connectCryptoStream();
  connectForexStream();
