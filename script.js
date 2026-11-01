@@ -151,7 +151,7 @@ const state={
  watch:Array.isArray(load('watch',[]))?load('watch',[]):[],
  holdings:Array.isArray(load('holdings',[]))?load('holdings',[]):[],
  alerts:Array.isArray(load('alerts',[]))?load('alerts',[]):[],
- theme:load('theme','dark'),themeMode:load('themeMode',load('theme','dark')),clickSound:load('clickSound',true),clickVolume:load('clickVolume',70),brightness:load('brightness',100),region:null,marketFilter:'all',marketSearch:'',dialogId:null,chartShift:0,chartHover:null,
+ theme:load('theme','dark'),themeMode:load('themeMode',load('theme','dark')),clickSound:load('clickSound',true),clickVolume:load('clickVolume',70),brightness:load('brightness',100),adaptiveBrightness:load('adaptiveBrightness',false)===true,region:null,marketFilter:'all',marketSearch:'',dialogId:null,chartShift:0,chartHover:null,
  land:'',searchResults:[],errorText:'',cryptoExpanded:false,
  solarLastRoot:null,solarLastUpdate:0,solarLastStatus:0
 };
@@ -1131,10 +1131,13 @@ function settingsPage(){
  choices.map(([mode,icon,label])=>'<button type="button" data-theme-mode="'+mode+'" class="settings-theme-option'+(state.themeMode===mode?' is-selected':'')+'" aria-pressed="'+(state.themeMode===mode)+'"><span class="settings-theme-swatch theme-swatch-'+mode+'" aria-hidden="true"><span>'+icon+'</span></span><span>'+label+'</span></button>').join('')+
  '</div>'+
  '<button type="button" data-theme-mode="auto" class="settings-auto-theme'+(state.themeMode==='auto'?' is-selected':'')+'" aria-pressed="'+(state.themeMode==='auto')+'"><span class="settings-choice-icon" aria-hidden="true">◐</span><span><strong>Automatico</strong><small>Segue il tema chiaro/scuro del dispositivo</small></span><span class="settings-auto-state">'+(state.themeMode==='auto'?'Attivo':'Seleziona')+'</span></button>'+
- '<div class="settings-volume settings-brightness"><div class="settings-volume-heading"><label for="brightnessSlider">Luminosità della dashboard</label><output id="brightnessValue" for="brightnessSlider">'+state.brightness+'%</output></div>'+
- '<input type="range" id="brightnessSlider" min="0" max="100" step="1" value="'+state.brightness+'" style="--volume-progress:'+state.brightness+'%" aria-label="Luminosità della dashboard">'+
+ '<div class="settings-volume settings-brightness">'+
+ '<div class="settings-sound-row settings-adaptive-row"><div><h3>Luminosità adattiva</h3><p class="subnote">Adatta automaticamente la pagina all’orario locale e al tema selezionato. Non utilizza il sensore di luce del dispositivo.</p></div>'+
+ '<button type="button" data-adaptive-brightness="1" class="settings-sound-toggle'+(state.adaptiveBrightness?' is-on':'')+'" role="switch" aria-checked="'+state.adaptiveBrightness+'" aria-label="Luminosità adattiva">'+(state.adaptiveBrightness?'Attiva':'Disattiva')+'</button></div>'+
+ '<div class="settings-volume-heading"><label for="brightnessSlider">Luminosità della dashboard</label><output id="brightnessValue" for="brightnessSlider">'+effectiveBrightness()+'%'+(state.adaptiveBrightness?' · Auto':'')+'</output></div>'+
+ '<input type="range" id="brightnessSlider" min="0" max="100" step="1" value="'+effectiveBrightness()+'" style="--volume-progress:'+effectiveBrightness()+'%" aria-label="Luminosità della dashboard" '+(state.adaptiveBrightness?'disabled':'')+'>'+
  '<div class="settings-volume-scale"><span>0%</span><span>100%</span></div>'+
- '<p class="subnote">Regola la luminosità della pagina, non quella fisica dello schermo. Al minimo resta leggibile per poterla aumentare di nuovo.</p></div></section>'+
+ '<p class="subnote">'+(state.adaptiveBrightness?'Luminosità automatica attiva: il cursore manuale è temporaneamente disabilitato. Disattivala per riprendere il controllo.':'Regola la luminosità della pagina, non quella fisica dello schermo. Al minimo resta leggibile per poterla aumentare di nuovo.')+'</p></div></section>'+
  '<section class="content-card panel settings-preferences"><div class="settings-sound-row"><div><h3>Suono al clic</h3><p class="subnote">Un breve suono quando premi i pulsanti. Puoi disattivarlo quando vuoi.</p></div>'+
  '<button type="button" data-sound-toggle="1" class="settings-sound-toggle'+(state.clickSound?' is-on':'')+'" role="switch" aria-checked="'+state.clickSound+'" aria-label="Suono al clic">'+(state.clickSound?'Attivo':'Disattivo')+'</button></div>'+
  '<div class="settings-volume"><div class="settings-volume-heading"><label for="clickVolumeSlider">Volume dei clic</label><output id="clickVolumeValue" for="clickVolumeSlider">'+state.clickVolume+'%</output></div>'+
@@ -1176,13 +1179,31 @@ function navigate(page){
  render();
  window.scrollTo({top:0,behavior:'auto'});
 }
+function adaptiveBrightnessLevel(now=new Date()){
+ // Conservative day/night profile from the user's local clock; no browser sensor access.
+ const hour=now.getHours();
+ const base=hour>=8&&hour<18?100:hour>=18&&hour<22?82:hour>=6&&hour<8?88:68;
+ return state.theme==='light'?base:Math.max(58,base-5);
+}
+function effectiveBrightness(){
+ return state.adaptiveBrightness?adaptiveBrightnessLevel():state.brightness;
+}
 function applyBrightness(){
- // 0% is the darkest usable dashboard level; retain visibility of the slider.
- document.documentElement.style.setProperty('--dashboard-dim-opacity',String((1-state.brightness/100)*0.82));
+ // Dims only the dashboard overlay; the physical device brightness is unchanged.
+ const level=effectiveBrightness();
+ document.documentElement.style.setProperty('--dashboard-dim-opacity',String((1-level/100)*0.82));
+ const slider=$('#brightnessSlider'),output=$('#brightnessValue');
+ if(slider){
+  slider.value=String(level);
+  slider.disabled=state.adaptiveBrightness;
+  slider.style.setProperty('--volume-progress',level+'%');
+ }
+ if(output)output.textContent=level+'%'+(state.adaptiveBrightness?' · Auto':'');
 }
 function applyTheme(){
  state.theme=resolvedTheme(state.themeMode);
  for(const theme of Object.keys(THEME_NAMES))document.body.classList.toggle('theme-'+theme,state.theme===theme);
+ if(state.adaptiveBrightness)applyBrightness();
  const switchEl=$('#themeSwitch'),toggle=$('#themeToggle');
  if(switchEl)switchEl.classList.toggle('on',state.theme!=='light');
  if(toggle){
@@ -1586,6 +1607,13 @@ function setupEvents(){
   if(btn.dataset.secCategory){secNewsState.selected=btn.dataset.secCategory;secNewsState.visible=20;render();return;}
   if(btn.dataset.secMore){secNewsState.visible+=20;render();return;}
   if(btn.dataset.secRefresh){loadSecNews(true);return;}
+  if(btn.dataset.adaptiveBrightness){
+   state.adaptiveBrightness=!state.adaptiveBrightness;
+   save('adaptiveBrightness',state.adaptiveBrightness);
+   applyBrightness();
+   if(state.page==='settings')render();
+   return;
+  }
   if(btn.dataset.themeMode){setTheme(btn.dataset.themeMode);return;}
   if(btn.dataset.soundToggle){
    const previous=state.clickSound;
@@ -1613,6 +1641,7 @@ function setupEvents(){
  });
  $('#pageContainer').addEventListener('input',e=>{
   if(e.target.id==='brightnessSlider'){
+   if(state.adaptiveBrightness)return;
    state.brightness=Math.min(100,Math.max(0,Math.round(Number(e.target.value)||0)));
    const output=$('#brightnessValue');
    if(output)output.textContent=state.brightness+'%';
@@ -1666,6 +1695,7 @@ function setupEvents(){
 function init(){
  setupEvents();applyTheme();applyBrightness();updateClock();
  setInterval(updateClock,30000);
+ setInterval(()=>{if(state.adaptiveBrightness&&!document.hidden)applyBrightness()},60000);
  setInterval(updateWorldSunlight,1000);
  render();
  fetchQuotes();
@@ -1676,7 +1706,7 @@ function init(){
  setInterval(()=>{if(!document.hidden)connectForexStream();updateLiveBadges()},15000);
  document.addEventListener('visibilitychange',()=>{
   if(document.hidden){closeStream();disconnectForexStream()}
-  else {connectCryptoStream();connectForexStream();fetchQuotes();updateWorldSunlight(true);}
+  else {connectCryptoStream();connectForexStream();fetchQuotes();updateWorldSunlight(true);applyBrightness();}
  });
  window.addEventListener('online',()=>{connectCryptoStream();connectForexStream();fetchQuotes()});
  window.addEventListener('offline',()=>{closeStream();disconnectForexStream();updateLiveBadges()});

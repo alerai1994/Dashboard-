@@ -703,3 +703,10 @@ body:is(.theme-ocean,.theme-emerald,.theme-violet) .settings-theme-option.is-sel
 .settings-auto-theme.is-selected .settings-auto-state{color:var(--brand)}
 @media(max-width:700px){.settings-theme-options{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:520px){.settings-theme-options{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.settings-theme-option{min-height:100px;padding:7px}.settings-auto-theme{padding:10px;gap:8px}.settings-auto-theme small{font-size:10px}}
+
+/* Adaptive page brightness keeps manual slider available whenever turned off. */
+.settings-brightness .settings-adaptive-row{margin-bottom:18px;padding-bottom:15px;border-bottom:1px solid var(--line);align-items:center}
+.settings-adaptive-row .subnote{line-height:1.5;margin:6px 0 0;max-width:560px}
+.settings-brightness input[type="range"]:disabled{cursor:not-allowed;opacity:.55}
+.settings-brightness .settings-volume-heading output{min-width:94px}
+@media(max-width:520px){.settings-brightness .settings-adaptive-row{gap:10px}.settings-brightness .settings-adaptive-row .subnote{font-size:11px}}
