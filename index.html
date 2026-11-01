@@ -7,13 +7,43 @@
 <meta name="description" content="Vertex Global — dashboard dei mercati mondiali con mappa interattiva, indici, Forex, crypto e strumenti di analisi.">
 <title>Vertex · Global Markets</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%233d9cff' d='M8 12h16l9 26L49 12h9L34 56z'/%3E%3Cpath fill='%237fd0ff' d='M8 12h16l6 17H15z'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="style.css?v=20261101-portfolio-save-fix-v44">
+<link rel="stylesheet" href="style.css?v=20261101-vertex-splash-v49">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js" defer crossorigin="anonymous"></script>
 <script src="crypto-orderbooks-data.js?v=20261101-all42-crypto-v35" defer></script>
 <script src="ore-orderbook-data.js?v=20261101-ore-backup-v34" defer></script>
-<script src="script.js?v=20261101-portfolio-invested-usd-v48" defer></script>
+<script src="script.js?v=20261101-vertex-splash-v49" defer></script>
 </head>
 <body class="theme-dark">
+<div class="vertex-boot-screen" id="vertexBootScreen" role="status" aria-live="polite" aria-label="Caricamento di Vertex">
+  <div class="vertex-boot-content">
+    <div class="vertex-boot-icon-wrap">
+      <svg class="vertex-boot-logo" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+        <path d="M3 7h12l7 18 9-18h6L20 36z" fill="#358dff"/>
+        <path d="M3 7h12l5 12H8z" fill="#79c9ff"/>
+        <path d="M24 7h13l-4 8h-9z" fill="#2c69ce"/>
+      </svg>
+    </div>
+    <div class="vertex-boot-title">Vertex</div>
+    <div class="vertex-boot-subtitle">GLOBAL MARKETS</div>
+    <div class="vertex-boot-track" aria-hidden="true"><span></span></div>
+    <p class="vertex-boot-note">Preparazione della dashboard…</p>
+  </div>
+</div>
+<noscript><style>.vertex-boot-screen{display:none!important}</style></noscript>
+<script>
+(function(){
+  var screen=document.getElementById('vertexBootScreen');
+  window.__vertexBootStartedAt=Date.now();
+  // Fail-safe: even if a remote script or the dashboard fails to initialize,
+  // do not leave an unclosable loading overlay on top of the site.
+  window.__vertexBootFailsafe=setTimeout(function(){
+    if(!screen||!screen.isConnected)return;
+    screen.style.opacity='0';
+    screen.style.pointerEvents='none';
+    setTimeout(function(){if(screen.isConnected)screen.remove()},550);
+  },7000);
+})();
+</script>
 <svg class="svg-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
 <symbol id="ic-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></symbol>
 <symbol id="ic-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c-5 5-5 13 0 18M12 3c5 5 5 13 0 18M5 7h14M5 17h14"/></symbol>
