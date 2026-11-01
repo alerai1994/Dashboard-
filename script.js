@@ -661,19 +661,28 @@ function patchRegions(){
 }
 function patchPortfolio(){
  if(state.page!=='portfolio')return;
- const totals=portfolioTotals(),profit=totals.value-totals.cost,stats=document.querySelectorAll('#pageContainer .summary-grid .summary-card strong');
- if(stats[0])stats[0].textContent=formatValue(totals.value,{group:'crypto'});
- if(stats[1])stats[1].textContent=formatValue(totals.cost,{group:'crypto'});
- if(stats[2]){stats[2].textContent=formatValue(profit,{group:'crypto'});setMovementClass(stats[2],profit)}
- const rows=document.querySelectorAll('#pageContainer .data-table tbody tr');
- let i=0;
- for(const h of state.holdings){
-  const a=ASSET_BY_ID[h.id];if(!a)continue;
-  const q=quote(h.id),row=rows[i++];if(!row)continue;
-  const td=row.querySelectorAll('td');
-  if(td[3])td[3].textContent=assetValue(a);
-  if(td[4])td[4].textContent=num(q&&q.value)?'$'+(q.value*Number(h.qty)).toLocaleString('it-IT',PREC):'—';
+ const totals=portfolioTotals(),stats=document.querySelectorAll('#pageContainer .portfolio-summary .summary-card strong');
+ if(stats[0])stats[0].textContent=totals.priced?portfolioUsd(totals.value):'—';
+ if(stats[1])stats[1].textContent=portfolioUsd(totals.invested);
+ if(stats[2]){
+  stats[2].textContent=totals.priced?portfolioUsd(totals.pnl):'—';
+  setMovementClass(stats[2],totals.priced?totals.pnl:NaN);
  }
+ if(stats[3])stats[3].textContent=String(totals.count);
+ state.holdings.map(portfolioRow).forEach(r=>{
+  const row=document.querySelector('#pageContainer tr[data-portfolio-row="'+r.index+'"]');
+  if(!row)return;
+  const price=row.querySelector('[data-portfolio-price]'),
+        value=row.querySelector('[data-portfolio-value]'),
+        pnl=row.querySelector('[data-portfolio-pnl]');
+  if(price)price.innerHTML=portfolioUnitUsd(r.hasPrice?r.price:NaN)+
+   '<small class="portfolio-quote-status">'+esc(r.source)+(r.source==='Manuale'?' · non live':'')+'</small>';
+  if(value)value.textContent=portfolioUsd(r.value);
+  if(pnl){
+   pnl.textContent=portfolioUsd(r.pnl);
+   setMovementClass(pnl,r.hasPrice?r.pnl:NaN);
+  }
+ });
 }
 function patchSummary(){
  if(state.page!=='home'&&state.page!=='analytics')return;
@@ -2450,7 +2459,28 @@ function setupEvents(){
   if(btn.dataset.filter){state.marketFilter=btn.dataset.filter;render();return;}
   if(btn.dataset.refresh){fetchQuotes(true);return;}
   if(btn.dataset.toggleTheme){setTheme(state.theme==='light'?'dark':'light');return;}
-  if(btn.dataset.deleteHolding!=null){state.holdings.splice(Number(btn.dataset.deleteHolding),1);save('holdings',state.holdings);render();return;}
+  if(btn.dataset.portfolioRefresh){fetchQuotes(true);return;}
+  if(btn.dataset.portfolioCancel){
+   portfolioEditIndex=-1;render();return;
+  }
+  if(btn.dataset.editHolding!==undefined){
+   const idx=Number(btn.dataset.editHolding);
+   if(!Number.isInteger(idx)||idx<0||idx>=state.holdings.length)return;
+   portfolioEditIndex=idx;render();
+   const form=$('#portfolioEditor');
+   if(form&&form.scrollIntoView)form.scrollIntoView({behavior:'smooth',block:'start'});
+   const input=$('#holdingQty');if(input)input.focus({preventScroll:true});
+   return;
+  }
+  if(btn.dataset.deleteHolding!==undefined){
+   const idx=Number(btn.dataset.deleteHolding);
+   if(!Number.isInteger(idx)||idx<0||idx>=state.holdings.length)return;
+   if(!window.confirm('Vuoi rimuovere questa posizione dal portafoglio?'))return;
+   const next=state.holdings.slice();next.splice(idx,1);
+   if(!persistPortfolio(next))return;
+   portfolioEditIndex=-1;render();toast('Posizione rimossa dal portafoglio.');
+   return;
+  }
   if(btn.dataset.deleteAlert!=null){state.alerts.splice(Number(btn.dataset.deleteAlert),1);save('alerts',state.alerts);render();return;}
  });
  $('#pageContainer').addEventListener('keydown',e=>{if(e.key==='Enter'){const tr=e.target.closest('tr[data-asset]');if(tr)openAsset(tr.dataset.asset)}});
@@ -2461,6 +2491,14 @@ function setupEvents(){
   }
  });
  $('#pageContainer').addEventListener('input',e=>{
+  if(e.target.id==='holdingQty'||e.target.id==='holdingCost'){
+   const qty=parsePortfolioNumber($('#holdingQty')?.value);
+   const cost=parsePortfolioNumber($('#holdingCost')?.value);
+   const output=$('#holdingCostPreview');
+   if(output)output.textContent=Number.isFinite(qty)&&qty>0&&Number.isFinite(cost)&&cost>=0&&
+    Number.isFinite(qty*cost)?portfolioUsd(qty*cost):'—';
+   return;
+  }
   if(e.target.id==='orderBookSearch'){
    orderBookState.search=e.target.value;
    const list=$('#orderBookAssetList');if(list)list.innerHTML=orderBookAssetList();
@@ -2499,9 +2537,34 @@ function setupEvents(){
  $('#pageContainer').addEventListener('submit',e=>{
   if(e.target.id==='portfolioForm'){
    e.preventDefault();
-   const form=new FormData(e.target),id=String(form.get('id')),qty=Number(form.get('qty')),cost=Number(form.get('cost'));
-   if(!ASSET_BY_ID[id]||!num(qty)||qty<=0||!num(cost)||cost<0){toast('Inserisci quantità e prezzo validi.');return;}
-   state.holdings.push({id,qty,cost});save('holdings',state.holdings);render();toast('Posizione salvata sul dispositivo.');
+   const form=new FormData(e.target),id=String(form.get('id')||'');
+   const qty=parsePortfolioNumber(form.get('qty')),cost=parsePortfolioNumber(form.get('cost'));
+   const manualRaw=String(form.get('manualPrice')||'').trim();
+   const manualPrice=manualRaw?parsePortfolioNumber(manualRaw):null;
+   if(!portfolioEligible(id)){
+    toast('Seleziona una criptovaluta o uno strumento valido.');return;
+   }
+   if(!Number.isFinite(qty)||qty<=0||!Number.isFinite(cost)||cost<0||
+      !Number.isFinite(qty*cost)){
+    toast('Quantità e prezzo di acquisto devono essere numeri validi.');return;
+   }
+   if(manualRaw&&(!Number.isFinite(manualPrice)||manualPrice<=0||
+      !Number.isFinite(qty*manualPrice))){
+    toast('Inserisci un prezzo attuale manuale valido oppure lascia vuoto il campo.');return;
+   }
+   const idx=portfolioEditIndex;
+   const editing=Number.isInteger(idx)&&idx>=0&&idx<state.holdings.length;
+   const prev=editing?state.holdings[idx]:null;
+   const manualUpdatedAt=manualPrice===null?null:
+    prev&&prev.id===id&&Number(prev.manualPrice)===manualPrice&&prev.manualUpdatedAt?
+     prev.manualUpdatedAt:new Date().toISOString();
+   const holding={...(prev||{}),id,qty,cost,manualPrice,manualUpdatedAt};
+   const next=state.holdings.slice();
+   if(editing)next[idx]=holding;else next.push(holding);
+   if(!persistPortfolio(next))return;
+   portfolioEditIndex=-1;
+   render();toast(editing?'Posizione aggiornata e salvata.':'Posizione aggiunta e salvata.');
+   return;
   }
   if(e.target.id==='alertForm'){
    e.preventDefault();
