@@ -2359,7 +2359,7 @@ function selectChartRange(range){
  if(!chartSupportsRanges(a)||!CHART_PERIOD_BY_ID[range])return;
  chartRange=range;
  state.chartShift=0;state.chartHover=null;
- $('#assetDialog [data-chart-range]').forEach(button=>{
+ document.querySelectorAll('#assetDialog [data-chart-range]').forEach(button=>{
   const active=button.dataset.chartRange===range;
   button.classList.toggle('active',active);
   button.setAttribute('aria-pressed',String(active));
