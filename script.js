@@ -1106,10 +1106,10 @@ function analyticsPage(){
 }
 
 /* Real exchange-specific public Spot order books. No estimates or fake levels.
-   Binance provides the supported USDT spot pairs in STREAM_PAIRS; Oraichain
-   uses Gate.io and TARS AI uses MEXC, with an explicit unavailable state for
-   assets without a verified matching order-book pair (e.g. ORE Protocol).
-   Only the currently selected coin is polled, not the whole catalogue. */
+   Binance provides supported USDT spot pairs; ORE Protocol (Solana mint
+   oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp) uses LBank Spot ORE/USDT.
+   Oraichain uses Gate.io and TARS AI uses MEXC. Only the selected coin
+   is polled, with an unavailable state when no verified book is accessible. */
 const ORDER_BOOK_COINS=ASSETS.filter(a=>a.group==='crypto');
 const orderBookState={
  id:load('orderBookCoin','btc'),search:'',data:null,error:null,busy:false,
@@ -1117,6 +1117,13 @@ const orderBookState={
 };
 if(!ORDER_BOOK_COINS.some(a=>a.id===orderBookState.id))orderBookState.id='btc';
 function orderBookSource(id){
+ // Current ORE Protocol v2 on Solana. LBank lists the matching ORE/USDT
+ // spot market; this is NOT a derivative or the unrelated ORE v1 token.
+ if(id==='ore')return {
+  venue:'LBank Spot',pair:'ORE/USDT',format:'lbank',
+  mint:'oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp',
+  urls:['https://api.lbkex.com/v2/depth.do?symbol=ore_usdt&size=20']
+ };
  const binance=STREAM_PAIRS[id];
  if(binance){
   const pair=binance.toUpperCase();
@@ -1247,9 +1254,21 @@ async function refreshOrderBook(force=false){
    const response=await fetch(url,{cache:'no-store',signal:controller.signal,headers:{Accept:'application/json'}});
    if(!response.ok)throw Error('HTTP '+response.status);
    const data=await response.json();
-   if(!data||!Array.isArray(data.bids)||!Array.isArray(data.asks))throw Error('Risposta book non valida');
+   // LBank REST wraps authentic levels under data, unlike Binance and MEXC.
+   // Reject API errors rather than showing stale or invented BID/ASK levels.
+   if(src.format==='lbank'&&(!data||(data.error_code!=null&&Number(data.error_code)!==0)||
+      (data.result!=null&&data.result!==true&&data.result!=='true')))
+     throw Error('LBank: coppia non disponibile o errore API');
+   const depth=src.format==='lbank'?data&&data.data:data;
+   if(!depth||!Array.isArray(depth.bids)||!Array.isArray(depth.asks))throw Error('Risposta book non valida');
+   if(src.format==='lbank'){
+    const marketTimestamp=Number(depth.timestamp||data.ts);
+    if(Number.isFinite(marketTimestamp)&&marketTimestamp>0&&
+       Math.abs(Date.now()-marketTimestamp)>180000)
+      throw Error('Snapshot LBank non aggiornato');
+   }
    const levels=rows=>rows.map(row=>[Number(row[0]),Number(row[1])]).filter(([p,q])=>Number.isFinite(p)&&Number.isFinite(q)&&p>0&&q>0).slice(0,20);
-   const bids=levels(data.bids).sort((a,b)=>b[0]-a[0]),asks=levels(data.asks).sort((a,b)=>a[0]-b[0]);
+   const bids=levels(depth.bids).sort((a,b)=>b[0]-a[0]),asks=levels(depth.asks).sort((a,b)=>a[0]-b[0]);
    if(!bids.length||!asks.length||bids[0][0]>=asks[0][0])throw Error('Livelli bid/ask non validi');
    if(serial!==orderBookState.serial||coin!==orderBookState.id)return;
    orderBookState.data={bids,asks,unit:ASSET_BY_ID[coin].symbol.replace('-USD','')};
