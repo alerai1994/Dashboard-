@@ -20,6 +20,7 @@ const VERTEX_APP_ICONS=Object.freeze({
 const incomingVertexIcon=new URLSearchParams(location.search).get('vertexIcon');
 let selectedVertexIcon=Object.hasOwn(VERTEX_APP_ICONS,incomingVertexIcon)?incomingVertexIcon:load('appIcon','original');
 if(!Object.hasOwn(VERTEX_APP_ICONS,selectedVertexIcon))selectedVertexIcon='original';
+if(Object.hasOwn(VERTEX_APP_ICONS,incomingVertexIcon))save('appIcon',incomingVertexIcon);
 function vertexIconPath(name){return 'icons/vertex-'+selectedVertexIcon+'-'+name+'.png'}
 function updateVertexAppIcon(){
  const favicon=document.querySelector('link[rel="icon"]');
@@ -39,6 +40,11 @@ function setVertexAppIcon(id){
  if(!Object.hasOwn(VERTEX_APP_ICONS,id))return;
  selectedVertexIcon=id;
  save('appIcon',id);
+ if(new URLSearchParams(location.search).has('vertexIcon')){
+  const url=new URL(location.href);
+  url.searchParams.set('vertexIcon',id);
+  history.replaceState(history.state,'',url.pathname+url.search+url.hash);
+ }
  updateVertexAppIcon();
  if(state.page==='settings')render();
  toast('Logo '+VERTEX_APP_ICONS[id].label+' selezionato per Vertex.');
