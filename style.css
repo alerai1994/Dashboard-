@@ -1015,3 +1015,38 @@ body.theme-light .settings-theme-swatch{border-color:#b2cce1}
 @media(prefers-reduced-motion:reduce){
  .ob-book-stack .ob-cumulative-fill{transition:none}
 }
+
+
+/* Editable portfolio · price source, P/L, validation and mobile layout. */
+.portfolio-section-heading{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:11px 20px;margin-bottom:16px}
+.portfolio-section-heading h3{margin:0 0 5px;font-size:16px}
+.portfolio-section-heading p{margin:0;font-size:11px;line-height:1.55;color:var(--muted)}
+.portfolio-editor .form-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px}
+.portfolio-editor .form-field label{font-size:12px;font-weight:650;color:var(--text)}
+.portfolio-editor .form-field small{font-size:10px;color:var(--muted);line-height:1.5}
+.portfolio-editor .form-field input:focus-visible,
+.portfolio-editor .form-field select:focus-visible{outline:2px solid color-mix(in srgb,var(--brand) 60%,transparent);outline-offset:1px}
+.portfolio-entry-preview{display:flex;flex-direction:column;justify-content:center;gap:5px;padding:12px 14px;border:1px solid var(--line);border-radius:9px;background:var(--surface)}
+.portfolio-entry-preview span{font-size:11px;color:var(--muted)}
+.portfolio-entry-preview output{font-weight:800;font-size:20px;font-variant-numeric:tabular-nums;color:var(--text)}
+.portfolio-editor .form-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-start}
+.portfolio-editor .form-actions button{min-height:37px}
+.portfolio-table{min-width:1050px;font-variant-numeric:tabular-nums}
+.portfolio-table tbody tr{cursor:default}
+.portfolio-table td{vertical-align:middle}
+.portfolio-table td:nth-child(n+2):nth-child(-n+7){white-space:nowrap}
+.portfolio-table .portfolio-quote-status{display:block;font-size:10px;margin-top:5px;color:var(--muted);white-space:nowrap}
+.portfolio-table .portfolio-invalid{color:var(--yellow)}
+.portfolio-table .portfolio-row-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:nowrap}
+.portfolio-table .portfolio-row-actions button{white-space:nowrap}
+.portfolio-table td[data-portfolio-pnl]{font-weight:750}
+.portfolio-positions .notice{margin:15px 0 0;line-height:1.55}
+@media(max-width:1050px){
+ .portfolio-summary .summary-card strong{font-size:clamp(15px,2vw,24px);overflow-wrap:anywhere}
+}
+@media(max-width:700px){
+ .portfolio-editor .form-grid{grid-template-columns:1fr}
+ .portfolio-section-heading .btn{flex:0 0 auto}
+ .portfolio-entry-preview output{font-size:18px}
+ .portfolio-table{min-width:980px}
+}
