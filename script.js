@@ -2287,13 +2287,15 @@ const CHART_PERIODS=[
  {id:'2W',ms:1209600000,interval:'1h',lbank:'hour1',step:3600000},
  {id:'1M',months:1,interval:'4h',lbank:'hour4',step:14400000},
  {id:'2M',months:2,interval:'4h',lbank:'hour4',step:14400000},
- {id:'3M',months:3,interval:'8h',lbank:'hour8',step:28800000}
+ {id:'3M',months:3,interval:'8h',lbank:'hour8',step:28800000},
+ {id:'MAX',all:true,label:'Tutto'}
 ];
 const CHART_PERIOD_BY_ID=Object.fromEntries(CHART_PERIODS.map(p=>[p.id,p]));
 let chartRange='1D';
 let chartSeries={id:null,range:null,candles:[],source:'',loading:false,error:'',partial:false};
 const chartFetchState={sequence:0,abort:null,cache:new Map()};
 function chartStartTime(period,now){
+ if(period.all)return 0;
  if(!period.months)return now-period.ms;
  const date=new Date(now);
  date.setUTCMonth(date.getUTCMonth()-period.months);
@@ -2545,6 +2547,7 @@ async function loadOreChartHistory(force=false){
 function loadChartHistory(force=false){
  const asset=ASSET_BY_ID[state.dialogId];
  if(!chartSupportsRanges(asset))return;
+ if(chartRange==='MAX')return loadAllChartHistory(force);
  return asset.group==='crypto'?loadCryptoChartHistory(force):loadMarketChartHistory(force);
 }
 function chartMarketInterval(period){
@@ -2691,12 +2694,13 @@ function refreshDialog(){
   (q&&Array.isArray(q.candles)&&q.candles.length>=2);
  $('#dialogBody').innerHTML='<div class="dialog-stats"><strong>'+assetValue(a)+'</strong><span class="change '+classArrow(a.id)+'">'+pct(q&&q.change)+'</span><span class="dialog-meta">Ultima quotazione: '+esc(refTime(a.id))+'</span></div>'+
  '<div class="chart-toolbar"><div class="chart-legend"><span><i style="background:#74b2ff"></i>EMA 12</span><span><i style="background:#f1ba55"></i>EMA 26</span><span><i style="background:#b382ee"></i>EMA 50</span><span><i style="background:#ef7192"></i>EMA 200</span></div><span class="badge"'+(isCrypto?' id="chartHistoryBadge" role="status"':'')+'>'+(isCrypto?'Periodo '+chartRange:(candleAvailable?'Candele OHLC · storico':'Candele OHLC non disponibili'))+'</span></div>'+
+ '<div class="chart-coverage" id="chartHistoryDates" role="status" aria-live="polite" hidden></div>'+
  '<div class="chart-frame"><canvas id="detailChart" width="900" height="470" role="img" aria-label="Grafico di '+esc(a.name)+', medie mobili e indicatori" tabindex="0"></canvas></div>'+
  '<div class="chart-toolbar chart-time-toolbar"><div class="chart-legend"><span>RSI (14)</span><span>Stochastic RSI (14/14/3/3)</span><span>MACD (12/26/9)</span></div>'+
  (isCrypto?'<div class="chart-periods" role="group" aria-label="Periodo storico del grafico">'+
   CHART_PERIODS.map(period=>'<button class="chart-period'+(period.id===chartRange?' active':'')+
    '" type="button" data-chart-range="'+period.id+'" aria-pressed="'+(period.id===chartRange?'true':'false')+
-   '">'+period.id+'</button>').join('')+
+   '">'+(period.label||period.id)+'</button>').join('')+
   '<button class="chart-period chart-period-refresh" type="button" data-chart-refresh="1" title="Aggiorna le candele del periodo selezionato">↻ Aggiorna</button></div>':
   '<div><button class="btn btn-small" type="button" data-pan="-20">◀ Storico</button> <button class="btn btn-small" type="button" data-pan="20">Recenti ▶</button> <button class="btn btn-small" type="button" data-pan="reset">Oggi</button></div>')+'</div>'+
  '<div class="chart-help">'+(isCrypto?(a.id==='ore'?
@@ -2825,11 +2829,11 @@ function drawChart(){
  const lo=Math.min(...lows),hi=Math.max(...highs),pad=(hi-lo||Math.max(hi*.03,1))*.07;
  const min=lo-pad,max=hi+pad;
  const yPrice=v=>regions[0].bottom-(v-min)/(max-min)*(regions[0].bottom-regions[0].top);
- const step=chartW/sample.length,cw=Math.max(2,Math.min(9,step*.58));
+ const step=chartW/sample.length,cw=Math.max(chartRange==='MAX'?.65:2,Math.min(9,step*.58));
  sample.forEach((c,i)=>{
    const x=ix(start+i),up=c.c>=c.o;
    const colorC=up?'#18df9d':'#f75d72';
-   line(x,yPrice(c.h),x,yPrice(c.l),colorC,1);
+   line(x,yPrice(c.h),x,yPrice(c.l),colorC,chartRange==='MAX'?.7:1);
    ctx.fillStyle=colorC;const top=yPrice(Math.max(c.o,c.c)),bottom=yPrice(Math.min(c.o,c.c));
    ctx.fillRect(x-cw/2,top,cw,Math.max(1,bottom-top));
   });
@@ -2876,13 +2880,16 @@ function drawChart(){
   const idx=Math.floor(start+(Math.max(0,sample.length-1))*i/4),c=candles[idx];if(!c)continue;
   const date=new Date(c.t*1000);
   const spec=CHART_PERIOD_BY_ID[chartRange];
-  const d=Number.isFinite(date.getTime())&&c.t>1e9?
-   (ASSET_BY_ID[state.dialogId]?.group==='crypto'?
-    new Intl.DateTimeFormat('it-IT',spec&&(spec.months||spec.ms>=604800000)?
-     {day:'2-digit',month:'short'}:{day:'2-digit',hour:'2-digit',minute:'2-digit'}).format(date):
-    localeDate(c.t*1000,{month:'short',day:'2-digit'})):
+  const d=Number.isFinite(date.getTime())?
+   (spec&&spec.all?
+    new Intl.DateTimeFormat('it-IT',{year:'numeric',month:'short',timeZone:'UTC'}).format(date):
+    ASSET_BY_ID[state.dialogId]?.group==='crypto'?
+     new Intl.DateTimeFormat('it-IT',spec&&(spec.months||spec.ms>=604800000)?
+      {day:'2-digit',month:'short'}:{day:'2-digit',hour:'2-digit',minute:'2-digit'}).format(date):
+     localeDate(c.t*1000,{month:'short',day:'2-digit'})):
    '−'+(candles.length-idx)+'g';
-  text(d,ix(idx),height-5,'center',9);
+  text(d,chartRange==='MAX'&&i===0?left+4:chartRange==='MAX'&&i===4?width-right-4:ix(idx),
+   height-5,chartRange==='MAX'&&i===0?'left':chartRange==='MAX'&&i===4?'right':'center',9);
  }
  if(num(state.chartHover)&&state.chartHover>=start&&state.chartHover<end){
   const c=candles[state.chartHover],x=ix(state.chartHover);line(x,regions[0].top,x,regions[3].bottom,'#a0c7d2',.8);
