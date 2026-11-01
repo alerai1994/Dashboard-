@@ -1040,9 +1040,20 @@ function watchlistPage(){
 // Portfolio records remain local to the browser. Every add/edit/delete writes
 // a complete validated next array before changing in-memory holdings.
 let portfolioEditIndex=-1;
+let portfolioMemoryOnly=false;
 function portfolioStorageTemporary(){
+ if(portfolioMemoryOnly)return true;
  try{return sessionStorage.getItem(STORE+'holdings-session')!==null}
  catch(_e){return false}
+}
+function portfolioStorageWarning(){
+ if(portfolioMemoryOnly){
+  return '<p class="portfolio-storage-warning" role="status">Attenzione: il browser blocca il salvataggio dei dati. Questa posizione è visibile soltanto finché la pagina rimane aperta: se aggiorni o chiudi la pagina potresti perderla. Per conservarla, abilita i dati dei siti e apri il sito tramite HTTPS.</p>';
+ }
+ if(portfolioStorageTemporary()){
+  return '<p class="portfolio-storage-warning" role="status">Attenzione: il browser non consente il salvataggio permanente. Le posizioni sono conservate soltanto per questa sessione; possono scomparire alla chiusura del browser. Per conservarle, abilita la memoria dei siti o usa la versione HTTPS.</p>';
+ }
+ return '';
 }
 function portfolioFormError(message,fieldId){
  const box=$('#portfolioFormFeedback');
@@ -1142,6 +1153,7 @@ function persistPortfolio(next){
   // Remove a previous temporary copy only after successfully writing locally.
   try{sessionStorage.removeItem(STORE+'holdings-session')}catch(_error){}
   state.holdings=next;
+  portfolioMemoryOnly=false;
   return true;
  }catch(_storageError){
   // Browsers can disable localStorage for file://, private browsing or policies.
@@ -1151,10 +1163,14 @@ function persistPortfolio(next){
    sessionStorage.setItem(STORE+'holdings-session',serialized);
    if(sessionStorage.getItem(STORE+'holdings-session')!==serialized)throw Error('Sessione non verificata');
    state.holdings=next;
+   portfolioMemoryOnly=false;
    return true;
   }catch(_sessionError){
-   portfolioFormError('Il browser blocca il salvataggio locale. Abilita i dati dei siti oppure apri il sito tramite HTTPS; nessuna posizione è stata salvata.');
-   return false;
+   // Still allow the user to see and work with the position until reload.
+   // Never describe this fallback as permanent or session-persistent.
+   state.holdings=next;
+   portfolioMemoryOnly=true;
+   return true;
   }
  }
 }
@@ -1198,7 +1214,7 @@ function portfolioPage(){
  '<output id="holdingCostPreview">'+(editing&&portfolioRow(edit,portfolioEditIndex).valid?
   portfolioUsd(portfolioRow(edit,portfolioEditIndex).invested):'—')+'</output></div>'+
  '<div id="portfolioFormFeedback" class="portfolio-form-feedback" role="alert" hidden></div>'+
- '<div class="form-actions"><button class="btn btn-primary" type="submit">'+sym(editing?'check':'plus')+
+ '<div class="form-actions"><button class="btn btn-primary" type="submit" data-portfolio-save="1">'+sym(editing?'check':'plus')+
  (editing?' Salva modifiche':' Aggiungi posizione')+'</button>'+
  (editing?'<button type="button" class="btn btn-small" data-portfolio-cancel="1">Annulla modifica</button>':'')+
  '</div></form></section>'+
@@ -1224,7 +1240,7 @@ function portfolioPage(){
    '<button class="btn btn-small" type="button" data-delete-holding="'+r.index+'">Rimuovi</button></div></td></tr>';
  }).join('')+'</tbody></table></div>':
  '<div class="empty-state"><h3>Nessuna posizione</h3><p>Seleziona uno strumento e inserisci la quantità e il prezzo di acquisto.</p></div>')+
- (portfolioStorageTemporary()?'<p class="portfolio-storage-warning" role="status">Attenzione: il browser non consente il salvataggio permanente. Le posizioni sono conservate soltanto per questa sessione; possono scomparire alla chiusura del browser. Per conservarle, abilita la memoria dei siti o usa la versione HTTPS.</p>':'')+
+ portfolioStorageWarning()+
  '<p class="notice">I dati del portafoglio sono salvati soltanto in questo browser. Prezzi di mercato disponibili secondo la fonte, anche ritardati; quelli manuali non si aggiornano da soli. P/L escluso per le posizioni senza prezzo. Non include commissioni, imposte o cambi valutari.</p>'+
  '</section>';
 }
@@ -2460,6 +2476,44 @@ function setupCanvasInteractions(){
  dlg.addEventListener('pointerleave',e=>{if(e.target.id==='detailChart'){state.chartHover=null;drawChart()}},true);
  dlg.addEventListener('wheel',e=>{if(e.target.id==='detailChart')e.preventDefault()},{passive:false});
 }
+function savePortfolioForm(formElement){
+ if(!formElement)return;
+   const form=new FormData(formElement),id=String(form.get('id')||'');
+   const qty=parsePortfolioNumber(form.get('qty')),cost=parsePortfolioNumber(form.get('cost'));
+   const manualRaw=String(form.get('manualPrice')||'').trim();
+   const manualPrice=manualRaw?parsePortfolioNumber(manualRaw):null;
+   if(!portfolioEligible(id)){
+    portfolioFormError('Seleziona una criptovaluta o uno strumento valido.','holdingAsset');return;
+   }
+   if(!Number.isFinite(qty)||qty<=0){
+    portfolioFormError('Inserisci una quantità valida e maggiore di zero. Puoi usare virgola o punto.','holdingQty');return;
+   }
+   if(!Number.isFinite(cost)||cost<0||!Number.isFinite(qty*cost)){
+    portfolioFormError('Inserisci il prezzo medio di acquisto (USD) valido: zero o superiore.','holdingCost');return;
+   }
+   if(manualRaw&&(!Number.isFinite(manualPrice)||manualPrice<=0||
+      !Number.isFinite(qty*manualPrice))){
+    portfolioFormError('Il prezzo attuale manuale deve essere maggiore di zero. Oppure lascia il campo vuoto.','holdingManualPrice');return;
+   }
+   const idx=portfolioEditIndex;
+   const editing=Number.isInteger(idx)&&idx>=0&&idx<state.holdings.length;
+   const prev=editing?state.holdings[idx]:null;
+   const manualUpdatedAt=manualPrice===null?null:
+    prev&&prev.id===id&&Number(prev.manualPrice)===manualPrice&&prev.manualUpdatedAt?
+     prev.manualUpdatedAt:new Date().toISOString();
+   const holding={...(prev||{}),id,qty,cost,manualPrice,manualUpdatedAt};
+   const next=state.holdings.slice();
+   if(editing)next[idx]=holding;else next.push(holding);
+   if(!persistPortfolio(next))return;
+   const temporary=portfolioStorageTemporary();
+   portfolioEditIndex=-1;
+   render();
+   toast(portfolioMemoryOnly?
+    (editing?'Posizione aggiornata':'Posizione aggiunta')+' solo finché la pagina resta aperta: abilita il salvataggio dei dati dei siti.':
+    temporary?
+    (editing?'Posizione aggiornata':'Posizione aggiunta')+' solo per questa sessione: abilita il salvataggio permanente nel browser.':
+    editing?'Posizione aggiornata e salvata.':'Posizione aggiunta e salvata.');
+}
 function setupEvents(){
  // A single delegated handler also covers buttons added when pages are rendered.
  document.addEventListener('click',e=>{
@@ -2522,6 +2576,13 @@ function setupEvents(){
   if(btn.dataset.filter){state.marketFilter=btn.dataset.filter;render();return;}
   if(btn.dataset.refresh){fetchQuotes(true);return;}
   if(btn.dataset.toggleTheme){setTheme(state.theme==='light'?'dark':'light');return;}
+  if(btn.dataset.portfolioSave){
+   // Direct button handler also supports embedded/mobile browsers where a
+   // delegated form submit is sometimes not dispatched as expected.
+   e.preventDefault();
+   savePortfolioForm($('#portfolioForm'));
+   return;
+  }
   if(btn.dataset.portfolioRefresh){fetchQuotes(true);return;}
   if(btn.dataset.portfolioCancel){
    portfolioEditIndex=-1;render();return;
@@ -2607,41 +2668,7 @@ function setupEvents(){
  });
  $('#pageContainer').addEventListener('submit',e=>{
   if(e.target.id==='portfolioForm'){
-   e.preventDefault();
-   const form=new FormData(e.target),id=String(form.get('id')||'');
-   const qty=parsePortfolioNumber(form.get('qty')),cost=parsePortfolioNumber(form.get('cost'));
-   const manualRaw=String(form.get('manualPrice')||'').trim();
-   const manualPrice=manualRaw?parsePortfolioNumber(manualRaw):null;
-   if(!portfolioEligible(id)){
-    portfolioFormError('Seleziona una criptovaluta o uno strumento valido.','holdingAsset');return;
-   }
-   if(!Number.isFinite(qty)||qty<=0){
-    portfolioFormError('Inserisci una quantità valida e maggiore di zero. Puoi usare virgola o punto.','holdingQty');return;
-   }
-   if(!Number.isFinite(cost)||cost<0||!Number.isFinite(qty*cost)){
-    portfolioFormError('Inserisci il prezzo medio di acquisto (USD) valido: zero o superiore.','holdingCost');return;
-   }
-   if(manualRaw&&(!Number.isFinite(manualPrice)||manualPrice<=0||
-      !Number.isFinite(qty*manualPrice))){
-    portfolioFormError('Il prezzo attuale manuale deve essere maggiore di zero. Oppure lascia il campo vuoto.','holdingManualPrice');return;
-   }
-   const idx=portfolioEditIndex;
-   const editing=Number.isInteger(idx)&&idx>=0&&idx<state.holdings.length;
-   const prev=editing?state.holdings[idx]:null;
-   const manualUpdatedAt=manualPrice===null?null:
-    prev&&prev.id===id&&Number(prev.manualPrice)===manualPrice&&prev.manualUpdatedAt?
-     prev.manualUpdatedAt:new Date().toISOString();
-   const holding={...(prev||{}),id,qty,cost,manualPrice,manualUpdatedAt};
-   const next=state.holdings.slice();
-   if(editing)next[idx]=holding;else next.push(holding);
-   if(!persistPortfolio(next))return;
-   const temporary=portfolioStorageTemporary();
-   portfolioEditIndex=-1;
-   render();
-   toast(temporary?
-    (editing?'Posizione aggiornata':'Posizione aggiunta')+' solo per questa sessione: abilita il salvataggio permanente nel browser.':
-    editing?'Posizione aggiornata e salvata.':'Posizione aggiunta e salvata.');
-   return;
+   e.preventDefault();savePortfolioForm(e.target);return;
   }
   if(e.target.id==='alertForm'){
    e.preventDefault();
