@@ -1141,6 +1141,19 @@ const orderBookState={
  lastTry:0,updatedAt:0,venue:'',pair:'',mode:'',serial:0,abort:null,lastTrade:null,lastTradeAt:0,previousTrade:null
 };
 if(!ORDER_BOOK_COINS.some(a=>a.id===orderBookState.id))orderBookState.id='btc';
+const orderBookLive={
+ socket:null,coin:null,transport:'',connected:false,startedAt:0,lastDepthAt:0,
+ retryAt:0,attempt:0,session:0,paintTimer:null,pollTimer:null,pollAbort:null,
+ polling:false,updateId:0
+};
+function orderBookIsStreaming(){
+ return orderBookLive.coin===orderBookState.id&&orderBookLive.connected&&
+  orderBookLive.transport==='ws'&&Date.now()-orderBookLive.lastDepthAt<12000;
+}
+function orderBookIsFastPolling(){
+ return orderBookLive.coin===orderBookState.id&&orderBookLive.transport==='poll'&&
+  Date.now()-orderBookLive.lastDepthAt<12000;
+}
 function orderBookSource(id){
  if(id==='ton')return {
   venue:'Binance Spot',pair:'GRAM/USDT',urls:[
@@ -1379,6 +1392,212 @@ function cancelOrderBookFetch(){
  if(orderBookState.abort){orderBookState.abort.abort();orderBookState.abort=null;}
  orderBookState.busy=false;
 }
+// REAL Spot streaming: one active pair only. Binance partial top-20 and Gate
+// limited-level order-book messages are complete snapshots, NOT diff patches.
+// LBank depth messages also contain complete bids/asks. MEXC currently sends
+// Protobuf depth, so its REST fallback is explicitly marked fast POLLING.
+function liveBookConfig(id){
+ const snapshot=cryptoBookEntry(id),source=orderBookSource(id);
+ if(!source&&!snapshot)return null;
+ const venue=snapshot?snapshot.venue:source.venue;
+ const pair=snapshot?snapshot.pair:source.pair;
+ if(!pair||!pair.endsWith('/USDT'))return null;
+ const symbol=pair.replace('/','');
+ if(venue==='Binance Spot')return {venue,pair,symbol,kind:'binance',
+  url:'wss://data-stream.binance.vision/stream?streams='+symbol.toLowerCase()+
+   '@depth20@100ms/'+symbol.toLowerCase()+'@trade'};
+ if(venue==='Gate Spot'||venue==='Gate.io Spot')return {venue:'Gate Spot',pair,
+  symbol,pairCode:pair.replace('/','_'),kind:'gate',url:'wss://api.gateio.ws/ws/v4/'};
+ if(venue==='LBank Spot')return {venue,pair,symbol,pairCode:pair.toLowerCase().replace('/','_'),
+  kind:'lbank',url:'wss://api.lbank.info/ws/V2/'};
+ if(venue==='MEXC Spot')return {venue,pair,symbol,kind:'poll',
+  url:'https://api.mexc.com/api/v3/depth?symbol='+symbol+'&limit=20',
+  priceUrl:'https://api.mexc.com/api/v3/ticker/price?symbol='+symbol};
+ return null;
+}
+function normalizeLiveLevels(rawBids,rawAsks){
+ const side=(rows,desc)=>Array.isArray(rows)?rows.map(row=>
+   Array.isArray(row)&&row.length>1?[Number(row[0]),Number(row[1])]:[NaN,NaN])
+  .filter(([price,qty])=>Number.isFinite(price)&&Number.isFinite(qty)&&price>0&&qty>0)
+  .sort((a,b)=>desc?b[0]-a[0]:a[0]-b[0]).slice(0,20):[];
+ const bids=side(rawBids,true),asks=side(rawAsks,false);
+ return bids.length&&asks.length&&bids[0][0]<asks[0][0]?{bids,asks}:null;
+}
+function scheduleOrderBookLivePaint(){
+ if(orderBookLive.paintTimer!==null)return;
+ // Cap DOM table refreshes at ~4/sec, even for 100ms market-data streams.
+ orderBookLive.paintTimer=setTimeout(()=>{
+  orderBookLive.paintTimer=null;
+  if(state.page==='orderbook'&&!document.hidden)paintOrderBook();
+ },250);
+}
+function receiveLiveBook(coin,config,rawBids,rawAsks,sequence){
+ if(orderBookLive.coin!==coin||state.page!=='orderbook'||document.hidden)return false;
+ const validated=normalizeLiveLevels(rawBids,rawAsks);
+ if(!validated)return false;
+ const id=Number(sequence);
+ if(Number.isFinite(id)&&id>0){
+  if(orderBookLive.updateId&&id<=orderBookLive.updateId)return false;
+  orderBookLive.updateId=id;
+ }
+ orderBookState.data={...validated,unit:config.pair.split('/')[0]};
+ orderBookState.updatedAt=Date.now(); // last RECEIVED genuine Spot book update
+ orderBookState.venue=config.venue;orderBookState.pair=config.pair;
+ orderBookState.mode=config.kind==='poll'?'poll':'live';
+ orderBookState.error=null;orderBookState.busy=false;
+ orderBookLive.lastDepthAt=orderBookState.updatedAt;
+ orderBookLive.connected=true;orderBookLive.attempt=0;orderBookLive.retryAt=0;
+ scheduleOrderBookLivePaint();
+ return true;
+}
+function receiveLiveTrade(coin,config,rawPrice){
+ if(coin!==orderBookLive.coin||state.page!=='orderbook'||document.hidden)return;
+ const price=Number(rawPrice);
+ if(!Number.isFinite(price)||price<=0)return;
+ const old=Number(orderBookState.lastTrade);
+ if(Number.isFinite(old)&&old>0&&old!==price)orderBookState.previousTrade=old;
+ orderBookState.lastTrade=price;orderBookState.lastTradeAt=Date.now();
+ scheduleOrderBookLivePaint();
+}
+function stopOrderBookLive(){
+ ++orderBookLive.session;
+ if(orderBookLive.paintTimer!==null){
+  clearTimeout(orderBookLive.paintTimer);orderBookLive.paintTimer=null;
+ }
+ if(orderBookLive.pollTimer!==null){
+  clearInterval(orderBookLive.pollTimer);orderBookLive.pollTimer=null;
+ }
+ if(orderBookLive.pollAbort){orderBookLive.pollAbort.abort();orderBookLive.pollAbort=null;}
+ const ws=orderBookLive.socket;orderBookLive.socket=null;
+ if(ws){ws.onopen=null;ws.onmessage=null;ws.onerror=null;ws.onclose=null;try{ws.close()}catch(_e){}}
+ orderBookLive.coin=null;orderBookLive.transport='';orderBookLive.connected=false;
+ orderBookLive.startedAt=0;orderBookLive.lastDepthAt=0;orderBookLive.updateId=0;
+ orderBookLive.polling=false;
+}
+async function pollOrderBookOnce(coin,config,session){
+ if(orderBookLive.polling||orderBookLive.session!==session||state.page!=='orderbook'||
+  document.hidden||!navigator.onLine)return;
+ orderBookLive.polling=true;
+ const controller=new AbortController();orderBookLive.pollAbort=controller;
+ const abortTimer=setTimeout(()=>controller.abort(),4200);
+ try{
+  const response=await fetch(config.url,{cache:'no-store',signal:controller.signal});
+  if(!response.ok)throw Error('HTTP '+response.status);
+  const payload=await response.json();
+  if(orderBookLive.session!==session)return;
+  if(!payload||!Array.isArray(payload.bids)||!Array.isArray(payload.asks))
+   throw Error('Book non valido');
+  if(receiveLiveBook(coin,config,payload.bids,payload.asks,payload.lastUpdateId)){
+   // Last trade is queried less frequently than depth; it is not synthesized.
+   if(Date.now()-(orderBookLive.lastTradeRequestAt||0)>10000){
+    orderBookLive.lastTradeRequestAt=Date.now();
+    fetch(config.priceUrl,{cache:'no-store',signal:controller.signal})
+     .then(res=>res.ok?res.json():null)
+     .then(data=>{if(orderBookLive.session===session&&data)receiveLiveTrade(coin,config,data.price)})
+     .catch(()=>{});
+   }
+  }
+ }catch(_e){
+  if(orderBookLive.session===session){
+   orderBookLive.connected=false;
+   scheduleOrderBookLivePaint();
+  }
+ }finally{
+  clearTimeout(abortTimer);
+  if(orderBookLive.pollAbort===controller)orderBookLive.pollAbort=null;
+  orderBookLive.polling=false;
+ }
+}
+function startOrderBookLive(force=false){
+ if(state.page!=='orderbook'||document.hidden||!navigator.onLine)return;
+ const coin=orderBookState.id,config=liveBookConfig(coin);
+ if(!config)return;
+ if(!force&&Date.now()<orderBookLive.retryAt)return;
+ if(!force&&orderBookLive.coin===coin&&
+   (orderBookLive.transport==='poll'||(orderBookLive.socket&&orderBookLive.socket.readyState<=1)))return;
+ stopOrderBookLive();
+ const session=orderBookLive.session;
+ orderBookLive.coin=coin;orderBookLive.startedAt=Date.now();
+ orderBookLive.transport=config.kind==='poll'?'poll':'ws';
+ if(config.kind==='poll'){
+  pollOrderBookOnce(coin,config,session);
+  orderBookLive.pollTimer=setInterval(()=>pollOrderBookOnce(coin,config,session),3000);
+  return;
+ }
+ if(typeof WebSocket!=='function'){
+  orderBookLive.retryAt=Date.now()+30000;return;
+ }
+ try{
+  const ws=new WebSocket(config.url);
+  orderBookLive.socket=ws;
+  ws.onopen=()=>{
+   if(orderBookLive.session!==session)return;
+   if(config.kind==='gate'){
+    const req=(channel,payload)=>ws.send(JSON.stringify({
+     time:Math.floor(Date.now()/1000),channel,event:'subscribe',payload
+    }));
+    req('spot.order_book',[config.pairCode,'20','100ms']);
+    req('spot.trades',[config.pairCode]);
+   }else if(config.kind==='lbank'){
+    ws.send(JSON.stringify({action:'subscribe',subscribe:'depth',depth:'50',pair:config.pairCode}));
+    ws.send(JSON.stringify({action:'subscribe',subscribe:'trade',pair:config.pairCode}));
+   }
+  };
+  ws.onmessage=event=>{
+   if(orderBookLive.session!==session||orderBookLive.coin!==coin)return;
+   let msg;
+   try{msg=JSON.parse(event.data)}catch(_e){return}
+   if(config.kind==='binance'){
+    if(!msg||typeof msg!=='object')return;
+    const d=msg.data||msg;
+    if(msg.stream&&msg.stream.includes('@depth20@')&&Array.isArray(d.bids)&&Array.isArray(d.asks))
+     receiveLiveBook(coin,config,d.bids,d.asks,d.lastUpdateId);
+    else if(d.e==='trade'&&d.s===config.symbol)receiveLiveTrade(coin,config,d.p);
+   }else if(config.kind==='gate'){
+    if(msg.event!=='update'||!msg.result)return;
+    const d=msg.result;
+    if(msg.channel==='spot.order_book'&&d.s===config.pairCode)
+     receiveLiveBook(coin,config,d.bids,d.asks,d.lastUpdateId);
+    else if(msg.channel==='spot.trades'&&d.currency_pair===config.pairCode)
+     receiveLiveTrade(coin,config,d.price);
+   }else if(config.kind==='lbank'){
+    if(msg&&msg.action==='ping'&&msg.ping){
+     if(ws.readyState===1)ws.send(JSON.stringify({action:'pong',pong:msg.ping}));
+     return;
+    }
+    if(msg.pair!==config.pairCode)return;
+    if(msg.type==='depth'&&msg.depth)receiveLiveBook(coin,config,msg.depth.bids,msg.depth.asks);
+    else if(msg.type==='trade'&&msg.trade)receiveLiveTrade(coin,config,msg.trade.price);
+   }
+  };
+  ws.onerror=()=>{if(orderBookLive.session===session)orderBookLive.connected=false};
+  ws.onclose=()=>{
+   if(orderBookLive.session!==session)return;
+   orderBookLive.socket=null;orderBookLive.connected=false;
+   orderBookLive.attempt+=1;
+   orderBookLive.retryAt=Date.now()+Math.min(30000,2000*Math.pow(2,Math.min(4,orderBookLive.attempt)));
+   scheduleOrderBookLivePaint();
+  };
+ }catch(_e){
+  orderBookLive.socket=null;orderBookLive.connected=false;
+  orderBookLive.retryAt=Date.now()+10000;
+ }
+}
+function keepOrderBookLive(){
+ if(state.page!=='orderbook'||document.hidden||!navigator.onLine)return;
+ if(orderBookLive.transport==='poll'&&orderBookLive.coin===orderBookState.id)return;
+ if(orderBookLive.coin===orderBookState.id&&orderBookLive.socket){
+  // A socket may be OPEN but silent (invalid pair/subscription). Recover.
+  const noDataFor=Date.now()-(orderBookLive.lastDepthAt||orderBookLive.startedAt);
+  if(noDataFor<15000)return;
+  stopOrderBookLive();
+  orderBookLive.retryAt=Date.now()+5000;
+  scheduleOrderBookLivePaint();
+  return;
+ }
+ if(Date.now()>=orderBookLive.retryAt)startOrderBookLive();
+}
+
 function selectOrderBookAsset(id){
  if(!ASSET_BY_ID[id]||ASSET_BY_ID[id].group!=='crypto')return;
  if(id!==orderBookState.id){
