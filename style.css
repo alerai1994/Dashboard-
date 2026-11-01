@@ -892,3 +892,35 @@ body.theme-light .settings-theme-swatch{border-color:#b2cce1}
 @media(max-width:1050px){.ob-layout{grid-template-columns:minmax(155px,215px) minmax(0,1fr)}.ob-book-grid{grid-template-columns:1fr}}
 @media(max-width:700px){.ob-layout{grid-template-columns:1fr}.ob-picker,.ob-detail{padding:12px}.ob-coin-list{max-height:190px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px}.ob-book-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:520px){.ob-book-grid{grid-template-columns:1fr}.ob-summary{gap:5px}.ob-summary>div{padding:7px}.ob-summary strong{font-size:12px}.ob-detail-heading{align-items:flex-start}.ob-detail-heading .btn{padding:8px}.ob-heading-name h2{font-size:15px}}
+
+/* Order Book v29: readable bid/ask numerical columns with authentic exchange levels. */
+.ob-detail{container-type:inline-size}
+.ob-book-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+.ob-side{min-width:0;overflow:hidden;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.ob-bid{--ob-side-color:var(--green);--ob-side-tint:color-mix(in srgb,var(--green) 12%,transparent);border-color:color-mix(in srgb,var(--green) 35%,var(--line))}
+.ob-ask{--ob-side-color:var(--red);--ob-side-tint:color-mix(in srgb,var(--red) 12%,transparent);border-color:color-mix(in srgb,var(--red) 35%,var(--line))}
+.ob-side-title{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px 12px;padding:13px 14px;background:color-mix(in srgb,var(--ob-side-color) 9%,var(--panel-2));border-bottom:1px solid color-mix(in srgb,var(--ob-side-color) 25%,var(--line))}
+.ob-side-title strong{font-size:14px;letter-spacing:.02em;color:var(--ob-side-color)}
+.ob-side-title small{display:block;margin:0;color:var(--muted);font-size:10px;line-height:1.4}
+.ob-side-dot{font-size:10px;vertical-align:2px;margin-right:2px}
+.ob-table-scroll{width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+.ob-table-scroll:focus-visible{outline:2px solid var(--brand);outline-offset:-2px}
+.ob-book-table{width:100%;min-width:432px;table-layout:fixed;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums lining-nums}
+.ob-book-table th:nth-child(1),.ob-book-table td:nth-child(1){width:36%}
+.ob-book-table th:nth-child(2),.ob-book-table td:nth-child(2){width:30%}
+.ob-book-table th:nth-child(3),.ob-book-table td:nth-child(3){width:34%}
+.ob-book-table thead{background:var(--panel-2)}
+.ob-book-table th{padding:11px 10px;border-bottom:1px solid var(--line);font-size:11px;font-weight:740;text-align:right;white-space:nowrap;color:var(--text)}
+.ob-book-table th small{display:inline;font-size:10px;font-weight:550;color:var(--muted)}
+.ob-book-table tbody .ob-level{display:table-row;min-height:0;padding:0;border:0;background:linear-gradient(to right,var(--ob-side-tint) 0%,var(--ob-side-tint) var(--depth),transparent var(--depth),transparent 100%)}
+.ob-book-table tbody .ob-level:hover{background-color:color-mix(in srgb,var(--ob-side-color) 14%,transparent)}
+.ob-book-table td{padding:9px 10px;line-height:1.35;border-bottom:1px solid var(--line-soft);color:var(--ob-side-color);text-align:right;white-space:nowrap;overflow:visible;text-overflow:clip;font-weight:625;font-variant-numeric:tabular-nums lining-nums}
+.ob-book-table .ob-level-price{font-weight:820}
+.ob-book-table .ob-level-total{font-weight:730}
+.ob-book-table tbody tr:last-child td{border-bottom:0}
+.ob-side-footer{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:5px 12px;padding:13px 14px;background:var(--panel-2);font-size:11px;color:var(--muted);border-top:1px solid var(--line)}
+.ob-side-footer strong{font-size:12px;color:var(--ob-side-color);font-variant-numeric:tabular-nums;white-space:nowrap}
+@container (max-width:960px){.ob-book-grid{grid-template-columns:1fr}}
+@media(max-width:1050px){.ob-book-grid{grid-template-columns:1fr}}
+@media(max-width:700px){.ob-book-grid{grid-template-columns:1fr}.ob-detail{container-type:normal}}
+@media(max-width:520px){.ob-book-table{font-size:11px;min-width:420px}.ob-book-table td{padding:9px 8px}.ob-book-table th{padding:10px 8px}.ob-side-title{align-items:flex-start;flex-direction:column}}

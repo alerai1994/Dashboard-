@@ -1166,18 +1166,28 @@ function orderBookNumber(v,price=false){
  return n.toLocaleString('it-IT',{minimumFractionDigits:price&&n>=1?2:0,maximumFractionDigits:decimals});
 }
 function orderBookSide(orders,side,unit){
- const limit=Math.max(1,...orders.map(o=>o[1]*o[0]));
+ const isBid=side==='bid',sideName=isBid?'BID · Acquisto':'ASK · Vendita';
+ const maxLevel=Math.max(0,...orders.map(([price,qty])=>price*qty));
+ const quantityUnit=esc(unit);
  let cumulative=0;
- return '<div class="ob-side '+side+'"><div class="ob-side-title"><strong>'+(side==='bid'?'Acquisti · BID':'Vendite · ASK')+'</strong><small>Prezzo USDT · Qtà '+esc(unit)+' · Totale USDT</small></div>'+
- '<div class="ob-book-columns"><span>Prezzo</span><span>Quantità</span><span>Totale</span></div>'+
+ return '<section class="ob-side ob-'+side+'" aria-label="'+sideName+'">'+
+ '<div class="ob-side-title"><strong><span class="ob-side-dot" aria-hidden="true">●</span> '+sideName+'</strong>'+
+ '<small>'+orders.length+' livelli reali · '+(isBid?'Prezzi di acquisto':'Prezzi di vendita')+'</small></div>'+
+ '<div class="ob-table-scroll" role="region" tabindex="0" aria-label="'+sideName+': prezzi, quantità e totali">'+
+ '<table class="ob-book-table"><thead><tr>'+
+ '<th scope="col">Prezzo <small>USDT</small></th>'+
+ '<th scope="col">Quantità <small>'+quantityUnit+'</small></th>'+
+ '<th scope="col">Totale <small>USDT</small></th>'+
+ '</tr></thead><tbody>'+
  orders.map(([price,qty])=>{
   const total=price*qty;cumulative+=total;
-  return '<div class="ob-level" title="Totale cumulato: '+orderBookNumber(cumulative)+' USDT">'+
-   '<span class="ob-depth-fill" style="width:'+Math.min(100,Math.max(0,total/limit*100)).toFixed(2)+'%"></span>'+
-   '<span class="ob-level-price">'+orderBookNumber(price,true)+'</span>'+
-   '<span>'+orderBookNumber(qty)+'</span><span>'+orderBookNumber(total)+'</span></div>';
- }).join('')+
- '<div class="ob-side-footer">Somma top '+orders.length+' livelli: <strong>'+orderBookNumber(cumulative)+' USDT</strong></div></div>';
+  const depth=maxLevel>0?Math.min(100,Math.max(0,total/maxLevel*100)):0;
+  return '<tr class="ob-level" style="--depth:'+depth.toFixed(2)+'%" title="Livello '+(isBid?'BID':'ASK')+' · Totale cumulato: '+orderBookNumber(cumulative)+' USDT">'+
+   '<td class="ob-level-price">'+orderBookNumber(price,true)+'</td>'+
+   '<td class="ob-level-quantity">'+orderBookNumber(qty)+'</td>'+
+   '<td class="ob-level-total">'+orderBookNumber(total)+'</td></tr>';
+ }).join('')+'</tbody></table></div>'+
+ '<div class="ob-side-footer"><span>Totale '+orders.length+' livelli</span><strong>'+orderBookNumber(cumulative)+' USDT</strong></div></section>';
 }
 function orderBookDisplay(){
  const src=orderBookSource(orderBookState.id);
