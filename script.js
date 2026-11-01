@@ -669,6 +669,13 @@ function patchPortfolio(){
   setMovementClass(stats[2],totals.priced?totals.pnl:NaN);
  }
  if(stats[3])stats[3].textContent=String(totals.count);
+ const cards=document.querySelectorAll('#pageContainer .portfolio-summary .summary-card');
+ const coverage=cards[0]?.querySelector('.micro-note');
+ if(coverage)coverage.textContent=totals.priced+'/'+(totals.count-totals.invalid)+' con prezzo disponibile';
+ const positionsNote=cards[3]?.querySelector('.micro-note');
+ if(positionsNote)positionsNote.textContent=totals.priced+' valutate'+
+  (totals.missing?' · '+totals.missing+' senza prezzo':'')+
+  (totals.invalid?' · '+totals.invalid+' da correggere':'');
  state.holdings.map(portfolioRow).forEach(r=>{
   const row=document.querySelector('#pageContainer tr[data-portfolio-row="'+r.index+'"]');
   if(!row)return;
@@ -1047,10 +1054,14 @@ function portfolioUsd(value){
 }
 function portfolioQuantity(value){
  return Number.isFinite(value)?value.toLocaleString('it-IT',
-  {minimumFractionDigits:0,maximumFractionDigits:12}):'—';
+  {minimumFractionDigits:0,maximumFractionDigits:18}):'—';
 }
 function portfolioUnitUsd(value){
- return Number.isFinite(value)?formatValue(value,{group:'crypto'}):'—';
+ if(!Number.isFinite(value))return '—';
+ const abs=Math.abs(value),digits=abs>0&&abs<1?
+  Math.min(18,Math.max(2,Math.ceil(-Math.log10(abs))+5)):2;
+ return (value<0?'-':'')+'$'+abs.toLocaleString('it-IT',
+  {minimumFractionDigits:digits>10?0:2,maximumFractionDigits:digits});
 }
 function portfolioEligible(id){
  const a=ASSET_BY_ID[id];
