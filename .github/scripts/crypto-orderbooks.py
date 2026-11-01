@@ -126,7 +126,7 @@ def recent_trade(exchange,pair):
     except (TypeError,ValueError):
         return None
 
-def current_book(cid,symbol):
+def current_book(cid,symbol,previous):
     errors=[]
     # Binance officially migrated Toncoin's TON/USDT to GRAM/USDT, 1:1.
     traded_symbol="GRAM" if cid=="ton" else symbol
@@ -145,6 +145,22 @@ def current_book(cid,symbol):
                 # Never discard valid order-book levels when the optional
                 # market-trade ticker is temporarily unavailable.
                 pass
+            # Price movement arrow compares genuine prices from two successive
+            # verified snapshots of EXACTLY the same exchange and trading pair.
+            # An unavailable comparison remains neutral; never infer direction.
+            prior=previous.get(cid) if isinstance(previous,dict) else None
+            if (item.get("lastTrade") is not None and isinstance(prior,dict)
+                and prior.get("venue")==item["venue"] and prior.get("pair")==pair):
+                try:
+                    last_previous=float(prior.get("lastTrade"))
+                    previous_at=datetime.fromisoformat(str(prior["lastTradeAt"]).replace("Z","+00:00"))
+                    if (math.isfinite(last_previous) and last_previous>0
+                        and previous_at.tzinfo is not None
+                        and 0<(now()-previous_at).total_seconds()<MAX_OLD_SECONDS):
+                        item["previousTrade"]=last_previous
+                        item["previousTradeAt"]=prior["lastTradeAt"]
+                except (TypeError,ValueError,KeyError):
+                    pass
             return item,None
         except (OSError,HTTPError,URLError,TimeoutError,ValueError,KeyError,TypeError) as exc:
             errors.append(exchange+":"+type(exc).__name__)
@@ -181,7 +197,7 @@ def main():
     books={}
     unavailable={}
     with ThreadPoolExecutor(max_workers=8) as pool:
-        tasks={pool.submit(current_book,cid,sym):cid for cid,sym in ALL.items()}
+        tasks={pool.submit(current_book,cid,sym,previous):cid for cid,sym in ALL.items()}
         for task in as_completed(tasks):
             cid=tasks[task]
             try:book,error=task.result()
