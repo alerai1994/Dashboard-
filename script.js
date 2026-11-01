@@ -1359,7 +1359,14 @@ function orderBookDisplay(){
  const changed=orderBookState.error?'<div class="ob-inline-warning">'+esc(orderBookState.error)+'</div>':'';
  const snapshotAge=Math.max(0,Date.now()-orderBookState.updatedAt);
  const delayed=orderBookState.mode==='snapshot'&&snapshotAge>30*60*1000;
- const snapshotLabel=delayed?'⚠ BOOK NON IN TEMPO REALE · Ultima verifica '+Math.floor(snapshotAge/60000)+' min fa':'● Snapshot Spot verificato · '+Math.floor(snapshotAge/60000)+' min fa';
+ const snapshotLabel=delayed?'⚠ BOOK NON IN TEMPO REALE · Ultima verifica '+Math.floor(snapshotAge/60000)+' min fa':'◌ Snapshot verificato · '+Math.floor(snapshotAge/60000)+' min fa';
+ const mode=orderBookState.mode;
+ const isStreaming=orderBookIsStreaming(),isPolling=orderBookIsFastPolling();
+ const bookMode=isStreaming?'live':isPolling?'poll':mode==='live'||mode==='poll'?'stale':'snapshot';
+ const sourceLabel=isStreaming?'● LIVE · WebSocket · dati aggiornati '+Math.floor(snapshotAge/1000)+' s fa':
+  isPolling?'● AGGIORNAMENTO RAPIDO · REST ogni ~3 s · '+Math.floor(snapshotAge/1000)+' s fa':
+  bookMode==='stale'?'⚠ Aggiornamento interrotto · ultima ricezione '+Math.floor(snapshotAge/1000)+' s fa':
+  snapshotLabel+(orderBookLive.coin===orderBookState.id&&orderBookLive.transport==='ws'?' · Connessione live in corso':'');
  const traded=Number(orderBookState.lastTrade);
  const hasTrade=Number.isFinite(traded)&&traded>0&&orderBookState.lastTradeAt>=orderBookState.updatedAt-60000;
  const referencePrice=hasTrade?traded:mid;
@@ -1371,7 +1378,7 @@ function orderBookDisplay(){
  const arrowHint=priceTrend==='up'?'Prezzo in rialzo rispetto alla rilevazione precedente':
   priceTrend==='down'?'Prezzo in ribasso rispetto alla rilevazione precedente':
   priceTrend==='flat'?'Prezzo invariato rispetto alla rilevazione precedente':'Direzione non disponibile: manca un prezzo precedente verificato';
- return '<div class="ob-market-status">'+(orderBookState.mode==='snapshot'?snapshotLabel:orderBookState.busy?'↻ Aggiornamento in corso':stale?'◌ Ultimo book disponibile':'● Book diretto')+
+ return '<div class="ob-market-status ob-market-'+bookMode+'" data-orderbook-connection="'+bookMode+'">'+sourceLabel+
  ' · '+esc(orderBookState.venue||src.venue)+' · '+stamp+'</div>'+changed+
  '<div class="ob-book-stack" aria-label="Order Book verticale: vendite, prezzo di scambio e acquisti">'+
  orderBookSide(asks,'ask',book.unit)+
@@ -1393,6 +1400,14 @@ function paintOrderBook(){
   [...node.querySelectorAll('.ob-table-scroll')].forEach((el,i)=>{
    if(oldScroll[i]){el.scrollLeft=oldScroll[i].x;el.scrollTop=oldScroll[i].y}
   });
+  if((orderBookIsStreaming()||orderBookIsFastPolling())&&orderBookState.data){
+   const row=$('#orderBookAssetList [data-order-book-asset="'+orderBookState.id+'"]');
+   const summary=row&&row.querySelector('.ob-coin-prices');
+   if(summary&&orderBookState.data.bids.length&&orderBookState.data.asks.length){
+    summary.innerHTML='<span class="color-up">BID '+orderBookNumber(orderBookState.data.bids[0][0],true)+
+     '</span><span class="color-down">ASK '+orderBookNumber(orderBookState.data.asks[0][0],true)+'</span>';
+   }
+  }
  }
 }
 function cancelOrderBookFetch(){
