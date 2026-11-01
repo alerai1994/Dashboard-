@@ -169,7 +169,7 @@ def yahoo_quote(pair):
         try:
             url = (
                 "https://" + domain + "/v8/finance/chart/" + quote(symbol, safe="")
-                + "?" + urlencode({"range": "1y", "interval": "1d"})
+                + "?" + urlencode({"range": "1mo" if identity == "tadawul" else "1y", "interval": "1d"})
             )
             payload = request_json(url)
             result = (payload.get("chart", {}).get("result") or [])[0]
