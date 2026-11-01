@@ -80,6 +80,14 @@ CRYPTO = [
     ("vra", "verasity"),
     ("wlfi", "world-liberty-financial"),
     ("hot", "holotoken"),
+    ("ksm", "kusama"),
+    ("wld", "worldcoin-wld"),
+    ("fet", "fetch-ai"),
+    ("orai", "oraichain-token"),
+    ("tai", "tars-protocol"),
+    ("virtual", "virtual-protocol"),
+    ("tao", "bittensor"),
+    ("luna", "terra-luna-2"),
 ]
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (compatible; GlobalMarketsDashboard/1.0; +https://github.com/)",
@@ -408,7 +416,9 @@ def crypto_quotes():
         "ada": "ADA-USD", "avax": "AVAX-USD", "link": "LINK-USD",
         "dot": "DOT-USD", "trx": "TRX-USD", "sui": "SUI-USD",
         "ltc": "LTC-USD", "hbar": "HBAR-USD", "ray": "RAY-USD",
-        "lunc": "LUNC-USD"
+        "lunc": "LUNC-USD",
+        "ksm": "KSM-USD", "wld": "WLD-USD", "fet": "FET-USD",
+        "virtual": "VIRTUAL-USD", "tao": "TAO-USD", "luna": "LUNA-USD"
     }
     try:
         histories = fetch_group([(cid, history_symbols[cid]) for cid, _ in CRYPTO if cid in history_symbols])
@@ -439,7 +449,9 @@ def crypto_quotes():
         "op": "OPUSDT", "shib": "SHIBUSDT", "pepe": "PEPEUSDT",
         "render": "RENDERUSDT", "ray": "RAYUSDT",
         "lunc": "LUNCUSDT", "hot": "HOTUSDT", "wlfi": "WLFIUSDT",
-        "vra": "VRAUSDT"
+        "vra": "VRAUSDT",
+        "ksm": "KSMUSDT", "wld": "WLDUSDT", "fet": "FETUSDT",
+        "virtual": "VIRTUALUSDT", "tao": "TAOUSDT", "luna": "LUNAUSDT"
     }
     for cid, token in missing:
         old = old_candles.get(cid, {})

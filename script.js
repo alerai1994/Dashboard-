@@ -88,7 +88,15 @@ const ASSETS=[
 {id:'lunc',name:'Terra Luna Classic (LUNC)',short:'Luna Classic',group:'crypto',symbol:'LUNC-USD',icon:'L',currency:'USD',coingeckoId:'terra-luna'},
 {id:'vra',name:'Verasity (VRA)',short:'Verasity',group:'crypto',symbol:'VRA-USD',icon:'V',currency:'USD',coingeckoId:'verasity'},
 {id:'wlfi',name:'World Liberty Financial (WLFI)',short:'WLFI',group:'crypto',symbol:'WLFI-USD',icon:'W',currency:'USD',coingeckoId:'world-liberty-financial'},
-{id:'hot',name:'Holo (HOT)',short:'Holo',group:'crypto',symbol:'HOT-USD',icon:'H',currency:'USD',coingeckoId:'holotoken'}
+{id:'hot',name:'Holo (HOT)',short:'Holo',group:'crypto',symbol:'HOT-USD',icon:'H',currency:'USD',coingeckoId:'holotoken'},
+{id:'ksm',name:'Kusama (KSM)',short:'Kusama',group:'crypto',symbol:'KSM-USD',icon:'K',currency:'USD',coingeckoId:'kusama'},
+{id:'wld',name:'Worldcoin (WLD)',short:'Worldcoin',group:'crypto',symbol:'WLD-USD',icon:'W',currency:'USD',coingeckoId:'worldcoin-wld'},
+{id:'fet',name:'Fetch.ai / Artificial Superintelligence Alliance (FET)',short:'Fetch.ai (FET)',group:'crypto',symbol:'FET-USD',icon:'F',currency:'USD',coingeckoId:'fetch-ai'},
+{id:'orai',name:'Oraichain (ORAI)',short:'Oraichain',group:'crypto',symbol:'ORAI-USD',icon:'O',currency:'USD',coingeckoId:'oraichain-token'},
+{id:'tai',name:'TARS AI (TAI)',short:'TARS AI',group:'crypto',symbol:'TAI-USD',icon:'T',currency:'USD',coingeckoId:'tars-protocol'},
+{id:'virtual',name:'Virtuals Protocol (VIRTUAL)',short:'Virtuals Protocol',group:'crypto',symbol:'VIRTUAL-USD',icon:'V',currency:'USD',coingeckoId:'virtual-protocol'},
+{id:'tao',name:'Bittensor (TAO)',short:'Bittensor',group:'crypto',symbol:'TAO-USD',icon:'τ',currency:'USD',coingeckoId:'bittensor'},
+{id:'luna',name:'Terra (LUNA)',short:'Terra 2.0',group:'crypto',symbol:'LUNA-USD',icon:'L',currency:'USD',coingeckoId:'terra-luna-2'}
 ];
 const ASSET_BY_ID=Object.fromEntries(ASSETS.map(a=>[a.id,a]));
 const TECH_IDS=["ndx","sox","xlk","qqq","smh"];
@@ -518,7 +526,8 @@ const STREAM_PAIRS={
  xlm:'xlmusdt',hbar:'hbarusdt',near:'nearusdt',apt:'aptusdt',atom:'atomusdt',
  uni:'uniusdt',aave:'aaveusdt',arb:'arbusdt',op:'opusdt',shib:'shibusdt',
  pepe:'pepeusdt',render:'renderusdt',ray:'rayusdt',lunc:'luncusdt',
- vra:'vrausdt',wlfi:'wlfiusdt',hot:'hotusdt'
+ vra:'vrausdt',wlfi:'wlfiusdt',hot:'hotusdt',
+ ksm:'ksmusdt',wld:'wldusdt',fet:'fetusdt',virtual:'virtualusdt',tao:'taousdt',luna:'lunausdt'
 };
 const STREAM_IDS=Object.fromEntries(Object.entries(STREAM_PAIRS).map(([id,pair])=>[pair.toUpperCase(),id]));
 const STREAM_OVERLAY=new Map();
