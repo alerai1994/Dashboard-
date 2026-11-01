@@ -1314,6 +1314,64 @@ function orderBookSide(orders,side,unit){
  }).join('')+'</tbody></table></div>'+
  '<div class="ob-side-footer"><span>Totale '+orders.length+' livelli</span><strong>'+orderBookNumber(cumulative)+' USDT</strong></div></section>';
 }
+// Depth of the SELECTED Spot book: cumulative quote notional (price * size).
+// A 20-level snapshot is NOT full exchange liquidity or a volume-of-trades chart.
+function orderBookDepthChart(bids,asks,mid,unit){
+ const W=940,H=268,left=70,right=30,top=22,bottom=218;
+ const cx=(left+(W-right))/2,half=cx-left;
+ const farBid=bids[bids.length-1][0],farAsk=asks[asks.length-1][0];
+ const range=Math.max(mid-farBid,farAsk-mid,mid*0.000001,1e-12);
+ const totalFor=rows=>rows.reduce((n,r)=>n+r[0]*r[1],0);
+ const sumBid=totalFor(bids),sumAsk=totalFor(asks);
+ const highest=Math.max(sumBid,sumAsk,1e-12);
+ const y=value=>bottom-Math.max(0,Math.min(1,value/highest))*(bottom-top);
+ const x=price=>Math.max(left,Math.min(W-right,cx+(price-mid)/range*half));
+ // Render an exact staircase: each row is a real limit-order level, not a smoothed curve.
+ function side(rows){
+  let sum=0,first=null,last=null,stroke='',fill='';
+  rows.forEach(([p,qty],i)=>{
+   const xx=x(p),yy=y(sum+p*qty);
+   if(i===0){first=xx;stroke='M '+xx.toFixed(2)+' '+yy.toFixed(2);fill='M '+xx.toFixed(2)+' '+bottom+' V '+yy.toFixed(2);}
+   else{
+    stroke+=' H '+xx.toFixed(2)+' V '+yy.toFixed(2);
+    fill+=' H '+xx.toFixed(2)+' V '+yy.toFixed(2);
+   }
+   sum+=p*qty;last=xx;
+  });
+  fill+=' L '+last.toFixed(2)+' '+bottom+' Z';
+  return {stroke,fill};
+ }
+ const bid=side(bids),ask=side(asks);
+ const maxLabel=orderBookNumber(highest),halfLabel=orderBookNumber(highest/2);
+ const centerLabel=orderBookNumber(mid,true);
+ const leftLabel=orderBookNumber(mid-range,true),rightLabel=orderBookNumber(mid+range,true);
+ const summary='Profondità ordini '+unit+'. BID cumulati '+orderBookNumber(sumBid)+' USDT, ASK cumulati '+orderBookNumber(sumAsk)+' USDT. Prezzo centrale '+centerLabel+' USDT.';
+ return '<section class="ob-depth-panel" aria-label="Profondità cumulativa del book">'+
+  '<div class="ob-depth-heading"><div><h3>Profondità degli ordini</h3><p>Totale cumulato dei livelli limite · USDT</p></div>'+
+  '<div class="ob-depth-legend"><span class="ob-depth-key bid">● BID</span><span class="ob-depth-key ask">● ASK</span></div></div>'+
+  '<div class="ob-depth-canvas">'+
+  '<svg class="ob-depth-svg" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" role="img" aria-label="'+esc(summary)+'">'+
+  '<line class="ob-depth-axis" x1="'+left+'" y1="'+bottom+'" x2="'+(W-right)+'" y2="'+bottom+'"/>'+
+  '<line class="ob-depth-axis" x1="'+left+'" y1="'+top+'" x2="'+left+'" y2="'+bottom+'"/>'+
+  [0.25,0.5,0.75,1].map(t=>'<line class="ob-depth-grid-line" x1="'+left+'" y1="'+y(highest*t).toFixed(2)+'" x2="'+(W-right)+'" y2="'+y(highest*t).toFixed(2)+'"/>').join('')+
+  '<path class="ob-depth-bid-fill" d="'+bid.fill+'"/>'+
+  '<path class="ob-depth-ask-fill" d="'+ask.fill+'"/>'+
+  '<path class="ob-depth-bid-line" d="'+bid.stroke+'"/>'+
+  '<path class="ob-depth-ask-line" d="'+ask.stroke+'"/>'+
+  '<line class="ob-depth-center-line" x1="'+cx+'" y1="'+top+'" x2="'+cx+'" y2="'+bottom+'"/>'+
+  '<text class="ob-depth-y-label" x="'+(left-10)+'" y="'+(top+3)+'" text-anchor="end">'+maxLabel+'</text>'+
+  '<text class="ob-depth-y-label" x="'+(left-10)+'" y="'+(y(highest/2)+4)+'" text-anchor="end">'+halfLabel+'</text>'+
+  '<text class="ob-depth-y-label" x="'+(left-10)+'" y="'+(bottom+4)+'" text-anchor="end">0</text>'+
+  '<text class="ob-depth-x-label" x="'+left+'" y="'+(bottom+25)+'" text-anchor="start">'+leftLabel+'</text>'+
+  '<text class="ob-depth-x-label center" x="'+cx+'" y="'+(bottom+25)+'" text-anchor="middle">'+centerLabel+'</text>'+
+  '<text class="ob-depth-x-label" x="'+(W-right)+'" y="'+(bottom+25)+'" text-anchor="end">'+rightLabel+'</text>'+
+  '<text class="ob-depth-axis-caption" x="'+(W/2)+'" y="'+(H-3)+'" text-anchor="middle">Prezzo (USDT)</text>'+
+  '</svg></div>'+
+  '<div class="ob-depth-totals"><span class="color-up">BID cumulati: <strong>'+orderBookNumber(sumBid)+' USDT</strong></span>'+
+  '<span class="color-down">ASK cumulati: <strong>'+orderBookNumber(sumAsk)+' USDT</strong></span></div>'+
+  '<p class="ob-depth-note">Solo '+bids.length+' livelli BID e '+asks.length+' ASK del mercato indicato. Il grafico rappresenta ordini limite ancora aperti, non scambi eseguiti.</p></section>';
+}
+
 function orderBookDisplay(){
  const src=orderBookSource(orderBookState.id);
  if(!src)return '<div class="ob-status"><strong>Order book Spot non disponibile</strong><p>Per questa crypto non è stata verificata una coppia di order book corrispondente. Non vengono mostrati ordini di un token omonimo o dati stimati.</p></div>';
@@ -1330,9 +1388,13 @@ function orderBookDisplay(){
  const snapshotLabel=delayed?'⚠ BOOK NON IN TEMPO REALE · Ultima verifica '+Math.floor(snapshotAge/60000)+' min fa':'● Snapshot Spot verificato · '+Math.floor(snapshotAge/60000)+' min fa';
  return '<div class="ob-market-status">'+(orderBookState.mode==='snapshot'?snapshotLabel:orderBookState.busy?'↻ Aggiornamento in corso':stale?'◌ Ultimo book disponibile':'● Book diretto')+
  ' · '+esc(orderBookState.venue||src.venue)+' · '+stamp+'</div>'+changed+
- '<div class="ob-summary"><div><small>Miglior BID</small><strong class="color-up">'+orderBookNumber(bid,true)+'</strong></div>'+
- '<div><small>Miglior ASK</small><strong class="color-down">'+orderBookNumber(ask,true)+'</strong></div>'+
- '<div><small>Spread</small><strong>'+orderBookNumber(spread,true)+' USDT</strong><small>'+spreadPercent.toFixed(3)+'%</small></div></div>'+
+ '<div class="ob-center-price" aria-label="Prezzo centrale tra migliori BID e ASK">'+
+ '<div class="ob-center-quote ob-center-bid"><span>Miglior BID</span><strong>'+orderBookNumber(bid,true)+'</strong><small>Acquisto · USDT</small></div>'+
+ '<div class="ob-midpoint"><span>PREZZO CENTRALE</span><strong>'+orderBookNumber(mid,true)+' <small>USDT</small></strong>'+
+ '<small>Media fra BID e ASK, non ultimo scambio</small>'+
+ '<span class="ob-center-spread">Spread '+orderBookNumber(spread,true)+' USDT · '+spreadPercent.toFixed(3)+'%</span></div>'+
+ '<div class="ob-center-quote ob-center-ask"><span>Miglior ASK</span><strong>'+orderBookNumber(ask,true)+'</strong><small>Vendita · USDT</small></div></div>'+
+ orderBookDepthChart(bids,asks,mid,book.unit)+
  '<div class="ob-depth-meter"><div class="ob-depth-bar"><span style="width:'+ratio.toFixed(2)+'%"></span></div>'+
  '<div class="ob-depth-labels"><span class="color-up">BID '+ratio.toFixed(1)+'%</span><span class="color-down">ASK '+(100-ratio).toFixed(1)+'%</span></div></div>'+
  '<div class="ob-book-grid">'+orderBookSide(bids,'bid',book.unit)+orderBookSide(asks,'ask',book.unit)+'</div>';
