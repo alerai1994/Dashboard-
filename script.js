@@ -2342,7 +2342,7 @@ function updateChartHistoryStatus(){
  const info=same?chartSeries:null;
  if(badge){
   badge.textContent=info&&info.loading?'Caricamento '+chartRange+'…':
-   info&&info.candles.length?chartRange+' · '+info.candles.length+' candele'+(info.partial?' (parziale)':''):
+   info&&info.candles.length?chartRange+' · '+(info.visibleCount||info.candles.length)+' candele'+(info.partial?' (parziale)':''):
    chartRange+' · dati non disponibili';
  }
  if(source){
@@ -2472,7 +2472,7 @@ async function loadMarketChartHistory(force=false){
  chartSeries={id:asset.id,range:selected,candles:[],source:'',loading:true,error:'',partial:false};
  updateChartHistoryStatus();
  requestAnimationFrame(drawChart);
- let candles=[],source='',failure='';
+ let candles=[],source='',failure='',visibleCount=0;
  const now=Date.now();
  if(period.months){
   // The main dashboard already publishes a complete, verified daily OHLC
@@ -2480,7 +2480,9 @@ async function loadMarketChartHistory(force=false){
   const daily=chartDailyCandles(asset);
   const newest=daily.length?daily[daily.length-1].t*1000:now;
   const from=chartStartTime(period,newest);
-  candles=daily.filter(row=>row.t*1000>=from&&row.t*1000<=now);
+  const within=daily.filter(row=>row.t*1000>=from&&row.t*1000<=now);
+  visibleCount=within.length;
+  candles=within.length>=2?daily:[];
   source='Yahoo Finance · candele giornaliere';
   if(candles.length<2)failure='Candele giornaliere non disponibili per '+selected+'.';
  }else{
@@ -2501,8 +2503,10 @@ async function loadMarketChartHistory(force=false){
    if(bars.length<2)throw Error('Candele OHLC insufficienti');
    const latest=bars[bars.length-1].t*1000;
    const from=chartStartTime(period,latest);
-   candles=bars.filter(row=>row.t*1000>=from&&row.t*1000<=now);
-   if(candles.length<2)throw Error('Nessuna candela nel periodo '+selected);
+   const within=bars.filter(row=>row.t*1000>=from&&row.t*1000<=now);
+   if(within.length<2)throw Error('Nessuna candela nel periodo '+selected);
+   visibleCount=within.length;
+   candles=bars;
    const delayed=now-latest>4*3600000;
    const date=new Intl.DateTimeFormat('it-IT',{
     day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'
@@ -2518,7 +2522,7 @@ async function loadMarketChartHistory(force=false){
   chartSeries={id:asset.id,range:selected,candles:[],source:'',
    loading:false,error:failure||'Storico OHLC non disponibile',partial:false};
  }else{
-  const result={id:asset.id,range:selected,candles,source,
+  const result={id:asset.id,range:selected,candles,source,visibleCount,
    loading:false,error:'',partial:false,loadedAt:Date.now()};
   chartSeries=result;
   chartFetchState.cache.set(key,result);
@@ -2660,6 +2664,14 @@ function macd(values){
  return {line,signal,hist:line.map((v,i)=>num(v)&&num(signal[i])?v-signal[i]:null)};
 }
 const round=(x,n=2)=>x.toFixed(n);
+function chartVisibleCandleCount(candles,width){
+ const same=chartSeries.id===state.dialogId&&chartSeries.range===chartRange;
+ const count=same?Number(chartSeries.visibleCount):NaN;
+ if(Number.isFinite(count)&&count>=2){
+  return Math.max(2,Math.min(candles.length,Math.ceil(count)));
+ }
+ return Math.max(25,Math.min(280,Math.floor((Math.max(360,width)-86)/8)));
+}
 function drawChart(){
  if(!state.dialogId)return;
  const canvas=$('#detailChart');if(!canvas||!canvas.isConnected)return;
@@ -2670,7 +2682,7 @@ function drawChart(){
  ctx.clearRect(0,0,width,height);
  const dark=state.theme==='dark',color=dark?'#9db4c8':'#536c82',grid=dark?'#173149':'#dbe3e8';
  ctx.fillStyle=dark?'#071523':'#f5f9fd';ctx.fillRect(0,0,width,height);
- const left=19,right=67,chartW=width-left-right,visible=Math.max(25,Math.min(280,Math.floor(chartW/8)));
+ const left=19,right=67,chartW=width-left-right,visible=chartVisibleCandleCount(candles,width);
  const maxShift=Math.max(0,candles.length-visible);
  state.chartShift=Math.max(0,Math.min(maxShift,state.chartShift));
  const start=Math.max(0,candles.length-visible-state.chartShift),end=Math.min(candles.length,start+visible),sample=candles.slice(start,end);
@@ -2782,7 +2794,7 @@ function setupCanvasInteractions(){
   const can=e.target;
   const width=can.getBoundingClientRect().width;
   const candles=getCandles(state.dialogId);
-  const visible=Math.max(25,Math.min(280,Math.floor((Math.max(360,width)-86)/8)));
+  const visible=chartVisibleCandleCount(candles,width);
   const start=Math.max(0,candles.length-visible-state.chartShift);
   const relative=(e.clientX-can.getBoundingClientRect().left)/width;
   const idx=Math.floor(start+relative*visible);
