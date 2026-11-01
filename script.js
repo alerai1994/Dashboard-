@@ -2639,7 +2639,7 @@ function setupEvents(){
    portfolioEditIndex=-1;
    render();
    toast(temporary?
-    'Posizione aggiunta solo per questa sessione: abilita il salvataggio permanente nel browser.':
+    (editing?'Posizione aggiornata':'Posizione aggiunta')+' solo per questa sessione: abilita il salvataggio permanente nel browser.':
     editing?'Posizione aggiornata e salvata.':'Posizione aggiunta e salvata.');
    return;
   }
