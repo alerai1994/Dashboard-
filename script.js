@@ -2184,7 +2184,7 @@ async function fetchQuotes(isManual=false){
   state.feedError=false;state.loading=false;
   snapshotFetch.etag=response.headers.get('etag')||response.headers.get('last-modified')||null;
   snapshotFetch.age=Date.now();
-  if(wasLoading)render();
+  if(wasLoading&&state.page!=='portfolio')render();
   else{
    changed.forEach(id=>streamStatus.dirty.add(id));
    if(changed.length)updatePriceDom();
@@ -2197,7 +2197,7 @@ async function fetchQuotes(isManual=false){
   if(isManual)toast(changed.length?'Quotazioni aggiornate da tutte le fonti disponibili.':'Feed controllato: nessuna nuova quotazione disponibile.');
  }catch(e){
   state.feedError=true;state.loading=false;
-  if(wasLoading)render();
+  if(wasLoading&&state.page!=='portfolio')render();
   else updateLiveBadges();
   if(isManual)toast('Feed non raggiungibile. Gli ultimi prezzi verificati restano visibili.');
  }finally{
@@ -2549,11 +2549,19 @@ function setupEvents(){
  $('#pageContainer').addEventListener('keydown',e=>{if(e.key==='Enter'){const tr=e.target.closest('tr[data-asset]');if(tr)openAsset(tr.dataset.asset)}});
  $('#pageContainer').addEventListener('change',e=>{
   if(e.target.id==='holdingAsset'){
+   e.target.removeAttribute('aria-invalid');
+   const message=$('#portfolioFormFeedback');
+   if(message){message.hidden=true;message.textContent='';message.classList.remove('is-error')}
    const target=$('#holdingAssetLogo'),asset=ASSET_BY_ID[e.target.value];
    if(target&&asset)target.innerHTML=assetLogo(asset);
   }
  });
  $('#pageContainer').addEventListener('input',e=>{
+  if(e.target.closest('#portfolioForm')){
+   e.target.removeAttribute('aria-invalid');
+   const message=$('#portfolioFormFeedback');
+   if(message){message.hidden=true;message.textContent='';message.classList.remove('is-error')}
+  }
   if(e.target.id==='holdingQty'||e.target.id==='holdingCost'){
    const qty=parsePortfolioNumber($('#holdingQty')?.value);
    const cost=parsePortfolioNumber($('#holdingCost')?.value);
@@ -2605,15 +2613,17 @@ function setupEvents(){
    const manualRaw=String(form.get('manualPrice')||'').trim();
    const manualPrice=manualRaw?parsePortfolioNumber(manualRaw):null;
    if(!portfolioEligible(id)){
-    toast('Seleziona una criptovaluta o uno strumento valido.');return;
+    portfolioFormError('Seleziona una criptovaluta o uno strumento valido.','holdingAsset');return;
    }
-   if(!Number.isFinite(qty)||qty<=0||!Number.isFinite(cost)||cost<0||
-      !Number.isFinite(qty*cost)){
-    toast('Quantità e prezzo di acquisto devono essere numeri validi.');return;
+   if(!Number.isFinite(qty)||qty<=0){
+    portfolioFormError('Inserisci una quantità valida e maggiore di zero. Puoi usare virgola o punto.','holdingQty');return;
+   }
+   if(!Number.isFinite(cost)||cost<0||!Number.isFinite(qty*cost)){
+    portfolioFormError('Inserisci il prezzo medio di acquisto (USD) valido: zero o superiore.','holdingCost');return;
    }
    if(manualRaw&&(!Number.isFinite(manualPrice)||manualPrice<=0||
       !Number.isFinite(qty*manualPrice))){
-    toast('Inserisci un prezzo attuale manuale valido oppure lascia vuoto il campo.');return;
+    portfolioFormError('Il prezzo attuale manuale deve essere maggiore di zero. Oppure lascia il campo vuoto.','holdingManualPrice');return;
    }
    const idx=portfolioEditIndex;
    const editing=Number.isInteger(idx)&&idx>=0&&idx<state.holdings.length;
@@ -2625,8 +2635,12 @@ function setupEvents(){
    const next=state.holdings.slice();
    if(editing)next[idx]=holding;else next.push(holding);
    if(!persistPortfolio(next))return;
+   const temporary=portfolioStorageTemporary();
    portfolioEditIndex=-1;
-   render();toast(editing?'Posizione aggiornata e salvata.':'Posizione aggiunta e salvata.');
+   render();
+   toast(temporary?
+    'Posizione aggiunta solo per questa sessione: abilita il salvataggio permanente nel browser.':
+    editing?'Posizione aggiornata e salvata.':'Posizione aggiunta e salvata.');
    return;
   }
   if(e.target.id==='alertForm'){
