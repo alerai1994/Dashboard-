@@ -81,7 +81,7 @@ def yahoo(symbol):
             sample = (chart.get("indicators", {}).get("quote") or [{}])[0]
             rows = normalise(zip_rows(stamps, sample))
             if len(rows) >= 2:
-                return rows, "Yahoo Finance · " + symbol + " · OHLC mensile"
+                return rows, "Yahoo Finance · " + symbol + " · OHLC storico (frequenza del feed)"
         except (OSError, ValueError, KeyError, IndexError, TypeError) as error:
             errors.append(str(error))
     raise RuntimeError("Yahoo: " + ("; ".join(errors) or "No verified OHLC"))
