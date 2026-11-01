@@ -1219,6 +1219,7 @@ function cryptoBookEntry(id){
 function useCryptoBookEntry(id,serial){
  const book=cryptoBookEntry(id);
  if(!book||serial!==orderBookState.serial||id!==orderBookState.id)return false;
+ if(orderBookIsStreaming()||orderBookIsFastPolling())return true;
  if(orderBookState.data&&orderBookState.mode==='snapshot'&&orderBookState.updatedAt>=book.time)
   return true;
  orderBookState.data={bids:book.bids,asks:book.asks,unit:book.unit};
@@ -1304,8 +1305,8 @@ function orderBookPage(){
  '<div class="ob-detail-heading"><div class="ob-heading-name">'+assetLogo(coin)+'<div><h2>'+esc(coin.name)+'</h2>'+
  '<small>'+esc(source?source.venue+' · '+source.pair:'Coppia Spot non verificata')+'</small>'+(coin.id==='ton'?'<small>Toncoin rinominato GRAM (1:1)</small>':'')+'</div></div>'+
  '<button class="btn btn-small" type="button" data-order-book-refresh="1" aria-label="Aggiorna order book">'+sym('refresh')+' Aggiorna</button></div>'+
- '<div class="ob-content" id="orderBookContent" aria-live="polite">'+orderBookDisplay()+'</div>'+
- '<p class="ob-footnote">Tutte le 42 criptovalute: BID e ASK reali per una singola coppia Spot/USDT e per l’exchange indicato (Binance, Gate, MEXC o LBank). Per Toncoin, la coppia Spot è GRAM/USDT dopo il rebranding. Le coppie non disponibili sono indicate chiaramente, mai simulate. Snapshot periodici ogni circa 5 minuti, soggetti a ritardi di GitHub; se oltre 30 minuti, il book è NON IN TEMPO REALE. Quantità e totali sono ordini limite, non eseguiti.</p>'+
+ '<div class="ob-content" id="orderBookContent" aria-live="off">'+orderBookDisplay()+'</div>'+
+ '<p class="ob-footnote">Order Book Spot della criptovaluta selezionata: Binance, Gate e LBank ricevono aggiornamenti WebSocket in streaming (fino a 100 ms, secondo la fonte); MEXC utilizza richieste REST ogni circa 3 secondi, non uno stream live. Il badge indica se i dati sono LIVE, aggiornati con polling o uno snapshot di riserva. Solo livelli reali della coppia indicata, mai simulati. Se la rete o la fonte si interrompe, sono segnalati come non aggiornati. La pagina deve rimanere aperta.</p>'+
  '</section></div>';
 }
 function orderBookNumber(v,price=false){
@@ -1385,7 +1386,14 @@ function orderBookDisplay(){
 }
 function paintOrderBook(){
  const node=$('#orderBookContent');
- if(node&&state.page==='orderbook')node.innerHTML=orderBookDisplay();
+ if(node&&state.page==='orderbook'){
+  // Preserve horizontal/vertical scroll while real market data updates.
+  const oldScroll=[...node.querySelectorAll('.ob-table-scroll')].map(el=>({x:el.scrollLeft,y:el.scrollTop}));
+  node.innerHTML=orderBookDisplay();
+  [...node.querySelectorAll('.ob-table-scroll')].forEach((el,i)=>{
+   if(oldScroll[i]){el.scrollLeft=oldScroll[i].x;el.scrollTop=oldScroll[i].y}
+  });
+ }
 }
 function cancelOrderBookFetch(){
  orderBookState.serial++;
@@ -1601,6 +1609,7 @@ function keepOrderBookLive(){
 function selectOrderBookAsset(id){
  if(!ASSET_BY_ID[id]||ASSET_BY_ID[id].group!=='crypto')return;
  if(id!==orderBookState.id){
+  stopOrderBookLive();
   cancelOrderBookFetch();
   orderBookState.id=id;orderBookState.data=null;orderBookState.error=null;
   orderBookState.lastTry=0;orderBookState.updatedAt=0;orderBookState.venue='';orderBookState.mode='';
@@ -1631,6 +1640,7 @@ function acceptOreBookSnapshot(payload,serial,coin){
  const bids=levels(payload.bids,true),asks=levels(payload.asks,false);
  if(!bids.length||!asks.length||bids[0][0]>=asks[0][0])throw Error('Book BID/ASK non valido');
  if(serial!==orderBookState.serial||coin!==orderBookState.id)return false;
+ if(orderBookIsStreaming()||orderBookIsFastPolling())return true;
  // Do not overwrite a more recent real snapshot with an older CDN cache.
  if(orderBookState.data&&orderBookState.mode==='snapshot'&&orderBookState.updatedAt>=updated)
   return true;
@@ -1675,6 +1685,7 @@ async function loadOreBookSnapshot(serial,coin){
 }
 async function refreshOrderBook(force=false){
  if(state.page!=='orderbook'||document.hidden)return;
+ if(!force&&(orderBookIsStreaming()||orderBookIsFastPolling()))return;
  if(orderBookState.busy&&!force)return;
  if(!force&&Date.now()-orderBookState.lastTry<14000)return;
  const src=orderBookSource(orderBookState.id);
@@ -1821,11 +1832,14 @@ function render(){
   if(!state.land)loadWorldShape();
   updateWorldSunlight(true);
  }
- if(state.page==='orderbook')refreshOrderBook();
+ if(state.page==='orderbook'){
+  refreshOrderBook();
+  startOrderBookLive();
+ }
 }
 function navigate(page){
  if(!SECTIONS[page])page='global';
- if(state.page==='orderbook'&&page!=='orderbook')cancelOrderBookFetch();
+ if(state.page==='orderbook'&&page!=='orderbook'){stopOrderBookLive();cancelOrderBookFetch()}
  state.page=page;
  if(location.hash!=='#'+page)history.replaceState(null,'','#'+page);
  $('#sidebar').classList.remove('open');
@@ -2283,7 +2297,7 @@ function setupEvents(){
    return;
   }
   if(btn.dataset.orderBookAsset){selectOrderBookAsset(btn.dataset.orderBookAsset);return;}
-  if(btn.dataset.orderBookRefresh){refreshOrderBook(true);return;}
+  if(btn.dataset.orderBookRefresh){startOrderBookLive(true);refreshOrderBook(true);return;}
   if(btn.dataset.themeMode){setTheme(btn.dataset.themeMode);return;}
   if(btn.dataset.soundToggle){
    const previous=state.clickSound;
@@ -2372,7 +2386,12 @@ function init(){
  setInterval(updateClock,30000);
  setInterval(()=>{if(state.adaptiveBrightness&&!document.hidden)applyBrightness()},60000);
  setInterval(updateWorldSunlight,1000);
- setInterval(()=>{if(state.page==='orderbook'&&!document.hidden)refreshOrderBook()},5000);
+ setInterval(()=>{
+  if(state.page==='orderbook'&&!document.hidden){
+   keepOrderBookLive();
+   if(!orderBookIsStreaming()&&!orderBookIsFastPolling())refreshOrderBook();
+  }
+ },5000);
  render();
  fetchQuotes();
  connectCryptoStream();
@@ -2381,11 +2400,20 @@ function init(){
  setInterval(keepStreamAlive,15000);
  setInterval(()=>{if(!document.hidden)connectForexStream();updateLiveBadges()},15000);
  document.addEventListener('visibilitychange',()=>{
-  if(document.hidden){closeStream();disconnectForexStream()}
-  else {connectCryptoStream();connectForexStream();fetchQuotes();updateWorldSunlight(true);applyBrightness();}
+  if(document.hidden){closeStream();disconnectForexStream();stopOrderBookLive()}
+  else {
+   connectCryptoStream();connectForexStream();fetchQuotes();updateWorldSunlight(true);applyBrightness();
+   if(state.page==='orderbook'){startOrderBookLive();refreshOrderBook()}
+  }
  });
- window.addEventListener('online',()=>{connectCryptoStream();connectForexStream();fetchQuotes()});
- window.addEventListener('offline',()=>{closeStream();disconnectForexStream();updateLiveBadges()});
+ window.addEventListener('online',()=>{
+  connectCryptoStream();connectForexStream();fetchQuotes();
+  if(state.page==='orderbook'){startOrderBookLive(true);refreshOrderBook(true)}
+ });
+ window.addEventListener('offline',()=>{
+  closeStream();disconnectForexStream();stopOrderBookLive();updateLiveBadges();
+  if(state.page==='orderbook')paintOrderBook();
+ });
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
