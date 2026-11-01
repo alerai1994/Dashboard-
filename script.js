@@ -1185,7 +1185,7 @@ function portfolioPage(){
  const rows=state.holdings.map(portfolioRow);
  const missingText=total.missing||total.invalid?
   ' · '+total.missing+' senza prezzo'+(total.invalid?' · '+total.invalid+' da correggere':''):'';
- return secHeader('Portfolio','Inserisci, modifica e monitora le tue posizioni con prezzi di mercato o manuali.')+
+ return secHeader('Portfolio','Inserisci, modifica e monitora le tue posizioni con le quotazioni di mercato disponibili.')+
  '<div class="summary-grid portfolio-summary">'+
  overviewCard('Valore delle posizioni quotate',total.priced?portfolioUsd(total.value):'—',total.priced+'/'+(total.count-total.invalid)+' con prezzo disponibile')+
  overviewCard('Capitale di carico',portfolioUsd(total.invested),'Include anche le posizioni senza quotazione')+
@@ -1206,10 +1206,6 @@ function portfolioPage(){
  '<div class="form-field"><label for="holdingCost">Prezzo medio di acquisto (USD per unità)</label>'+
  '<input id="holdingCost" type="text" inputmode="decimal" autocomplete="off" name="cost" placeholder="Es. 125,50" value="'+
  esc(edit?String(edit.cost):'')+'" required></div>'+
- '<div class="form-field"><label for="holdingManualPrice">Prezzo attuale manuale (USD, facoltativo)</label>'+
- '<input id="holdingManualPrice" type="text" inputmode="decimal" autocomplete="off" name="manualPrice" placeholder="Vuoto = prezzo di mercato" value="'+
- esc(edit&&edit.manualPrice!==undefined&&edit.manualPrice!==null?String(edit.manualPrice):'')+'">'+
- '<small>Se inserito, prevale sul prezzo di mercato finché non lo cancelli. È un dato manuale, non live.</small></div>'+
  '<div class="portfolio-entry-preview"><span>Capitale di carico della posizione</span>'+
  '<output id="holdingCostPreview">'+(editing&&portfolioRow(edit,portfolioEditIndex).valid?
   portfolioUsd(portfolioRow(edit,portfolioEditIndex).invested):'—')+'</output></div>'+
