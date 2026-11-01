@@ -22,6 +22,7 @@ DOMAINS = ("https://api.lbank.info", "https://api.lbkex.com",
 RESOLUTIONS = {
     "minute1": 60, "minute5": 300, "minute15": 900,
     "hour1": 3600, "hour4": 14400, "hour8": 28800,
+    "day1": 86400,  # true daily OHLC for maximum available ORE history
 }
 SIZE = 800
 
