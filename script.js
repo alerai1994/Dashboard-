@@ -2428,13 +2428,36 @@ async function loadCryptoChartHistory(force=false){
 }
 function openAsset(id){
  const a=ASSET_BY_ID[id];if(!a)return;
+ chartFetchState.sequence++;
+ if(chartFetchState.abort)chartFetchState.abort.abort();
+ chartRange='1D';
+ chartSeries={id:null,range:null,candles:[],source:'',loading:false,error:'',partial:false};
  state.dialogId=id;state.chartShift=0;state.chartHover=null;
+ const dlg=$('#assetDialog');
+ dlg.classList.toggle('crypto-fullscreen',a.group==='crypto');
  refreshDialog();
- const dlg=$('#assetDialog');if(!dlg.open)dlg.showModal();
+ if(!dlg.open)dlg.showModal();
+ if(a.group==='crypto'){
+  loadCryptoChartHistory();
+  // Native fullscreen when permitted by the browser; viewport-filling CSS
+  // remains the reliable fallback on mobile and restricted browsers.
+  if(typeof dlg.requestFullscreen==='function'){
+   try{const request=dlg.requestFullscreen({navigationUI:'hide'});if(request&&request.catch)request.catch(()=>{});}
+   catch(_error){}
+  }
+ }
  requestAnimationFrame(drawChart);
 }
 function closeAsset(){
- const dlg=$('#assetDialog');if(dlg.open)dlg.close();state.dialogId=null;state.chartHover=null;
+ const dlg=$('#assetDialog');
+ if(dlg.open)dlg.close();
+ chartFetchState.sequence++;
+ if(chartFetchState.abort)chartFetchState.abort.abort();
+ if(document.fullscreenElement===dlg&&typeof document.exitFullscreen==='function'){
+  try{const request=document.exitFullscreen();if(request&&request.catch)request.catch(()=>{});}catch(_error){}
+ }
+ dlg.classList.remove('crypto-fullscreen');
+ state.dialogId=null;state.chartHover=null;
 }
 function refreshDialog(){
  const a=ASSET_BY_ID[state.dialogId];if(!a)return;
@@ -2444,15 +2467,25 @@ function refreshDialog(){
  $('#dialogCategory').textContent=a.group.toUpperCase()+' · '+a.symbol;
  $('#dialogSubtitle').textContent=a.where||'Quotazione di mercato';
  $('#dialogWatch').textContent=(isWatch?'★ Rimuovi dalla Watchlist':'☆ Aggiungi alla Watchlist');
- const candleAvailable=q&&Array.isArray(q.candles)&&q.candles.length>=2;
+ const isCrypto=a.group==='crypto';
+ const candleAvailable=isCrypto?
+  (chartSeries.id===a.id&&chartSeries.range===chartRange&&chartSeries.candles.length>=2):
+  (q&&Array.isArray(q.candles)&&q.candles.length>=2);
  $('#dialogBody').innerHTML='<div class="dialog-stats"><strong>'+assetValue(a)+'</strong><span class="change '+classArrow(a.id)+'">'+pct(q&&q.change)+'</span><span class="dialog-meta">Ultima quotazione: '+esc(refTime(a.id))+'</span></div>'+
- '<div class="chart-toolbar"><div class="chart-legend"><span><i style="background:#74b2ff"></i>EMA 12</span><span><i style="background:#f1ba55"></i>EMA 26</span><span><i style="background:#b382ee"></i>EMA 50</span><span><i style="background:#ef7192"></i>EMA 200</span></div><span class="badge">'+(candleAvailable?'Candele OHLC · storico':'Candele OHLC non disponibili')+'</span></div>'+
+ '<div class="chart-toolbar"><div class="chart-legend"><span><i style="background:#74b2ff"></i>EMA 12</span><span><i style="background:#f1ba55"></i>EMA 26</span><span><i style="background:#b382ee"></i>EMA 50</span><span><i style="background:#ef7192"></i>EMA 200</span></div><span class="badge"'+(isCrypto?' id="chartHistoryBadge" role="status"':'')+'>'+(isCrypto?'Periodo '+chartRange:(candleAvailable?'Candele OHLC · storico':'Candele OHLC non disponibili'))+'</span></div>'+
  '<div class="chart-frame"><canvas id="detailChart" width="900" height="470" role="img" aria-label="Grafico di '+esc(a.name)+', medie mobili e indicatori" tabindex="0"></canvas></div>'+
- '<div class="chart-toolbar"><div class="chart-legend"><span>RSI (14)</span><span>Stochastic RSI (14/14/3/3)</span><span>MACD (12/26/9)</span></div>'+
- '<div><button class="btn btn-small" type="button" data-pan="-20">◀ Storico</button> <button class="btn btn-small" type="button" data-pan="20">Recenti ▶</button> <button class="btn btn-small" type="button" data-pan="reset">Oggi</button></div></div>'+
- '<div class="chart-help">Trascina il grafico in orizzontale per scorrere lo storico. Nessuno zoom. Le medie e gli indicatori sono mostrati solo quando le serie contengono dati sufficienti.</div>'+
- '<div class="chart-source"><span>Prezzi: '+(a.group==='crypto'?'CoinGecko o Binance Spot (secondo disponibilità)':'Yahoo Finance')+'. Candele OHLC: '+esc(q&&q.candleSource||'Yahoo Finance, se disponibile')+'. Storico non necessariamente in tempo reale.</span>'+
+ '<div class="chart-toolbar chart-time-toolbar"><div class="chart-legend"><span>RSI (14)</span><span>Stochastic RSI (14/14/3/3)</span><span>MACD (12/26/9)</span></div>'+
+ (isCrypto?'<div class="chart-periods" role="group" aria-label="Periodo storico del grafico">'+
+  CHART_PERIODS.map(period=>'<button class="chart-period'+(period.id===chartRange?' active':'')+
+   '" type="button" data-chart-range="'+period.id+'" aria-pressed="'+(period.id===chartRange?'true':'false')+
+   '">'+period.id+'</button>').join('')+
+  '<button class="chart-period chart-period-refresh" type="button" data-chart-refresh="1" title="Aggiorna le candele del periodo selezionato">↻ Aggiorna</button></div>':
+  '<div><button class="btn btn-small" type="button" data-pan="-20">◀ Storico</button> <button class="btn btn-small" type="button" data-pan="20">Recenti ▶</button> <button class="btn btn-small" type="button" data-pan="reset">Oggi</button></div>')+'</div>'+
+ '<div class="chart-help">'+(isCrypto?'Seleziona un periodo da 1h a 3M; le candele sono richieste dalla fonte per l’intervallo scelto. ':'')+'Trascina il grafico in orizzontale per scorrere lo storico. Nessuno zoom. Le medie e gli indicatori sono mostrati solo quando le serie contengono dati sufficienti.</div>'+
+ '<div class="chart-source"><span'+(isCrypto?' id="chartHistorySource" role="status" aria-live="polite"':'')+'>'+(isCrypto?'Caricamento delle candele del periodo '+chartRange+'…':
+  'Prezzi: Yahoo Finance. Candele OHLC: '+esc(q&&q.candleSource||'Yahoo Finance, se disponibile')+'. Storico non necessariamente in tempo reale.')+'</span>'+
  '<a href="'+esc(externalUrl(a))+'" target="_blank" rel="noopener noreferrer">Apri fonte '+sym('external')+'</a></div>';
+ if(isCrypto)updateChartHistoryStatus();
  requestAnimationFrame(drawChart);
 }
 function toggleWatch(id){
@@ -2464,6 +2497,9 @@ function toggleWatch(id){
  if(state.page==='watchlist'||state.page==='home')render();
 }
 function getCandles(id){
+ if(ASSET_BY_ID[id]&&ASSET_BY_ID[id].group==='crypto'){
+  return chartSeries.id===id&&chartSeries.range===chartRange?chartSeries.candles:[];
+ }
  const q=quote(id);
  if(!q||!Array.isArray(q.candles))return [];
  return q.candles.map(x=>({t:Number(x.t),o:Number(x.o),h:Number(x.h),l:Number(x.l),c:Number(x.c)}))
@@ -2526,23 +2562,33 @@ function drawChart(){
  const canvas=$('#detailChart');if(!canvas||!canvas.isConnected)return;
  const candles=getCandles(state.dialogId),ctx=canvas.getContext('2d');if(!ctx)return;
  const rect=canvas.getBoundingClientRect();
- const width=Math.max(360,Math.floor(rect.width)),height=470,dpr=Math.min(2,window.devicePixelRatio||1);
+ const width=Math.max(360,Math.floor(rect.width)),height=Math.max(470,Math.floor(rect.height||470)),dpr=Math.min(2,window.devicePixelRatio||1);
  canvas.width=Math.floor(width*dpr);canvas.height=Math.floor(height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);
  ctx.clearRect(0,0,width,height);
  const dark=state.theme==='dark',color=dark?'#9db4c8':'#536c82',grid=dark?'#173149':'#dbe3e8';
  ctx.fillStyle=dark?'#071523':'#f5f9fd';ctx.fillRect(0,0,width,height);
- const left=19,right=67,chartW=width-left-right,visible=Math.max(25,Math.min(100,Math.floor(chartW/9)));
+ const left=19,right=67,chartW=width-left-right,visible=Math.max(25,Math.min(280,Math.floor(chartW/8)));
  const maxShift=Math.max(0,candles.length-visible);
  state.chartShift=Math.max(0,Math.min(maxShift,state.chartShift));
  const start=Math.max(0,candles.length-visible-state.chartShift),end=Math.min(candles.length,start+visible),sample=candles.slice(start,end);
- const regions=[{top:13,bottom:221,label:'PRICE'},{top:237,bottom:305,label:'RSI (14)'},{top:317,bottom:385,label:'STOCH RSI'},{top:397,bottom:453,label:'MACD'}];
+ const extra=height-470;
+ const regions=[
+  {top:13,bottom:221+extra*.55,label:'PRICE'},
+  {top:237+extra*.55,bottom:305+extra*.7,label:'RSI (14)'},
+  {top:317+extra*.7,bottom:385+extra*.85,label:'STOCH RSI'},
+  {top:397+extra*.85,bottom:453+extra,label:'MACD'}
+ ];
  function line(x1,y1,x2,y2,stroke,width=1){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.strokeStyle=stroke;ctx.lineWidth=width;ctx.stroke();}
  function text(value,x,y,align='left',size=10){ctx.fillStyle=color;ctx.font=size+'px Inter,Segoe UI,Arial';ctx.textAlign=align;ctx.fillText(value,x,y);}
  for(const p of regions){
   for(let k=0;k<=3;k++){const y=p.top+(p.bottom-p.top)*k/3;line(left,y,width-right+4,y,grid,.6)}
   text(p.label,left+3,p.top+11,'left',9);
  }
- if(!sample.length){text('Candele OHLC non disponibili da fonti dati.',width/2,130,'center',13);return;}
+ if(!sample.length){
+  const message=chartSeries.loading&&chartSeries.id===state.dialogId?
+   'Caricamento storico '+chartRange+'…':'Candele OHLC non disponibili per il periodo selezionato.';
+  text(message,width/2,Math.min(130,height/3),'center',13);return;
+ }
  const ix=i=>left+(i-start+.5)*chartW/sample.length;
  const closes=candles.map(x=>x.c);
  const emaSets=[{values:ema(closes,12),color:'#6fb2ff'},{values:ema(closes,26),color:'#f1b954'},{values:ema(closes,50),color:'#b18aff'},{values:ema(closes,200),color:'#e96798'}];
@@ -2600,8 +2646,15 @@ function drawChart(){
  line(left,mapOsc(20,regions[2]),width-right,mapOsc(20,regions[2]),'#597c80',.6);
  for(let i=0;i<=4;i++){
   const idx=Math.floor(start+(Math.max(0,sample.length-1))*i/4),c=candles[idx];if(!c)continue;
-  const d=typeof c.t==='number'&&c.t>1e9?localeDate(c.t*1000,{month:'short',day:'2-digit'}):'−'+(candles.length-idx)+'g';
-  text(d,ix(idx),465,'center',9);
+  const date=new Date(c.t*1000);
+  const spec=CHART_PERIOD_BY_ID[chartRange];
+  const d=Number.isFinite(date.getTime())&&c.t>1e9?
+   (ASSET_BY_ID[state.dialogId]?.group==='crypto'?
+    new Intl.DateTimeFormat('it-IT',spec&&(spec.months||spec.ms>=604800000)?
+     {day:'2-digit',month:'short'}:{day:'2-digit',hour:'2-digit',minute:'2-digit'}).format(date):
+    localeDate(c.t*1000,{month:'short',day:'2-digit'})):
+   '−'+(candles.length-idx)+'g';
+  text(d,ix(idx),height-5,'center',9);
  }
  if(num(state.chartHover)&&state.chartHover>=start&&state.chartHover<end){
   const c=candles[state.chartHover],x=ix(state.chartHover);line(x,regions[0].top,x,regions[3].bottom,'#a0c7d2',.8);
@@ -2626,7 +2679,7 @@ function setupCanvasInteractions(){
   const can=e.target;
   const width=can.getBoundingClientRect().width;
   const candles=getCandles(state.dialogId);
-  const visible=Math.max(25,Math.min(100,Math.floor((Math.max(360,width)-86)/9)));
+  const visible=Math.max(25,Math.min(280,Math.floor((Math.max(360,width)-86)/8)));
   const start=Math.max(0,candles.length-visible-state.chartShift);
   const relative=(e.clientX-can.getBoundingClientRect().left)/width;
   const idx=Math.floor(start+relative*visible);
@@ -2842,8 +2895,26 @@ function setupEvents(){
   }
  });
  $('#closeDialog').addEventListener('click',closeAsset);
- $('#assetDialog').addEventListener('click',e=>{if(e.target===$('#assetDialog'))closeAsset();const btn=e.target.closest('[data-pan]');if(btn){if(btn.dataset.pan==='reset')state.chartShift=0;else state.chartShift+=Number(btn.dataset.pan);drawChart();}});
- $('#assetDialog').addEventListener('close',()=>{state.dialogId=null;state.chartHover=null});
+ $('#assetDialog').addEventListener('click',e=>{
+  if(e.target===$('#assetDialog')){closeAsset();return;}
+  const btn=e.target.closest('button');
+  if(!btn)return;
+  if(btn.dataset.chartRange){selectChartRange(btn.dataset.chartRange);return;}
+  if(btn.dataset.chartRefresh){loadCryptoChartHistory(true);return;}
+  if(btn.dataset.pan){
+   if(btn.dataset.pan==='reset')state.chartShift=0;else state.chartShift+=Number(btn.dataset.pan);
+   drawChart();
+  }
+ });
+ $('#assetDialog').addEventListener('close',()=>{
+  chartFetchState.sequence++;
+  if(chartFetchState.abort)chartFetchState.abort.abort();
+  if(document.fullscreenElement===$('#assetDialog')&&document.exitFullscreen){
+   try{const request=document.exitFullscreen();if(request&&request.catch)request.catch(()=>{});}catch(_error){}
+  }
+  $('#assetDialog').classList.remove('crypto-fullscreen');
+  state.dialogId=null;state.chartHover=null;
+ });
  $('#dialogWatch').addEventListener('click',()=>state.dialogId&&toggleWatch(state.dialogId));
  setupCanvasInteractions();
  window.addEventListener('resize',()=>{if(state.dialogId)requestAnimationFrame(drawChart)});
