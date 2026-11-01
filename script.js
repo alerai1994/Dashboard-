@@ -1168,22 +1168,106 @@ function orderBookSource(id){
  ]};
  return null;
 }
+// Every item is a verified snapshot from one named Spot venue and one USDT pair.
+// Never combine bids from one exchange with asks from another exchange.
+function cryptoBookBundle(){
+ const p=window.__VERTEX_CRYPTO_BOOKS__;
+ return p&&p.books&&typeof p.books==='object'?p:null;
+}
+function cryptoBookEntry(id){
+ const p=cryptoBookBundle(),a=ASSET_BY_ID[id],b=p&&p.books[id];
+ if(!a||a.group!=='crypto'||!b||b.id!==id)return null;
+ const symbol=a.symbol.replace('-USD','');
+ if(b.unit!==symbol||b.pair!==symbol+'/USDT'||!Array.isArray(b.bids)||!Array.isArray(b.asks))return null;
+ if(id==='ore'&&b.mint!=='oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp')return null;
+ const t=Date.parse(b.capturedAt||'');
+ if(!Number.isFinite(t)||t>Date.now()+60000||Date.now()-t>3*60*60*1000)return null;
+ if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot'].includes(b.venue))return null;
+ const bids=b.bids.map(r=>[Number(r[0]),Number(r[1])])
+  .filter(r=>r.length===2&&r.every(x=>Number.isFinite(x)&&x>0)).sort((a,b)=>b[0]-a[0]).slice(0,20);
+ const asks=b.asks.map(r=>[Number(r[0]),Number(r[1])])
+  .filter(r=>r.length===2&&r.every(x=>Number.isFinite(x)&&x>0)).sort((a,b)=>a[0]-b[0]).slice(0,20);
+ if(!bids.length||!asks.length||bids[0][0]>=asks[0][0])return null;
+ return {bids,asks,unit:symbol,pair:b.pair,venue:b.venue,time:t};
+}
+function useCryptoBookEntry(id,serial){
+ const book=cryptoBookEntry(id);
+ if(!book||serial!==orderBookState.serial||id!==orderBookState.id)return false;
+ if(orderBookState.data&&orderBookState.mode==='snapshot'&&orderBookState.updatedAt>=book.time)
+  return true;
+ orderBookState.data={bids:book.bids,asks:book.asks,unit:book.unit};
+ orderBookState.venue=book.venue;
+ orderBookState.pair=book.pair;
+ orderBookState.updatedAt=book.time;
+ orderBookState.mode='snapshot';
+ orderBookState.error=null;
+ paintOrderBook();
+ return true;
+}
+function updateOrderBookAssetList(){
+ if(state.page!=='orderbook')return;
+ const list=$('#orderBookAssetList');
+ if(list){
+  const top=list.scrollTop;
+  list.innerHTML=orderBookAssetList();
+  list.scrollTop=top;
+ }
+ const coverage=$('#orderBookCoverage');
+ if(coverage)coverage.textContent=ORDER_BOOK_COINS.filter(a=>!!cryptoBookEntry(a.id)).length+'/'+ORDER_BOOK_COINS.length+' book';
+}
+// Local JS backup works for file:// and every OS. HTTP JSON refreshes the cache.
+async function loadAllCryptoBooks(serial,coin){
+ let hasBook=useCryptoBookEntry(coin,serial);
+ if(serial!==orderBookState.serial)return false;
+ const bundle=cryptoBookBundle();
+ const fetched=Date.parse(bundle&&bundle.generatedAt||'');
+ if(hasBook&&Number.isFinite(fetched)&&Date.now()-fetched<60000)return true;
+ const urlBase='https://raw.githubusercontent.com/alerai1994/Dashboard-/main/crypto-orderbooks.json';
+ const cdn='https://cdn.jsdelivr.net/gh/alerai1994/Dashboard-@main/crypto-orderbooks.json';
+ const urls=location.protocol==='file:'?[urlBase,cdn]:['crypto-orderbooks.json',urlBase,cdn];
+ for(const url of urls){
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),2700);
+  try{
+   const response=await fetch(url+(url.includes('?')?'&':'?')+'v='+Date.now(),
+     {cache:'no-store',signal:controller.signal});
+   if(!response.ok)throw Error('HTTP '+response.status);
+   const payload=await response.json();
+   if(!payload||!payload.books||typeof payload.books!=='object'||payload.totalAssets!==42)
+    throw Error('Snapshot crypto non valido');
+   const old=Date.parse(cryptoBookBundle()&&cryptoBookBundle().generatedAt||'')||0;
+   const next=Date.parse(payload.generatedAt||'')||0;
+   if(next>=old){
+    window.__VERTEX_CRYPTO_BOOKS__=payload;
+    updateOrderBookAssetList();
+   }
+   hasBook=useCryptoBookEntry(coin,serial)||hasBook;
+   if(hasBook)return true;
+  }catch(_err){/* CORS, timeout, or missing book: keep trying known sources. */}
+  finally{clearTimeout(timeout);}
+  if(serial!==orderBookState.serial)return false;
+ }
+ return hasBook;
+}
+
 function orderBookAssetList(){
  const needle=orderBookState.search.trim().toLowerCase();
  const assets=ORDER_BOOK_COINS.filter(a=>(a.name+' '+a.short+' '+a.symbol).toLowerCase().includes(needle));
  if(!assets.length)return '<div class="ob-empty-list">Nessuna crypto trovata.</div>';
  return assets.map(a=>{
-  const src=orderBookSource(a.id),selected=orderBookState.id===a.id;
+  const src=orderBookSource(a.id),book=cryptoBookEntry(a.id),selected=orderBookState.id===a.id;
+  const age=book?Math.floor((Date.now()-book.time)/60000):null;
+  const price=book?'<span class="ob-coin-prices"><span class="color-up" title="Miglior prezzo BID">BID '+orderBookNumber(book.bids[0][0],true)+'</span><span class="color-down" title="Miglior prezzo ASK">ASK '+orderBookNumber(book.asks[0][0],true)+'</span></span>':'<span class="ob-coin-unavailable">Book in attesa</span>';
   return '<button class="ob-coin'+(selected?' is-selected':'')+'" data-order-book-asset="'+esc(a.id)+'" type="button" aria-pressed="'+selected+'">'+
-   '<span class="ob-coin-logo">'+assetLogo(a)+'</span><span class="ob-coin-label"><strong>'+esc(a.short||a.name)+'</strong><small>'+esc(a.symbol.replace('-USD',''))+'</small></span>'+
-   '<span class="ob-coin-venue" title="'+(src?esc(src.venue):'Nessuna coppia verificata')+'">'+(src?'●':'—')+'</span></button>';
+   '<span class="ob-coin-logo">'+assetLogo(a)+'</span><span class="ob-coin-label"><strong>'+esc(a.short||a.name)+'</strong><small>'+esc(a.symbol.replace('-USD',''))+(book?' · '+esc(book.venue)+(age>30?' · '+age+' min':''):'')+'</small>'+price+'</span>'+
+   '<span class="ob-coin-venue" title="'+esc(book?book.venue:(src?src.venue+' · in attesa':'Coppia non verificata'))+'">'+(book?'●':'—')+'</span></button>';
  }).join('');
 }
 function orderBookPage(){
- const coin=ASSET_BY_ID[orderBookState.id]||ORDER_BOOK_COINS[0],source=orderBookSource(coin.id);
+ const coin=ASSET_BY_ID[orderBookState.id]||ORDER_BOOK_COINS[0],snap=cryptoBookEntry(coin.id),source=snap?{venue:snap.venue,pair:snap.pair}:orderBookSource(coin.id);
  return secHeader('Order Book Crypto','Profondità Spot reale, per exchange e coppia USDT. Nessun ordine simulato.')+
  '<div class="ob-layout"><aside class="ob-picker panel" aria-label="Seleziona una criptovaluta">'+
- '<div class="ob-picker-header"><strong>Tutte le criptovalute</strong><span>'+ORDER_BOOK_COINS.length+'</span></div>'+
+ '<div class="ob-picker-header"><strong>Tutte le criptovalute</strong><span id="orderBookCoverage">'+ORDER_BOOK_COINS.filter(a=>!!cryptoBookEntry(a.id)).length+'/'+ORDER_BOOK_COINS.length+' book</span></div>'+
  '<label class="ob-search-label" for="orderBookSearch">Cerca crypto</label>'+
  '<input type="search" class="ob-search" id="orderBookSearch" placeholder="Nome o simbolo..." value="'+esc(orderBookState.search)+'" autocomplete="off">'+
  '<div class="ob-coin-list" id="orderBookAssetList">'+orderBookAssetList()+'</div></aside>'+
@@ -1192,7 +1276,7 @@ function orderBookPage(){
  '<small>'+esc(source?source.venue+' · '+source.pair:'Coppia Spot non verificata')+'</small></div></div>'+
  '<button class="btn btn-small" type="button" data-order-book-refresh="1" aria-label="Aggiorna order book">'+sym('refresh')+' Aggiorna</button></div>'+
  '<div class="ob-content" id="orderBookContent" aria-live="polite">'+orderBookDisplay()+'</div>'+
- '<p class="ob-footnote">Snapshot di ordini limite Spot: solo il mercato indicato, non tutti gli exchange. Per ORE: ordini Spot verificati di LBank e data dell’ultima verifica. GitHub tenta aggiornamenti periodici, ma può ritardare. Se i dati hanno più di 30 minuti sono indicati come NON IN TEMPO REALE e non vanno usati per decidere un ordine. Le quantità e i totali non sono ordini eseguiti; dati soggetti a variazioni.</p>'+
+ '<p class="ob-footnote">Tutte le 42 criptovalute: BID e ASK reali per una singola coppia Spot/USDT e per l’exchange indicato (Binance, Gate, MEXC o LBank). Le coppie non disponibili sono indicate chiaramente, mai simulate. Snapshot periodici ogni circa 5 minuti, soggetti a ritardi di GitHub; se oltre 30 minuti, il book è NON IN TEMPO REALE. Quantità e totali sono ordini limite, non eseguiti.</p>'+
  '</section></div>';
 }
 function orderBookNumber(v,price=false){
@@ -1237,7 +1321,7 @@ function orderBookDisplay(){
  const changed=orderBookState.error?'<div class="ob-inline-warning">'+esc(orderBookState.error)+'</div>':'';
  const snapshotAge=Math.max(0,Date.now()-orderBookState.updatedAt);
  const delayed=orderBookState.mode==='snapshot'&&snapshotAge>30*60*1000;
- const snapshotLabel=delayed?'⚠ BOOK NON IN TEMPO REALE · Ultima verifica '+Math.floor(snapshotAge/60000)+' min fa':'● Snapshot Spot verificato · aggiornamento periodico';
+ const snapshotLabel=delayed?'⚠ BOOK NON IN TEMPO REALE · Ultima verifica '+Math.floor(snapshotAge/60000)+' min fa':'● Snapshot Spot verificato · '+Math.floor(snapshotAge/60000)+' min fa';
  return '<div class="ob-market-status">'+(orderBookState.mode==='snapshot'?snapshotLabel:orderBookState.busy?'↻ Aggiornamento in corso':stale?'◌ Ultimo book disponibile':'● Book diretto')+
  ' · '+esc(orderBookState.venue||src.venue)+' · '+stamp+'</div>'+changed+
  '<div class="ob-summary"><div><small>Miglior BID</small><strong class="color-up">'+orderBookNumber(bid,true)+'</strong></div>'+
@@ -1339,20 +1423,27 @@ async function refreshOrderBook(force=false){
  const serial=++orderBookState.serial,coin=orderBookState.id;
  orderBookState.busy=true;orderBookState.lastTry=Date.now();orderBookState.error=null;
  paintOrderBook();
- // Prefer a CORS-safe, GitHub-published verified snapshot on all browsers/OS.
- // Only try LBank directly if no fresh verified snapshot is reachable.
+ // Verified snapshot covers every listed crypto, including local Windows/Mac/Linux.
  let backupFailure='';
+ try{
+  if(await loadAllCryptoBooks(serial,coin)){
+   if(serial===orderBookState.serial){
+    orderBookState.lastTry=Date.now();orderBookState.busy=false;paintOrderBook();
+   }
+   return;
+  }
+ }catch(err){backupFailure=err&&err.message?err.message:'Snapshot non raggiungibile';}
+ if(serial!==orderBookState.serial)return;
+ // Preserve existing dedicated ORE backup while the new 42-book feed starts.
  if(coin==='ore'){
   try{
    if(await loadOreBookSnapshot(serial,coin)){
     if(serial===orderBookState.serial){
-     orderBookState.lastTry=Date.now();
-     orderBookState.busy=false;
-     paintOrderBook();
+     orderBookState.lastTry=Date.now();orderBookState.busy=false;paintOrderBook();
     }
     return;
    }
-  }catch(err){backupFailure=err&&err.message?err.message:'Backup non disponibile';}
+  }catch(err){backupFailure=err&&err.message?err.message:backupFailure;}
   if(serial!==orderBookState.serial)return;
  }
  let success=false,failure=backupFailure||'La fonte non risponde o blocca le richieste dal browser.';
@@ -1383,7 +1474,7 @@ async function refreshOrderBook(force=false){
    if(serial!==orderBookState.serial||coin!==orderBookState.id)return;
    orderBookState.data={bids,asks,unit:ASSET_BY_ID[coin].symbol.replace('-USD','')};
    orderBookState.updatedAt=Date.now();
-   orderBookState.venue=src.venue;orderBookState.mode='live';orderBookState.error=null;
+   orderBookState.venue=src.venue;orderBookState.pair=src.pair;orderBookState.mode='live';orderBookState.error=null;
    success=true;break;
   }catch(err){
    if(serial!==orderBookState.serial)return;
