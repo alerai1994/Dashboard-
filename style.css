@@ -929,3 +929,19 @@ body.theme-light .settings-theme-swatch{border-color:#b2cce1}
 @media(max-width:1050px){.ob-book-grid{grid-template-columns:1fr}}
 @media(max-width:700px){.ob-book-grid{grid-template-columns:1fr}.ob-detail{container-type:normal}}
 @media(max-width:520px){.ob-book-table{font-size:11px;min-width:420px}.ob-book-table td{padding:9px 8px}.ob-book-table th{padding:10px 8px}.ob-side-title{align-items:flex-start;flex-direction:column}}
+
+
+/* All-crypto Order Book: legible best bid and ask for every asset in the picker. */
+.ob-coin{min-height:66px;align-items:flex-start}
+.ob-coin-label{gap:4px}
+.ob-coin-prices{display:flex;flex-wrap:wrap;gap:4px 9px;align-items:center;font-size:10px;font-weight:700;font-variant-numeric:tabular-nums}
+.ob-coin-prices>span{white-space:nowrap}
+.ob-coin-unavailable{font-size:10px;color:var(--muted);font-weight:550}
+.ob-coin-venue{margin-top:5px;flex-shrink:0}
+.ob-picker-header span{white-space:nowrap}
+@media(max-width:700px){
+ .ob-coin{min-height:72px;gap:5px}
+ .ob-coin-prices{font-size:9px;gap:2px 7px}
+ .ob-coin-logo{width:23px;height:23px}
+ .ob-coin-logo .asset-logo,.ob-coin-logo .crypto-logo{width:22px;height:22px}
+}
