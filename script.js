@@ -183,7 +183,15 @@ const refTime=id=>quote(id)&&quote(id).time?localeDate(quote(id).time,{day:'nume
 const classArrow=id=>trendClass(change(id));
 function sparkLine(id,width=120,height=32){
  const q=quote(id),candles=q&&q.candles,values=Array.isArray(candles)&&candles.length>2?candles.slice(-26).map(x=>x.c):q&&Array.isArray(q.history)?q.history:[];
- const arr=values.map(Number).filter(num);if(arr.length<2)return '<svg class="spark" aria-hidden="true" viewBox="0 0 '+width+' '+height+'"><path d="M 4 '+height/2+' L '+(width-4)+' '+height/2+'" stroke="currentColor" opacity=".24" stroke-dasharray="2 4" fill="none"/></svg>';
+ let arr=values.map(Number).filter(num);
+ // Tadawul's historic feed can contain just one closing price. If the quote
+ // includes a verified session percentage, recover the prior close mathematically
+ // and draw the real last-session movement, not a simulated price series.
+ if(id==='tadawul'&&arr.length<2&&q&&num(q.value)&&num(q.change)&&q.change>-99.9){
+  const previous=q.value/(1+q.change/100);
+  if(num(previous)&&previous>0)arr=[previous,q.value];
+ }
+ if(arr.length<2)return '<svg class="spark" aria-hidden="true" viewBox="0 0 '+width+' '+height+'"><path d="M 4 '+height/2+' L '+(width-4)+' '+height/2+'" stroke="currentColor" opacity=".35" stroke-dasharray="2 4" fill="none"/></svg>';
  const min=Math.min(...arr),max=Math.max(...arr),range=Math.max(max-min,Math.abs(max)*.002,1e-8);
  const points=arr.map((v,i)=>[(4+i*(width-8)/(arr.length-1)),(height-5-(v-min)/range*(height-10))]);
  const path=points.map((p,i)=>(i?'L':'M')+p[0].toFixed(2)+' '+p[1].toFixed(2)).join(' ');
@@ -521,11 +529,23 @@ function sidePanel(group){
  }).join('')+'</div>'+
  (crypto?'<button type="button" class="crypto-expand-btn" data-crypto-expand="1" aria-expanded="'+String(state.cryptoExpanded)+'">'+(state.cryptoExpanded?'− Mostra meno':'＋ Mostra altre '+(count-visible.length)+' crypto')+'</button>':'')+'</section>';
 }
+function middleEastPhotoChart(){
+ const q=quote('tadawul');
+ const historic=!!(q&&(
+  (Array.isArray(q.candles)&&q.candles.filter(row=>row&&num(Number(row.c))).length>=2)||
+  (Array.isArray(q.history)&&q.history.filter(v=>num(Number(v))).length>=2)
+ ));
+ const sessionChange=!!(q&&num(q.value)&&num(q.change)&&q.change>-99.9);
+ const subtitle=historic?'TASI · andamento delle sedute':sessionChange?'TASI · ultima variazione':'TASI · storico non disponibile';
+ return '<span class="middle-east-spark" role="img" aria-label="Grafico Tadawul All Share, '+esc(subtitle)+'">'+
+  sparkLine('tadawul',120,34)+'<small>'+subtitle+'</small></span>';
+}
 function photoCard(r){
  const lead=ASSET_BY_ID[r.lead],q=quote(r.lead);
+ const spark=r.id==='middle-east'?middleEastPhotoChart():sparkLine(r.lead,120,32);
  return '<button type="button" class="photo-card" data-region="'+r.id+'" data-trend="'+trend(q&&q.change)+'" data-id="'+r.id+'" aria-label="Apri '+esc(r.name)+'">'+
  '<span class="photo-cover" aria-hidden="true"></span><span class="photo-card-body"><span class="photo-card-title">'+esc(r.name)+'</span>'+
- '<span class="photo-card-metrics"><strong>'+meanPrice(r)+'</strong><span class="change '+trendClass(change(r.lead))+'">'+pct(change(r.lead))+'</span></span>'+sparkLine(r.lead,120,32)+'</span></button>';
+ '<span class="photo-card-metrics"><strong>'+meanPrice(r)+'</strong><span class="change '+trendClass(change(r.lead))+'">'+pct(change(r.lead))+'</span></span>'+spark+'</span></button>';
 }
 
 /* Live market feed: streaming Binance Spot USDT quotes when available.
@@ -631,6 +651,11 @@ function patchRegions(){
    const v=el.querySelector('.photo-card-metrics strong'),p=el.querySelector('.photo-card-metrics .change');
    if(v&&lead)v.textContent=assetValue(lead);
    if(p){p.textContent=pct(leadQuote&&leadQuote.change);setMovementClass(p,leadQuote&&leadQuote.change)}
+   // Update the SVG when the daily series arrives after the card was rendered.
+   if(r.id==='middle-east'){
+    const chart=el.querySelector('.middle-east-spark');
+    if(chart)chart.outerHTML=middleEastPhotoChart();
+   }
   });
  }
 }
@@ -1571,7 +1596,10 @@ async function fetchQuotes(isManual=false){
    changed.forEach(id=>streamStatus.dirty.add(id));
    if(changed.length)updatePriceDom();
    else updateLiveBadges();
-    updateMarketsSnapshotCharts();
+   // Also refresh the Middle East mini-chart when history changes but
+   // price/percentage stays the same between market-data snapshots.
+   if(state.page==='global')patchRegions();
+   updateMarketsSnapshotCharts();
   }
   if(isManual)toast(changed.length?'Quotazioni aggiornate da tutte le fonti disponibili.':'Feed controllato: nessuna nuova quotazione disponibile.');
  }catch(e){
