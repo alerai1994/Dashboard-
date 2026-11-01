@@ -830,3 +830,65 @@ body.theme-light .settings-theme-swatch{border-color:#b2cce1}
  .settings-theme-option{min-height:115px}
  .settings-theme-caption small{font-size:10px}
 }
+
+/* Responsive, exchange-specific Spot crypto order book. */
+.ob-layout{display:grid;grid-template-columns:minmax(190px,260px) minmax(0,1fr);gap:14px;align-items:start;margin-top:14px}
+.ob-picker,.ob-detail{min-width:0;padding:15px}
+.ob-picker-header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:15px}
+.ob-picker-header strong{font-size:14px}
+.ob-picker-header span{font-size:11px;background:var(--surface);border:1px solid var(--line);padding:5px 9px;border-radius:18px}
+.ob-search-label{font-size:11px;color:var(--muted);display:block;margin-bottom:6px}
+.ob-search{display:block;width:100%;border:1px solid var(--line);border-radius:9px;background:var(--surface);padding:10px 11px;color:var(--text);font-size:12px;margin-bottom:11px}
+.ob-search:focus{border-color:var(--brand);outline:2px solid color-mix(in srgb,var(--brand) 30%,transparent)}
+.ob-coin-list{max-height:650px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--line) transparent;padding-right:3px}
+.ob-empty-list{padding:18px;color:var(--muted);text-align:center;font-size:12px}
+.ob-coin{display:flex;align-items:center;gap:8px;width:100%;background:transparent;color:var(--text);border:1px solid transparent;border-radius:9px;padding:8px 7px;text-align:left;min-height:48px}
+.ob-coin:hover{background:var(--surface)}
+.ob-coin.is-selected{border-color:var(--brand);background:color-mix(in srgb,var(--brand) 13%,var(--panel))}
+.ob-coin-logo{width:28px;height:28px;display:grid;place-items:center;flex-shrink:0}
+.ob-coin-logo .asset-logo,.ob-coin-logo .crypto-logo{width:27px;height:27px}
+.ob-coin-label{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.ob-coin-label strong{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ob-coin-label small{font-size:10px;color:var(--muted)}
+.ob-coin-venue{font-size:11px;color:var(--brand)}
+.ob-detail-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:15px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.ob-heading-name{display:flex;align-items:center;gap:10px;min-width:0}
+.ob-heading-name>.asset-logo,.ob-heading-name>.crypto-logo{width:38px;height:38px;flex:none}
+.ob-heading-name>div{min-width:0}
+.ob-heading-name h2{margin:0 0 5px;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ob-heading-name small{font-size:11px;color:var(--muted)}
+.ob-market-status{font-size:11px;color:var(--muted);margin-bottom:13px}
+.ob-inline-warning{padding:10px 12px;border:1px solid var(--yellow);border-radius:8px;color:var(--text);font-size:11px;margin-bottom:11px}
+.ob-status{padding:65px 17px;text-align:center;color:var(--muted)}
+.ob-status strong{display:block;font-size:17px;color:var(--text);margin-bottom:8px}
+.ob-status p{font-size:12px;line-height:1.6;max-width:520px;margin:0 auto}
+.ob-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:15px}
+.ob-summary>div{min-width:0;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:11px}
+.ob-summary small{display:block;font-size:10px;color:var(--muted);margin-bottom:7px}
+.ob-summary strong{display:block;font-size:clamp(12px,1.2vw,18px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums}
+.ob-summary strong+small{margin-top:5px;margin-bottom:0}
+.ob-depth-meter{margin-bottom:16px}
+.ob-depth-bar{height:10px;border-radius:100px;background:var(--red);overflow:hidden}
+.ob-depth-bar span{display:block;height:100%;background:var(--green)}
+.ob-depth-labels{display:flex;justify-content:space-between;gap:10px;margin-top:6px;font-size:11px;font-weight:720}
+.ob-book-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.ob-side{min-width:0;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.ob-side-title{padding:11px 10px;background:var(--panel-2);border-bottom:1px solid var(--line)}
+.ob-side-title strong{font-size:13px}
+.ob-side-title small{display:block;margin-top:5px;color:var(--muted);font-size:10px}
+.ob-book-columns,.ob-level{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.94fr) minmax(0,.94fr);column-gap:4px}
+.ob-book-columns{padding:8px 7px;color:var(--muted);font-size:10px;border-bottom:1px solid var(--line-soft)}
+.ob-level{position:relative;min-height:28px;padding:7px;align-items:center;border-bottom:1px solid var(--line-soft);font-size:11px;font-variant-numeric:tabular-nums}
+.ob-level span:not(.ob-depth-fill){position:relative;z-index:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
+.ob-level span:first-of-type:not(.ob-depth-fill){text-align:left}
+.ob-level-price{font-weight:730}
+.ob-bid .ob-level-price{color:var(--green)}
+.ob-ask .ob-level-price{color:var(--red)}
+.ob-depth-fill{position:absolute;inset:0 auto 0 0;opacity:.14;pointer-events:none;background:var(--green)}
+.ob-ask .ob-depth-fill{background:var(--red)}
+.ob-side-footer{display:flex;justify-content:space-between;gap:8px;padding:11px;font-size:10px;color:var(--muted)}
+.ob-side-footer strong{color:var(--text);white-space:nowrap}
+.ob-footnote{color:var(--muted);font-size:11px;line-height:1.65;margin:16px 0 0;padding-top:12px;border-top:1px solid var(--line)}
+@media(max-width:1050px){.ob-layout{grid-template-columns:minmax(155px,215px) minmax(0,1fr)}.ob-book-grid{grid-template-columns:1fr}}
+@media(max-width:700px){.ob-layout{grid-template-columns:1fr}.ob-picker,.ob-detail{padding:12px}.ob-coin-list{max-height:190px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px}.ob-book-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.ob-book-grid{grid-template-columns:1fr}.ob-summary{gap:5px}.ob-summary>div{padding:7px}.ob-summary strong{font-size:12px}.ob-detail-heading{align-items:flex-start}.ob-detail-heading .btn{padding:8px}.ob-heading-name h2{font-size:15px}}

@@ -109,6 +109,7 @@ watchlist:['Watchlist','I mercati che vuoi seguire, salvati sul tuo dispositivo.
 portfolio:['Portfolio','Tieni traccia delle posizioni inserite manualmente.'],
 news:['News','Accesso rapido a fonti finanziarie verificabili.'],
 analytics:['Analytics','Indicatori e andamento dei principali mercati mondiali.'],
+orderbook:['Order Book','Ordini Spot di acquisto e vendita delle criptovalute.'],
 alerts:['Alerts','Soglie di prezzo controllate quando la dashboard è aperta.'],
 settings:['Settings','Aspetto, origini dei dati e accesso al terminale originale.']
 };
@@ -1103,6 +1104,163 @@ function analyticsPage(){
  '<div class="data-bands">'+r.map(o=>'<div class="data-band"><span>'+esc(o.name)+'</span><div class="bar-track"><div class="bar-fill'+(o.avg<0?' down':'')+'" style="width:'+(num(o.avg)?Math.min(100,Math.abs(o.avg)*20+3):0)+'%"></div></div><strong class="'+trendClass(o.avg)+'">'+pct(o.avg)+'</strong></div>').join('')+'</div></section></div>'+
  '<div class="content-card panel" style="margin-top:14px"><h3>Grafici degli indici principali</h3><div class="market-index-strip">'+TOP_IDS.map(indexCard).join('')+'</div><p class="subnote">Clicca su un indice per accedere al grafico completo con medie mobili e indicatori, dove lo storico è disponibile.</p></div>'+feedStatus();
 }
+
+/* Real exchange-specific public Spot order books. No estimates or fake levels.
+   Binance provides the supported USDT spot pairs in STREAM_PAIRS; Oraichain
+   uses Gate.io and TARS AI uses MEXC, with an explicit unavailable state for
+   assets without a verified matching order-book pair (e.g. ORE Protocol).
+   Only the currently selected coin is polled, not the whole catalogue. */
+const ORDER_BOOK_COINS=ASSETS.filter(a=>a.group==='crypto');
+const orderBookState={
+ id:load('orderBookCoin','btc'),search:'',data:null,error:null,busy:false,
+ lastTry:0,updatedAt:0,venue:'',pair:'',serial:0,abort:null
+};
+if(!ORDER_BOOK_COINS.some(a=>a.id===orderBookState.id))orderBookState.id='btc';
+function orderBookSource(id){
+ const binance=STREAM_PAIRS[id];
+ if(binance){
+  const pair=binance.toUpperCase();
+  return {venue:'Binance Spot',pair,urls:[
+   'https://data-api.binance.vision/api/v3/depth?symbol='+pair+'&limit=20',
+   'https://api.binance.com/api/v3/depth?symbol='+pair+'&limit=20'
+  ]};
+ }
+ if(id==='orai')return {venue:'Gate.io Spot',pair:'ORAI/USDT',urls:[
+  'https://api.gateio.ws/api/v4/spot/order_book?currency_pair=ORAI_USDT&limit=20'
+ ]};
+ if(id==='tai')return {venue:'MEXC Spot',pair:'TAI/USDT',urls:[
+  'https://api.mexc.com/api/v3/depth?symbol=TAIUSDT&limit=20'
+ ]};
+ return null;
+}
+function orderBookAssetList(){
+ const needle=orderBookState.search.trim().toLowerCase();
+ const assets=ORDER_BOOK_COINS.filter(a=>(a.name+' '+a.short+' '+a.symbol).toLowerCase().includes(needle));
+ if(!assets.length)return '<div class="ob-empty-list">Nessuna crypto trovata.</div>';
+ return assets.map(a=>{
+  const src=orderBookSource(a.id),selected=orderBookState.id===a.id;
+  return '<button class="ob-coin'+(selected?' is-selected':'')+'" data-order-book-asset="'+esc(a.id)+'" type="button" aria-pressed="'+selected+'">'+
+   '<span class="ob-coin-logo">'+assetLogo(a)+'</span><span class="ob-coin-label"><strong>'+esc(a.short||a.name)+'</strong><small>'+esc(a.symbol.replace('-USD',''))+'</small></span>'+
+   '<span class="ob-coin-venue" title="'+(src?esc(src.venue):'Nessuna coppia verificata')+'">'+(src?'●':'—')+'</span></button>';
+ }).join('');
+}
+function orderBookPage(){
+ const coin=ASSET_BY_ID[orderBookState.id]||ORDER_BOOK_COINS[0],source=orderBookSource(coin.id);
+ return secHeader('Order Book Crypto','Profondità Spot reale, per exchange e coppia USDT. Nessun ordine simulato.')+
+ '<div class="ob-layout"><aside class="ob-picker panel" aria-label="Seleziona una criptovaluta">'+
+ '<div class="ob-picker-header"><strong>Tutte le criptovalute</strong><span>'+ORDER_BOOK_COINS.length+'</span></div>'+
+ '<label class="ob-search-label" for="orderBookSearch">Cerca crypto</label>'+
+ '<input type="search" class="ob-search" id="orderBookSearch" placeholder="Nome o simbolo..." value="'+esc(orderBookState.search)+'" autocomplete="off">'+
+ '<div class="ob-coin-list" id="orderBookAssetList">'+orderBookAssetList()+'</div></aside>'+
+ '<section class="ob-detail panel" aria-label="Order book della crypto selezionata">'+
+ '<div class="ob-detail-heading"><div class="ob-heading-name">'+assetLogo(coin)+'<div><h2>'+esc(coin.name)+'</h2>'+
+ '<small>'+esc(source?source.venue+' · '+source.pair:'Coppia Spot non verificata')+'</small></div></div>'+
+ '<button class="btn btn-small" type="button" data-order-book-refresh="1" aria-label="Aggiorna order book">'+sym('refresh')+' Aggiorna</button></div>'+
+ '<div class="ob-content" id="orderBookContent" aria-live="polite">'+orderBookDisplay()+'</div>'+
+ '<p class="ob-footnote">Snapshot di ordini limite Spot: solo il mercato indicato, non tutti gli exchange. Aggiornamento ogni 15 secondi mentre questa pagina è visibile. Le quantità e i totali non sono ordini eseguiti; dati soggetti a variazioni. Le API possono risultare non disponibili nella tua area.</p>'+
+ '</section></div>';
+}
+function orderBookNumber(v,price=false){
+ const n=Number(v);if(!Number.isFinite(n))return '—';
+ const decimals=price?(n>0?Math.min(12,Math.max(2,Math.ceil(-Math.log10(n))+5)):2):Math.min(8,n<.001?8:n<1?6:4);
+ return n.toLocaleString('it-IT',{minimumFractionDigits:price&&n>=1?2:0,maximumFractionDigits:decimals});
+}
+function orderBookSide(orders,side,unit){
+ const limit=Math.max(1,...orders.map(o=>o[1]*o[0]));
+ let cumulative=0;
+ return '<div class="ob-side '+side+'"><div class="ob-side-title"><strong>'+(side==='bid'?'Acquisti · BID':'Vendite · ASK')+'</strong><small>Prezzo USDT · Qtà '+esc(unit)+' · Totale USDT</small></div>'+
+ '<div class="ob-book-columns"><span>Prezzo</span><span>Quantità</span><span>Totale</span></div>'+
+ orders.map(([price,qty])=>{
+  const total=price*qty;cumulative+=total;
+  return '<div class="ob-level" title="Totale cumulato: '+orderBookNumber(cumulative)+' USDT">'+
+   '<span class="ob-depth-fill" style="width:'+Math.min(100,Math.max(0,total/limit*100)).toFixed(2)+'%"></span>'+
+   '<span class="ob-level-price">'+orderBookNumber(price,true)+'</span>'+
+   '<span>'+orderBookNumber(qty)+'</span><span>'+orderBookNumber(total)+'</span></div>';
+ }).join('')+
+ '<div class="ob-side-footer">Somma top '+orders.length+' livelli: <strong>'+orderBookNumber(cumulative)+' USDT</strong></div></div>';
+}
+function orderBookDisplay(){
+ const src=orderBookSource(orderBookState.id);
+ if(!src)return '<div class="ob-status"><strong>Order book Spot non disponibile</strong><p>Per questa crypto non è stata verificata una coppia di order book corrispondente. Non vengono mostrati ordini di un token omonimo o dati stimati.</p></div>';
+ const book=orderBookState.data,stale=book&&Date.now()-orderBookState.updatedAt>30000;
+ if(!book)return '<div class="ob-status"><strong>'+(orderBookState.busy?'Caricamento degli ordini reali…':'Dati non disponibili')+'</strong>'+
+ '<p>'+esc(orderBookState.error||'Lettura del book Spot da '+src.venue+' in corso. Se la fonte non risponde, comparirà un avviso.')+'</p></div>';
+ const bids=book.bids,asks=book.asks,bid=bids[0][0],ask=asks[0][0],mid=(ask+bid)/2,spread=ask-bid,spreadPercent=mid>0?spread/mid*100:0;
+ const totalBids=bids.reduce((sum,row)=>sum+row[0]*row[1],0),totalAsks=asks.reduce((sum,row)=>sum+row[0]*row[1],0);
+ const sum=totalBids+totalAsks,ratio=sum>0?totalBids/sum*100:50;
+ const stamp=orderBookState.updatedAt?new Intl.DateTimeFormat('it-IT',{hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date(orderBookState.updatedAt)):'—';
+ const changed=orderBookState.error?'<div class="ob-inline-warning">'+esc(orderBookState.error)+'</div>':'';
+ return '<div class="ob-market-status">'+(orderBookState.busy?'↻ Aggiornamento in corso':stale?'◌ Ultimo book disponibile':'● Snapshot recente')+
+ ' · '+esc(orderBookState.venue||src.venue)+' · '+stamp+'</div>'+changed+
+ '<div class="ob-summary"><div><small>Miglior BID</small><strong class="color-up">'+orderBookNumber(bid,true)+'</strong></div>'+
+ '<div><small>Miglior ASK</small><strong class="color-down">'+orderBookNumber(ask,true)+'</strong></div>'+
+ '<div><small>Spread</small><strong>'+orderBookNumber(spread,true)+' USDT</strong><small>'+spreadPercent.toFixed(3)+'%</small></div></div>'+
+ '<div class="ob-depth-meter"><div class="ob-depth-bar"><span style="width:'+ratio.toFixed(2)+'%"></span></div>'+
+ '<div class="ob-depth-labels"><span class="color-up">BID '+ratio.toFixed(1)+'%</span><span class="color-down">ASK '+(100-ratio).toFixed(1)+'%</span></div></div>'+
+ '<div class="ob-book-grid">'+orderBookSide(bids,'bid',book.unit)+orderBookSide(asks,'ask',book.unit)+'</div>';
+}
+function paintOrderBook(){
+ const node=$('#orderBookContent');
+ if(node&&state.page==='orderbook')node.innerHTML=orderBookDisplay();
+}
+function cancelOrderBookFetch(){
+ orderBookState.serial++;
+ if(orderBookState.abort){orderBookState.abort.abort();orderBookState.abort=null;}
+ orderBookState.busy=false;
+}
+function selectOrderBookAsset(id){
+ if(!ASSET_BY_ID[id]||ASSET_BY_ID[id].group!=='crypto')return;
+ if(id!==orderBookState.id){
+  cancelOrderBookFetch();
+  orderBookState.id=id;orderBookState.data=null;orderBookState.error=null;
+  orderBookState.lastTry=0;orderBookState.updatedAt=0;orderBookState.venue='';
+  save('orderBookCoin',id);
+ }
+ if(state.page==='orderbook')render();
+}
+async function refreshOrderBook(force=false){
+ if(state.page!=='orderbook'||document.hidden)return;
+ if(orderBookState.busy&&!force)return;
+ if(!force&&Date.now()-orderBookState.lastTry<14000)return;
+ const src=orderBookSource(orderBookState.id);
+ if(!src){orderBookState.error=null;orderBookState.data=null;orderBookState.lastTry=Date.now();paintOrderBook();return;}
+ if(orderBookState.busy)cancelOrderBookFetch();
+ const serial=++orderBookState.serial,coin=orderBookState.id;
+ orderBookState.busy=true;orderBookState.lastTry=Date.now();orderBookState.error=null;
+ paintOrderBook();
+ let success=false,failure='La fonte non risponde o blocca le richieste dal browser.';
+ for(const url of src.urls){
+  const controller=new AbortController();
+  orderBookState.abort=controller;
+  const timeout=setTimeout(()=>controller.abort(),8500);
+  try{
+   const response=await fetch(url,{cache:'no-store',signal:controller.signal,headers:{Accept:'application/json'}});
+   if(!response.ok)throw Error('HTTP '+response.status);
+   const data=await response.json();
+   if(!data||!Array.isArray(data.bids)||!Array.isArray(data.asks))throw Error('Risposta book non valida');
+   const levels=rows=>rows.map(row=>[Number(row[0]),Number(row[1])]).filter(([p,q])=>Number.isFinite(p)&&Number.isFinite(q)&&p>0&&q>0).slice(0,20);
+   const bids=levels(data.bids).sort((a,b)=>b[0]-a[0]),asks=levels(data.asks).sort((a,b)=>a[0]-b[0]);
+   if(!bids.length||!asks.length||bids[0][0]>=asks[0][0])throw Error('Livelli bid/ask non validi');
+   if(serial!==orderBookState.serial||coin!==orderBookState.id)return;
+   orderBookState.data={bids,asks,unit:ASSET_BY_ID[coin].symbol.replace('-USD','')};
+   orderBookState.updatedAt=Date.now();
+   orderBookState.venue=src.venue;orderBookState.error=null;
+   success=true;break;
+  }catch(err){
+   if(serial!==orderBookState.serial)return;
+   failure=err&&err.name==='AbortError'?'Tempo di risposta scaduto.':'Ordini non disponibili ('+(err&&err.message?err.message:'errore di connessione')+').';
+  }finally{
+   clearTimeout(timeout);
+   if(orderBookState.abort===controller)orderBookState.abort=null;
+  }
+ }
+ if(serial===orderBookState.serial&&!success)orderBookState.error=failure;
+ // Only a real, previously fetched book of THIS same coin may remain visible.
+ if(serial===orderBookState.serial&&orderBookState.data&&Date.now()-orderBookState.updatedAt>90000)orderBookState.data=null;
+ if(serial===orderBookState.serial)orderBookState.lastTry=Date.now();
+ if(serial===orderBookState.serial){orderBookState.busy=false;paintOrderBook();}
+}
+
 function alertState(a){
  const v=quote(a.id)&&quote(a.id).value;
  if(!num(v))return 'Senza quotazione';
@@ -1142,7 +1300,7 @@ function settingsPage(){
  '<input type="range" id="clickVolumeSlider" min="0" max="100" step="1" value="'+state.clickVolume+'" style="--volume-progress:'+state.clickVolume+'%" aria-label="Volume del suono al clic">'+
  '<div class="settings-volume-scale"><span>0%</span><span>100%</span></div></div></section>';
 }
-const PAGE_RENDERERS={home:homePage,global:globalPage,markets:marketsPage,watchlist:watchlistPage,portfolio:portfolioPage,news:newsPage,analytics:analyticsPage,alerts:alertsPage,settings:settingsPage};
+const PAGE_RENDERERS={home:homePage,global:globalPage,markets:marketsPage,watchlist:watchlistPage,portfolio:portfolioPage,news:newsPage,analytics:analyticsPage,orderbook:orderBookPage,alerts:alertsPage,settings:settingsPage};
 function updateNav(){
  $$('.side-link[data-page]').forEach(b=>{const sel=b.dataset.page===state.page;b.classList.toggle('active',sel);if(sel)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
  const count=triggeredAlerts().length;$('#alertCount').hidden=count===0;if(count)$('#alertCount').textContent=String(count);
@@ -1151,7 +1309,7 @@ function updateNav(){
 function render(){
  const page=SECTIONS[state.page]||SECTIONS.global;
  $('#pageTitle').textContent=page[0];$('#pageSubtitle').textContent=page[1];
- const hideSearch=['global','settings','analytics','news'].includes(state.page);
+ const hideSearch=['global','settings','analytics','orderbook','news'].includes(state.page);
  const searchWrap=$('.search-wrap');
  if(searchWrap)searchWrap.hidden=hideSearch;
  if(hideSearch){
@@ -1168,9 +1326,11 @@ function render(){
   if(!state.land)loadWorldShape();
   updateWorldSunlight(true);
  }
+ if(state.page==='orderbook')refreshOrderBook();
 }
 function navigate(page){
  if(!SECTIONS[page])page='global';
+ if(state.page==='orderbook'&&page!=='orderbook')cancelOrderBookFetch();
  state.page=page;
  if(location.hash!=='#'+page)history.replaceState(null,'','#'+page);
  $('#sidebar').classList.remove('open');
@@ -1624,6 +1784,8 @@ function setupEvents(){
    if(state.page==='settings')render();
    return;
   }
+  if(btn.dataset.orderBookAsset){selectOrderBookAsset(btn.dataset.orderBookAsset);return;}
+  if(btn.dataset.orderBookRefresh){refreshOrderBook(true);return;}
   if(btn.dataset.themeMode){setTheme(btn.dataset.themeMode);return;}
   if(btn.dataset.soundToggle){
    const previous=state.clickSound;
@@ -1650,6 +1812,11 @@ function setupEvents(){
   }
  });
  $('#pageContainer').addEventListener('input',e=>{
+  if(e.target.id==='orderBookSearch'){
+   orderBookState.search=e.target.value;
+   const list=$('#orderBookAssetList');if(list)list.innerHTML=orderBookAssetList();
+   return;
+  }
   if(e.target.id==='brightnessSlider'){
    if(state.adaptiveBrightness)return;
    state.brightness=Math.min(100,Math.max(0,Math.round(Number(e.target.value)||0)));
@@ -1707,6 +1874,7 @@ function init(){
  setInterval(updateClock,30000);
  setInterval(()=>{if(state.adaptiveBrightness&&!document.hidden)applyBrightness()},60000);
  setInterval(updateWorldSunlight,1000);
+ setInterval(()=>{if(state.page==='orderbook'&&!document.hidden)refreshOrderBook()},5000);
  render();
  fetchQuotes();
  connectCryptoStream();
