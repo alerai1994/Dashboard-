@@ -947,25 +947,30 @@ body.theme-light .settings-theme-swatch{border-color:#b2cce1}
 }
 
 
-/* Order Book: central BID/ASK midpoint above the order tables. */
-.ob-center-price{display:grid;grid-template-columns:minmax(0,1fr) minmax(185px,1.55fr) minmax(0,1fr);gap:10px;align-items:stretch;margin:4px 0 16px}
-.ob-center-quote,.ob-midpoint{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;text-align:center;gap:6px;padding:15px 10px;border:1px solid var(--line);border-radius:12px;background:var(--surface);font-variant-numeric:tabular-nums}
-.ob-center-quote>span,.ob-midpoint>span:first-child{font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--muted)}
-.ob-center-quote strong{font-size:clamp(15px,1.45vw,23px);white-space:nowrap}
-.ob-center-quote small{font-size:10px;color:var(--muted)}
-.ob-center-bid{border-color:color-mix(in srgb,var(--green) 39%,var(--line))}
-.ob-center-bid strong{color:var(--green)}
-.ob-center-ask{border-color:color-mix(in srgb,var(--red) 39%,var(--line))}
-.ob-center-ask strong{color:var(--red)}
-.ob-midpoint{background:color-mix(in srgb,var(--brand) 7%,var(--surface));border-color:color-mix(in srgb,var(--brand) 48%,var(--line));gap:7px}
-.ob-midpoint strong{font-size:clamp(22px,2.45vw,36px);line-height:1.15;letter-spacing:-.035em;white-space:nowrap;color:var(--text)}
-.ob-midpoint strong small{font-size:13px;font-weight:650;letter-spacing:0;color:var(--muted)}
-.ob-midpoint>small{font-size:10px;color:var(--muted);line-height:1.3}
-.ob-center-spread{font-size:11px;font-weight:730;color:var(--brand)}
+/* Trading-style order book: ASK sells, exchange trade price, BID buys. */
+.ob-book-stack{display:flex;flex-direction:column;gap:0;align-items:stretch;width:100%;min-width:0;margin-top:10px}
+.ob-book-stack .ob-side{width:100%;border-radius:11px 11px 0 0}
+.ob-book-stack .ob-ask{border-bottom:0}
+.ob-book-stack .ob-bid{border-top:0;border-radius:0 0 11px 11px}
+.ob-book-stack .ob-side-title{padding:12px 17px}
+.ob-book-stack .ob-side-footer{padding:10px 17px}
+.ob-book-stack .ob-book-table{width:100%}
+.ob-book-stack .ob-book-table th{text-align:right}
+.ob-book-stack .ob-ask .ob-level-price{color:var(--red)}
+.ob-book-stack .ob-bid .ob-level-price{color:var(--green)}
+.ob-trade-price{position:relative;isolation:isolate;display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:12px;text-align:center;padding:21px 18px 16px;border:1px solid color-mix(in srgb,var(--brand) 55%,var(--line));background:linear-gradient(100deg,color-mix(in srgb,var(--red) 6%,var(--panel)),color-mix(in srgb,var(--brand) 10%,var(--surface)) 50%,color-mix(in srgb,var(--green) 6%,var(--panel)));min-width:0}
+.ob-trade-price:before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--red),var(--brand),var(--green));opacity:.78}
+.ob-trade-value{display:flex;flex-direction:column;align-items:center;gap:7px;min-width:0}
+.ob-trade-value>small{font-size:11px;font-weight:800;letter-spacing:.11em;color:var(--muted)}
+.ob-trade-value>strong{font-size:clamp(25px,3.3vw,44px);line-height:1.1;font-weight:850;letter-spacing:-.035em;font-variant-numeric:tabular-nums;color:var(--text);overflow-wrap:anywhere}
+.ob-trade-value>strong span{font-size:clamp(12px,1.6vw,18px);font-weight:650;letter-spacing:0;color:var(--muted)}
+.ob-trade-description{font-size:11px;color:var(--muted);line-height:1.45}
+.ob-trade-range{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px 22px;font-size:11px;font-weight:750;font-variant-numeric:tabular-nums}
+.ob-trade-range .ob-trade-spread{color:var(--brand);font-weight:650}
 @media(max-width:700px){
- .ob-center-price{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
- .ob-midpoint{grid-column:1/-1;grid-row:1;padding:17px 10px}
- .ob-center-quote{padding:12px 7px}
- .ob-center-quote strong{font-size:clamp(13px,3.9vw,21px)}
- .ob-midpoint strong{font-size:clamp(22px,6vw,33px)}
+ .ob-trade-price{padding:17px 11px 14px;gap:11px}
+ .ob-trade-value>strong{font-size:clamp(23px,6.1vw,34px)}
+ .ob-trade-range{font-size:10px;gap:6px 12px}
+ .ob-book-stack .ob-side-title{padding:11px 12px}
+ .ob-book-stack .ob-side-footer{padding:10px 12px}
 }
