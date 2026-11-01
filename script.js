@@ -2470,11 +2470,15 @@ async function loadOreChartHistory(force=false){
     let raw,source;
     if(method==='snapshot'){
      if(!payload||payload.mint!=='oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp'||
-      payload.pair!=='ORE/USDT'||!payload.sets||
-      !payload.sets[period.lbank])throw Error('Snapshot ORE non presente');
-     const set=payload.sets[period.lbank];
+      payload.pair!=='ORE/USDT'||!payload.sets)throw Error('Snapshot ORE non presente');
+     // LBank may intermittently omit 8-hour bars. Genuine 4-hour OHLC
+     // is an exact, finer-grained fallback for the three-month view.
+     const resolution=payload.sets[period.lbank]?period.lbank:
+      (period.lbank==='hour8'&&payload.sets.hour4?'hour4':period.lbank);
+     const set=payload.sets[resolution];
+     if(!set)throw Error('Candele ORE '+resolution+' non disponibili');
      raw=set.candles;
-     source='LBank Spot · ORE/USDT · '+period.lbank+' · dati verificati';
+     source='LBank Spot · ORE/USDT · '+resolution+' · dati verificati';
     }else{
      if(!payload||typeof payload!=='object'&& !Array.isArray(payload))throw Error('Risposta LBank non valida');
      if(!Array.isArray(payload)&&
