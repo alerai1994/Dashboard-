@@ -885,15 +885,13 @@ function homePage(){
  const s=countMarketMood();
  const g=(id)=>ASSET_BY_ID[id];
  const marketCards=['btc','eth','sol','sp500','nasdaq','dax'].map(indexCard).join('');
- return secHeader('Panoramica','Controlla i mercati e accedi subito alle sezioni principali','<button class="btn btn-primary" type="button" data-page="global">'+sym('globe')+' Mappa mondiale</button>')+
+ return secHeader('Panoramica','Controlla gli indici e le criptovalute','<button class="btn btn-primary" type="button" data-page="global">'+sym('globe')+' Mappa mondiale</button>')+
  '<div class="summary-grid">'+overviewCard('Mercati disponibili',dataCount()+'/'+ASSETS.length,'Dati reali da fonti esterne')+
  overviewCard('Strumenti in rialzo',String(s.up),'Variazioni disponibili','color-up')+
  overviewCard('Strumenti in ribasso',String(s.down),'Ultima seduta / 24h','color-down')+
  overviewCard('Mercati nella watchlist',String(state.watch.length),'Salvati in questo browser')+'</div>'+
  secHeader('Indici e criptovalute','Grafici e variazioni')+'<div class="market-index-strip">'+marketCards+'</div>'+
- '<div class="quick-grid">'+
- [['global','globe','Global Markets','Mappa mondiale interattiva'],['markets','bars','Markets','Esplora gli strumenti'],['analytics','trend','Analytics','Analisi dei movimenti'],['portfolio','pie','Portfolio','Posizioni manuali'],['watchlist','star','Watchlist','Asset preferiti'],['alerts','bell','Alerts','Soglie di prezzo']].map(x=>'<button type="button" class="quick-card" data-page="'+x[0]+'">'+sym(x[1])+'<strong>'+esc(x[2])+'</strong><small>'+esc(x[3])+'</small></button>').join('')+
- '</div>'+feedStatus();
+ feedStatus();
 }
 function tableForAssets(items,emptyTitle){
  if(!items.length)return '<div class="empty-state"><h3>'+esc(emptyTitle||'Nessun mercato da mostrare')+'</h3><p>Modifica la ricerca o aggiungi strumenti alla watchlist.</p></div>';
