@@ -1124,7 +1124,7 @@ function alertsPage(){
  (state.alerts.length?state.alerts.map((x,i)=>'<div class="alert-row"><div><strong>'+esc(ASSET_BY_ID[x.id]?.name||x.id)+' · '+(x.operator==='above'?'≥':'≤')+' '+Number(x.value).toLocaleString('it-IT')+'</strong><small>'+esc(alertState(x))+' · Prezzo '+assetValue(ASSET_BY_ID[x.id]||{id:x.id,group:'markets'})+'</small></div><button type="button" data-delete-alert="'+i+'">Rimuovi</button></div>').join(''):'<div class="empty-state"><h3>Nessun alert</h3><p>Aggiungi una soglia per monitorarla quando usi la dashboard.</p></div>')+'</section>'+feedStatus();
 }
 function settingsPage(){
- const choices=[['light','☀','Chiaro'],['dark','☾','Scuro'],['ocean','◈','Oceano'],['emerald','❖','Smeraldo'],['violet','✦','Viola']];
+ const choices=[['light','☀','Chiaro · Light'],['dark','☾','Scuro · Night'],['ocean','◈','Oceano'],['emerald','❖','Smeraldo'],['violet','✦','Viola']];
  return secHeader('Impostazioni','Personalizza aspetto e suoni della dashboard')+
  '<section class="content-card panel settings-preferences"><h3>Temi della dashboard</h3><p class="subnote">Scegli fra cinque stili. Il tema cambia subito in tutte le sezioni e la tua preferenza rimane salvata.</p>'+
  '<div class="settings-theme-options" role="group" aria-label="Scegli uno dei cinque temi">'+
@@ -1205,11 +1205,17 @@ function applyTheme(){
  for(const theme of Object.keys(THEME_NAMES))document.body.classList.toggle('theme-'+theme,state.theme===theme);
  if(state.adaptiveBrightness)applyBrightness();
  const switchEl=$('#themeSwitch'),toggle=$('#themeToggle');
+ const nextMode=state.theme==='light'?'dark':'light';
+ const nextLabel=nextMode==='light'?'Light · Chiaro':'Night · Scuro';
  if(switchEl)switchEl.classList.toggle('on',state.theme!=='light');
  if(toggle){
-  toggle.setAttribute('aria-label',state.theme==='light'?'Attiva modalità scura':'Attiva modalità chiara');
+  toggle.setAttribute('aria-label','Passa al tema '+nextLabel);
+  toggle.setAttribute('title','Passa al tema '+nextLabel);
+  toggle.setAttribute('aria-pressed',String(state.theme!=='light'));
+  const icon=toggle.querySelector('svg use');
+  if(icon)icon.setAttribute('href',nextMode==='light'?'#ic-sun':'#ic-moon');
   const name=toggle.querySelector('span:not(.switch)');
-  if(name)name.textContent=state.themeMode==='auto'?'Tema automatico':'Tema '+THEME_NAMES[state.theme].toLowerCase();
+  if(name)name.textContent=nextLabel;
  }
 }
 function setTheme(mode){
@@ -1586,7 +1592,7 @@ function setupEvents(){
  },true);
  $$('.side-link[data-page]').forEach(btn=>btn.addEventListener('click',()=>navigate(btn.dataset.page)));
  $('#menuToggle').addEventListener('click',()=>$('#sidebar').classList.toggle('open'));
- $('#themeToggle').addEventListener('click',()=>setTheme(state.theme==='dark'?'light':'dark'));
+ $('#themeToggle').addEventListener('click',()=>setTheme(state.theme==='light'?'dark':'light'));
  $('#profileButton').addEventListener('click',()=>navigate('settings'));
  $('#notificationsButton').addEventListener('click',()=>navigate('alerts'));
  $('#searchInput').addEventListener('input',updateSearch);
@@ -1628,7 +1634,7 @@ function setupEvents(){
   if(btn.dataset.page){if(btn.dataset.category)state.marketFilter=btn.dataset.category;navigate(btn.dataset.page);return;}
   if(btn.dataset.filter){state.marketFilter=btn.dataset.filter;render();return;}
   if(btn.dataset.refresh){fetchQuotes(true);return;}
-  if(btn.dataset.toggleTheme){setTheme(state.theme==='dark'?'light':'dark');return;}
+  if(btn.dataset.toggleTheme){setTheme(state.theme==='light'?'dark':'light');return;}
   if(btn.dataset.deleteHolding!=null){state.holdings.splice(Number(btn.dataset.deleteHolding),1);save('holdings',state.holdings);render();return;}
   if(btn.dataset.deleteAlert!=null){state.alerts.splice(Number(btn.dataset.deleteAlert),1);save('alerts',state.alerts);render();return;}
  });
