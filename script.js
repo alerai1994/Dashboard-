@@ -1142,6 +1142,12 @@ const orderBookState={
 };
 if(!ORDER_BOOK_COINS.some(a=>a.id===orderBookState.id))orderBookState.id='btc';
 function orderBookSource(id){
+ if(id==='ton')return {
+  venue:'Binance Spot',pair:'GRAM/USDT',urls:[
+   'https://data-api.binance.vision/api/v3/depth?symbol=GRAMUSDT&limit=20',
+   'https://api.binance.com/api/v3/depth?symbol=GRAMUSDT&limit=20'
+  ]
+ };
  // Current ORE Protocol v2 on Solana. LBank lists the matching ORE/USDT
  // spot market; this is NOT a derivative or the unrelated ORE v1 token.
  if(id==='ore')return {
@@ -1177,7 +1183,7 @@ function cryptoBookBundle(){
 function cryptoBookEntry(id){
  const p=cryptoBookBundle(),a=ASSET_BY_ID[id],b=p&&p.books[id];
  if(!a||a.group!=='crypto'||!b||b.id!==id)return null;
- const symbol=a.symbol.replace('-USD','');
+ const symbol=id==='ton'?'GRAM':a.symbol.replace('-USD','');
  if(b.unit!==symbol||b.pair!==symbol+'/USDT'||!Array.isArray(b.bids)||!Array.isArray(b.asks))return null;
  if(id==='ore'&&b.mint!=='oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp')return null;
  const t=Date.parse(b.capturedAt||'');
@@ -1259,7 +1265,7 @@ function orderBookAssetList(){
   const age=book?Math.floor((Date.now()-book.time)/60000):null;
   const price=book?'<span class="ob-coin-prices"><span class="color-up" title="Miglior prezzo BID">BID '+orderBookNumber(book.bids[0][0],true)+'</span><span class="color-down" title="Miglior prezzo ASK">ASK '+orderBookNumber(book.asks[0][0],true)+'</span></span>':'<span class="ob-coin-unavailable">Book in attesa</span>';
   return '<button class="ob-coin'+(selected?' is-selected':'')+'" data-order-book-asset="'+esc(a.id)+'" type="button" aria-pressed="'+selected+'">'+
-   '<span class="ob-coin-logo">'+assetLogo(a)+'</span><span class="ob-coin-label"><strong>'+esc(a.short||a.name)+'</strong><small>'+esc(a.symbol.replace('-USD',''))+(book?' · '+esc(book.venue)+(age>30?' · '+age+' min':''):'')+'</small>'+price+'</span>'+
+   '<span class="ob-coin-logo">'+assetLogo(a)+'</span><span class="ob-coin-label"><strong>'+esc(a.short||a.name)+'</strong><small>'+esc(a.id==='ton'?'TON → GRAM':a.symbol.replace('-USD',''))+(book?' · '+esc(book.venue)+(age>30?' · '+age+' min':''):'')+'</small>'+price+'</span>'+
    '<span class="ob-coin-venue" title="'+esc(book?book.venue:(src?src.venue+' · in attesa':'Coppia non verificata'))+'">'+(book?'●':'—')+'</span></button>';
  }).join('');
 }
@@ -1273,10 +1279,10 @@ function orderBookPage(){
  '<div class="ob-coin-list" id="orderBookAssetList">'+orderBookAssetList()+'</div></aside>'+
  '<section class="ob-detail panel" aria-label="Order book della crypto selezionata">'+
  '<div class="ob-detail-heading"><div class="ob-heading-name">'+assetLogo(coin)+'<div><h2>'+esc(coin.name)+'</h2>'+
- '<small>'+esc(source?source.venue+' · '+source.pair:'Coppia Spot non verificata')+'</small></div></div>'+
+ '<small>'+esc(source?source.venue+' · '+source.pair:'Coppia Spot non verificata')+'</small>'+(coin.id==='ton'?'<small>Toncoin rinominato GRAM (1:1)</small>':'')+'</div></div>'+
  '<button class="btn btn-small" type="button" data-order-book-refresh="1" aria-label="Aggiorna order book">'+sym('refresh')+' Aggiorna</button></div>'+
  '<div class="ob-content" id="orderBookContent" aria-live="polite">'+orderBookDisplay()+'</div>'+
- '<p class="ob-footnote">Tutte le 42 criptovalute: BID e ASK reali per una singola coppia Spot/USDT e per l’exchange indicato (Binance, Gate, MEXC o LBank). Le coppie non disponibili sono indicate chiaramente, mai simulate. Snapshot periodici ogni circa 5 minuti, soggetti a ritardi di GitHub; se oltre 30 minuti, il book è NON IN TEMPO REALE. Quantità e totali sono ordini limite, non eseguiti.</p>'+
+ '<p class="ob-footnote">Tutte le 42 criptovalute: BID e ASK reali per una singola coppia Spot/USDT e per l’exchange indicato (Binance, Gate, MEXC o LBank). Per Toncoin, la coppia Spot è GRAM/USDT dopo il rebranding. Le coppie non disponibili sono indicate chiaramente, mai simulate. Snapshot periodici ogni circa 5 minuti, soggetti a ritardi di GitHub; se oltre 30 minuti, il book è NON IN TEMPO REALE. Quantità e totali sono ordini limite, non eseguiti.</p>'+
  '</section></div>';
 }
 function orderBookNumber(v,price=false){
