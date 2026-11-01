@@ -377,18 +377,28 @@ function regionInsight(r){
  '<div class="region-insight-markets">'+r.ids.map(id=>'<button type="button" data-asset="'+id+'">'+esc(ASSET_BY_ID[id].short)+' <span class="'+classArrow(id)+'">'+pct(change(id))+'</span></button>').join('')+'</div></div>';
 }
 
-const REGION_SHAPES={
-'north-america':'M3 8 10 3 20 2 25 5 30 9 26 13 24 18 19 19 16 25 13 26 10 19 8 14 3 12Z M17 20 23 20 26 27 22 31 18 26Z',
-'south-america':'M8 2 18 3 26 9 24 16 20 20 18 27 14 33 12 29 8 23 7 17 3 12Z',
-'europe':'M3 11 9 5 14 6 18 3 21 8 26 7 29 11 26 15 29 19 23 21 19 19 17 27 12 25 10 19 6 18Z',
-'africa':'M9 3 21 3 29 12 25 20 20 24 18 32 12 30 10 25 6 21 4 14Z',
-'middle-east':'M4 8 11 5 20 7 27 12 25 19 19 23 16 28 11 25 8 18 3 16Z',
-'asia':'M2 9 9 5 20 3 30 10 27 17 30 23 24 26 19 22 15 28 11 24 10 16 4 15Z',
-'oceania':'M4 14 10 7 18 8 26 16 26 22 20 28 10 26 4 21Z M25 29 31 27 30 32Z'
-};
+
+/* Simplified geographic land silhouettes generated from Natural Earth country polygons.
+   One permanent SVG path per region, no national flags or emoji. */
+const REGION_LAND_PACKED={"north-america":"XeXgXhZgZiaiakbkblbkblakZjVhTdUgTfScRcQaQXRXQWOULTKTIUHVITHUHTGSIRGRHRGQJPNQPPURUQXQXRXQXPYPZRaQbQbRZRXTYUaVbWbVcUbTbScSdTeUfTfUhVgWeWdYeXfYfXgYeZeYfYeYdZcacbcacbbdbfadZdZeXd.WQTQSQTQRPSPUP.SORPQPQO.VOSOSNUOUN.bSaSZSZR.XPVPWOXO.ZOXNbO.XMZMYN.bPeQfReReSbSbRcRdQbQZQYPaObP.pLmMrMpMqMpNqNpNpOoPpPoPoQpQkRkTiTiShRiQhQhPiPhPgOeOdNeNcNgMjMjLmL.YMdLfLcMcNbOZNaNZNaMZMaM","south-america":"UrRrPqRrSq.TqRrPqPoQkPlReSWPUMPNOMNMMOKOHRFRHSFTGWGYJaJaLcKcMfOiOkPkQiThYeadcagYfZhWiWjUjVkTmUnSp.YpXqWp","europe":"IqHrHp.XaXXaXaWZVaVaUeSeReQeRfSjSiRjQjPlPlQmRnSmTpUpVnWmWlYjYjaiYfWfXhZgagZeXcXaaYb.XTYRZSYT.ZSZQaQZQaQZRbTZUZTaS.WNSNTNSNTMSMVM.iNhOhPgRfRePdQcOgLkKmKlLmLlNmOlPiPiNkN.iGgHeF.hFjFlFjG","africa":"LWGRHMMGOGSFVFVHZJbHeIhIhKgJjPmSnTqSpWkblgijilgmgoeqarZrViWeUZUXSWRV.qhommmnhpf","middle-east":"bVfckZkcnejkXpWjOXPNHNFKNHWIeNnMpOpVrZpblakYfXeV.IIFJGH","asia":"PaLbKaIWITFTFSHRKSKRJRMRNSMTOTNSOSOROSNQOQMQLPMONOQOQNTNUNVNWOZPaOcPcOfPiPjOkNmPoPlSmUlUlSjSiSkTjUkVkWiYgZfYeZfbfceddbcddeefdfcdcabaaYYYWaWcVdUYTZSXOXMVMWNXPXQY.eidhbeegeh.jfihhhghfgidjeif.WcXdWeWd.pjpinhmgngohogqhqj.lekdlc.jbkbjbjZkZ.pRqQrQqR","oceania":"ZkYkXiZi.LeGeFXJVMROSQPSQRSUUWPYUcZbcagYhUgTeSfTdSeRdOc.VKYMYNaPXNVO.mjojnklmjm.ojnhognepgqg"};
+const REGION_COORD_ALPHABET='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+function decodeRegionLand(encoded){
+ return encoded.split('.').map(ring=>{
+  if(ring.length<6||ring.length%2)return '';
+  const pts=[];
+  for(let i=0;i<ring.length;i+=2){
+   const x=REGION_COORD_ALPHABET.indexOf(ring[i]),y=REGION_COORD_ALPHABET.indexOf(ring[i+1]);
+   if(x<0||y<0)return '';
+   pts.push((i?'L':'M')+x+' '+y);
+  }
+  return pts.join(' ')+'Z';
+ }).filter(Boolean).join(' ');
+}
+const REGION_SHAPES=Object.fromEntries(Object.entries(REGION_LAND_PACKED).map(([id,value])=>[id,decodeRegionLand(value)]));
 function regionIcon(r){
- const d=REGION_SHAPES[r.id]||REGION_SHAPES.europe;
- return '<svg viewBox="0 0 35 35" width="29" height="29" fill="currentColor" aria-hidden="true" focusable="false"><path d="'+d+'"/></svg>';
+ const shape=REGION_SHAPES[r.id]||REGION_SHAPES.europe;
+ return '<svg class="region-land-svg" viewBox="0 0 48 48" width="32" height="32" role="img" aria-label="Sagoma geografica: '+esc(r.italian)+'" focusable="false">'+
+ '<path d="'+shape+'" fill="currentColor" fill-rule="evenodd"/></svg>';
 }
 
 function regionList(){

@@ -103,7 +103,8 @@ a{color:inherit}
 .region-list{display:grid}
 .region-list-item{width:100%;min-height:63px;display:flex;align-items:center;gap:10px;text-align:left;color:var(--text);background:transparent;border:0;border-top:1px solid var(--line-soft);padding:9px 2px}
 .region-list-item:hover,.region-list-item.selected{background:#112d414f;border-radius:8px}
-.region-list-item .region-glyph{font-size:23px;line-height:1;width:31px;text-align:center;filter:saturate(.85)}
+.region-list-item .region-glyph{width:35px;height:35px;flex:none;display:grid;place-items:center;line-height:1;filter:none}
+.region-list-item .region-glyph .region-land-svg{display:block;width:32px;height:32px;overflow:visible}
 .region-list-item .region-titles{display:flex;flex-direction:column;gap:5px;flex:1;min-width:0}
 .region-list-item strong{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .region-list-item .region-change{font-size:12px;font-weight:740}
