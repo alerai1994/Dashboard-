@@ -990,10 +990,11 @@ body.theme-light .settings-theme-swatch{border-color:#b2cce1}
 .ob-book-stack .ob-ask .ob-cumulative-fill{--ob-side-color:var(--red)}
 .ob-book-stack .ob-bid .ob-cumulative-fill{--ob-side-color:var(--green)}
 .ob-trade-value .ob-trade-number{display:inline-flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:7px 11px}
-.ob-price-arrow{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.78em;font-weight:900;line-height:1}
-.ob-price-arrow-up{color:var(--green)}
-.ob-price-arrow-down{color:var(--red)}
-.ob-price-arrow-flat,.ob-price-arrow-unknown{color:var(--muted)}
+.ob-price-arrow{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.85em;font-weight:900;line-height:1}
+/* Higher specificity than .ob-trade-value>strong span, which otherwise made both arrows grey. */
+.ob-trade-value>strong .ob-price-arrow-up{color:var(--green)}
+.ob-trade-value>strong .ob-price-arrow-down{color:var(--red)}
+.ob-trade-value>strong .ob-price-arrow-flat,.ob-trade-value>strong .ob-price-arrow-unknown{color:var(--muted)}
 .ob-trade-currency{font-size:clamp(12px,1.5vw,18px);font-weight:650;letter-spacing:0;color:var(--muted)}
 @media(max-width:520px){
  .ob-book-stack .ob-book-table{min-width:365px}
