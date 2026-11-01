@@ -1,0 +1,40 @@
+name: Vertex Crypto Complete Price History
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/scripts/crypto-all-history.py
+      - .github/workflows/crypto-all-history.yml
+  schedule:
+    - cron: '26 4,16 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: vertex-crypto-all-history
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check history source syntax
+        run: python3 -m py_compile .github/scripts/crypto-all-history.py
+      - name: Fetch verified crypto all-time OHLC
+        run: python3 .github/scripts/crypto-all-history.py
+      - name: Commit genuine crypto trading history
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add chart-history/crypto/
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data: refresh crypto all-time OHLC history [skip ci]"
+          for attempt in 1 2 3 4; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep 2
+          done
+          exit 1
