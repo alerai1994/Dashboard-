@@ -975,19 +975,20 @@ body.theme-light .settings-theme-swatch{border-color:#b2cce1}
 /* Order book v39: full-width selling and buying levels with cumulative bars
    in a dedicated column at the extreme RIGHT. Never mislabel raw totals as depth. */
 .ob-book-stack .ob-book-table{table-layout:fixed;min-width:390px;width:100%}
-.ob-book-stack .ob-book-table th:nth-child(1),.ob-book-stack .ob-book-table td:nth-child(1){width:35%}
-.ob-book-stack .ob-book-table th:nth-child(2),.ob-book-stack .ob-book-table td:nth-child(2){width:24%}
-.ob-book-stack .ob-book-table th:nth-child(3),.ob-book-stack .ob-book-table td:nth-child(3){width:24%}
-.ob-book-stack .ob-book-table th:nth-child(4),.ob-book-stack .ob-book-table td:nth-child(4){width:17%}
+.ob-book-stack .ob-book-table th:nth-child(1),.ob-book-stack .ob-book-table td:nth-child(1){width:31%}
+.ob-book-stack .ob-book-table th:nth-child(2),.ob-book-stack .ob-book-table td:nth-child(2){width:23%}
+.ob-book-stack .ob-book-table th:nth-child(3),.ob-book-stack .ob-book-table td:nth-child(3){width:21%}
+.ob-book-stack .ob-book-table th:nth-child(4),.ob-book-stack .ob-book-table td:nth-child(4){width:25%}
 .ob-book-stack .ob-book-table th,.ob-book-stack .ob-book-table td{padding-left:7px;padding-right:7px}
 .ob-book-stack .ob-book-table .ob-depth-th{text-align:right;white-space:nowrap;font-size:10px}
 .ob-book-stack .ob-book-table tbody .ob-level{background:transparent}
 .ob-book-stack .ob-book-table tbody .ob-level:hover{background:color-mix(in srgb,var(--ob-side-color) 8%,transparent)}
 .ob-book-stack .ob-book-table td.ob-level-depth{padding:7px 9px 7px 5px;text-align:right;vertical-align:middle}
-.ob-book-stack .ob-cumulative-track{height:13px;width:100%;display:block;position:relative;border-radius:3px;background:color-mix(in srgb,var(--ob-side-color) 10%,transparent);overflow:hidden}
-.ob-book-stack .ob-cumulative-fill{display:block;position:absolute;right:0;top:0;bottom:0;height:100%;border-radius:3px;background:var(--ob-side-color);opacity:.68;min-width:1px}
-.ob-book-stack .ob-ask .ob-cumulative-fill{background:var(--red)}
-.ob-book-stack .ob-bid .ob-cumulative-fill{background:var(--green)}
+.ob-book-stack .ob-cumulative-track{height:20px;width:100%;display:block;position:relative;background:transparent;overflow:hidden}
+/* Right-anchored cumulative bands extend LEFT; soft fade at left, gentle tint at right. */
+.ob-book-stack .ob-cumulative-fill{display:block;position:absolute;right:0;top:0;bottom:0;height:100%;border-radius:0 3px 3px 0;min-width:1px;background:linear-gradient(to right,transparent 0%,color-mix(in srgb,var(--ob-side-color) 3%,transparent) 25%,color-mix(in srgb,var(--ob-side-color) 9%,transparent) 58%,color-mix(in srgb,var(--ob-side-color) 18%,transparent) 100%);opacity:1;transition:width .2s ease}
+.ob-book-stack .ob-ask .ob-cumulative-fill{--ob-side-color:var(--red)}
+.ob-book-stack .ob-bid .ob-cumulative-fill{--ob-side-color:var(--green)}
 .ob-trade-value .ob-trade-number{display:inline-flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:7px 11px}
 .ob-price-arrow{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.78em;font-weight:900;line-height:1}
 .ob-price-arrow-up{color:var(--green)}
@@ -999,6 +1000,6 @@ body.theme-light .settings-theme-swatch{border-color:#b2cce1}
  .ob-book-stack .ob-book-table th{font-size:9px;padding:9px 4px}
  .ob-book-stack .ob-book-table td{font-size:10px;padding:8px 4px}
  .ob-book-stack .ob-book-table td.ob-level-depth{padding:7px 5px 7px 1px}
- .ob-book-stack .ob-cumulative-track{height:12px}
+  .ob-book-stack .ob-cumulative-track{height:18px}
  .ob-book-stack .ob-trade-value .ob-trade-number{gap:4px 8px}
 }
