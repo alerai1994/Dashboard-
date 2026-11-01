@@ -1138,7 +1138,7 @@ function analyticsPage(){
 const ORDER_BOOK_COINS=ASSETS.filter(a=>a.group==='crypto');
 const orderBookState={
  id:load('orderBookCoin','btc'),search:'',data:null,error:null,busy:false,
- lastTry:0,updatedAt:0,venue:'',pair:'',mode:'',serial:0,abort:null
+ lastTry:0,updatedAt:0,venue:'',pair:'',mode:'',serial:0,abort:null,lastTrade:null,lastTradeAt:0
 };
 if(!ORDER_BOOK_COINS.some(a=>a.id===orderBookState.id))orderBookState.id='btc';
 function orderBookSource(id){
@@ -1194,7 +1194,11 @@ function cryptoBookEntry(id){
  const asks=b.asks.map(r=>[Number(r[0]),Number(r[1])])
   .filter(r=>r.length===2&&r.every(x=>Number.isFinite(x)&&x>0)).sort((a,b)=>a[0]-b[0]).slice(0,20);
  if(!bids.length||!asks.length||bids[0][0]>=asks[0][0])return null;
- return {bids,asks,unit:symbol,pair:b.pair,venue:b.venue,time:t};
+ const trade=Number(b.lastTrade),tradeTime=Date.parse(b.lastTradeAt||'');
+ const lastTrade=Number.isFinite(trade)&&trade>0&&Number.isFinite(tradeTime)&&
+  tradeTime>=t-60000&&tradeTime<=t+60000?trade:null;
+ return {bids,asks,unit:symbol,pair:b.pair,venue:b.venue,time:t,lastTrade,
+  lastTradeAt:lastTrade!==null?tradeTime:0};
 }
 function useCryptoBookEntry(id,serial){
  const book=cryptoBookEntry(id);
@@ -1205,6 +1209,8 @@ function useCryptoBookEntry(id,serial){
  orderBookState.venue=book.venue;
  orderBookState.pair=book.pair;
  orderBookState.updatedAt=book.time;
+ orderBookState.lastTrade=book.lastTrade;
+ orderBookState.lastTradeAt=book.lastTradeAt;
  orderBookState.mode='snapshot';
  orderBookState.error=null;
  paintOrderBook();
@@ -1291,31 +1297,35 @@ function orderBookNumber(v,price=false){
  return n.toLocaleString('it-IT',{minimumFractionDigits:price&&n>=1?2:0,maximumFractionDigits:decimals});
 }
 function orderBookSide(orders,side,unit){
- const isBid=side==='bid',sideName=isBid?'BID · Acquisto':'ASK · Vendita';
+ const isBid=side==='bid',sideName=isBid?'BID · Acquisti':'ASK · Vendite';
  const maxLevel=Math.max(0,...orders.map(([price,qty])=>price*qty));
  const quantityUnit=esc(unit);
+ // ASK: higher asks first; best/lowest ask immediately ABOVE the center price.
+ // BID: best/highest bid first; immediately BELOW the center price.
  let cumulative=0;
+ const depthRows=orders.map(([price,qty])=>{
+  const total=price*qty;cumulative+=total;
+  return {price,qty,total,cumulative};
+ });
+ const displayRows=isBid?depthRows:depthRows.slice().reverse();
  return '<section class="ob-side ob-'+side+'" aria-label="'+sideName+'">'+
  '<div class="ob-side-title"><strong><span class="ob-side-dot" aria-hidden="true">●</span> '+sideName+'</strong>'+
- '<small>'+orders.length+' livelli reali · '+(isBid?'Prezzi di acquisto':'Prezzi di vendita')+'</small></div>'+
+ '<small>'+orders.length+' livelli · '+(isBid?'Miglior BID in alto':'Miglior ASK in basso, vicino al prezzo centrale')+'</small></div>'+
  '<div class="ob-table-scroll" role="region" tabindex="0" aria-label="'+sideName+': prezzi, quantità e totali">'+
  '<table class="ob-book-table"><thead><tr>'+
  '<th scope="col">Prezzo <small>USDT</small></th>'+
  '<th scope="col">Quantità <small>'+quantityUnit+'</small></th>'+
  '<th scope="col">Totale <small>USDT</small></th>'+
  '</tr></thead><tbody>'+
- orders.map(([price,qty])=>{
-  const total=price*qty;cumulative+=total;
+ displayRows.map(({price,qty,total,cumulative})=>{
   const depth=maxLevel>0?Math.min(100,Math.max(0,total/maxLevel*100)):0;
-  return '<tr class="ob-level" style="--depth:'+depth.toFixed(2)+'%" title="Livello '+(isBid?'BID':'ASK')+' · Totale cumulato: '+orderBookNumber(cumulative)+' USDT">'+
+  return '<tr class="ob-level" style="--depth:'+depth.toFixed(2)+'%" title="Livello '+(isBid?'BID':'ASK')+' · Totale cumulato dalla migliore offerta: '+orderBookNumber(cumulative)+' USDT">'+
    '<td class="ob-level-price">'+orderBookNumber(price,true)+'</td>'+
    '<td class="ob-level-quantity">'+orderBookNumber(qty)+'</td>'+
    '<td class="ob-level-total">'+orderBookNumber(total)+'</td></tr>';
  }).join('')+'</tbody></table></div>'+
- '<div class="ob-side-footer"><span>Totale '+orders.length+' livelli</span><strong>'+orderBookNumber(cumulative)+' USDT</strong></div></section>';
+ '<div class="ob-side-footer"><span>Totale '+orders.length+' livelli '+(isBid?'BID':'ASK')+'</span><strong>'+orderBookNumber(cumulative)+' USDT</strong></div></section>';
 }
-// Depth of the SELECTED Spot book: cumulative quote notional (price * size).
-// A 20-level snapshot is NOT full exchange liquidity or a volume-of-trades chart.
 function orderBookDisplay(){
  const src=orderBookSource(orderBookState.id);
  if(!src)return '<div class="ob-status"><strong>Order book Spot non disponibile</strong><p>Per questa crypto non è stata verificata una coppia di order book corrispondente. Non vengono mostrati ordini di un token omonimo o dati stimati.</p></div>';
@@ -1323,24 +1333,31 @@ function orderBookDisplay(){
  if(!book)return '<div class="ob-status"><strong>'+(orderBookState.busy?'Caricamento degli ordini reali…':'Dati non disponibili')+'</strong>'+
  '<p>'+esc(orderBookState.error||'Lettura del book Spot da '+src.venue+' in corso. Se la fonte non risponde, comparirà un avviso.')+'</p></div>';
  const bids=book.bids,asks=book.asks,bid=bids[0][0],ask=asks[0][0],mid=(ask+bid)/2,spread=ask-bid,spreadPercent=mid>0?spread/mid*100:0;
- const totalBids=bids.reduce((sum,row)=>sum+row[0]*row[1],0),totalAsks=asks.reduce((sum,row)=>sum+row[0]*row[1],0);
- const sum=totalBids+totalAsks,ratio=sum>0?totalBids/sum*100:50;
  const stamp=orderBookState.updatedAt?new Intl.DateTimeFormat('it-IT',{hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date(orderBookState.updatedAt)):'—';
  const changed=orderBookState.error?'<div class="ob-inline-warning">'+esc(orderBookState.error)+'</div>':'';
  const snapshotAge=Math.max(0,Date.now()-orderBookState.updatedAt);
  const delayed=orderBookState.mode==='snapshot'&&snapshotAge>30*60*1000;
  const snapshotLabel=delayed?'⚠ BOOK NON IN TEMPO REALE · Ultima verifica '+Math.floor(snapshotAge/60000)+' min fa':'● Snapshot Spot verificato · '+Math.floor(snapshotAge/60000)+' min fa';
+ const traded=Number(orderBookState.lastTrade);
+ const hasTrade=Number.isFinite(traded)&&traded>0&&orderBookState.lastTradeAt>=orderBookState.updatedAt-60000;
+ const referencePrice=hasTrade?traded:mid;
+ const priceTitle=hasTrade?'ULTIMO PREZZO SCAMBIATO':'PREZZO CENTRALE INDICATIVO';
+ const priceNote=hasTrade?'Ultimo prezzo Spot dello stesso exchange · dato al momento dello snapshot':
+  'Media del miglior BID e ASK · non è uno scambio eseguito';
  return '<div class="ob-market-status">'+(orderBookState.mode==='snapshot'?snapshotLabel:orderBookState.busy?'↻ Aggiornamento in corso':stale?'◌ Ultimo book disponibile':'● Book diretto')+
  ' · '+esc(orderBookState.venue||src.venue)+' · '+stamp+'</div>'+changed+
- '<div class="ob-center-price" aria-label="Prezzo centrale tra migliori BID e ASK">'+
- '<div class="ob-center-quote ob-center-bid"><span>Miglior BID</span><strong>'+orderBookNumber(bid,true)+'</strong><small>Acquisto · USDT</small></div>'+
- '<div class="ob-midpoint"><span>PREZZO CENTRALE</span><strong>'+orderBookNumber(mid,true)+' <small>USDT</small></strong>'+
- '<small>Media fra BID e ASK, non ultimo scambio</small>'+
- '<span class="ob-center-spread">Spread '+orderBookNumber(spread,true)+' USDT · '+spreadPercent.toFixed(3)+'%</span></div>'+
- '<div class="ob-center-quote ob-center-ask"><span>Miglior ASK</span><strong>'+orderBookNumber(ask,true)+'</strong><small>Vendita · USDT</small></div></div>'+
- '<div class="ob-depth-meter"><div class="ob-depth-bar"><span style="width:'+ratio.toFixed(2)+'%"></span></div>'+
- '<div class="ob-depth-labels"><span class="color-up">BID '+ratio.toFixed(1)+'%</span><span class="color-down">ASK '+(100-ratio).toFixed(1)+'%</span></div></div>'+
- '<div class="ob-book-grid">'+orderBookSide(bids,'bid',book.unit)+orderBookSide(asks,'ask',book.unit)+'</div>';
+ '<div class="ob-book-stack" aria-label="Order Book verticale: vendite, prezzo di scambio e acquisti">'+
+ orderBookSide(asks,'ask',book.unit)+
+ '<section class="ob-trade-price" aria-label="'+esc(priceTitle)+'">'+
+ '<div class="ob-trade-value"><small>'+priceTitle+'</small>'+
+ '<strong>'+orderBookNumber(referencePrice,true)+' <span>USDT</span></strong>'+
+ '<span class="ob-trade-description">'+priceNote+'</span></div>'+
+ '<div class="ob-trade-range"><span class="color-down">Miglior ASK '+orderBookNumber(ask,true)+'</span>'+
+ '<span class="ob-trade-spread">Spread '+orderBookNumber(spread,true)+' USDT · '+spreadPercent.toFixed(3)+'%</span>'+
+ '<span class="color-up">Miglior BID '+orderBookNumber(bid,true)+'</span></div>'+
+ '</section>'+
+ orderBookSide(bids,'bid',book.unit)+
+ '</div>';
 }
 function paintOrderBook(){
  const node=$('#orderBookContent');
@@ -1357,6 +1374,7 @@ function selectOrderBookAsset(id){
   cancelOrderBookFetch();
   orderBookState.id=id;orderBookState.data=null;orderBookState.error=null;
   orderBookState.lastTry=0;orderBookState.updatedAt=0;orderBookState.venue='';orderBookState.mode='';
+  orderBookState.lastTrade=null;orderBookState.lastTradeAt=0;
   save('orderBookCoin',id);
  }
  if(state.page==='orderbook')render();
@@ -1389,6 +1407,7 @@ function acceptOreBookSnapshot(payload,serial,coin){
  orderBookState.data={bids,asks,unit:'ORE'};
  orderBookState.updatedAt=updated;
  orderBookState.venue=payload.venue||'LBank Spot';
+ orderBookState.lastTrade=null;orderBookState.lastTradeAt=0;
  orderBookState.mode='snapshot';
  orderBookState.error=null;
  paintOrderBook();
@@ -1485,7 +1504,8 @@ async function refreshOrderBook(force=false){
    if(serial!==orderBookState.serial||coin!==orderBookState.id)return;
    orderBookState.data={bids,asks,unit:ASSET_BY_ID[coin].symbol.replace('-USD','')};
    orderBookState.updatedAt=Date.now();
-   orderBookState.venue=src.venue;orderBookState.pair=src.pair;orderBookState.mode='live';orderBookState.error=null;
+   orderBookState.venue=src.venue;orderBookState.pair=src.pair;orderBookState.mode='live';
+   orderBookState.lastTrade=null;orderBookState.lastTradeAt=0;orderBookState.error=null;
    success=true;break;
   }catch(err){
    if(serial!==orderBookState.serial)return;
