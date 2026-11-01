@@ -2627,7 +2627,7 @@ async function loadAllChartHistory(force=false){
   }else{
    if(!data||data.id!==id||data.symbol!==asset.symbol)throw Error('Storico diverso dallo strumento');
    rows=data.sets&&data.sets['1mo']&&data.sets['1mo'].candles;
-   source='Yahoo Finance · OHLC mensile · massimo storico disponibile';
+   source='Yahoo Finance · OHLC storico · frequenza secondo la fonte';
   }
   candles=chartReadAllCandles(rows);
   if(candles.length<2)throw Error('Candele storiche insufficienti');
@@ -2770,7 +2770,7 @@ function openAsset(id){
  const a=ASSET_BY_ID[id];if(!a)return;
  chartFetchState.sequence++;
  if(chartFetchState.abort)chartFetchState.abort.abort();
- chartRange='1D';
+ chartRange='MAX';
  chartSeries={id:null,range:null,candles:[],source:'',loading:false,error:'',partial:false};
  state.dialogId=id;state.chartShift=0;state.chartHover=null;
  const dlg=$('#assetDialog');
