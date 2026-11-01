@@ -159,6 +159,11 @@ a{color:inherit}
 .photo-card-metrics strong{font-size:12px;font-weight:740;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .photo-card-metrics .change{font-size:10px;font-weight:800;white-space:nowrap}
 .photo-card .spark{margin-top:auto;width:100%;height:35px;padding-top:2px}
+/* Visible, dedicated Tadawul mini-chart below the Middle East photo. */
+.photo-card[data-id="middle-east"] .middle-east-spark{display:flex;flex-direction:column;justify-content:flex-end;gap:2px;width:100%;min-height:50px;margin-top:auto;overflow:hidden}
+.photo-card[data-id="middle-east"] .middle-east-spark .spark{display:block;flex:0 0 34px;height:34px;min-height:34px;width:100%;margin-top:0;padding:0;stroke-width:2px}
+.photo-card[data-id="middle-east"] .middle-east-spark small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px;line-height:12px;color:var(--subtle)}
+
 .photo-card[data-trend="up"] .spark{color:var(--green)}
 .photo-card[data-trend="down"] .spark{color:var(--red)}
 .photo-card[data-trend="unknown"] .spark,.photo-card[data-trend="flat"] .spark{color:var(--muted)}
