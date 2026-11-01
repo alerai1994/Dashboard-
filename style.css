@@ -710,3 +710,11 @@ body:is(.theme-ocean,.theme-emerald,.theme-violet) .settings-theme-option.is-sel
 .settings-brightness input[type="range"]:disabled{cursor:not-allowed;opacity:.55}
 .settings-brightness .settings-volume-heading output{min-width:94px}
 @media(max-width:520px){.settings-brightness .settings-adaptive-row{gap:10px}.settings-brightness .settings-adaptive-row .subnote{font-size:11px}}
+
+/* Explicit Light = Chiaro and Night = Scuro */
+.sidebar-theme-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:0 3px 6px}
+.sidebar-theme-button{display:flex;align-items:center;justify-content:center;gap:6px;min-width:0;min-height:40px;padding:7px 5px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--muted);font-size:11px;font-weight:700}
+.sidebar-theme-button .icon{width:15px;height:15px;flex:none}
+.sidebar-theme-button:hover{border-color:var(--brand);color:var(--text)}
+.sidebar-theme-button.is-selected{background:color-mix(in srgb,var(--brand) 18%,var(--panel));border-color:var(--brand);color:var(--text);box-shadow:inset 0 0 0 1px var(--brand)}
+.sidebar-theme-button:focus-visible{outline:2px solid var(--brand);outline-offset:2px}

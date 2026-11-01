@@ -7,9 +7,9 @@
 <meta name="description" content="Vertex Global — dashboard dei mercati mondiali con mappa interattiva, indici, Forex, crypto e strumenti di analisi.">
 <title>Vertex · Global Markets</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%233d9cff' d='M8 12h16l9 26L49 12h9L34 56z'/%3E%3Cpath fill='%237fd0ff' d='M8 12h16l6 17H15z'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="style.css?v=20261101-adaptive-brightness-v21">
+<link rel="stylesheet" href="style.css?v=20261101-direct-light-night-v23">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js" defer crossorigin="anonymous"></script>
-<script src="script.js?v=20261101-light-night-sync-v22" defer></script>
+<script src="script.js?v=20261101-direct-light-night-v23" defer></script>
 </head>
 <body class="theme-dark">
 <svg class="svg-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
@@ -50,7 +50,10 @@
       <button class="side-link" data-page="alerts" type="button"><svg class="icon"><use href="#ic-bell"/></svg><span>Alerts</span><span class="nav-alert-count" id="alertCount" hidden></span></button>
     </nav>
     <div class="sidebar-bottom">
-      <button class="side-link theme-control" type="button" id="themeToggle" aria-label="Passa al tema Light · Chiaro" title="Passa al tema Light · Chiaro" aria-pressed="true"><svg class="icon"><use href="#ic-sun"/></svg><span>Light · Chiaro</span><span class="switch on" id="themeSwitch" aria-hidden="true"></span></button>
+      <div class="sidebar-theme-pair" role="group" aria-label="Scegli il tema chiaro o scuro">
+        <button class="sidebar-theme-button" data-fixed-theme="light" type="button" aria-label="Light - Tema chiaro" title="Light · Chiaro" aria-pressed="false"><svg class="icon"><use href="#ic-sun"/></svg><span>Light</span></button>
+        <button class="sidebar-theme-button" data-fixed-theme="dark" type="button" aria-label="Night - Tema scuro" title="Night · Scuro" aria-pressed="false"><svg class="icon"><use href="#ic-moon"/></svg><span>Night</span></button>
+      </div>
       <button class="side-link" data-page="settings" type="button"><svg class="icon"><use href="#ic-settings"/></svg><span>Settings</span></button>
       <div class="sidebar-version">VERTEX GLOBAL · 2026</div>
     </div>

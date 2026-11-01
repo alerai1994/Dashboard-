@@ -1204,19 +1204,11 @@ function applyTheme(){
  state.theme=resolvedTheme(state.themeMode);
  for(const theme of Object.keys(THEME_NAMES))document.body.classList.toggle('theme-'+theme,state.theme===theme);
  if(state.adaptiveBrightness)applyBrightness();
- const switchEl=$('#themeSwitch'),toggle=$('#themeToggle');
- const nextMode=state.theme==='light'?'dark':'light';
- const nextLabel=nextMode==='light'?'Light · Chiaro':'Night · Scuro';
- if(switchEl)switchEl.classList.toggle('on',state.theme!=='light');
- if(toggle){
-  toggle.setAttribute('aria-label','Passa al tema '+nextLabel);
-  toggle.setAttribute('title','Passa al tema '+nextLabel);
-  toggle.setAttribute('aria-pressed',String(state.theme!=='light'));
-  const icon=toggle.querySelector('svg use');
-  if(icon)icon.setAttribute('href',nextMode==='light'?'#ic-sun':'#ic-moon');
-  const name=toggle.querySelector('span:not(.switch)');
-  if(name)name.textContent=nextLabel;
- }
+ document.querySelectorAll('.sidebar-theme-button[data-fixed-theme]').forEach(button=>{
+  const selected=state.theme===button.dataset.fixedTheme;
+  button.classList.toggle('is-selected',selected);
+  button.setAttribute('aria-pressed',String(selected));
+ });
 }
 function setTheme(mode){
  state.themeMode=(mode==='auto'||Object.hasOwn(THEME_NAMES,mode))?mode:'dark';
@@ -1592,7 +1584,7 @@ function setupEvents(){
  },true);
  $$('.side-link[data-page]').forEach(btn=>btn.addEventListener('click',()=>navigate(btn.dataset.page)));
  $('#menuToggle').addEventListener('click',()=>$('#sidebar').classList.toggle('open'));
- $('#themeToggle').addEventListener('click',()=>setTheme(state.theme==='light'?'dark':'light'));
+ $$('.sidebar-theme-button[data-fixed-theme]').forEach(button=>button.addEventListener('click',()=>setTheme(button.dataset.fixedTheme)));
  $('#profileButton').addEventListener('click',()=>navigate('settings'));
  $('#notificationsButton').addEventListener('click',()=>navigate('alerts'));
  $('#searchInput').addEventListener('input',updateSearch);
