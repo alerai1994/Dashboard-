@@ -147,10 +147,23 @@ function resolvedTheme(mode){
  if(mode==='auto')return deviceThemeQuery&&deviceThemeQuery.matches?'dark':'light';
  return Object.hasOwn(THEME_NAMES,mode)?mode:'dark';
 }
+function loadPortfolioHoldings(){
+ // When permanent storage is unavailable (e.g., certain local-file/private
+ // modes), a session-only fallback can retain entries during this tab session.
+ try{
+  const fallback=sessionStorage.getItem(STORE+'holdings-session');
+  if(fallback!==null){
+   const rows=JSON.parse(fallback);
+   if(Array.isArray(rows))return rows;
+  }
+ }catch(_e){}
+ const saved=load('holdings',[]);
+ return Array.isArray(saved)?saved:[];
+}
 const state={
  page:(location.hash||'#global').slice(1).toLowerCase(),quotes:{},feedTime:null,feedError:false,loading:true,
  watch:Array.isArray(load('watch',[]))?load('watch',[]):[],
- holdings:Array.isArray(load('holdings',[]))?load('holdings',[]):[],
+ holdings:loadPortfolioHoldings(),
  alerts:Array.isArray(load('alerts',[]))?load('alerts',[]):[],
  theme:load('theme','dark'),themeMode:load('themeMode',load('theme','dark')),clickSound:load('clickSound',true),clickVolume:load('clickVolume',70),brightness:load('brightness',100),adaptiveBrightness:load('adaptiveBrightness',false)===true,region:null,marketFilter:'all',marketSearch:'',dialogId:null,chartShift:0,chartHover:null,
  land:'',searchResults:[],errorText:'',cryptoExpanded:false,
@@ -1027,8 +1040,31 @@ function watchlistPage(){
 // Portfolio records remain local to the browser. Every add/edit/delete writes
 // a complete validated next array before changing in-memory holdings.
 let portfolioEditIndex=-1;
+function portfolioStorageTemporary(){
+ try{return sessionStorage.getItem(STORE+'holdings-session')!==null}
+ catch(_e){return false}
+}
+function portfolioFormError(message,fieldId){
+ const box=$('#portfolioFormFeedback');
+ if(box){
+  box.textContent=message;
+  box.hidden=false;
+  box.classList.add('is-error');
+ }
+ if(fieldId){
+  const input=$('#'+fieldId);
+  if(input){input.setAttribute('aria-invalid','true');input.focus()}
+ }
+ toast(message);
+}
 function parsePortfolioNumber(value){
- const raw=String(value==null?'':value).trim().replace(/[\s\u00a0]/g,'');
+ let raw=String(value==null?'':value).trim().replace(/[\s\u00a0\u202f]/g,'');
+ raw=raw.replace(/^(?:USD|USDT|EUR|€|\$)/i,'').replace(/(?:USD|USDT|EUR|€|\$)$/i,'');
+ // Preserve scientific notation for very small crypto amounts during edits.
+ if(/^\d+(?:[.,]\d+)?e[+-]?\d+$/i.test(raw)){
+  const scientific=Number(raw.replace(',','.'));
+  return Number.isFinite(scientific)&&scientific>=0?scientific:NaN;
+ }
  if(!raw||!/^[0-9.,]+$/.test(raw))return NaN;
  const commas=(raw.match(/,/g)||[]).length,dots=(raw.match(/\./g)||[]).length;
  let normalized=raw;
@@ -1099,13 +1135,27 @@ function portfolioTotals(){
   priced,missing:rows.length-priced-invalid,invalid,count:rows.length};
 }
 function persistPortfolio(next){
+ const serialized=JSON.stringify(next),key=STORE+'holdings';
  try{
-  localStorage.setItem(STORE+'holdings',JSON.stringify(next));
+  localStorage.setItem(key,serialized);
+  if(localStorage.getItem(key)!==serialized)throw Error('Persistenza non verificata');
+  // Remove a previous temporary copy only after successfully writing locally.
+  try{sessionStorage.removeItem(STORE+'holdings-session')}catch(_error){}
   state.holdings=next;
   return true;
- }catch(_error){
-  toast('Salvataggio non riuscito. Verifica lo spazio disponibile nel browser.');
-  return false;
+ }catch(_storageError){
+  // Browsers can disable localStorage for file://, private browsing or policies.
+  // Allow session-only use, but display a prominent warning (not a false
+  // "saved permanently" confirmation).
+  try{
+   sessionStorage.setItem(STORE+'holdings-session',serialized);
+   if(sessionStorage.getItem(STORE+'holdings-session')!==serialized)throw Error('Sessione non verificata');
+   state.holdings=next;
+   return true;
+  }catch(_sessionError){
+   portfolioFormError('Il browser blocca il salvataggio locale. Abilita i dati dei siti oppure apri il sito tramite HTTPS; nessuna posizione è stata salvata.');
+   return false;
+  }
  }
 }
 function portfolioPage(){
@@ -1130,7 +1180,7 @@ function portfolioPage(){
  '<div class="portfolio-section-heading"><div><h3 id="portfolioFormTitle">'+(editing?'Modifica posizione':'Aggiungi una posizione')+'</h3>'+
  '<p>Quantità e prezzi in USD. Puoi usare la virgola o il punto come separatore decimale.</p></div>'+
  '<button type="button" class="btn btn-small" data-portfolio-refresh="1">'+sym('refresh')+' Aggiorna prezzi</button></div>'+
- '<form id="portfolioForm" class="form-grid">'+
+ '<form id="portfolioForm" class="form-grid" novalidate>'+
  '<div class="form-field"><label for="holdingAsset">Criptovaluta o strumento</label>'+
  '<div class="holding-asset-selector"><span id="holdingAssetLogo">'+assetLogo(ASSET_BY_ID[chosen])+'</span>'+
  '<select id="holdingAsset" name="id" required>'+opts+'</select></div></div>'+
@@ -1147,6 +1197,7 @@ function portfolioPage(){
  '<div class="portfolio-entry-preview"><span>Capitale di carico della posizione</span>'+
  '<output id="holdingCostPreview">'+(editing&&portfolioRow(edit,portfolioEditIndex).valid?
   portfolioUsd(portfolioRow(edit,portfolioEditIndex).invested):'—')+'</output></div>'+
+ '<div id="portfolioFormFeedback" class="portfolio-form-feedback" role="alert" hidden></div>'+
  '<div class="form-actions"><button class="btn btn-primary" type="submit">'+sym(editing?'check':'plus')+
  (editing?' Salva modifiche':' Aggiungi posizione')+'</button>'+
  (editing?'<button type="button" class="btn btn-small" data-portfolio-cancel="1">Annulla modifica</button>':'')+
@@ -1173,6 +1224,7 @@ function portfolioPage(){
    '<button class="btn btn-small" type="button" data-delete-holding="'+r.index+'">Rimuovi</button></div></td></tr>';
  }).join('')+'</tbody></table></div>':
  '<div class="empty-state"><h3>Nessuna posizione</h3><p>Seleziona uno strumento e inserisci la quantità e il prezzo di acquisto.</p></div>')+
+ (portfolioStorageTemporary()?'<p class="portfolio-storage-warning" role="status">Attenzione: il browser non consente il salvataggio permanente. Le posizioni sono conservate soltanto per questa sessione; possono scomparire alla chiusura del browser. Per conservarle, abilita la memoria dei siti o usa la versione HTTPS.</p>':'')+
  '<p class="notice">I dati del portafoglio sono salvati soltanto in questo browser. Prezzi di mercato disponibili secondo la fonte, anche ritardati; quelli manuali non si aggiornano da soli. P/L escluso per le posizioni senza prezzo. Non include commissioni, imposte o cambi valutari.</p>'+
  '</section>';
 }
