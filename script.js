@@ -2544,6 +2544,103 @@ async function loadOreChartHistory(force=false){
 }
 // Shared timeframe controls for every asset class; crypto continues to use
 // its Binance/LBank route, while other markets use verified Yahoo snapshots.
+function chartReadAllCandles(raw){
+ if(!Array.isArray(raw))return [];
+ const seen=new Map();
+ const latest=Math.floor(Date.now()/1000)+86400*32;
+ for(const item of raw){
+  if(!Array.isArray(item)||item.length<5)continue;
+  const t=Number(item[0]),o=Number(item[1]),h=Number(item[2]),
+   l=Number(item[3]),close=Number(item[4]);
+  // Supports indices with genuine pre-1970 timestamps, down to 1900.
+  if(![t,o,h,l,close].every(Number.isFinite)||
+   t < -2208988800||t > latest||o<=0||h<=0||l<=0||close<=0||
+   h<Math.max(o,close)||l>Math.min(o,close))continue;
+  seen.set(t,{t,o,h,l,c:close});
+ }
+ return [...seen.values()].sort((a,b)=>a.t-b.t);
+}
+async function loadAllChartHistory(force=false){
+ const asset=ASSET_BY_ID[state.dialogId];
+ if(!chartSupportsRanges(asset)||chartRange!=='MAX')return;
+ const id=asset.id;
+ const seq=++chartFetchState.sequence;
+ if(chartFetchState.abort)chartFetchState.abort.abort();
+ chartFetchState.abort=null;
+ const key=id+':MAX',cached=chartFetchState.cache.get(key);
+ if(!force&&cached&&Date.now()-cached.loadedAt<300000){
+  chartSeries={...cached,id,range:'MAX',loading:false,error:''};
+  updateChartHistoryStatus();
+  requestAnimationFrame(drawChart);
+  return;
+ }
+ chartSeries={id,range:'MAX',candles:[],source:'',loading:true,error:'',partial:false};
+ updateChartHistoryStatus();
+ requestAnimationFrame(drawChart);
+ const isOre=id==='ore',isCrypto=asset.group==='crypto';
+ const path=isOre?'./ore-chart-history.json':
+  isCrypto?'./chart-history/crypto/'+encodeURIComponent(id)+'.json':
+  './chart-history/'+encodeURIComponent(id)+'.json';
+ const controller=new AbortController();
+ chartFetchState.abort=controller;
+ const timeout=setTimeout(()=>controller.abort(),10500);
+ let candles=[],source='',partial=false;
+ let failure='Lo storico completo disponibile non è stato ancora pubblicato per '+asset.name+'.';
+ try{
+  const url=path+'?v='+Math.floor(Date.now()/300000);
+  const response=await fetch(url,{cache:'no-store',signal:controller.signal});
+  if(!response.ok)throw Error('Archivio storico HTTP '+response.status);
+  const data=await response.json();
+  let rows;
+  if(isOre){
+   if(!data||data.pair!=='ORE/USDT'||data.mint!=='oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp')throw Error('Identità ORE non verificata');
+   const resolution=data.sets&&data.sets.day1?'day1':'hour4';
+   rows=data.sets&&data.sets[resolution]&&data.sets[resolution].candles;
+   source='LBank Spot · ORE/USDT · OHLC '+(resolution==='day1'?'giornaliero':'4 ore');
+   partial=resolution!=='day1';
+  }else if(isCrypto){
+   if(!data||data.id!==id)throw Error('Crypto diversa da quella selezionata');
+   rows=data.candles;
+   source=data.source||'Storico crypto verificato';
+  }else{
+   if(!data||data.id!==id||data.symbol!==asset.symbol)throw Error('Storico diverso dallo strumento');
+   rows=data.sets&&data.sets['1mo']&&data.sets['1mo'].candles;
+   source='Yahoo Finance · OHLC mensile · massimo storico disponibile';
+  }
+  candles=chartReadAllCandles(rows);
+  if(candles.length<2)throw Error('Candele storiche insufficienti');
+ }catch(error){
+  candles=[];
+  failure='Storico MAX di '+asset.name+' non disponibile o ancora in preparazione. Aggiorna più tardi.';
+ }finally{clearTimeout(timeout)}
+ if(seq!==chartFetchState.sequence)return;
+ if(candles.length<2){
+  // Explicitly labelled partial fallback: a recent quote archive is never
+  // presented as the entire lifetime of the selected financial instrument.
+  const q=quote(id);
+  candles=chartReadAllCandles(
+   (Array.isArray(q&&q.candles)?q.candles:[]).map(row=>[
+    row.t,row.o,row.h,row.l,row.c
+   ])
+  );
+  source='Ultime candele disponibili · '+(q&&q.candleSource||'feed quotazioni');
+  partial=true;
+ }
+ if(candles.length>=2){
+  const result={id,range:'MAX',candles,visibleCount:candles.length,
+   source,partial,loading:false,error:partial?failure:'',
+   loadedAt:Date.now()};
+  chartSeries=result;
+  if(!partial){
+   chartFetchState.cache.set(key,result);
+   if(chartFetchState.cache.size>90)chartFetchState.cache.delete(chartFetchState.cache.keys().next().value);
+  }
+ }else{
+  chartSeries={id,range:'MAX',candles:[],source:'',loading:false,error:failure,partial:false};
+ }
+ updateChartHistoryStatus();
+ requestAnimationFrame(drawChart);
+}
 function loadChartHistory(force=false){
  const asset=ASSET_BY_ID[state.dialogId];
  if(!chartSupportsRanges(asset))return;
