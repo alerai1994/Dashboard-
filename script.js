@@ -2369,6 +2369,8 @@ function selectChartRange(range){
 async function loadCryptoChartHistory(force=false){
  const asset=ASSET_BY_ID[state.dialogId];
  if(!asset||asset.group!=='crypto')return;
+ // ORE/USDT is only on LBank; same-site verified candles survive CORS blocks.
+ if(asset.id==='ore')return loadOreChartHistory(force);
  const selected=chartRange,period=CHART_PERIOD_BY_ID[selected];
  const seq=++chartFetchState.sequence;
  if(chartFetchState.abort)chartFetchState.abort.abort();
@@ -2426,6 +2428,111 @@ async function loadCryptoChartHistory(force=false){
  chartSeries={id:asset.id,range:selected,candles:snapshot,source:q&&q.candleSource||'Snapshot di mercato',
   loading:false,error:snapshot.length>=2?'':failure,partial:snapshot.length>=2};
  if(snapshot.length<2)chartSeries.candles=[];
+ updateChartHistoryStatus();
+ requestAnimationFrame(drawChart);
+}
+async function loadOreChartHistory(force=false){
+ const asset=ASSET_BY_ID[state.dialogId];
+ if(!asset||asset.id!=='ore')return;
+ const selected=chartRange,period=CHART_PERIOD_BY_ID[selected];
+ if(!period)return;
+ const seq=++chartFetchState.sequence;
+ if(chartFetchState.abort)chartFetchState.abort.abort();
+ chartFetchState.abort=null;
+ const key='ore:'+selected,cached=chartFetchState.cache.get(key);
+ if(!force&&cached&&Date.now()-cached.loadedAt<60000){
+  chartSeries={...cached,id:'ore',range:selected,loading:false,error:''};
+  updateChartHistoryStatus();
+  requestAnimationFrame(drawChart);
+  return;
+ }
+ chartSeries={id:'ore',range:selected,candles:[],source:'',loading:true,error:'',partial:false};
+ updateChartHistoryStatus();
+ requestAnimationFrame(drawChart);
+ const now=Date.now();
+ const endpoints=chartMarketUrls(asset,period,now-period.step*750,now);
+ const methods=force?['live','snapshot']:['snapshot','live'];
+ let error='Candele ORE/USDT non disponibili dalle fonti LBank.';
+ for(const method of methods){
+  if(seq!==chartFetchState.sequence)return;
+  const candidates=method==='snapshot'?
+   [{source:'',url:'./ore-chart-history.json?v='+Math.floor(now/60000)}]:
+   endpoints;
+  for(const candidate of candidates){
+   if(seq!==chartFetchState.sequence)return;
+   const controller=new AbortController();
+   chartFetchState.abort=controller;
+   const timeout=setTimeout(()=>controller.abort(),method==='snapshot'?6000:6500);
+   try{
+    const response=await fetch(candidate.url,{signal:controller.signal,cache:'no-store'});
+    if(!response.ok)throw Error('HTTP '+response.status);
+    const payload=await response.json();
+    let raw,source;
+    if(method==='snapshot'){
+     if(!payload||payload.mint!=='oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp'||
+      payload.pair!=='ORE/USDT'||!payload.sets||
+      !payload.sets[period.lbank])throw Error('Snapshot ORE non presente');
+     const set=payload.sets[period.lbank];
+     raw=set.candles;
+     source='LBank Spot · ORE/USDT · '+period.lbank+' · dati verificati';
+    }else{
+     if(!payload||typeof payload!=='object'&& !Array.isArray(payload))throw Error('Risposta LBank non valida');
+     if(!Array.isArray(payload)&&
+        (Number(payload.error_code||0)!==0||
+         String(payload.result??'true').toLowerCase()==='false'))throw Error('Errore LBank');
+     raw=Array.isArray(payload)?payload:payload.data;
+     source=candidate.source+' · '+period.lbank;
+    }
+    const bars=chartNormalizeCandles(raw,'LBank',0,now,period.step);
+    if(bars.length<2)throw Error('Candele OHLC insufficienti');
+    const last=bars[bars.length-1].t*1000;
+    const from=chartStartTime(period,last);
+    const visibleCount=bars.filter(bar=>bar.t*1000>=from&&bar.t*1000<=now).length;
+    if(visibleCount<2)throw Error('Candele insufficienti per '+selected);
+    if(seq!==chartFetchState.sequence)return;
+    const delayed=now-last>Math.max(900000,period.step*2);
+    const lastText=new Intl.DateTimeFormat('it-IT',{
+     day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'
+    }).format(new Date(last));
+    const result={id:'ore',range:selected,candles:bars,visibleCount,
+     source:source+' · '+(delayed?'ultima candela storica ':'ultima candela ')+lastText,
+     loading:false,error:'',partial:false,loadedAt:Date.now()};
+    chartSeries=result;
+    chartFetchState.cache.set(key,result);
+    if(chartFetchState.cache.size>90)chartFetchState.cache.delete(chartFetchState.cache.keys().next().value);
+    updateChartHistoryStatus();
+    requestAnimationFrame(drawChart);
+    return;
+   }catch(err){
+    error='Storico ORE/USDT '+selected+' non disponibile (LBank). Verifica la connessione o riprova.';
+   }finally{clearTimeout(timeout)}
+  }
+ }
+ if(seq!==chartFetchState.sequence)return;
+ // A genuine daily snapshot may still exist while LBank is unreachable.
+ // Never stretch daily candles into invented hourly candles.
+ const q=quote('ore'),old=Array.isArray(q&&q.candles)?q.candles:[];
+ const daily=(period.months||period.ms>=604800000)?
+  old.map(bar=>({t:Number(bar.t),o:Number(bar.o),h:Number(bar.h),
+   l:Number(bar.l),c:Number(bar.c)})).filter(bar=>
+    [bar.t,bar.o,bar.h,bar.l,bar.c].every(Number.isFinite)&&
+    bar.t>946684800&&bar.o>0&&bar.l>0&&
+    bar.h>=Math.max(bar.o,bar.c)&&bar.l<=Math.min(bar.o,bar.c)
+   ).sort((a,b)=>a.t-b.t):[];
+ if(daily.length>=2){
+  const latest=daily[daily.length-1].t*1000;
+  const from=chartStartTime(period,latest);
+  const count=daily.filter(bar=>bar.t*1000>=from&&bar.t*1000<=now).length;
+  if(count>=2){
+   chartSeries={id:'ore',range:selected,candles:daily,visibleCount:count,
+    source:'Candele giornaliere '+(q&&q.candleSource||'della fonte quotazioni'),
+    loading:false,error:'',partial:true,loadedAt:Date.now()};
+   updateChartHistoryStatus();
+   requestAnimationFrame(drawChart);
+   return;
+  }
+ }
+ chartSeries={id:'ore',range:selected,candles:[],source:'',loading:false,error,partial:false};
  updateChartHistoryStatus();
  requestAnimationFrame(drawChart);
 }
@@ -2588,7 +2695,9 @@ function refreshDialog(){
    '">'+period.id+'</button>').join('')+
   '<button class="chart-period chart-period-refresh" type="button" data-chart-refresh="1" title="Aggiorna le candele del periodo selezionato">↻ Aggiorna</button></div>':
   '<div><button class="btn btn-small" type="button" data-pan="-20">◀ Storico</button> <button class="btn btn-small" type="button" data-pan="20">Recenti ▶</button> <button class="btn btn-small" type="button" data-pan="reset">Oggi</button></div>')+'</div>'+
- '<div class="chart-help">'+(isCrypto?'Seleziona un periodo da 1h a 3M. Fuori orario di mercato, i periodi brevi mostrano l’ultima sessione disponibile, con data indicata. ':'')+'Trascina il grafico in orizzontale per scorrere lo storico. Nessuno zoom. Le medie e gli indicatori sono mostrati solo quando le serie contengono dati sufficienti.</div>'+
+ '<div class="chart-help">'+(isCrypto?(a.id==='ore'?
+ 'ORE/USDT: storico LBank Spot disponibile 24 ore su 24. Gli intervalli mostrano candele reali e la data dell’ultima rilevazione. ':
+ 'Seleziona un periodo da 1h a 3M. Fuori orario di mercato, i periodi brevi mostrano l’ultima sessione disponibile, con data indicata. '):'')+'Trascina il grafico in orizzontale per scorrere lo storico. Nessuno zoom. Le medie e gli indicatori sono mostrati solo quando le serie contengono dati sufficienti.</div>'+
  '<div class="chart-source"><span'+(isCrypto?' id="chartHistorySource" role="status" aria-live="polite"':'')+'>'+(isCrypto?'Caricamento delle candele del periodo '+chartRange+'…':
   'Prezzi: Yahoo Finance. Candele OHLC: '+esc(q&&q.candleSource||'Yahoo Finance, se disponibile')+'. Storico non necessariamente in tempo reale.')+'</span>'+
  '<a href="'+esc(externalUrl(a))+'" target="_blank" rel="noopener noreferrer">Apri fonte '+sym('external')+'</a></div>';
