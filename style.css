@@ -641,7 +641,7 @@ body.theme-light .market-panel .instrument-row:hover{background:#e7f1f9}
 
 /* Page brightness control: visual dimming only, pointer-transparent and recoverable. */
 :root{--dashboard-dim-opacity:0}
-body::after{content:"";position:fixed;inset:0;z-index:9999;pointer-events:none;background:#000;opacity:var(--dashboard-dim-opacity,0);transition:opacity .08s linear}
+body::after{content:"";position:fixed;inset:0;z-index:9999;pointer-events:none;background:#000;opacity:var(--dashboard-dim-opacity,0);transition:opacity .8s ease}
 .settings-brightness{margin-top:18px}
 .settings-brightness .subnote{margin-top:13px;max-width:630px}
 @media(prefers-reduced-motion:reduce){body::after{transition:none}}

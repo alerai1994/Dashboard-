@@ -1132,12 +1132,12 @@ function settingsPage(){
  '</div>'+
  '<button type="button" data-theme-mode="auto" class="settings-auto-theme'+(state.themeMode==='auto'?' is-selected':'')+'" aria-pressed="'+(state.themeMode==='auto')+'"><span class="settings-choice-icon" aria-hidden="true">◐</span><span><strong>Automatico</strong><small>Segue il tema chiaro/scuro del dispositivo</small></span><span class="settings-auto-state">'+(state.themeMode==='auto'?'Attivo':'Seleziona')+'</span></button>'+
  '<div class="settings-volume settings-brightness">'+
- '<div class="settings-sound-row settings-adaptive-row"><div><h3>Luminosità adattiva</h3><p class="subnote">Adatta automaticamente la pagina all’orario locale e al tema selezionato. Non utilizza il sensore di luce del dispositivo.</p></div>'+
+ '<div class="settings-sound-row settings-adaptive-row"><div><h3>Luminosità adattiva</h3><p class="subnote">Giorno 07:00–18:00: luminosa · Sera 18:00–22:00: attenuata · Notte 22:00–07:00: più soffusa. Cambi graduali automatici, secondo l’ora del dispositivo.</p></div>'+
  '<button type="button" data-adaptive-brightness="1" class="settings-sound-toggle'+(state.adaptiveBrightness?' is-on':'')+'" role="switch" aria-checked="'+state.adaptiveBrightness+'" aria-label="Luminosità adattiva">'+(state.adaptiveBrightness?'Attiva':'Disattiva')+'</button></div>'+
- '<div class="settings-volume-heading"><label for="brightnessSlider">Luminosità della dashboard</label><output id="brightnessValue" for="brightnessSlider">'+effectiveBrightness()+'%'+(state.adaptiveBrightness?' · Auto':'')+'</output></div>'+
+ '<div class="settings-volume-heading"><label for="brightnessSlider">Luminosità della dashboard</label><output id="brightnessValue" for="brightnessSlider">'+brightnessOutput()+'</output></div>'+
  '<input type="range" id="brightnessSlider" min="0" max="100" step="1" value="'+effectiveBrightness()+'" style="--volume-progress:'+effectiveBrightness()+'%" aria-label="Luminosità della dashboard" '+(state.adaptiveBrightness?'disabled':'')+'>'+
  '<div class="settings-volume-scale"><span>0%</span><span>100%</span></div>'+
- '<p class="subnote">'+(state.adaptiveBrightness?'Luminosità automatica attiva: il cursore manuale è temporaneamente disabilitato. Disattivala per riprendere il controllo.':'Regola la luminosità della pagina, non quella fisica dello schermo. Al minimo resta leggibile per poterla aumentare di nuovo.')+'</p></div></section>'+
+ '<p class="subnote">'+(state.adaptiveBrightness?'Luminosità adattiva attiva: la pagina cambia automaticamente tra giorno, sera e notte. Disattivala per riprendere il controllo manuale.':'Regola la luminosità della pagina, non quella fisica dello schermo. Al minimo resta leggibile per poterla aumentare di nuovo.')+'</p></div></section>'+
  '<section class="content-card panel settings-preferences"><div class="settings-sound-row"><div><h3>Suono al clic</h3><p class="subnote">Un breve suono quando premi i pulsanti. Puoi disattivarlo quando vuoi.</p></div>'+
  '<button type="button" data-sound-toggle="1" class="settings-sound-toggle'+(state.clickSound?' is-on':'')+'" role="switch" aria-checked="'+state.clickSound+'" aria-label="Suono al clic">'+(state.clickSound?'Attivo':'Disattivo')+'</button></div>'+
  '<div class="settings-volume"><div class="settings-volume-heading"><label for="clickVolumeSlider">Volume dei clic</label><output id="clickVolumeValue" for="clickVolumeSlider">'+state.clickVolume+'%</output></div>'+
@@ -1179,14 +1179,28 @@ function navigate(page){
  render();
  window.scrollTo({top:0,behavior:'auto'});
 }
+function adaptiveBrightnessPhase(now=new Date()){
+ const minute=now.getHours()*60+now.getMinutes();
+ return minute>=7*60&&minute<18*60?'Giorno':minute>=18*60&&minute<22*60?'Sera':'Notte';
+}
 function adaptiveBrightnessLevel(now=new Date()){
- // Conservative day/night profile from the user's local clock; no browser sensor access.
- const hour=now.getHours();
- const base=hour>=8&&hour<18?100:hour>=18&&hour<22?82:hour>=6&&hour<8?88:68;
- return state.theme==='light'?base:Math.max(58,base-5);
+ // Browser-local clock, never the camera or light sensor; three clear brightness zones.
+ // Blend around the transitions so brightness never jumps suddenly at 07, 18 or 22.
+ const minute=now.getHours()*60+now.getMinutes();
+ const blend=(value,from,to)=>{const t=Math.max(0,Math.min(1,value));return Math.round(from+(to-from)*t*t*(3-2*t));};
+ if(minute<6*60+30)return 62;                        // Notte (00:00-06:30)
+ if(minute<7*60+30)return blend((minute-390)/60,62,100); // Alba: 06:30-07:30
+ if(minute<17*60+30)return 100;                      // Giorno pieno
+ if(minute<18*60+30)return blend((minute-1050)/60,100,82); // Tramonto: 17:30-18:30
+ if(minute<21*60+30)return 82;                       // Sera
+ if(minute<22*60+30)return blend((minute-1290)/60,82,62); // Sera -> notte
+ return 62;                                          // Notte (22:30-24:00)
 }
 function effectiveBrightness(){
  return state.adaptiveBrightness?adaptiveBrightnessLevel():state.brightness;
+}
+function brightnessOutput(){
+ return effectiveBrightness()+'%'+(state.adaptiveBrightness?' · '+adaptiveBrightnessPhase():'');
 }
 function applyBrightness(){
  // Dims only the dashboard overlay; the physical device brightness is unchanged.
@@ -1198,7 +1212,7 @@ function applyBrightness(){
   slider.disabled=state.adaptiveBrightness;
   slider.style.setProperty('--volume-progress',level+'%');
  }
- if(output)output.textContent=level+'%'+(state.adaptiveBrightness?' · Auto':'');
+ if(output)output.textContent=brightnessOutput();
 }
 function applyTheme(){
  state.theme=resolvedTheme(state.themeMode);
