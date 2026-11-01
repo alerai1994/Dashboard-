@@ -1551,7 +1551,10 @@ function startOrderBookLive(force=false){
   orderBookLive.retryAt=Date.now()+30000;return;
  }
  try{
-  const ws=new WebSocket(config.url);
+  const endpoint=config.kind==='binance'&&orderBookLive.attempt%2===1?
+   config.url.replace('wss://data-stream.binance.vision/','wss://stream.binance.com:9443/'):
+   config.url;
+  const ws=new WebSocket(endpoint);
   orderBookLive.socket=ws;
   ws.onopen=()=>{
    if(orderBookLive.session!==session)return;
@@ -1573,7 +1576,8 @@ function startOrderBookLive(force=false){
    if(config.kind==='binance'){
     if(!msg||typeof msg!=='object')return;
     const d=msg.data||msg;
-    if(msg.stream&&msg.stream.includes('@depth20@')&&Array.isArray(d.bids)&&Array.isArray(d.asks))
+    if(msg.stream&&msg.stream.startsWith(config.symbol.toLowerCase()+'@depth20@')&&
+       Array.isArray(d.bids)&&Array.isArray(d.asks))
      receiveLiveBook(coin,config,d.bids,d.asks,d.lastUpdateId);
     else if(d.e==='trade'&&d.s===config.symbol)receiveLiveTrade(coin,config,d.p);
    }else if(config.kind==='gate'){
@@ -1584,7 +1588,7 @@ function startOrderBookLive(force=false){
     else if(msg.channel==='spot.trades'&&d.currency_pair===config.pairCode)
      receiveLiveTrade(coin,config,d.price);
    }else if(config.kind==='lbank'){
-    if(msg&&msg.action==='ping'&&msg.ping){
+    if(msg&&msg.ping&&(msg.action==='ping'||!msg.action)){
      if(ws.readyState===1)ws.send(JSON.stringify({action:'pong',pong:msg.ping}));
      return;
     }
@@ -1614,6 +1618,7 @@ function keepOrderBookLive(){
   const noDataFor=Date.now()-(orderBookLive.lastDepthAt||orderBookLive.startedAt);
   if(noDataFor<15000)return;
   stopOrderBookLive();
+  orderBookLive.attempt+=1;
   orderBookLive.retryAt=Date.now()+5000;
   scheduleOrderBookLivePaint();
   return;
