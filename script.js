@@ -2271,6 +2271,161 @@ function externalUrl(a){
  if(a.group==='crypto' && a.coingeckoId)return 'https://www.coingecko.com/en/coins/'+encodeURIComponent(a.coingeckoId);
  return 'https://finance.yahoo.com/quote/'+encodeURIComponent(a.symbol)+'/';
 }
+// Historical ranges represent the visible window, not a made-up candle interval.
+// Choose a compatible exchange granularity to keep OHLC, EMA, RSI and MACD meaningful.
+const CHART_PERIODS=[
+ {id:'1h',ms:3600000,interval:'1m',lbank:'minute1',step:60000},
+ {id:'2h',ms:7200000,interval:'1m',lbank:'minute1',step:60000},
+ {id:'3h',ms:10800000,interval:'1m',lbank:'minute1',step:60000},
+ {id:'4h',ms:14400000,interval:'1m',lbank:'minute1',step:60000},
+ {id:'5h',ms:18000000,interval:'1m',lbank:'minute1',step:60000},
+ {id:'12h',ms:43200000,interval:'5m',lbank:'minute5',step:300000},
+ {id:'1D',ms:86400000,interval:'5m',lbank:'minute5',step:300000},
+ {id:'2D',ms:172800000,interval:'15m',lbank:'minute15',step:900000},
+ {id:'3D',ms:259200000,interval:'15m',lbank:'minute15',step:900000},
+ {id:'1W',ms:604800000,interval:'1h',lbank:'hour1',step:3600000},
+ {id:'2W',ms:1209600000,interval:'1h',lbank:'hour1',step:3600000},
+ {id:'1M',months:1,interval:'4h',lbank:'hour4',step:14400000},
+ {id:'2M',months:2,interval:'4h',lbank:'hour4',step:14400000},
+ {id:'3M',months:3,interval:'8h',lbank:'hour8',step:28800000}
+];
+const CHART_PERIOD_BY_ID=Object.fromEntries(CHART_PERIODS.map(p=>[p.id,p]));
+let chartRange='1D';
+let chartSeries={id:null,range:null,candles:[],source:'',loading:false,error:'',partial:false};
+const chartFetchState={sequence:0,abort:null,cache:new Map()};
+function chartStartTime(period,now){
+ if(!period.months)return now-period.ms;
+ const date=new Date(now);
+ date.setUTCMonth(date.getUTCMonth()-period.months);
+ return date.getTime();
+}
+function chartNormalizeCandles(raw,venue,from,to,step){
+ if(!Array.isArray(raw))return [];
+ const parsed=[];
+ for(const row of raw){
+  if(!Array.isArray(row)||row.length<5)continue;
+  const t=Number(row[0])/(venue==='Binance'?1000:1);
+  const o=Number(row[1]),h=Number(row[2]),l=Number(row[3]),cl=Number(row[4]);
+  if(![t,o,h,l,cl].every(Number.isFinite)||o<=0||h<=0||l<=0||cl<=0||
+    h<Math.max(o,cl)||l>Math.min(o,cl)||
+    t*1000<from-step||t*1000>to+step)continue;
+  parsed.push({t,o,h,l,c:cl});
+ }
+ parsed.sort((a,b)=>a.t-b.t);
+ return parsed.filter((row,i)=>i===0||row.t!==parsed[i-1].t);
+}
+function chartMarketUrls(asset,period,from,to){
+ const count=Math.min(750,Math.max(32,Math.ceil((to-from)/period.step)+4));
+ const symbol=asset.id==='ore'?'ore_usdt':asset.id.toUpperCase()+'_usdt';
+ const params='symbol='+encodeURIComponent(symbol)+'&type='+period.lbank+
+  '&size='+count+'&time='+Math.floor((from-period.step)/1000);
+ if(asset.id==='ore'){
+  return ['https://api.lbank.info','https://api.lbkex.com'].map(domain=>({
+   venue:'LBank',source:'LBank Spot · ORE/USDT',url:domain+'/v2/kline.do?'+params
+  }));
+ }
+ const binanceSymbol=asset.id.toUpperCase()+'USDT';
+ const binanceParams='symbol='+encodeURIComponent(binanceSymbol)+'&interval='+period.interval+
+  '&startTime='+Math.max(0,from-period.step)+'&endTime='+to+'&limit='+Math.min(1000,count);
+ const first=['https://api.binance.com','https://api1.binance.com'].map(domain=>({
+  venue:'Binance',source:'Binance Spot · '+binanceSymbol,url:domain+'/api/v3/klines?'+binanceParams
+ }));
+ const second=['https://api.lbank.info'].map(domain=>({
+  venue:'LBank',source:'LBank Spot · '+symbol.toUpperCase(),url:domain+'/v2/kline.do?'+params
+ }));
+ return [...first,...second];
+}
+function updateChartHistoryStatus(){
+ const badge=$('#chartHistoryBadge'),source=$('#chartHistorySource');
+ if(!badge&&!source)return;
+ const same=chartSeries.id===state.dialogId&&chartSeries.range===chartRange;
+ const info=same?chartSeries:null;
+ if(badge){
+  badge.textContent=info&&info.loading?'Caricamento '+chartRange+'…':
+   info&&info.candles.length?chartRange+' · '+info.candles.length+' candele'+(info.partial?' (parziale)':''):
+   chartRange+' · dati non disponibili';
+ }
+ if(source){
+  source.textContent=info&&info.loading?'Richiesta candele reali per '+chartRange+'…':
+   info&&info.candles.length?'Candele OHLC: '+info.source+(info.partial?' · solo storico parziale disponibile':'')+' · periodo '+chartRange:
+   info&&info.error?info.error:'Dati storici non ancora disponibili per '+chartRange;
+ }
+}
+function selectChartRange(range){
+ const a=ASSET_BY_ID[state.dialogId];
+ if(!a||a.group!=='crypto'||!CHART_PERIOD_BY_ID[range])return;
+ chartRange=range;
+ state.chartShift=0;state.chartHover=null;
+ $('#assetDialog [data-chart-range]').forEach(button=>{
+  const active=button.dataset.chartRange===range;
+  button.classList.toggle('active',active);
+  button.setAttribute('aria-pressed',String(active));
+ });
+ loadCryptoChartHistory();
+}
+async function loadCryptoChartHistory(force=false){
+ const asset=ASSET_BY_ID[state.dialogId];
+ if(!asset||asset.group!=='crypto')return;
+ const selected=chartRange,period=CHART_PERIOD_BY_ID[selected];
+ const seq=++chartFetchState.sequence;
+ if(chartFetchState.abort)chartFetchState.abort.abort();
+ chartFetchState.abort=null;
+ const key=asset.id+':'+selected,cached=chartFetchState.cache.get(key);
+ if(!force&&cached&&Date.now()-cached.loadedAt<60000){
+  chartSeries={...cached,id:asset.id,range:selected,loading:false,error:''};
+  updateChartHistoryStatus();
+  requestAnimationFrame(drawChart);
+  return;
+ }
+ chartSeries={id:asset.id,range:selected,candles:[],source:'',loading:true,error:'',partial:false};
+ updateChartHistoryStatus();
+ requestAnimationFrame(drawChart);
+ const now=Date.now(),from=chartStartTime(period,now);
+ let failure='Impossibile ricevere le candele OHLC per '+selected+' dalle fonti disponibili.';
+ for(const endpoint of chartMarketUrls(asset,period,from,now)){
+  if(seq!==chartFetchState.sequence)return;
+  const controller=new AbortController();
+  chartFetchState.abort=controller;
+  const timeout=setTimeout(()=>controller.abort(),6500);
+  try{
+   const response=await fetch(endpoint.url,{signal:controller.signal,cache:'no-store'});
+   if(!response.ok)throw new Error('HTTP '+response.status);
+   const payload=await response.json();
+   if(endpoint.venue==='LBank'&&payload&&!Array.isArray(payload)&&
+       payload.error_code!==undefined&&Number(payload.error_code)!==0){
+    throw new Error('Mercato LBank non disponibile');
+   }
+   const raw=endpoint.venue==='Binance'?payload:
+    (Array.isArray(payload)?payload:payload&&payload.data);
+   const candles=chartNormalizeCandles(raw,endpoint.venue,from,now,period.step);
+   if(candles.length<2)throw new Error('Candele insufficienti');
+   if(seq!==chartFetchState.sequence)return;
+   const result={id:asset.id,range:selected,candles,source:endpoint.source,
+    loading:false,error:'',partial:false,loadedAt:Date.now()};
+   chartSeries=result;
+   chartFetchState.cache.set(key,result);
+   if(chartFetchState.cache.size>35)chartFetchState.cache.delete(chartFetchState.cache.keys().next().value);
+   updateChartHistoryStatus();
+   requestAnimationFrame(drawChart);
+   return;
+  }catch(err){
+   failure='Impossibile caricare '+selected+' da Binance/LBank. Verifica rete o disponibilità del mercato.';
+  }finally{clearTimeout(timeout)}
+ }
+ if(seq!==chartFetchState.sequence)return;
+ // Only use authenticated snapshot OHLC timestamps falling inside the chosen
+ // period; never stretch daily prices into fictitious minute candles.
+ const q=quote(asset.id),fallback=Array.isArray(q&&q.candles)?q.candles:[];
+ const snapshot=period.ms>=604800000||period.months?
+  fallback.map(x=>({t:Number(x.t),o:Number(x.o),h:Number(x.h),l:Number(x.l),c:Number(x.c)}))
+   .filter(x=>[x.t,x.o,x.h,x.l,x.c].every(Number.isFinite)&&x.o>0&&x.h>=Math.max(x.o,x.c)&&
+    x.l>0&&x.l<=Math.min(x.o,x.c)&&x.t*1000>=from&&x.t*1000<=now):[];
+ chartSeries={id:asset.id,range:selected,candles:snapshot,source:q&&q.candleSource||'Snapshot di mercato',
+  loading:false,error:snapshot.length>=2?'':failure,partial:snapshot.length>=2};
+ if(snapshot.length<2)chartSeries.candles=[];
+ updateChartHistoryStatus();
+ requestAnimationFrame(drawChart);
+}
 function openAsset(id){
  const a=ASSET_BY_ID[id];if(!a)return;
  state.dialogId=id;state.chartShift=0;state.chartHover=null;
