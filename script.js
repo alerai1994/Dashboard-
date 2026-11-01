@@ -2050,7 +2050,7 @@ function updateNav(){
 function render(){
  const page=SECTIONS[state.page]||SECTIONS.global;
  $('#pageTitle').textContent=page[0];$('#pageSubtitle').textContent=page[1];
- const hideSearch=['global','settings','analytics','orderbook','news'].includes(state.page);
+ const hideSearch=['global','portfolio','settings','analytics','orderbook','news'].includes(state.page);
  const searchWrap=$('.search-wrap');
  if(searchWrap)searchWrap.hidden=hideSearch;
  if(hideSearch){
