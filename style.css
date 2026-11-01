@@ -1103,3 +1103,78 @@ body.theme-light .vertex-boot-note{color:#56738f}
  .vertex-boot-track span{width:100%}
  .vertex-boot-screen{transition:none}
 }
+
+
+/* Markets > crypto detail: native fullscreen where permitted, viewport fullscreen otherwise. */
+.asset-dialog.crypto-fullscreen{
+  position:fixed;inset:0;margin:0;
+  width:100vw;max-width:100vw;height:100vh;max-height:100vh;
+  width:100dvw;max-width:100dvw;height:100dvh;max-height:100dvh;
+  border:0;border-radius:0;padding:0;
+  background:var(--panel);color:var(--text);
+}
+.asset-dialog.crypto-fullscreen:not([open]){display:none}
+.crypto-fullscreen .dialog-inner{
+  height:100%;max-height:none;width:100%;min-height:0;
+  display:flex;flex-direction:column;overflow-y:auto;
+  padding:clamp(12px,1.6vw,28px) clamp(12px,2.3vw,40px);
+  overscroll-behavior:contain;
+}
+.crypto-fullscreen .dialog-header{flex:0 0 auto;min-height:65px}
+.crypto-fullscreen #dialogBody{
+  min-height:0;flex:1;display:flex;flex-direction:column;
+}
+.crypto-fullscreen .dialog-stats,
+.crypto-fullscreen .chart-toolbar,
+.crypto-fullscreen .chart-help,
+.crypto-fullscreen .chart-source{flex-shrink:0}
+.crypto-fullscreen .chart-frame{
+  flex:1 1 470px;min-height:370px;position:relative;
+  background:var(--panel-2);
+}
+.crypto-fullscreen .chart-frame canvas{
+  width:100%;height:100%;min-height:370px;
+}
+.crypto-fullscreen .chart-time-toolbar{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:12px;flex-wrap:wrap;margin:13px 0 9px;
+}
+.crypto-fullscreen .chart-periods{
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  max-width:100%;
+}
+.crypto-fullscreen .chart-period{
+  min-width:41px;padding:8px 10px;border-radius:9px;
+  border:1px solid var(--line);background:var(--surface);
+  color:var(--text);font-size:12px;font-weight:720;
+  line-height:1.2;white-space:nowrap;
+  transition:background-color .15s,border-color .15s,box-shadow .15s;
+}
+.crypto-fullscreen .chart-period:hover{border-color:var(--brand)}
+.crypto-fullscreen .chart-period.active,
+.crypto-fullscreen .chart-period[aria-pressed="true"]{
+  background:var(--brand);border-color:var(--brand);color:#fff;
+  box-shadow:0 3px 12px #2377d04a;
+}
+.crypto-fullscreen .chart-period-refresh{font-size:11px;margin-left:4px}
+.crypto-fullscreen .chart-source{padding-bottom:4px}
+.crypto-fullscreen .chart-legend{min-width:0}
+@media(max-width:760px){
+ .crypto-fullscreen .dialog-inner{padding:12px 11px 18px}
+ .crypto-fullscreen .dialog-header{gap:10px;align-items:flex-start}
+ .crypto-fullscreen .dialog-header h2{font-size:19px}
+ .crypto-fullscreen .dialog-actions{flex-shrink:0}
+ .crypto-fullscreen .dialog-stats strong{font-size:20px}
+ .crypto-fullscreen .chart-frame{flex:0 0 min(52dvh,460px);min-height:290px}
+ .crypto-fullscreen .chart-frame canvas{min-height:290px}
+ .crypto-fullscreen .chart-time-toolbar{gap:10px}
+ .crypto-fullscreen .chart-periods{
+   flex-wrap:nowrap;overflow-x:auto;width:100%;max-width:100%;
+   padding:2px 0 9px;scrollbar-width:thin;overscroll-behavior-x:contain;
+ }
+ .crypto-fullscreen .chart-period{flex:none;min-width:42px;padding:10px}
+ .crypto-fullscreen .chart-help{line-height:1.45}
+}
+@media(prefers-reduced-motion:reduce){
+ .crypto-fullscreen .chart-period{transition:none}
+}
