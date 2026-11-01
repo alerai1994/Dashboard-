@@ -2704,7 +2704,7 @@ function dismissVertexBoot(){
   window.setTimeout(()=>{if(screen.isConnected)screen.remove()},550);
  };
  const started=Number(window.__vertexBootStartedAt)||Date.now();
- const minimumVisibleMs=50000; // Keep Vertex splash visible for 50 seconds.
+ const minimumVisibleMs=10000; // Keep Vertex splash visible for 10 seconds.
  const wait=Math.max(0,minimumVisibleMs-(Date.now()-started));
  // First paint the functional dashboard, then fade the loading logo out.
  const afterPaint=()=>window.setTimeout(finish,wait);
