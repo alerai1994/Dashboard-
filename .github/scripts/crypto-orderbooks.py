@@ -103,10 +103,12 @@ def sources(cid,symbol):
 
 def current_book(cid,symbol):
     errors=[]
-    for exchange,pair,url in sources(cid,symbol):
+    # Binance officially migrated Toncoin's TON/USDT to GRAM/USDT, 1:1.
+    traded_symbol="GRAM" if cid=="ton" else symbol
+    for exchange,pair,url in sources(cid,traded_symbol):
         try:
             bids,asks=checked(fetch(url),exchange)
-            item={"id":cid,"venue":exchange+" Spot","pair":pair,"unit":symbol,
+            item={"id":cid,"venue":exchange+" Spot","pair":pair,"unit":traded_symbol,
                   "bids":bids,"asks":asks,"capturedAt":now().isoformat()}
             if cid=="ore": item["mint"]=ORE_MINT
             return item,None
@@ -123,11 +125,12 @@ def previous_books():
         return {}
 
 def verified_old(cid,old):
-    if not isinstance(old,dict) or old.get("id")!=cid or old.get("unit")!=ALL[cid]:
+    expected="GRAM" if cid=="ton" else ALL[cid]
+    if not isinstance(old,dict) or old.get("id")!=cid or old.get("unit")!=expected:
         return None
     if cid=="ore" and old.get("mint")!=ORE_MINT:
         return None
-    if old.get("pair")!=ALL[cid]+"/USDT":
+    if old.get("pair")!=expected+"/USDT":
         return None
     try:
         stamp=datetime.fromisoformat(old["capturedAt"].replace("Z","+00:00"))
