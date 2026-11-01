@@ -1050,3 +1050,10 @@ body.theme-light .settings-theme-swatch{border-color:#b2cce1}
  .portfolio-entry-preview output{font-size:18px}
  .portfolio-table{min-width:980px}
 }
+
+
+/* Portfolio save feedback remains visible until the user fixes a field. */
+.portfolio-editor .form-field [aria-invalid="true"]{border-color:var(--red);box-shadow:0 0 0 1px color-mix(in srgb,var(--red) 36%,transparent)}
+.portfolio-form-feedback[hidden]{display:none!important}
+.portfolio-form-feedback{grid-column:1/-1;padding:11px 13px;border:1px solid var(--red);border-radius:9px;background:color-mix(in srgb,var(--red) 8%,var(--panel));color:var(--text);font-size:12px;line-height:1.5}
+.portfolio-storage-warning{padding:13px 15px;margin:12px 0;border:1px solid var(--yellow);border-radius:9px;background:color-mix(in srgb,var(--yellow) 8%,var(--panel));color:var(--text);font-size:12px;line-height:1.6}
