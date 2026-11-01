@@ -1003,3 +1003,14 @@ body.theme-light .settings-theme-swatch{border-color:#b2cce1}
   .ob-book-stack .ob-cumulative-track{height:18px}
  .ob-book-stack .ob-trade-value .ob-trade-number{gap:4px 8px}
 }
+
+
+/* Book connectivity: genuine exchange streaming, REST polling and stale data. */
+.ob-market-status{display:block;font-variant-numeric:tabular-nums;line-height:1.6}
+.ob-market-live{color:var(--green);font-weight:800}
+.ob-market-poll{color:var(--brand);font-weight:800}
+.ob-market-stale{color:var(--yellow);font-weight:800}
+.ob-market-snapshot{color:var(--muted)}
+@media(prefers-reduced-motion:reduce){
+ .ob-book-stack .ob-cumulative-fill{transition:none}
+}
