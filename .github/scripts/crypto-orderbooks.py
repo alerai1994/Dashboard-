@@ -101,6 +101,31 @@ def sources(cid,symbol):
     for venue,pair,url in items:
         yield venue,pair,url
 
+def recent_trade(exchange,pair):
+    """One exchange's latest spot trade/ticker price; never infer it from the book."""
+    name=pair.split("/")[0]
+    symbol=name+"USDT"
+    if exchange=="Binance":
+        raw=fetch("https://data-api.binance.vision/api/v3/ticker/price?"+urlencode({"symbol":symbol}))
+        value=raw.get("price")
+    elif exchange=="MEXC":
+        raw=fetch("https://api.mexc.com/api/v3/ticker/price?"+urlencode({"symbol":symbol}))
+        value=raw.get("price")
+    elif exchange=="Gate":
+        raw=fetch("https://api.gateio.ws/api/v4/spot/tickers?"+urlencode({"currency_pair":name+"_USDT"}))
+        value=raw[0].get("last") if isinstance(raw,list) and len(raw)==1 else None
+    elif exchange=="LBank":
+        raw=fetch("https://api.lbank.info/v2/ticker/24hr.do?symbol="+name.lower()+"_usdt")
+        rows=raw.get("data",[]) if isinstance(raw,dict) else raw
+        value=rows[0].get("ticker",{}).get("latest") if isinstance(rows,list) and rows else None
+    else:
+        return None
+    try:
+        result=float(value)
+        return result if math.isfinite(result) and result>0 else None
+    except (TypeError,ValueError):
+        return None
+
 def current_book(cid,symbol):
     errors=[]
     # Binance officially migrated Toncoin's TON/USDT to GRAM/USDT, 1:1.
@@ -111,6 +136,15 @@ def current_book(cid,symbol):
             item={"id":cid,"venue":exchange+" Spot","pair":pair,"unit":traded_symbol,
                   "bids":bids,"asks":asks,"capturedAt":now().isoformat()}
             if cid=="ore": item["mint"]=ORE_MINT
+            try:
+                price=recent_trade(exchange,pair)
+                if price is not None:
+                    item["lastTrade"]=price
+                    item["lastTradeAt"]=now().isoformat()
+            except (OSError,HTTPError,URLError,TimeoutError,ValueError,KeyError,TypeError,IndexError):
+                # Never discard valid order-book levels when the optional
+                # market-trade ticker is temporarily unavailable.
+                pass
             return item,None
         except (OSError,HTTPError,URLError,TimeoutError,ValueError,KeyError,TypeError) as exc:
             errors.append(exchange+":"+type(exc).__name__)
