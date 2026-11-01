@@ -2339,18 +2339,40 @@ function chartMarketUrls(asset,period,from,to){
 }
 function updateChartHistoryStatus(){
  const badge=$('#chartHistoryBadge'),source=$('#chartHistorySource');
- if(!badge&&!source)return;
+ const dates=$('#chartHistoryDates');
+ if(!badge&&!source&&!dates)return;
  const same=chartSeries.id===state.dialogId&&chartSeries.range===chartRange;
  const info=same?chartSeries:null;
+ const all=chartRange==='MAX',rangeLabel=all?'Tutto lo storico':chartRange;
  if(badge){
-  badge.textContent=info&&info.loading?'Caricamento '+chartRange+'…':
-   info&&info.candles.length?chartRange+' · '+(info.visibleCount||info.candles.length)+' candele'+(info.partial?' (parziale)':''):
-   chartRange+' · dati non disponibili';
+  badge.textContent=info&&info.loading?'Caricamento '+rangeLabel+'…':
+   info&&info.candles.length?rangeLabel+' · '+(info.visibleCount||info.candles.length)+
+    ' candele'+(info.partial?' (parziale)':''):
+   rangeLabel+' · dati non disponibili';
  }
  if(source){
-  source.textContent=info&&info.loading?'Richiesta candele reali per '+chartRange+'…':
-   info&&info.candles.length?'Candele OHLC: '+info.source+(info.partial?' · solo storico parziale disponibile':'')+' · periodo '+chartRange:
-   info&&info.error?info.error:'Dati storici non ancora disponibili per '+chartRange;
+  source.textContent=info&&info.loading?'Ricerca candele reali: '+rangeLabel+'…':
+   info&&info.candles.length?'Candele OHLC: '+info.source+
+    (info.partial?' · solo storico parziale, non dalla nascita':'')+
+    ' · periodo '+rangeLabel:
+   info&&info.error?info.error:'Dati storici non ancora disponibili per '+rangeLabel;
+ }
+ if(dates){
+  dates.hidden=!all;
+  if(all){
+   if(info&&info.candles.length>=2){
+    const first=info.candles[0],last=info.candles[info.candles.length-1];
+    const formatter=new Intl.DateTimeFormat('it-IT',{
+     day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'
+    });
+    dates.textContent='Prima quotazione disponibile: '+formatter.format(new Date(first.t*1000))+
+     '  ·  Ultima quotazione: '+formatter.format(new Date(last.t*1000))+
+     '  ·  '+info.candles.length+' candele reali'+
+     (info.partial?' · archivio incompleto':'');
+   }else dates.textContent=info&&info.loading?
+    'Caricamento delle prime e ultime quotazioni disponibili…':
+    'Date storiche non disponibili da questa fonte.';
+  }
  }
 }
 function chartSupportsRanges(asset){
