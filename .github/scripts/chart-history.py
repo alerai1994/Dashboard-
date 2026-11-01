@@ -24,11 +24,14 @@ ASSETS = dict(
     + CONFIG["COMMODITIES"] + CONFIG["FOREX"]
 )
 # 1m: ranges 1h–5h; 5m: 12h–3D; 60m: 1W–2W.
-# Monthly charts reuse genuine daily OHLC in market-data.json.
+# Yahoo MAX monthly candles cover the oldest exchange history Yahoo
+# actually provides; they are not claimed to be the instrument's birth date.
+# Intraday views remain unchanged.
 REQUESTS = (
     ("1m", "5d", 2400),
     ("5m", "5d", 1200),
     ("60m", "1mo", 900),
+    ("1mo", "max", 4000),
 )
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (compatible; VertexMarketCharts/1.0)",
