@@ -2288,9 +2288,17 @@ async function fetchQuotes(isManual=false){
    throw new Error('No verified quotes');
   const base=Object.fromEntries(all.filter(x=>x&&x.id&&ASSET_BY_ID[x.id]).map(x=>{
    const prev=state.quotes[x.id]||{};
-   // Light snapshots intentionally exclude historical OHLC. Preserve that
-   // independently, never carry over an expired LIVE label.
-   return [x.id,{...(full?{}:prev),...x,live:false,received:null}];
+   // Full snapshots include OHLC, price-only snapshots preserve it.
+   // A slower 30-minute historical feed must never overwrite a newer quote.
+   const previousTime=Date.parse(prev.time||''),incomingTime=Date.parse(x.time||'');
+   const newerPrevious=Number.isFinite(previousTime)&&
+    (!Number.isFinite(incomingTime)||previousTime>incomingTime);
+   const latest=newerPrevious?{
+    value:prev.value,change:prev.change,currency:prev.currency,
+    time:prev.time,source:prev.source,logo:prev.logo,
+    marketState:prev.marketState,delayMinutes:prev.delayMinutes
+   }:{};
+   return [x.id,{...(full?{}:prev),...x,...latest,live:false,received:null}];
   }));
   const next=preserveForexQuotes(preserveStreamingQuotes(base));
   const changed=[];
@@ -2303,7 +2311,11 @@ async function fetchQuotes(isManual=false){
    if(!next[id])changed.push(id);
   }
   state.quotes=next;
-  state.feedTime=data.generatedAt||state.feedTime;
+  const incomingFeedTime=Date.parse(data.generatedAt||'');
+  const oldFeedTime=Date.parse(state.feedTime||'');
+  if(Number.isFinite(incomingFeedTime)&&
+     (!Number.isFinite(oldFeedTime)||incomingFeedTime>oldFeedTime))
+   state.feedTime=data.generatedAt;
   state.feedError=false;state.loading=false;
   snapshotFetch.etag=response.headers.get('etag')||response.headers.get('last-modified')||null;
   snapshotFetch.age=Date.now();
