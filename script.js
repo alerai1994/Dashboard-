@@ -2538,39 +2538,72 @@ async function loadSecondChartHistory(force=false){
  try{
   if(asset.group==='crypto'){
    const isOre=asset.id==='ore',symbol=isOre?'ore_usdt':asset.id.toUpperCase()+'USDT';
-   const paths=isOre?
-    ['https://api.lbank.info/v2/supplement/trades.do?symbol=ore_usdt&size=500',
-     'https://api.lbkex.com/v2/trades.do?symbol=ore_usdt&size=600']:
-    ['https://api.binance.com/api/v3/aggTrades?symbol='+encodeURIComponent(symbol)+'&limit=1000',
-     'https://api1.binance.com/api/v3/aggTrades?symbol='+encodeURIComponent(symbol)+'&limit=1000'];
-   for(const url of paths){
-    try{
-     const response=await fetch(url,{signal:controller.signal,cache:'no-store'});
-     if(!response.ok)throw Error('HTTP '+response.status);
-     const payload=await response.json();
-     if(!Array.isArray(payload)&&Number(payload.error_code||0)!==0)throw Error('Exchange error');
-     const rows=Array.isArray(payload)?payload:Array.isArray(payload.data)?payload.data:[];
-     const ticks=rows.map(trade=>({
-      t:Number(isOre?(trade.time??trade.date_ms):trade.T),
-      p:Number(isOre?trade.price:trade.p)
-     })).filter(x=>Number.isFinite(x.t)&&Number.isFinite(x.p)&&x.p>0)
-      .sort((a,b)=>a.t-b.t);
-     if(ticks.length<2)throw Error('Insufficient trades');
-     const grouped=new Map();
-     for(const trade of ticks){
-      const t=Math.floor(trade.t/period.step)*period.step/1000;
-      const bar=grouped.get(t);
-      if(bar){bar.h=Math.max(bar.h,trade.p);bar.l=Math.min(bar.l,trade.p);bar.c=trade.p;}
-      else grouped.set(t,{t,o:trade.p,h:trade.p,l:trade.p,c:trade.p});
-     }
-     candles=[...grouped.values()].sort((a,b)=>a.t-b.t);
-     if(candles.length<2)throw Error('Insufficient second candles');
-     source=(isOre?'LBank Spot · ORE/USDT':'Binance Spot · '+symbol)+
-      ' · OHLC da trade reali ogni '+selected+' · storico recente parziale';
-     visibleCount=Math.min(120,candles.length);
-     break;
-    }catch(err){
-     if(controller.signal.aborted)break;
+   // Binance publishes native 1-second OHLC. Aggregate *complete real bars*
+   // into 5s/15s/30s rather than inferring prices from minute bars.
+   if(!isOre){
+    const count=Math.min(1000,Math.max(300,Math.ceil(period.ms/1000)));
+    for(const domain of ['https://api.binance.com','https://api1.binance.com']){
+     try{
+      const url=domain+'/api/v3/klines?symbol='+encodeURIComponent(symbol)+
+       '&interval=1s&limit='+count;
+      const response=await fetch(url,{signal:controller.signal,cache:'no-store'});
+      if(!response.ok)throw Error('HTTP '+response.status);
+      const rows=await response.json();
+      if(!Array.isArray(rows)||rows.length<2)throw Error('Second klines unavailable');
+      const seconds=chartNormalizeCandles(rows,'Binance',0,now,1000);
+      if(seconds.length<2)throw Error('Insufficient 1s klines');
+      const buckets=new Map();
+      for(const candle of seconds){
+       const t=Math.floor(candle.t*1000/period.step)*period.step/1000;
+       const bar=buckets.get(t);
+       if(bar){
+        bar.h=Math.max(bar.h,candle.h);bar.l=Math.min(bar.l,candle.l);
+        bar.c=candle.c;bar.count++;
+       }else buckets.set(t,{t,o:candle.o,h:candle.h,l:candle.l,c:candle.c,count:1});
+      }
+      // Only include fully observed multi-second periods. A partial current
+      // candle may be rendered, but distinguish it from closed historical bars.
+      candles=[...buckets.values()].sort((a,b)=>a.t-b.t)
+       .map(({count,...bar})=>bar);
+      if(candles.length<2)throw Error('Insufficient candles');
+      source='Binance Spot · '+symbol+' · OHLC '+selected+
+       ' da candele native 1s · ultime '+seconds.length+' candele 1s';
+      visibleCount=Math.min(120,candles.length);
+      break;
+     }catch(err){if(controller.signal.aborted)break;}
+    }
+   }else{
+    const paths=[
+     'https://api.lbank.info/v2/supplement/trades.do?symbol=ore_usdt&size=500',
+     'https://api.lbkex.com/v2/trades.do?symbol=ore_usdt&size=500'
+    ];
+    for(const url of paths){
+     try{
+      const response=await fetch(url,{signal:controller.signal,cache:'no-store'});
+      if(!response.ok)throw Error('HTTP '+response.status);
+      const payload=await response.json();
+      if(!Array.isArray(payload)&&Number(payload.error_code||0)!==0)throw Error('Exchange error');
+      const rows=Array.isArray(payload)?payload:Array.isArray(payload.data)?payload.data:[];
+      const ticks=rows.map(trade=>{
+       const raw=Number(trade.time??trade.date_ms);
+       return {t:raw<1e11?raw*1000:raw,p:Number(trade.price)};
+      }).filter(x=>Number.isFinite(x.t)&&Number.isFinite(x.p)&&x.p>0)
+       .sort((a,b)=>a.t-b.t);
+      if(ticks.length<2)throw Error('Insufficient trades');
+      const grouped=new Map();
+      for(const trade of ticks){
+       const t=Math.floor(trade.t/period.step)*period.step/1000;
+       const bar=grouped.get(t);
+       if(bar){bar.h=Math.max(bar.h,trade.p);bar.l=Math.min(bar.l,trade.p);bar.c=trade.p;}
+       else grouped.set(t,{t,o:trade.p,h:trade.p,l:trade.p,c:trade.p});
+      }
+      candles=[...grouped.values()].sort((a,b)=>a.t-b.t);
+      if(candles.length<2)throw Error('Insufficient second candles');
+      source='LBank Spot · ORE/USDT · OHLC '+selected+
+       ' da operazioni reali (storico recente e parziale)';
+      visibleCount=Math.min(120,candles.length);
+      break;
+     }catch(err){if(controller.signal.aborted)break;}
     }
    }
   }
