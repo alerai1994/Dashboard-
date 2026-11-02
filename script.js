@@ -2397,7 +2397,7 @@ const CHART_PERIODS=[
  {id:'5s',ms:600000,seconds:5,step:5000},
  {id:'15s',ms:1800000,seconds:15,step:15000},
  {id:'30s',ms:3600000,seconds:30,step:30000},
- {id:'1h',ms:3600000,interval:'1m',lbank:'minute1',step:60000},
+ {id:'1h',label:'1H',ms:3600000,interval:'1m',lbank:'minute1',step:60000},
  {id:'2h',ms:7200000,interval:'1m',lbank:'minute1',step:60000},
  {id:'3h',ms:10800000,interval:'1m',lbank:'minute1',step:60000},
  {id:'4h',ms:14400000,interval:'1m',lbank:'minute1',step:60000},
@@ -2531,7 +2531,7 @@ async function loadSecondChartHistory(force=false){
  updateChartHistoryStatus();requestAnimationFrame(drawChart);
  if(asset.group!=='crypto'||asset.id==='ore'){
   chartSeries={id:asset.id,range:selected,candles:[],source:'',loading:false,
-   error:'Il feed di questo mercato non fornisce operazioni verificabili al secondo.',partial:false};
+   error:'Timeframe '+selected+' selezionato: il feed di '+asset.name+' non fornisce trade verificabili al secondo. Nessuna candela artificiale.',partial:false};
   updateChartHistoryStatus();requestAnimationFrame(drawChart);return;
  }
  const controller=new AbortController();chartFetchState.abort=controller;
@@ -3005,8 +3005,8 @@ function refreshDialog(){
   '<button class="chart-period chart-period-refresh" type="button" data-chart-refresh="1" title="Aggiorna le candele del periodo selezionato">↻ Aggiorna</button></div>':
   '<div><button class="btn btn-small" type="button" data-pan="-20">◀ Storico</button> <button class="btn btn-small" type="button" data-pan="20">Recenti ▶</button> <button class="btn btn-small" type="button" data-pan="reset">Oggi</button></div>')+'</div>'+
  '<div class="chart-help">'+(isCrypto?(a.id==='ore'?
- 'ORE/USDT: storico LBank Spot disponibile 24 ore su 24. Gli intervalli mostrano candele reali e la data dell’ultima rilevazione. ':
- 'Seleziona un periodo da 1h a 3M. Fuori orario di mercato, i periodi brevi mostrano l’ultima sessione disponibile, con data indicata. '):'')+'Trascina il grafico in orizzontale per scorrere lo storico. Nessuno zoom. Le medie e gli indicatori sono mostrati solo quando le serie contengono dati sufficienti.</div>'+
+ 'ORE/USDT: storico LBank Spot disponibile 24 ore su 24; i dati al secondo non sono disponibili dalla fonte attuale. I timeframe 1s, 5s, 15s e 30s restano selezionabili ma non inventano candele. ':
+ 'Seleziona 1s, 5s, 15s, 30s oppure gli altri periodi. Le candele al secondo richiedono trade reali: se la fonte del mercato non li pubblica, il grafico indica dati non disponibili. Fuori orario di mercato viene mostrata l’ultima sessione disponibile quando presente. '):'')+'Trascina il grafico in orizzontale per scorrere lo storico. Nessuno zoom. Le medie e gli indicatori sono mostrati solo quando le serie contengono dati sufficienti.</div>'+
  '<div class="chart-source"><span'+(isCrypto?' id="chartHistorySource" role="status" aria-live="polite"':'')+'>'+(isCrypto?'Caricamento delle candele del periodo '+chartRange+'…':
   'Prezzi: Yahoo Finance. Candele OHLC: '+esc(q&&q.candleSource||'Yahoo Finance, se disponibile')+'. Storico non necessariamente in tempo reale.')+'</span>'+
  '<a href="'+esc(externalUrl(a))+'" target="_blank" rel="noopener noreferrer">Apri fonte '+sym('external')+'</a></div>';
