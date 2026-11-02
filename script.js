@@ -2515,62 +2515,125 @@ function selectChartRange(range){
 }
 // Build genuine second-resolution OHLC from actual Binance aggregate trades.
 // No interpolation: periods without transactions remain absent.
+// Use actual tick trades for second OHLC where the exchange exposes them.
+// Otherwise retain an honest, labelled lower-resolution chart rather than an empty one.
 async function loadSecondChartHistory(force=false){
- const asset=ASSET_BY_ID[state.dialogId], selected=chartRange;
+ const asset=ASSET_BY_ID[state.dialogId],selected=chartRange;
  const period=CHART_PERIOD_BY_ID[selected];
  if(!asset||!period||!period.seconds)return;
  const seq=++chartFetchState.sequence;
  if(chartFetchState.abort)chartFetchState.abort.abort();
  chartFetchState.abort=null;
  const key=asset.id+':'+selected,cached=chartFetchState.cache.get(key);
- if(!force&&cached&&Date.now()-cached.loadedAt<5000){
+ if(!force&&cached&&Date.now()-cached.loadedAt<15000){
   chartSeries={...cached,id:asset.id,range:selected,loading:false};
   updateChartHistoryStatus();requestAnimationFrame(drawChart);return;
  }
  chartSeries={id:asset.id,range:selected,candles:[],source:'',loading:true,error:'',partial:false};
  updateChartHistoryStatus();requestAnimationFrame(drawChart);
- if(asset.group!=='crypto'||asset.id==='ore'){
-  chartSeries={id:asset.id,range:selected,candles:[],source:'',loading:false,
-   error:'Timeframe '+selected+' selezionato: il feed di '+asset.name+' non fornisce trade verificabili al secondo. Nessuna candela artificiale.',partial:false};
-  updateChartHistoryStatus();requestAnimationFrame(drawChart);return;
- }
  const controller=new AbortController();chartFetchState.abort=controller;
- const timer=setTimeout(()=>controller.abort(),8000);
- let error='Operazioni al secondo non disponibili per '+asset.name+'.';
+ const timer=setTimeout(()=>controller.abort(),8500);
+ const now=Date.now();
+ let candles=[],source='',partial=true,visibleCount=0,error='';
  try{
-  const symbol=asset.id.toUpperCase()+'USDT';
-  const url='https://api.binance.com/api/v3/aggTrades?symbol='+
-   encodeURIComponent(symbol)+'&limit=1000';
-  const response=await fetch(url,{signal:controller.signal,cache:'no-store'});
-  if(!response.ok)throw Error('HTTP '+response.status);
-  const trades=await response.json();
-  if(!Array.isArray(trades))throw Error('Formato trade non valido');
-  const grouped=new Map();
-  for(const trade of trades){
-   const timestamp=Number(trade.T),price=Number(trade.p);
-   if(!Number.isFinite(timestamp)||!Number.isFinite(price)||price<=0)continue;
-   const t=Math.floor(timestamp/period.step)*period.step/1000;
-   const bar=grouped.get(t);
-   if(bar){bar.h=Math.max(bar.h,price);bar.l=Math.min(bar.l,price);bar.c=price;}
-   else grouped.set(t,{t,o:price,h:price,l:price,c:price});
+  if(asset.group==='crypto'){
+   const isOre=asset.id==='ore',symbol=isOre?'ore_usdt':asset.id.toUpperCase()+'USDT';
+   const paths=isOre?
+    ['https://api.lbank.info/v2/supplement/trades.do?symbol=ore_usdt&size=500',
+     'https://api.lbkex.com/v2/trades.do?symbol=ore_usdt&size=600']:
+    ['https://api.binance.com/api/v3/aggTrades?symbol='+encodeURIComponent(symbol)+'&limit=1000',
+     'https://api1.binance.com/api/v3/aggTrades?symbol='+encodeURIComponent(symbol)+'&limit=1000'];
+   for(const url of paths){
+    try{
+     const response=await fetch(url,{signal:controller.signal,cache:'no-store'});
+     if(!response.ok)throw Error('HTTP '+response.status);
+     const payload=await response.json();
+     if(!Array.isArray(payload)&&Number(payload.error_code||0)!==0)throw Error('Exchange error');
+     const rows=Array.isArray(payload)?payload:Array.isArray(payload.data)?payload.data:[];
+     const ticks=rows.map(trade=>({
+      t:Number(isOre?(trade.time??trade.date_ms):trade.T),
+      p:Number(isOre?trade.price:trade.p)
+     })).filter(x=>Number.isFinite(x.t)&&Number.isFinite(x.p)&&x.p>0)
+      .sort((a,b)=>a.t-b.t);
+     if(ticks.length<2)throw Error('Insufficient trades');
+     const grouped=new Map();
+     for(const trade of ticks){
+      const t=Math.floor(trade.t/period.step)*period.step/1000;
+      const bar=grouped.get(t);
+      if(bar){bar.h=Math.max(bar.h,trade.p);bar.l=Math.min(bar.l,trade.p);bar.c=trade.p;}
+      else grouped.set(t,{t,o:trade.p,h:trade.p,l:trade.p,c:trade.p});
+     }
+     candles=[...grouped.values()].sort((a,b)=>a.t-b.t);
+     if(candles.length<2)throw Error('Insufficient second candles');
+     source=(isOre?'LBank Spot · ORE/USDT':'Binance Spot · '+symbol)+
+      ' · OHLC da trade reali ogni '+selected+' · storico recente parziale';
+     visibleCount=Math.min(120,candles.length);
+     break;
+    }catch(err){
+     if(controller.signal.aborted)break;
+    }
+   }
   }
-  const candles=[...grouped.values()].sort((a,b)=>a.t-b.t);
-  if(candles.length<2)throw Error('Trades insufficienti');
-  if(seq!==chartFetchState.sequence)return;
-  const result={id:asset.id,range:selected,candles,
-   source:'Binance Spot · '+symbol+' · trade reali aggregati ogni '+selected+
-    ' (ultime 1000 operazioni, storico parziale)',
-   loading:false,error:'',partial:true,visibleCount:Math.min(120,candles.length),
-   loadedAt:Date.now()};
-  chartSeries=result;chartFetchState.cache.set(key,result);
-  updateChartHistoryStatus();requestAnimationFrame(drawChart);
-  return;
- }catch(err){error+=' '+String(err.message||'');}
+  if(candles.length<2){
+   // Index, technology, big-tech, commodity and FX snapshots provide verified
+   // 1-minute OHLC but not tick trades. Preserve the original timestamps and
+   // label the resolution: never split one 1m bar into fictitious second bars.
+   const crypto=asset.group==='crypto';
+   const fallbackUrls=crypto?
+    (asset.id==='ore'?
+     ['./ore-chart-history.json?v='+Math.floor(now/60000)]:
+     chartMarketUrls(asset,{interval:'1m',lbank:'minute1',step:60000},now-3600000,now)
+      .map(endpoint=>endpoint.url)):
+    ['./chart-history/'+encodeURIComponent(asset.id)+'.json?v='+Math.floor(now/120000)];
+   for(const url of fallbackUrls){
+    try{
+     const response=await fetch(url,{signal:controller.signal,cache:'no-store'});
+     if(!response.ok)throw Error('HTTP '+response.status);
+     const data=await response.json();
+     let raw=[],venue='Yahoo';
+     if(!crypto){
+      if(data.id!==asset.id||data.symbol!==asset.symbol||!data.sets)throw Error('Wrong instrument');
+      raw=data.sets['1m']?.candles||data.sets['5m']?.candles||[];
+      source='Yahoo Finance · '+(data.sets['1m']?'1m':'5m')+
+       ' reali · feed al secondo non disponibile ('+selected+' selezionato)';
+     }else if(asset.id==='ore'){
+      if(data.pair!=='ORE/USDT'||!data.sets)throw Error('Wrong market');
+      raw=data.sets.minute1?.candles||data.sets.minute5?.candles||[];
+      venue='LBank';source='LBank Spot · ORE/USDT · '+
+       (data.sets.minute1?'1m':'5m')+' reali · feed al secondo non disponibile ('+selected+' selezionato)';
+     }else{
+      venue=url.includes('binance')?'Binance':'LBank';
+      raw=venue==='Binance'?data:(Array.isArray(data)?data:data.data);
+      source=venue+' Spot · '+asset.id.toUpperCase()+
+       ' · 1m reale · feed al secondo non disponibile ('+selected+' selezionato)';
+     }
+     candles=chartNormalizeCandles(raw,venue,0,now,60000);
+     if(candles.length<2){candles=[];continue;}
+     visibleCount=Math.min(120,candles.length);
+     break;
+    }catch(err){
+     if(controller.signal.aborted)break;
+    }
+   }
+  }
+ }catch(err){error=String(err?.message||err);}
  finally{clearTimeout(timer);}
  if(seq!==chartFetchState.sequence)return;
- chartSeries={id:asset.id,range:selected,candles:[],source:'',loading:false,error,partial:false};
+ if(candles.length>=2){
+  const result={id:asset.id,range:selected,candles,source,loading:false,
+   error:'',partial,visibleCount,loadedAt:Date.now()};
+  chartSeries=result;chartFetchState.cache.set(key,result);
+  if(chartFetchState.cache.size>100)
+   chartFetchState.cache.delete(chartFetchState.cache.keys().next().value);
+ }else{
+  chartSeries={id:asset.id,range:selected,candles:[],source:'',loading:false,
+   error:'Nessun dato OHLC verificato disponibile per '+asset.name+
+    '. Il feed al secondo non è disponibile; riprova con Aggiorna o 1H.'+
+    (error?' '+error:''),partial:false};
+ }
  updateChartHistoryStatus();requestAnimationFrame(drawChart);
 }
+
 async function loadCryptoChartHistory(force=false){
  const asset=ASSET_BY_ID[state.dialogId];
  if(!asset||asset.group!=='crypto')return;
@@ -3005,8 +3068,8 @@ function refreshDialog(){
   '<button class="chart-period chart-period-refresh" type="button" data-chart-refresh="1" title="Aggiorna le candele del periodo selezionato">↻ Aggiorna</button></div>':
   '<div><button class="btn btn-small" type="button" data-pan="-20">◀ Storico</button> <button class="btn btn-small" type="button" data-pan="20">Recenti ▶</button> <button class="btn btn-small" type="button" data-pan="reset">Oggi</button></div>')+'</div>'+
  '<div class="chart-help">'+(isCrypto?(a.id==='ore'?
- 'ORE/USDT: storico LBank Spot disponibile 24 ore su 24; i dati al secondo non sono disponibili dalla fonte attuale. I timeframe 1s, 5s, 15s e 30s restano selezionabili ma non inventano candele. ':
- 'Seleziona 1s, 5s, 15s, 30s oppure gli altri periodi. Le candele al secondo richiedono trade reali: se la fonte del mercato non li pubblica, il grafico indica dati non disponibili. Fuori orario di mercato viene mostrata l’ultima sessione disponibile quando presente. '):'')+'Trascina il grafico in orizzontale per scorrere lo storico. Nessuno zoom. Le medie e gli indicatori sono mostrati solo quando le serie contengono dati sufficienti.</div>'+
+ 'ORE/USDT: candele al secondo ricavate dai trade LBank quando disponibili; altrimenti vengono mostrate candele reali a 1m e la risoluzione è dichiarata. ':
+ 'I timeframe 1s, 5s, 15s e 30s mostrano trade aggregati reali se disponibili; altrimenti mantengono le candele originali a 1m/5m, con risoluzione effettiva indicata sotto il grafico. Fuori orario di mercato appare l’ultima sessione disponibile. '):'')+'Trascina il grafico in orizzontale per scorrere lo storico. Nessuno zoom. Le medie e gli indicatori sono mostrati solo quando le serie contengono dati sufficienti.</div>'+
  '<div class="chart-source"><span'+(isCrypto?' id="chartHistorySource" role="status" aria-live="polite"':'')+'>'+(isCrypto?'Caricamento delle candele del periodo '+chartRange+'…':
   'Prezzi: Yahoo Finance. Candele OHLC: '+esc(q&&q.candleSource||'Yahoo Finance, se disponibile')+'. Storico non necessariamente in tempo reale.')+'</span>'+
  '<a href="'+esc(externalUrl(a))+'" target="_blank" rel="noopener noreferrer">Apri fonte '+sym('external')+'</a></div>';
