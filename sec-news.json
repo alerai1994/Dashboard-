@@ -1,6 +1,6 @@
 {
   "source": "U.S. Securities and Exchange Commission",
-  "updated_at": "2026-11-02T18:35:10Z",
+  "updated_at": "2026-11-02T20:15:27Z",
   "seed_date": "2026-10-31T12:00:00Z",
   "feeds_updated": [
     "press",
@@ -8,6 +8,13 @@
     "testimony"
   ],
   "items": [
+    {
+      "category": "speeches",
+      "title": "Remarks at the Practicing Law Institute’s 58th Annual Institute on Securities Regulation",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/uyeda-remarks-at-the-practicing-law-institute-58th-annual-institute-on-securities-regulation-110226",
+      "date": "2026-11-02T19:36:12Z",
+      "summary": "Commissioner Mark T. Uyeda"
+    },
     {
       "category": "speeches",
       "title": "Remarks at the Economic Club of Dallas",
