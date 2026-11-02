@@ -2393,6 +2393,10 @@ function externalUrl(a){
 // Historical ranges represent the visible window, not a made-up candle interval.
 // Choose a compatible exchange granularity to keep OHLC, EMA, RSI and MACD meaningful.
 const CHART_PERIODS=[
+ {id:'1s',ms:120000,seconds:1,step:1000},
+ {id:'5s',ms:600000,seconds:5,step:5000},
+ {id:'15s',ms:1800000,seconds:15,step:15000},
+ {id:'30s',ms:3600000,seconds:30,step:30000},
  {id:'1h',ms:3600000,interval:'1m',lbank:'minute1',step:60000},
  {id:'2h',ms:7200000,interval:'1m',lbank:'minute1',step:60000},
  {id:'3h',ms:10800000,interval:'1m',lbank:'minute1',step:60000},
@@ -2508,6 +2512,64 @@ function selectChartRange(range){
   button.setAttribute('aria-pressed',String(active));
  });
  loadChartHistory();
+}
+// Build genuine second-resolution OHLC from actual Binance aggregate trades.
+// No interpolation: periods without transactions remain absent.
+async function loadSecondChartHistory(force=false){
+ const asset=ASSET_BY_ID[state.dialogId], selected=chartRange;
+ const period=CHART_PERIOD_BY_ID[selected];
+ if(!asset||!period||!period.seconds)return;
+ const seq=++chartFetchState.sequence;
+ if(chartFetchState.abort)chartFetchState.abort.abort();
+ chartFetchState.abort=null;
+ const key=asset.id+':'+selected,cached=chartFetchState.cache.get(key);
+ if(!force&&cached&&Date.now()-cached.loadedAt<5000){
+  chartSeries={...cached,id:asset.id,range:selected,loading:false};
+  updateChartHistoryStatus();requestAnimationFrame(drawChart);return;
+ }
+ chartSeries={id:asset.id,range:selected,candles:[],source:'',loading:true,error:'',partial:false};
+ updateChartHistoryStatus();requestAnimationFrame(drawChart);
+ if(asset.group!=='crypto'||asset.id==='ore'){
+  chartSeries={id:asset.id,range:selected,candles:[],source:'',loading:false,
+   error:'Il feed di questo mercato non fornisce operazioni verificabili al secondo.',partial:false};
+  updateChartHistoryStatus();requestAnimationFrame(drawChart);return;
+ }
+ const controller=new AbortController();chartFetchState.abort=controller;
+ const timer=setTimeout(()=>controller.abort(),8000);
+ let error='Operazioni al secondo non disponibili per '+asset.name+'.';
+ try{
+  const symbol=asset.id.toUpperCase()+'USDT';
+  const url='https://api.binance.com/api/v3/aggTrades?symbol='+
+   encodeURIComponent(symbol)+'&limit=1000';
+  const response=await fetch(url,{signal:controller.signal,cache:'no-store'});
+  if(!response.ok)throw Error('HTTP '+response.status);
+  const trades=await response.json();
+  if(!Array.isArray(trades))throw Error('Formato trade non valido');
+  const grouped=new Map();
+  for(const trade of trades){
+   const timestamp=Number(trade.T),price=Number(trade.p);
+   if(!Number.isFinite(timestamp)||!Number.isFinite(price)||price<=0)continue;
+   const t=Math.floor(timestamp/period.step)*period.step/1000;
+   const bar=grouped.get(t);
+   if(bar){bar.h=Math.max(bar.h,price);bar.l=Math.min(bar.l,price);bar.c=price;}
+   else grouped.set(t,{t,o:price,h:price,l:price,c:price});
+  }
+  const candles=[...grouped.values()].sort((a,b)=>a.t-b.t);
+  if(candles.length<2)throw Error('Trades insufficienti');
+  if(seq!==chartFetchState.sequence)return;
+  const result={id:asset.id,range:selected,candles,
+   source:'Binance Spot · '+symbol+' · trade reali aggregati ogni '+selected+
+    ' (ultime 1000 operazioni, storico parziale)',
+   loading:false,error:'',partial:true,visibleCount:Math.min(120,candles.length),
+   loadedAt:Date.now()};
+  chartSeries=result;chartFetchState.cache.set(key,result);
+  updateChartHistoryStatus();requestAnimationFrame(drawChart);
+  return;
+ }catch(err){error+=' '+String(err.message||'');}
+ finally{clearTimeout(timer);}
+ if(seq!==chartFetchState.sequence)return;
+ chartSeries={id:asset.id,range:selected,candles:[],source:'',loading:false,error,partial:false};
+ updateChartHistoryStatus();requestAnimationFrame(drawChart);
 }
 async function loadCryptoChartHistory(force=false){
  const asset=ASSET_BY_ID[state.dialogId];
@@ -2785,6 +2847,7 @@ async function loadAllChartHistory(force=false){
 function loadChartHistory(force=false){
  const asset=ASSET_BY_ID[state.dialogId];
  if(!chartSupportsRanges(asset))return;
+ if(CHART_PERIOD_BY_ID[chartRange]?.seconds)return loadSecondChartHistory(force);
  if(chartRange==='MAX')return loadAllChartHistory(force);
  return asset.group==='crypto'?loadCryptoChartHistory(force):loadMarketChartHistory(force);
 }
