@@ -1058,7 +1058,10 @@ function marketChartPlot(id){
 function instrumentQuoteStatus(id){
  const q=quote(id);
  if(!q||!num(q.value)||q.value<=0)return 'Quotazione non disponibile';
- const isLive=q.live===true&&Number.isFinite(q.received)&&
+ const asset=ASSET_BY_ID[id];
+ const connected=asset&&asset.group==='crypto'?liveConnected():
+  asset&&asset.group==='forex'?fxConnected():false;
+ const isLive=connected&&q.live===true&&Number.isFinite(q.received)&&
   Date.now()-q.received>=0&&Date.now()-q.received<90000;
  if(isLive)return '● LIVE · '+(q.source||'streaming')+' · '+refTime(id);
  return 'Ultima quotazione · '+refTime(id)+(Number.isFinite(q.delayMinutes)&&q.delayMinutes>0?
