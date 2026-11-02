@@ -986,8 +986,7 @@ function techBigTechOverview(){
 
 function globalPage(){
  return '<section class="market-index-strip">'+TOP_IDS.map(indexCard).join('')+'</section>'+
- marketStatusStrip()+
- '<div class="global-grid">'+regionList()+mapPanel()+
+  '<div class="global-grid">'+regionList()+mapPanel()+
  '<aside class="aside-stack">'+QUOTE_GROUPS.map(sidePanel).join('')+'</aside>'+
  '<div class="region-photo-grid" aria-label="Panoramica fotografica delle regioni">'+REGIONS.map(photoCard).join('')+'</div></div>'+
  feedStatus();
@@ -1010,8 +1009,7 @@ function homePage(){
  overviewCard('Strumenti in ribasso',String(s.down),'Ultima seduta / 24h','color-down')+
  overviewCard('Mercati nella watchlist',String(state.watch.length),'Salvati in questo browser')+'</div>'+
  secHeader('Indici e criptovalute','Grafici e variazioni')+'<div class="market-index-strip">'+marketCards+'</div>'+
- marketStatusStrip()+
- feedStatus();
+  feedStatus();
 }
 function tableForAssets(items,emptyTitle){
  if(!items.length)return '<div class="empty-state"><h3>'+esc(emptyTitle||'Nessun mercato da mostrare')+'</h3><p>Modifica la ricerca o aggiungi strumenti alla watchlist.</p></div>';
