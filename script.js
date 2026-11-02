@@ -624,24 +624,34 @@ function snapshotAgeMinutes(){
  const t=Date.parse(state.feedTime||'');
  return Number.isFinite(t)?Math.max(0,Math.round((Date.now()-t)/60000)):null;
 }
-function marketGroupStatus(group){
- const age=snapshotAgeMinutes();
- const missing=state.feedError||age===null,stale=age!==null&&age>18;
- if(group==='crypto'){
-  if(liveConnected())return '● LIVE Binance · '+streamStatus.seen.size+' / '+Object.keys(STREAM_PAIRS).length;
-  if(missing)return '◌ Crypto · feed non disponibile';
-  return '↻ Crypto · CoinGecko ~5 min';
- }
- if(group==='forex'){
-  if(fxConnected())return '● LIVE FX · broker MT5';
-  if(missing)return '◌ Forex · feed non disponibile';
-  return stale?'◌ Forex · ultimo dato '+age+' min':'↻ Forex · auto ~5 min';
- }
- if(missing)return '◌ Dati non disponibili';
- if(stale)return '◌ Ultimo snapshot '+age+' min fa';
- return '↻ Auto ~5 min · possibili ritardi';
+
+function marketGroupFacts(group){
+ const now=Date.now(),all=ASSETS.filter(a=>(a.sector==='tech'?'tech':a.group)===group);
+ const rows=all.map(a=>quote(a.id)).filter(q=>q&&num(q.value)&&q.value>0);
+ const times=rows.map(q=>Date.parse(q.time||'')).filter(Number.isFinite);
+ const latest=times.length?Math.max(...times):null;
+ const connected=group==='crypto'?liveConnected():group==='forex'?fxConnected():false;
+ const live=connected?rows.filter(q=>q.live===true&&Number.isFinite(q.received)&&
+  now-q.received>=0&&now-q.received<90000).length:0;
+ return {total:all.length,available:rows.length,live,latest,
+  age:latest===null?null:Math.max(0,Math.round((now-latest)/60000))};
 }
-function marketGroupLive(group){return group==='crypto'?liveConnected():group==='forex'?fxConnected():false}
+function marketGroupStatus(group){
+ const f=marketGroupFacts(group),age=snapshotAgeMinutes();
+ if(f.live>0){
+  const venue=group==='crypto'?'Binance Spot':'Forex MT5';
+  return '● LIVE '+venue+' '+f.live+'/'+f.total+(f.available>f.live?' · resto snapshot':'');
+ }
+ if(!f.available)return '◌ Dati non disponibili · 0/'+f.total;
+ if(state.feedError||age===null||age>18)
+  return '◌ Feed non recente · '+f.available+'/'+f.total+
+   (f.latest?' · '+localeDate(new Date(f.latest).toISOString(),{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'');
+ if(f.age!==null&&f.age>20)
+  return '◌ Ultima quotazione '+localeDate(new Date(f.latest).toISOString(),{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+
+   ' · '+f.available+'/'+f.total;
+ return '↻ Auto ~5 min · '+f.available+'/'+f.total+' · possibili ritardi';
+}
+function marketGroupLive(group){return marketGroupFacts(group).live>0}
 function marketStatusStrip(){
  const groups=[['markets','Indici'],['tech','Tech'],['bigtech','Big Tech'],['forex','Forex'],['commodities','Commodities'],['crypto','Crypto']];
  return '<div class="market-live-strip" aria-label="Aggiornamento automatico dei mercati">'+
@@ -650,7 +660,10 @@ function marketStatusStrip(){
 }
 function feedSummaryLabel(){
  const stamp=state.feedTime?localeDate(state.feedTime,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'n.d.';
- return (state.feedError?'Connessione al feed non riuscita':'Dati disponibili: '+dataCount()+'/'+ASSETS.length)+' · Snapshot '+stamp;
+ const minutes=snapshotAgeMinutes();
+ const label=state.feedError?'Connessione al feed non riuscita':
+  minutes===null||minutes>18?'Feed non recente':'Controllo automatico attivo';
+ return label+' · '+dataCount()+'/'+ASSETS.length+' prezzi · Feed '+stamp;
 }
 function updateLiveBadges(){
  document.querySelectorAll('[data-market-group]').forEach(n=>{
@@ -659,8 +672,12 @@ function updateLiveBadges(){
   const body=n.querySelector('small');
   if(body)body.textContent=marketGroupStatus(group);else n.textContent=marketGroupStatus(group);
   n.classList.toggle('live',marketGroupLive(group));
-  n.classList.toggle('stale',!marketGroupLive(group)&&(snapshotAgeMinutes()===null||snapshotAgeMinutes()>18));
-  n.title=group==='crypto'?'Tick Binance/USDT dove disponibili, altri asset CoinGecko.':group==='forex'?'FX broker MT5 streaming quando disponibile; fallback Yahoo Finance.':'Yahoo Finance: dati aggiornati automaticamente, ma potenzialmente ritardati.';
+  const facts=marketGroupFacts(group);
+  n.classList.toggle('stale',!marketGroupLive(group)&&
+   (state.feedError||snapshotAgeMinutes()===null||snapshotAgeMinutes()>18||
+    (facts.age!==null&&facts.age>20)));
+  n.title='Fonte: '+(group==='crypto'?'Binance Spot/USDT e CoinGecko':group==='forex'?'Broker MT5 e Yahoo Finance':'Yahoo Finance')+
+   '. Gli orari e i ritardi dipendono dalla fonte e dalle sessioni di mercato.';
  });
  document.querySelectorAll('.crypto-stream-status').forEach(n=>{
   n.textContent=liveLabel();n.classList.toggle('live-online',liveConnected());
@@ -781,6 +798,9 @@ function updatePriceDom(){
     }
    }
    if(el.hasAttribute('data-trend'))el.dataset.trend=trend(q.change);
+   const asof=el.querySelector('.market-quote-asof');
+   if(asof)asof.textContent=instrumentQuoteStatus(id);
+   if(el.classList.contains('market-chart-card'))el.title=instrumentQuoteStatus(id);
   });
   if(state.dialogId===id){
    const p=document.querySelector('#dialogBody .dialog-stats strong');
@@ -948,7 +968,7 @@ function preserveStreamingQuotes(snapshot){
 
 function feedStatus(){
  return '<div class="data-footnote"><span class="data-status'+(state.feedError?' error':'')+'"><i></i><span class="feed-summary-text">'+feedSummaryLabel()+'</span></span>'+
- '<span class="live-stream-note">Crypto: Binance quando disponibile · Forex: broker MT5 quando disponibile · altri mercati: Yahoo Finance, ritardati.</span>'+
+ '<span class="live-stream-note">Crypto e Forex: streaming dove disponibile. Indici, Tech, Big Tech e materie prime: verifica ~5 min, con eventuali ritardi della fonte.</span>'+
  '<span>Mercati chiusi = ultima seduta. <button type="button" data-refresh="1">'+sym('refresh')+' Verifica ora</button></span></div>';
 }
 function techBigTechOverview(){
@@ -966,6 +986,7 @@ function techBigTechOverview(){
 
 function globalPage(){
  return '<section class="market-index-strip">'+TOP_IDS.map(indexCard).join('')+'</section>'+
+ marketStatusStrip()+
  '<div class="global-grid">'+regionList()+mapPanel()+
  '<aside class="aside-stack">'+QUOTE_GROUPS.map(sidePanel).join('')+'</aside>'+
  '<div class="region-photo-grid" aria-label="Panoramica fotografica delle regioni">'+REGIONS.map(photoCard).join('')+'</div></div>'+
@@ -989,6 +1010,7 @@ function homePage(){
  overviewCard('Strumenti in ribasso',String(s.down),'Ultima seduta / 24h','color-down')+
  overviewCard('Mercati nella watchlist',String(state.watch.length),'Salvati in questo browser')+'</div>'+
  secHeader('Indici e criptovalute','Grafici e variazioni')+'<div class="market-index-strip">'+marketCards+'</div>'+
+ marketStatusStrip()+
  feedStatus();
 }
 function tableForAssets(items,emptyTitle){
@@ -1032,6 +1054,16 @@ function marketChartPlot(id){
  return '<span class="market-chart-unavailable">Candele OHLC non disponibili per questo strumento</span>'+
   '<span class="market-chart-note">Nessun grafico a linee o candele simulate</span>';
 }
+
+function instrumentQuoteStatus(id){
+ const q=quote(id);
+ if(!q||!num(q.value)||q.value<=0)return 'Quotazione non disponibile';
+ const isLive=q.live===true&&Number.isFinite(q.received)&&
+  Date.now()-q.received>=0&&Date.now()-q.received<90000;
+ if(isLive)return '● LIVE · '+(q.source||'streaming')+' · '+refTime(id);
+ return 'Ultima quotazione · '+refTime(id)+(Number.isFinite(q.delayMinutes)&&q.delayMinutes>0?
+  ' · ritardo fonte '+q.delayMinutes+' min':' · possibile ritardo');
+}
 function marketChartCard(a){
  const q=quote(a.id),cat=marketCategory(a);
  const label={markets:'Indice',tech:'Tech',bigtech:'Azione',commodities:'Materia prima',forex:'Cambio',crypto:'Crypto'}[cat]||cat;
@@ -1040,6 +1072,7 @@ function marketChartCard(a){
  '<span class="market-chart-title"><strong>'+esc(a.short||a.name)+'</strong><small>'+esc(a.symbol)+' · '+label+'</small></span></span>'+
  '<span class="market-chart-values"><strong class="asset-price">'+assetValue(a)+'</strong>'+
  '<span class="asset-change '+classArrow(a.id)+'">'+pct(q&&q.change)+'</span></span>'+
+ '<small class="market-quote-asof">'+esc(instrumentQuoteStatus(a.id))+'</small>'+
  '<span class="market-mini-chart">'+marketChartPlot(a.id)+'</span>'+
  '<span class="market-chart-open">Grafico completo · EMA · RSI · Stoch RSI · MACD</span></button>';
 }
@@ -1067,6 +1100,7 @@ function marketsPage(){
  const filtered=ASSETS.filter(a=>marketFilterMatch(a)&&(!text||(a.name+' '+a.symbol+' '+(a.country||'')).toLowerCase().includes(text)));
  return secHeader('Tutti i grafici dei mercati','Grafici visibili per ogni strumento: selezionane uno per aprire le medie mobili e gli indicatori',
  '<a class="btn btn-small" href="#global">'+sym('globe')+' Mappa mondiale</a>')+
+ marketStatusStrip()+
  '<section class="content-card panel markets-gallery"><div class="filter-row"><div class="tab-filters" role="group" aria-label="Categorie mercati">'+
  options.map(([id,label])=>'<button type="button" data-filter="'+id+'" class="'+(state.marketFilter===id?'active':'')+'">'+label+'</button>').join('')+
  '</div><input class="filter-input" type="search" id="marketSearch" value="'+esc(state.marketSearch)+'" placeholder="Cerca per nome o ticker..." aria-label="Filtra strumenti"></div>'+
