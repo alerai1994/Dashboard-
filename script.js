@@ -2468,7 +2468,7 @@ function updateChartHistoryStatus(){
  const info=same?chartSeries:null;
  const all=chartRange==='MAX',rangeLabel=all?'Tutto lo storico':chartRange;
  if(badge){
-  badge.textContent=info&&info.loading?'Caricamento '+rangeLabel+'…':
+  badge.textContent=info&&info.loading&&(!info.candles||!info.candles.length)?'Caricamento '+rangeLabel+'…':
    info&&info.candles.length?rangeLabel+' · '+(info.visibleCount||info.candles.length)+
     ' candele'+(info.partial?' (parziale)':''):
    rangeLabel+' · dati non disponibili';
@@ -2512,6 +2512,7 @@ function selectChartRange(range){
   button.setAttribute('aria-pressed',String(active));
  });
  loadChartHistory();
+ scheduleChartLiveRefresh();
 }
 // Build genuine second-resolution OHLC from actual Binance aggregate trades.
 // No interpolation: periods without transactions remain absent.
@@ -2529,7 +2530,9 @@ async function loadSecondChartHistory(force=false){
   chartSeries={...cached,id:asset.id,range:selected,loading:false};
   updateChartHistoryStatus();requestAnimationFrame(drawChart);return;
  }
- chartSeries={id:asset.id,range:selected,candles:[],source:'',loading:true,error:'',partial:false};
+ chartSeries=chartSeries.id===asset.id&&chartSeries.range===selected&&chartSeries.candles.length>=2?
+  {...chartSeries,loading:true,error:''}:
+  {id:asset.id,range:selected,candles:[],source:'',loading:true,error:'',partial:false};
  updateChartHistoryStatus();requestAnimationFrame(drawChart);
  const controller=new AbortController();chartFetchState.abort=controller;
  const timer=setTimeout(()=>controller.abort(),8500);
@@ -2683,7 +2686,9 @@ async function loadCryptoChartHistory(force=false){
   requestAnimationFrame(drawChart);
   return;
  }
- chartSeries={id:asset.id,range:selected,candles:[],source:'',loading:true,error:'',partial:false};
+ chartSeries=chartSeries.id===asset.id&&chartSeries.range===selected&&chartSeries.candles.length>=2?
+  {...chartSeries,loading:true,error:''}:
+  {id:asset.id,range:selected,candles:[],source:'',loading:true,error:'',partial:false};
  updateChartHistoryStatus();
  requestAnimationFrame(drawChart);
  const now=Date.now(),from=chartStartTime(period,now);
@@ -2747,7 +2752,9 @@ async function loadOreChartHistory(force=false){
   requestAnimationFrame(drawChart);
   return;
  }
- chartSeries={id:'ore',range:selected,candles:[],source:'',loading:true,error:'',partial:false};
+ chartSeries=chartSeries.id==='ore'&&chartSeries.range===selected&&chartSeries.candles.length>=2?
+  {...chartSeries,loading:true,error:''}:
+  {id:'ore',range:selected,candles:[],source:'',loading:true,error:'',partial:false};
  updateChartHistoryStatus();
  requestAnimationFrame(drawChart);
  const now=Date.now();
@@ -2980,7 +2987,9 @@ async function loadMarketChartHistory(force=false){
   requestAnimationFrame(drawChart);
   return;
  }
- chartSeries={id:asset.id,range:selected,candles:[],source:'',loading:true,error:'',partial:false};
+ chartSeries=chartSeries.id===asset.id&&chartSeries.range===selected&&chartSeries.candles.length>=2?
+  {...chartSeries,loading:true,error:''}:
+  {id:asset.id,range:selected,candles:[],source:'',loading:true,error:'',partial:false};
  updateChartHistoryStatus();
  requestAnimationFrame(drawChart);
  let candles=[],source='',failure='',visibleCount=0;
@@ -3044,6 +3053,32 @@ async function loadMarketChartHistory(force=false){
  updateChartHistoryStatus();
  requestAnimationFrame(drawChart);
 }
+// Refresh the visible instrument while the detail dialog is open; actual
+// freshness depends on the exchange and snapshot provider.
+let chartLiveTimer=null;
+let chartLiveBusy=false;
+function stopChartLiveRefresh(){
+ if(chartLiveTimer!==null){clearTimeout(chartLiveTimer);chartLiveTimer=null;}
+}
+function scheduleChartLiveRefresh(){
+ stopChartLiveRefresh();
+ if(!state.dialogId)return;
+ const seconds=!!CHART_PERIOD_BY_ID[chartRange]?.seconds;
+ const asset=ASSET_BY_ID[state.dialogId];
+ const delay=seconds?5000:asset?.group==='crypto'?15000:60000;
+ chartLiveTimer=setTimeout(()=>{
+  chartLiveTimer=null;
+  if(!state.dialogId)return;
+  if(document.hidden){scheduleChartLiveRefresh();return;}
+  if(!chartLiveBusy){
+   chartLiveBusy=true;
+   Promise.resolve(loadChartHistory(true)).catch(()=>{}).finally(()=>{
+    chartLiveBusy=false;
+    if(state.dialogId)scheduleChartLiveRefresh();
+   });
+  }else scheduleChartLiveRefresh();
+ },delay);
+}
 function openAsset(id){
  const a=ASSET_BY_ID[id];if(!a)return;
  chartFetchState.sequence++;
@@ -3057,6 +3092,7 @@ function openAsset(id){
  if(!dlg.open)dlg.showModal();
  if(chartSupportsRanges(a)){
   loadChartHistory();
+  scheduleChartLiveRefresh();
   // Native fullscreen when permitted by the browser; viewport-filling CSS
   // remains the reliable fallback on mobile and restricted browsers.
   if(typeof dlg.requestFullscreen==='function'){
@@ -3067,6 +3103,7 @@ function openAsset(id){
  requestAnimationFrame(drawChart);
 }
 function closeAsset(){
+ stopChartLiveRefresh();
  const dlg=$('#assetDialog');
  if(dlg.open)dlg.close();
  chartFetchState.sequence++;
@@ -3232,7 +3269,9 @@ function drawChart(){
    const colorC=up?'#18df9d':'#f75d72';
    line(x,yPrice(c.h),x,yPrice(c.l),colorC,chartRange==='MAX'?.7:1);
    ctx.fillStyle=colorC;const top=yPrice(Math.max(c.o,c.c)),bottom=yPrice(Math.min(c.o,c.c));
-   ctx.fillRect(x-cw/2,top,cw,Math.max(1,bottom-top));
+   const bodyHeight=Math.max(1,bottom-top);
+   const radius=Math.min(2.2,cw*.22,bodyHeight*.45);
+   ctx.beginPath();ctx.roundRect(x-cw/2,top,cw,bodyHeight,radius);ctx.fill();
   });
  emaSets.forEach(a=>{
   ctx.beginPath();let started=false;
