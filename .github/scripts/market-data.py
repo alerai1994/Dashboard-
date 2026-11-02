@@ -14,6 +14,7 @@ from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 
 OUTPUT = Path("market-data.json")
+FAST_OUTPUT = Path("market-quotes.json")
 MARKETS = [
     ("sp500", "^GSPC"), ("nasdaq", "^IXIC"), ("tsx", "^GSPTSE"),
     ("ibov", "^BVSP"), ("ftse", "^FTSE"), ("dax", "^GDAXI"),
@@ -206,6 +207,13 @@ def yahoo_quote(pair):
                 continue
             entry["value"] = last
             entry["currency"] = str(meta.get("currency") or "USD")
+            entry["source"] = "Yahoo Finance · quotazione della fonte"
+            market_state = meta.get("marketState")
+            if isinstance(market_state, str) and market_state:
+                entry["marketState"] = market_state
+            delay = valid(meta.get("exchangeDataDelayedBy"))
+            if delay is not None and 0 <= delay <= 120:
+                entry["delayMinutes"] = int(delay)
             entry["history"] = closes[-40:]
             quotes = result.get("indicators", {}).get("quote", [{}])[0]
             stamps = result.get("timestamp", [])
@@ -660,7 +668,23 @@ def main():
                 return
         except (OSError, ValueError, TypeError):
             pass
+    # A compact price-only feed keeps all six market groups refreshed without
+    # redownloading multi-year candle history on each browser poll. Preserve
+    # original per-instrument timestamps so stale/closed quotes are not LIVE.
+    compact_fields = ("id", "symbol", "value", "change", "currency", "time",
+                      "source", "marketState", "delayMinutes", "logo")
+    compact = {
+        "generatedAt": data["generatedAt"],
+        "source": data["source"],
+        **{group: [
+            {key: row[key] for key in compact_fields if key in row}
+            for row in data[group]
+        ] for group in ("markets", "bigtech", "commodities", "forex", "crypto")}
+    }
+    # Do not publish the compact feed before the full snapshot is written.
     OUTPUT.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    FAST_OUTPUT.write_text(json.dumps(compact, separators=(",", ":"), ensure_ascii=False) + "\n",
+                           encoding="utf-8")
 
 if __name__ == "__main__":
     main()
