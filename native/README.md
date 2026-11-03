@@ -8,6 +8,18 @@ Questo repository contiene:
 
 I tre sistemi leggono `market-quotes.json` verificato dal repository. Quando il feed non è aggiornato o irraggiungibile **non vengono inventati prezzi**. Il timestamp della fonte può essere precedente al momento del refresh.
 
+## App native indipendenti dalla dashboard web
+
+Vertex Crypto dispone di progetti di applicazione nativa distinti, sviluppati con le API del sistema:
+
+- **Android (Kotlin)** — `native/android`: app con elenco crypto ricercabile, prezzi e variazioni, dettagli dei mercati, aggiornamento del feed, comando per richiedere al launcher un widget Home, e provider `AppWidgetProvider` configurabile.
+- **iPhone e iPad (SwiftUI)** — `native/ios`: app con ricerca, preferiti, schede dei mercati, aggiornamento delle quotazioni e WidgetKit (widget piccoli, medi e grandi con crypto configurabile).
+- **macOS (SwiftUI)** — stesso progetto Xcode, target `VertexCryptoMac` e `VertexCryptoMacWidget`. L'utente può aggiungere i widget al desktop o al Centro Notifiche secondo le funzioni del sistema.
+- **Windows 11 (C# WinForms)** — `native/windows/VertexCryptoProvider`: app desktop con ricerca e prezzi, più provider `IWidgetProvider` per i widget nella bacheca **Win + W**. La registrazione del provider richiede il packaging MSIX sotto `native/windows/VertexCryptoPackage`.
+- **Linux (Python + GTK 4)** — `native/linux`: app desktop nativa GTK, con launcher nel menu applicazioni. Su Linux non esiste un'interfaccia standard di widget valida per tutte le distribuzioni; gli eventuali widget sulla scrivania richiedono un'integrazione specifica con GNOME, KDE Plasma o un altro desktop environment.
+
+I progetti non richiedono un account exchange né credenziali di portafoglio. Il feed pubblico resta soggetto ai tempi di aggiornamento della fonte. **Non sono equivalenti a pacchetti già firmati o pubblicati negli store.**
+
 ## Come aggiungere i widget sulla schermata Home
 
 Su **Android** e **iPhone/iPad** i widget compaiono nella schermata Home del dispositivo dopo l'installazione dell'app e l'aggiunta dalla galleria Widget. Su **Windows 11**, i widget nativi compaiono nella **bacheca Widget** (Win + W), non direttamente sul desktop come normali icone.
@@ -61,3 +73,20 @@ La workflow `.github/workflows/native-widget-build.yml` controlla le build:
 Non è stata ancora eseguita una verifica sui tre sistemi operativi reali in questa sessione: i progetti e i controlli automatici non equivalgono a un widget già installato o pubblicato nello Store.
 
 Dati: `https://raw.githubusercontent.com/alerai1994/Dashboard-/main/market-quotes.json`. Non vengono richiesti account di exchange, credenziali, password o wallet. Le quotazioni (anche di ORE) possono essere ritardate.
+
+## Installazione su macOS e Linux
+
+**macOS**: sul Mac installa Xcode e XcodeGen; genera il progetto con `cd native/ios && xcodegen generate` e apri `VertexCrypto.xcodeproj`. Compila il target `VertexCryptoMac` e configura la firma per distribuire l'app. In macOS 14+ aggiungi il widget Vertex dal menu Widget del desktop o dal Centro Notifiche, dopo aver installato l'app firmata.
+
+**Linux**: installa `python3-gi` e GTK 4, quindi esegui `bash native/linux/install.sh`. Apri *Vertex Crypto* dal menu applicazioni. L'integrazione come widget della scrivania non è universale su Linux ed è un lavoro distinto.
+
+## Come ottenere gli artefatti da GitHub Actions
+
+Apri **Actions → Build Vertex native apps and widgets** e avvia il workflow. Se i job completano con successo, gli artefatti sono:
+- `vertex-crypto-android-debug-apk` (APK Android di sviluppo installabile);
+- `vertex-crypto-ios-ipados-simulator` (app Apple **solo per il simulatore**, non installabile su iPhone/iPad fisici senza firma);
+- `vertex-crypto-macos-unsigned-app` (app macOS per sviluppo, da firmare/distribuire);
+- `vertex-crypto-windows-developer-files` (file eseguibili di sviluppo Windows);
+- `vertex-crypto-windows-msix-unsigned` (MSIX da **firmare con certificato attendibile prima di installare**).
+
+Le compilazioni non sono state confermate in questa sessione. Per la pubblicazione su Google Play, App Store e Microsoft Store sono necessari account sviluppatore, certificati di firma, test su dispositivi reali e procedure dei rispettivi store.
