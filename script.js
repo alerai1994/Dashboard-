@@ -1608,8 +1608,14 @@ const CRYPTO_ETF_PRODUCTS=[
   url:'https://www.21shares.com/it-eu/product/ainj',
   description:'ETP/ETN su Injective con staking. ETF spot INJ USA ancora in registrazione.'}
 ];
+// Only one ETF crypto category is shown at a time. Default to Crypto A.
+let selectedCryptoEtfTab='a';
 function cryptoEtfSection(){
- const cards=CRYPTO_ETF_PRODUCTS.map(product=>{
+ const group=selectedCryptoEtfTab==='b'?
+  {id:'b',title:'Crypto B',description:'Solana e Injective',ids:['sol','inj']}:
+  {id:'a',title:'Crypto A',description:'Bitcoin ed Ethereum',ids:['btc','eth']};
+ const products=CRYPTO_ETF_PRODUCTS.filter(product=>group.ids.includes(product.crypto));
+ const cards=products.map(product=>{
   const asset=ASSET_BY_ID[product.crypto],q=quote(product.crypto);
   const spot=asset&&q&&num(q.value)&&q.value>0?assetValue(asset):'—';
   const delta=q&&Number.isFinite(Number(q.change))?pct(q.change):'—';
@@ -1633,27 +1639,28 @@ function cryptoEtfSection(){
    '<a href="'+esc(product.url)+'" target="_blank" rel="noopener noreferrer" class="crypto-etf-link"'+
     ' aria-label="Scheda ufficiale '+esc(product.ticker)+'">Scheda e quotazione del prodotto ↗</a>'+
   '</article>';
- });
- const groups=[
-  {label:'Crypto A',subtitle:'Bitcoin ed Ethereum',cards:cards.slice(0,2)},
-  {label:'Crypto B',subtitle:'Solana e Injective',cards:cards.slice(2,4)}
- ];
- const groupedCards=groups.map((group,index)=>
-  '<section class="crypto-etf-group" aria-label="'+group.label+'">'+
-  '<div class="crypto-etf-group-heading"><span class="crypto-etf-group-letter">'+(index===0?'A':'B')+'</span>'+
-  '<div><h3>'+group.label+'</h3><p>'+group.subtitle+'</p></div>'+
-  '<span class="crypto-etf-group-count">2 prodotti</span></div>'+
-  '<div class="crypto-etf-grid">'+group.cards.join('')+'</div></section>'
- ).join('');
+ }).join('');
+ const tabs=[{id:'a',label:'Crypto A',sub:'BTC · ETH'},
+  {id:'b',label:'Crypto B',sub:'SOL · INJ'}]
+  .map(tab=>'<button type="button" role="tab" class="crypto-etf-tab'+
+   (selectedCryptoEtfTab===tab.id?' is-selected':'')+
+   '" id="crypto-etf-tab-'+tab.id+'" data-etf-tab="'+tab.id+
+   '" aria-selected="'+String(selectedCryptoEtfTab===tab.id)+
+   '" aria-controls="crypto-etf-panel"><strong>'+tab.label+
+   '</strong><small>'+tab.sub+'</small></button>').join('');
  return '<section class="crypto-etfs-section" aria-label="ETF ed ETP delle criptovalute">'+
   '<div class="crypto-etf-title"><div><h2>ETF ed ETP Crypto</h2>'+
-  '<p>Bitcoin, Ethereum, Solana e Injective · prodotti quotati verificati</p></div>'+
-  '<span class="crypto-etf-total">4 prodotti</span></div>'+
-  '<div class="crypto-etf-groups">'+groupedCards+'</div>'+
-  '<p class="crypto-etf-disclaimer">Attenzione: i valori spot mostrati sono prezzi delle criptovalute, '+ 
+  '<p>Bitcoin, Ethereum, Solana e Injective · ETF ed ETP negoziati</p></div>'+
+  '<span class="crypto-etf-total">4 prodotti · 2 categorie</span></div>'+
+  '<div class="crypto-etf-tabs" role="tablist" aria-label="Seleziona Crypto A o Crypto B">'+tabs+'</div>'+
+  '<div class="crypto-etf-tabpanel" role="tabpanel" id="crypto-etf-panel" aria-labelledby="crypto-etf-tab-'+group.id+'">'+
+  '<div class="crypto-etf-tabpanel-heading"><div><h3>'+group.title+
+  '</h3><p>'+group.description+'</p></div>'+
+  '<span>'+products.length+' prodotti</span></div>'+
+  '<div class="crypto-etf-grid">'+cards+'</div></div>'+
+  '<p class="crypto-etf-disclaimer">Attenzione: i valori spot mostrati sono prezzi delle criptovalute, '+
   'non prezzi delle quote ETF/ETP. Per il valore negoziato e gli orari della borsa apri la scheda del prodotto. '+
-  'AINJ è un ETP/ETN europeo (ISIN CH1360612134): un ETF spot INJ statunitense non risulta ancora negoziato al 3 novembre 2026. '+
-  'I prodotti possono essere volatili e comportare perdita del capitale.</p>'+
+  'AINJ è un ETP europeo, non un ETF USA. I prodotti possono comportare perdita del capitale.</p>'+
   '</section>';
 }
 function etfPage(){
@@ -3758,6 +3765,13 @@ function setupEvents(){
    save('adaptiveBrightness',state.adaptiveBrightness);
    applyBrightness();
    if(state.page==='settings')render();
+   return;
+  }
+  if(btn.dataset.etfTab){
+   if(state.page==='etf'&&['a','b'].includes(btn.dataset.etfTab)){
+    selectedCryptoEtfTab=btn.dataset.etfTab;
+    render();
+   }
    return;
   }
   if(btn.dataset.orderBookAsset){selectOrderBookAsset(btn.dataset.orderBookAsset);return;}
