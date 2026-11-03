@@ -107,6 +107,33 @@ jobs:
           path: ${{ runner.temp }}/VertexCryptoWindows/
           if-no-files-found: error
 
+
+  windows-msix:
+    name: Package Windows native app + 42 widgets (unsigned MSIX)
+    needs: windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - uses: microsoft/setup-msbuild@v2
+      - name: Build Windows Application Packaging Project
+        shell: pwsh
+        run: |
+          msbuild native/windows/VertexCryptoPackage/VertexCryptoPackage.wapproj `
+            /restore /p:Configuration=Release /p:Platform=x64 `
+            /p:UapAppxPackageBuildMode=SideLoadOnly `
+            /p:AppxBundle=Never /p:AppxPackageSigningEnabled=false `
+            /p:GenerateAppxPackageOnBuild=true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vertex-crypto-windows-msix-unsigned
+          path: |
+            native/windows/**/AppPackages/**/*.msix
+            native/windows/**/AppPackages/**/*.msixbundle
+          if-no-files-found: error
+
   linux:
     name: Linux GTK native app syntax
     runs-on: ubuntu-latest
