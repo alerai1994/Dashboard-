@@ -1644,8 +1644,107 @@ function cryptoEtfSection(){
   'AINJ è un ETP europeo, non un ETF USA. I prodotti possono comportare perdita del capitale.</p>'+
   '</section>';
 }
+
+// Market-cap comparison is separate from ETF products. It uses CoinGecko's
+// current market cap and circulating supply, never a guessed or cached spot cap.
+const CRYPTO_CAP_IDS={
+ btc:'bitcoin',eth:'ethereum',sol:'solana',xrp:'ripple',bnb:'binancecoin',
+ doge:'dogecoin',inj:'injective-protocol'
+};
+const cryptoCapCoins=ASSETS.filter(a=>a.group==='crypto');
+const cryptoCapState={a:'inj',b:'btc',data:new Map(),updatedAt:0,loading:false,error:''};
+const cryptoCapId=a=>a&&(a.coingeckoId||CRYPTO_CAP_IDS[a.id])||null;
+const validCap=n=>Number.isFinite(Number(n))&&Number(n)>0;
+const cryptoCapMoney=n=>new Intl.NumberFormat('it-IT',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(n);
+const cryptoCapCount=n=>new Intl.NumberFormat('it-IT',{maximumFractionDigits:2}).format(n);
+function cryptoCapResults(){
+ const A=ASSET_BY_ID[cryptoCapState.a],B=ASSET_BY_ID[cryptoCapState.b];
+ const a=cryptoCapState.data.get(cryptoCapId(A)),b=cryptoCapState.data.get(cryptoCapId(B));
+ const ready=!!a&&!!b&&validCap(a.circulating_supply)&&validCap(b.market_cap)&&validCap(a.current_price);
+ const status=cryptoCapState.loading?'Aggiornamento da CoinGecko in corso…':
+  cryptoCapState.error?cryptoCapState.error:
+  !cryptoCapState.updatedAt?'In attesa delle capitalizzazioni reali da CoinGecko…':'';
+ if(!ready){
+  return '<div class="crypto-cap-placeholder" role="status"><strong>Calcolo non disponibile</strong>'+
+   '<p>'+esc(status||'Capitalizzazione o token circolanti non disponibili per una delle crypto scelte. Prova un’altra coppia o aggiorna.')+'</p></div>';
+ }
+ const supply=Number(a.circulating_supply),targetCap=Number(b.market_cap);
+ const price=Number(a.current_price),predicted=targetCap/supply;
+ if(!validCap(predicted)||!Number.isFinite(predicted))return '<div class="crypto-cap-placeholder">Dati insufficienti per calcolare il prezzo ipotetico.</div>';
+ const multiplier=predicted/price,change=(multiplier-1)*100;
+ const changeText=(change>=0?'+':'')+new Intl.NumberFormat('it-IT',{maximumFractionDigits:2}).format(change)+'%';
+ const updated=[a.last_updated,b.last_updated].map(t=>Date.parse(t||'')).filter(Number.isFinite);
+ const newest=updated.length?new Date(Math.min(...updated)).toLocaleString('it-IT'):'orario non comunicato';
+ return '<div class="crypto-cap-metrics">'+
+  '<article class="crypto-cap-metric"><small>Prezzo attuale A · '+esc(A.short||A.name)+'</small><strong>'+esc(formatValue(price,A))+'</strong></article>'+
+  '<article class="crypto-cap-metric"><small>Capitalizzazione A</small><strong>'+esc(validCap(a.market_cap)?cryptoCapMoney(a.market_cap):'Non disponibile')+'</strong></article>'+
+  '<article class="crypto-cap-metric"><small>Capitalizzazione B · '+esc(B.short||B.name)+'</small><strong>'+esc(cryptoCapMoney(targetCap))+'</strong></article>'+
+  '<article class="crypto-cap-metric"><small>Token circolanti A</small><strong>'+esc(cryptoCapCount(supply))+'</strong></article></div>'+
+  '<div class="crypto-cap-answer"><div><small>Prezzo ipotetico di '+esc(A.short||A.name)+' con la capitalizzazione di '+esc(B.short||B.name)+'</small>'+
+  '<strong>'+esc(formatValue(predicted,A))+'</strong></div>'+
+  '<div class="crypto-cap-growth '+(change>=0?'is-positive':'is-negative')+'"><span>'+esc(changeText)+'</span><small>'+
+  esc(new Intl.NumberFormat('it-IT',{maximumFractionDigits:2}).format(multiplier))+'× rispetto al prezzo attuale</small></div></div>'+
+  '<div class="crypto-cap-source">'+(status?'<span>'+esc(status)+'</span>':'')+
+  '<span>Dati CoinGecko (USD) · ultimo aggiornamento: '+esc(newest)+'</span></div>';
+}
+function updateCryptoCapResults(){
+ const target=$('#cryptoCapResults');
+ if(target&&state.page==='etf')target.innerHTML=cryptoCapResults();
+}
+function cryptoCapCalculator(){
+ const options=cryptoCapCoins.map(a=>'<option value="'+esc(a.id)+'"'+
+  (a.id===cryptoCapState.a?' selected':'')+'>'+esc(a.name)+'</option>').join('');
+ const optionsB=cryptoCapCoins.map(a=>'<option value="'+esc(a.id)+'"'+
+  (a.id===cryptoCapState.b?' selected':'')+'>'+esc(a.name)+'</option>').join('');
+ return '<section class="crypto-cap-section" aria-label="Confronta capitalizzazioni crypto">'+
+  '<div class="crypto-cap-heading"><div><h2>Calcolatore capitalizzazione Crypto A e B</h2>'+
+  '<p>Scopri il prezzo ipotetico della Crypto A se raggiungesse la capitalizzazione della Crypto B.</p></div>'+
+  '<button class="btn btn-small" type="button" data-cap-refresh="1">↻ Aggiorna dati</button></div>'+
+  '<div class="crypto-cap-controls"><label for="cryptoCapA"><span>Crypto A · prezzo da calcolare</span>'+
+  '<select id="cryptoCapA" aria-label="Seleziona Crypto A">'+options+'</select></label>'+
+  '<button type="button" class="crypto-cap-swap" data-cap-swap="1" aria-label="Scambia Crypto A e Crypto B" title="Inverti le crypto">⇄</button>'+
+  '<label for="cryptoCapB"><span>Crypto B · capitalizzazione obiettivo</span>'+
+  '<select id="cryptoCapB" aria-label="Seleziona Crypto B">'+optionsB+'</select></label></div>'+
+  '<div id="cryptoCapResults" aria-live="polite">'+cryptoCapResults()+'</div>'+
+  '<p class="crypto-cap-explainer">Formula: capitalizzazione di mercato di B ÷ token attualmente circolanti di A = prezzo ipotetico di A. '+
+  'La simulazione assume che l’offerta circolante resti costante. Non è una previsione, né una garanzia di rendimento. '+
+  'Se CoinGecko non fornisce dati verificabili, il risultato non viene inventato.</p></section>';
+}
+async function loadCryptoCapData(force=false){
+ if(cryptoCapState.loading)return;
+ if(!force&&cryptoCapState.updatedAt&&Date.now()-cryptoCapState.updatedAt<5*60*1000){
+  updateCryptoCapResults();return;
+ }
+ cryptoCapState.loading=true;cryptoCapState.error='';
+ updateCryptoCapResults();
+ try{
+  const ids=[...new Set(cryptoCapCoins.map(cryptoCapId).filter(Boolean))];
+  const url='https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids='+
+   encodeURIComponent(ids.join(','))+'&per_page=50&page=1&sparkline=false';
+  const response=await fetch(url,{cache:'no-store',headers:{Accept:'application/json'}});
+  if(!response.ok)throw new Error(response.status===429?'Limite richieste CoinGecko raggiunto. Riprova più tardi.':'Errore CoinGecko (HTTP '+response.status+').');
+  const data=await response.json();
+  if(!Array.isArray(data))throw new Error('Risposta non valida dal servizio capitalizzazioni.');
+  const allowed=new Set(ids),fresh=new Map();
+  for(const x of data){
+   if(!x||!allowed.has(x.id))continue;
+   fresh.set(x.id,{market_cap:Number(x.market_cap),circulating_supply:Number(x.circulating_supply),
+    current_price:Number(x.current_price),last_updated:x.last_updated});
+  }
+  if(!fresh.size)throw new Error('Nessun dato di capitalizzazione restituito da CoinGecko.');
+  cryptoCapState.data=fresh;
+  cryptoCapState.updatedAt=Date.now();
+ }catch(error){
+  cryptoCapState.error=error instanceof TypeError?
+   'Connessione a CoinGecko non disponibile. Verifica la rete e riprova.':
+   String(error?.message||'Impossibile caricare le capitalizzazioni.');
+ }finally{
+  cryptoCapState.loading=false;
+  updateCryptoCapResults();
+ }
+}
 function etfPage(){
- return cryptoEtfSection();
+ return cryptoEtfSection()+cryptoCapCalculator();
 }
 function orderBookPage(){
  const coin=ASSET_BY_ID[orderBookState.id]||ORDER_BOOK_COINS[0],snap=cryptoBookEntry(coin.id),source=snap?{venue:snap.venue,pair:snap.pair}:orderBookSource(coin.id);
@@ -2422,6 +2521,7 @@ function render(){
  main.innerHTML=PAGE_RENDERERS[state.page]();
  updateNav();
  paintCryptoPriceHighlights();
+ if(state.page==='etf')loadCryptoCapData();
  if(state.page==='news'&&!secNewsState.loaded&&!secNewsState.loading)loadSecNews();
  if(state.page==='global'){
   if(!state.land)loadWorldShape();
@@ -3748,6 +3848,17 @@ function setupEvents(){
    if(state.page==='settings')render();
    return;
   }
+  if(btn.dataset.capSwap!==undefined&&state.page==='etf'){
+   [cryptoCapState.a,cryptoCapState.b]=[cryptoCapState.b,cryptoCapState.a];
+   const inputA=$('#cryptoCapA'),inputB=$('#cryptoCapB');
+   if(inputA)inputA.value=cryptoCapState.a;
+   if(inputB)inputB.value=cryptoCapState.b;
+   updateCryptoCapResults();
+   return;
+  }
+  if(btn.dataset.capRefresh!==undefined&&state.page==='etf'){
+   loadCryptoCapData(true);return;
+  }
   if(btn.dataset.orderBookAsset){selectOrderBookAsset(btn.dataset.orderBookAsset);return;}
   if(btn.dataset.orderBookRefresh){startOrderBookLive(true);refreshOrderBook(true);return;}
   if(btn.dataset.vertexIcon){setVertexAppIcon(btn.dataset.vertexIcon);return;}
@@ -3813,6 +3924,15 @@ function setupEvents(){
  });
  $('#pageContainer').addEventListener('keydown',e=>{if(e.key==='Enter'){const tr=e.target.closest('tr[data-asset]');if(tr)openAsset(tr.dataset.asset)}});
  $('#pageContainer').addEventListener('change',e=>{
+  if(state.page==='etf'&&(e.target.id==='cryptoCapA'||e.target.id==='cryptoCapB')){
+   const id=e.target.value;
+   if(cryptoCapCoins.some(coin=>coin.id===id)){
+    cryptoCapState[e.target.id==='cryptoCapA'?'a':'b']=id;
+    updateCryptoCapResults();
+    loadCryptoCapData();
+   }
+   return;
+  }
   if(e.target.id==='holdingAsset'){
    e.target.removeAttribute('aria-invalid');
    const message=$('#portfolioFormFeedback');
