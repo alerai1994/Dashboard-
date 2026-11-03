@@ -1277,3 +1277,27 @@ body.theme-light .vertex-boot-note{color:#56738f}
  .crypto-bell-settings .settings-sound-row{align-items:flex-start;flex-wrap:wrap;gap:10px}
  .crypto-bell-settings-count{white-space:normal}
 }
+
+/* Price-only signal highlighting across all 42 crypto assets and the Markets gallery.
+   These classes are added only after a verified crossing of the automatic/manual
+   threshold, never inferred from the 24h percentage change. */
+#pageContainer .crypto-price-upper,
+#dialogBody .crypto-price-upper {
+ color:#facc15!important;
+ text-shadow:0 0 10px rgba(250,204,21,.22);
+}
+#pageContainer .crypto-price-lower,
+#dialogBody .crypto-price-lower {
+ color:#ff415b!important;
+ text-shadow:0 0 10px rgba(255,65,91,.22);
+}
+#pageContainer .market-chart-card .asset-price.crypto-price-upper,
+#pageContainer .index-mini .mini-price.crypto-price-upper,
+#pageContainer .crypto-etf-spot .asset-price.crypto-price-upper {
+ color:#facc15!important;
+}
+#pageContainer .market-chart-card .asset-price.crypto-price-lower,
+#pageContainer .index-mini .mini-price.crypto-price-lower,
+#pageContainer .crypto-etf-spot .asset-price.crypto-price-lower {
+ color:#ff415b!important;
+}
