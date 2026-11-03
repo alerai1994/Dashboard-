@@ -1301,3 +1301,7 @@ body.theme-light .vertex-boot-note{color:#56738f}
 #pageContainer .crypto-etf-spot .asset-price.crypto-price-lower {
  color:#ff415b!important;
 }
+
+/* The quick-search menu also shows verified crypto threshold colors. */
+#searchMenu .crypto-price-upper{color:#facc15!important}
+#searchMenu .crypto-price-lower{color:#ff415b!important}
