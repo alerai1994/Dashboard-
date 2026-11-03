@@ -1,0 +1,13 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="match_parent" android:layout_height="match_parent"
+  android:orientation="vertical" android:background="@drawable/widget_background"
+  android:padding="16dp">
+  <TextView android:id="@+id/widget_name" android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:text="VERTEX · BTC" android:textColor="#A8C5EC" android:textSize="13sp" android:textStyle="bold"/>
+  <TextView android:id="@+id/widget_price" android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:text="—" android:textColor="#FFFFFF" android:textSize="24sp" android:textStyle="bold" android:layout_marginTop="8dp"/>
+  <TextView android:id="@+id/widget_change" android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:text="—" android:textColor="#9CB1C9" android:textSize="14sp"/>
+  <TextView android:id="@+id/widget_asof" android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:text="Prezzo non disponibile" android:textColor="#8DA2B8" android:textSize="10sp" android:layout_marginTop="6dp"/>
+</LinearLayout>
