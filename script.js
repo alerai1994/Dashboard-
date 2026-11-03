@@ -3659,6 +3659,11 @@ function dismissVertexBoot(){
  }else afterPaint();
 }
 function init(){
+ if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./vertex-widget-sw.js').then(reg=>{
+   if(reg.active)reg.active.postMessage({type:'VERTEX_WIDGETS_REFRESH'});
+  }).catch(()=>{});
+ }
  setupEvents();updateVertexAppIcon();applyTheme();applyBrightness();updateClock();
  setInterval(updateClock,30000);
  setInterval(()=>{if(state.adaptiveBrightness&&!document.hidden)applyBrightness()},60000);
@@ -3678,6 +3683,8 @@ function init(){
  setInterval(keepStreamAlive,15000);
  setInterval(()=>{if(!document.hidden)connectForexStream();updateLiveBadges()},15000);
  document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden&&navigator.serviceWorker?.controller)
+   navigator.serviceWorker.controller.postMessage({type:'VERTEX_WIDGETS_REFRESH'});
   if(document.hidden){closeStream();disconnectForexStream();stopOrderBookLive()}
   else {
    connectCryptoStream();connectForexStream();fetchQuotes();updateWorldSunlight(true);applyBrightness();
