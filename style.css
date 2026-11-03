@@ -1216,3 +1216,7 @@ body.theme-light .vertex-boot-note{color:#56738f}
 .market-quote-asof{display:block;font-size:9px;color:var(--muted);line-height:1.5;margin:0 0 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .market-chart-card{overflow:hidden}
 @media(max-width:700px){.market-quote-asof{font-size:10px}}
+
+/* Notification bell: audio enabled. No price-alert popup. */
+#notificationsButton.bell-audio-on{color:var(--green);background:color-mix(in srgb,var(--green) 10%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--green) 35%,transparent)}
+#notificationsButton.bell-audio-on:hover{background:color-mix(in srgb,var(--green) 16%,transparent)}
