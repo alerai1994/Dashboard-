@@ -822,6 +822,7 @@ function updatePriceDom(){
   patchPortfolio();
   patchSummary();
   evaluateCryptoAlerts();
+  paintCryptoPriceHighlights();
  }
  updateLiveBadges();
 }
@@ -2143,6 +2144,8 @@ async function refreshOrderBook(force=false){
 
 // Crypto alerts are always managed from the upper-right bell, not a page.
 const cryptoAutoBaselines=new Map();
+// Last verified UPPER or LOWER crossing per crypto, kept across page navigation.
+const cryptoPriceBoundaryStates=new Map();
 const cryptoAlertReached=new Map();
 let cryptoAlertAudioContext=null;
 // Keep the last threshold-crossing color until the user acknowledges it by clicking the bell.
@@ -2213,6 +2216,36 @@ function playCryptoAlertSound(direction='above',delay=0){
   });
  }catch(_error){/* Browser autoplay restrictions take precedence. */}
 }
+function cryptoBoundaryFor(id){
+ return ASSET_BY_ID[id]?.group==='crypto'?cryptoPriceBoundaryStates.get(id)||null:null;
+}
+function paintCryptoPriceHighlights(){
+ const main=$('#pageContainer');
+ if(main){
+  main.querySelectorAll('[data-asset]').forEach(node=>{
+   const id=node.dataset.asset,boundary=cryptoBoundaryFor(id);
+   const selector='.asset-price,.mini-price,.tech-asset-value';
+   const values=node.querySelectorAll(selector);
+   values.forEach(price=>{
+    price.classList.toggle('crypto-price-upper',boundary==='above');
+    price.classList.toggle('crypto-price-lower',boundary==='below');
+   });
+   if(node.matches('tr[data-asset]')){
+    const cell=node.querySelector('td:nth-child(2)');
+    if(cell){
+     cell.classList.toggle('crypto-price-upper',boundary==='above');
+     cell.classList.toggle('crypto-price-lower',boundary==='below');
+    }
+   }
+  });
+ }
+ const dialogPrice=$('#dialogBody .dialog-stats strong');
+ if(dialogPrice){
+  const boundary=cryptoBoundaryFor(state.dialogId);
+  dialogPrice.classList.toggle('crypto-price-upper',boundary==='above');
+  dialogPrice.classList.toggle('crypto-price-lower',boundary==='below');
+ }
+}
 function evaluateCryptoAlerts(){
  const newHits=[];
  // Automatic thresholds are active for ALL cryptocurrencies listed in Vertex.
@@ -2251,6 +2284,7 @@ function evaluateCryptoAlerts(){
  }
  if(newHits.length){
   for(const {rule,value} of newHits){
+   if(ASSET_BY_ID[rule.id]?.group==='crypto')cryptoPriceBoundaryStates.set(rule.id,rule.operator);
    cryptoAlertHistory.unshift({id:rule.id,operator:rule.operator,
     value:Number(rule.value),price:value,at:Date.now()});
   }
@@ -2272,6 +2306,7 @@ function evaluateCryptoAlerts(){
    ' · '+formatValue(first.value,ASSET_BY_ID[first.rule.id]));
  }
  updateCryptoAlertIndicator();
+ paintCryptoPriceHighlights();
 }
 function settingsPage(){
  const choices=[['light','☀','Chiaro','Bianco e azzurro'],['dark','☾','Scuro','Blu notte'],['ocean','◈','Oceano','Blu e turchese'],['emerald','❖','Smeraldo','Verde elegante'],['violet','✦','Viola','Viola moderno']];
@@ -2337,6 +2372,7 @@ function render(){
  const main=$('#pageContainer');
  main.innerHTML=PAGE_RENDERERS[state.page]();
  updateNav();
+ paintCryptoPriceHighlights();
  if(state.page==='news'&&!secNewsState.loaded&&!secNewsState.loading)loadSecNews();
  if(state.page==='global'){
   if(!state.land)loadWorldShape();
@@ -3776,6 +3812,7 @@ function setupEvents(){
    const rows=$('#marketRows');
    if(rows)rows.innerHTML=marketsCards(ASSETS.filter(a=>marketFilterMatch(a)&&
     (a.name+' '+a.symbol+' '+(a.country||'')).toLowerCase().includes(state.marketSearch.trim().toLowerCase())),'Nessun risultato');
+   paintCryptoPriceHighlights();
    try{target.setSelectionRange(cursor,cursor)}catch(err){}
   }
  });
