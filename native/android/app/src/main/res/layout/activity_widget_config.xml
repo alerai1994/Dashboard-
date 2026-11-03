@@ -1,0 +1,13 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+ android:layout_width="match_parent" android:layout_height="match_parent"
+ android:orientation="vertical" android:gravity="center_vertical"
+ android:background="#0D2033" android:padding="24dp">
+ <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+   android:text="Seleziona una criptovaluta" android:textColor="#FFFFFF"
+   android:textSize="22sp" android:textStyle="bold"/>
+ <Spinner android:id="@+id/coin_spinner" android:layout_width="match_parent"
+   android:layout_height="wrap_content" android:layout_marginTop="20dp"/>
+ <Button android:id="@+id/save_widget" android:layout_width="match_parent"
+   android:layout_height="wrap_content" android:layout_marginTop="20dp"
+   android:text="Aggiungi widget Vertex"/>
+</LinearLayout>
