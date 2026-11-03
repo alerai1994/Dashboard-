@@ -206,7 +206,7 @@ const state={
   a&&ASSET_BY_ID[a.id]?.group==='crypto'&&
   ['above','below'].includes(a.operator)&&Number.isFinite(Number(a.value))&&Number(a.value)>0
  ).map(a=>({id:a.id,operator:a.operator,value:Number(a.value)})):[]})(),
- alertSound:load('cryptoAlertSound',true)!==false,
+ alertSound:load('cryptoAlertSound',false)===true,
  theme:load('theme','dark'),themeMode:load('themeMode',load('theme','dark')),clickSound:load('clickSound',true),clickVolume:load('clickVolume',70),brightness:load('brightness',100),adaptiveBrightness:load('adaptiveBrightness',false)===true,region:null,marketFilter:'all',marketSearch:'',dialogId:null,chartShift:0,chartHover:null,
  land:'',searchResults:[],errorText:'',cryptoExpanded:false,
  solarLastRoot:null,solarLastUpdate:0,solarLastStatus:0
@@ -2100,7 +2100,15 @@ function updateCryptoAlertIndicator(){
  const bell=$('#notificationsButton'),dot=$('#notifDot');
  const count=triggeredAlerts().length;
  if(dot)dot.hidden=count===0;
- if(bell)bell.setAttribute('aria-label','Avvisi prezzi crypto'+(count?' · '+count+' soglie raggiunte':''));
+ if(!bell)return;
+ bell.classList.toggle('bell-audio-on',state.alertSound);
+ bell.setAttribute('aria-pressed',String(state.alertSound));
+ const status=state.alertSound?'Suono attivo':'Suono disattivato';
+ const hint=state.alertSound?'Clicca per disattivare':'Clicca per attivare';
+ const label='Campanella crypto · '+status+
+  (count?' · '+count+' soglie raggiunte':'')+' · '+hint;
+ bell.setAttribute('aria-label',label);
+ bell.title=label;
 }
 function unlockCryptoAlertAudio(){
  try{
@@ -2111,22 +2119,26 @@ function unlockCryptoAlertAudio(){
    cryptoAlertAudioContext.resume().catch(()=>{});
  }catch(_error){/* Some browsers do not permit audio. */}
 }
-function playCryptoAlertSound(){
+// UPPER: rising three-tone chime; LOWER: falling three-tone chime.
+function playCryptoAlertSound(direction='above',delay=0){
  if(!state.alertSound)return;
  try{
   unlockCryptoAlertAudio();
   const ctx=cryptoAlertAudioContext;
   if(!ctx||ctx.state==='closed')return;
-  const base=ctx.currentTime+0.018;
-  for(const [i,freq] of [784,1046].entries()){
-   const start=base+i*.16,osc=ctx.createOscillator(),gain=ctx.createGain();
-   osc.type='sine';osc.frequency.value=freq;
+  const notes=direction==='below'?[880,660,440]:
+   direction==='enabled'?[660,880]:[660,880,1100];
+  const startAt=ctx.currentTime+.025+delay;
+  notes.forEach((frequency,i)=>{
+   const start=startAt+i*.14,osc=ctx.createOscillator(),gain=ctx.createGain();
+   osc.type=direction==='below'?'triangle':'sine';
+   osc.frequency.setValueAtTime(frequency,start);
    gain.gain.setValueAtTime(.0001,start);
-   gain.gain.exponentialRampToValueAtTime(.085,start+.018);
-   gain.gain.exponentialRampToValueAtTime(.0001,start+.20);
+   gain.gain.exponentialRampToValueAtTime(.065,start+.013);
+   gain.gain.exponentialRampToValueAtTime(.0001,start+.175);
    osc.connect(gain);gain.connect(ctx.destination);
-   osc.start(start);osc.stop(start+.205);
-  }
+   osc.start(start);osc.stop(start+.18);
+  });
  }catch(_error){/* Browser autoplay restrictions take precedence. */}
 }
 function evaluateCryptoAlerts(){
@@ -2150,7 +2162,11 @@ function evaluateCryptoAlerts(){
   }
   cryptoAlertHistory.length=Math.min(30,cryptoAlertHistory.length);
   save('cryptoAlertHistory',cryptoAlertHistory);
-  if(state.alertSound)playCryptoAlertSound();
+  if(state.alertSound){
+   // Play at most one of each direction per update; separate, not overlapping.
+   const directions=[...new Set(newHits.map(({rule})=>rule.operator))];
+   directions.forEach((direction,index)=>playCryptoAlertSound(direction,index*.54));
+  }
   const first=newHits[0];
   toast((newHits.length>1?newHits.length+' avvisi crypto: ':'Avviso crypto: ')+
    (ASSET_BY_ID[first.rule.id]?.name||first.rule.id)+' '+
@@ -3477,7 +3493,8 @@ function setupEvents(){
  // A single delegated handler also covers buttons added when pages are rendered.
  document.addEventListener('click',e=>{
   const target=e.target instanceof Element?e.target.closest('button,a[href],tr[data-asset]'):null;
-  if(target&&!target.disabled&&target.getAttribute('aria-disabled')!=='true')playClickSound();
+  if(target&&target.id!=='notificationsButton'&&!target.disabled&&
+    target.getAttribute('aria-disabled')!=='true')playClickSound();
  },true);
  if(deviceThemeQuery){
   const updateAutoTheme=()=>{if(state.themeMode==='auto'){applyTheme();if(state.page==='settings')render();}};
@@ -3493,7 +3510,15 @@ function setupEvents(){
  $$('.sidebar-theme-button[data-fixed-theme]').forEach(button=>button.addEventListener('click',()=>setTheme(button.dataset.fixedTheme)));
  $('#profileButton').addEventListener('click',()=>navigate('settings'));
  // Keep the bell visible and enable alert audio without opening a page or popup.
- $('#notificationsButton').addEventListener('click',unlockCryptoAlertAudio);
+ $('#notificationsButton').addEventListener('click',()=>{
+  state.alertSound=!state.alertSound;
+  save('cryptoAlertSound',state.alertSound);
+  if(state.alertSound){
+   unlockCryptoAlertAudio();
+   playCryptoAlertSound('enabled');
+  }
+  updateCryptoAlertIndicator();
+ });
  $('#searchInput').addEventListener('input',updateSearch);
  $('#searchInput').addEventListener('keydown',e=>{
   if(e.key==='Escape'){$('#searchMenu').hidden=true;$('#searchInput').setAttribute('aria-expanded','false')}
