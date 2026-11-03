@@ -2102,13 +2102,6 @@ function updateCryptoAlertIndicator(){
  if(dot)dot.hidden=count===0;
  if(bell)bell.setAttribute('aria-label','Avvisi prezzi crypto'+(count?' · '+count+' soglie raggiunte':''));
 }
-function syncCryptoAlertSoundButton(){
- const button=$('#cryptoAlertSoundToggle');
- if(!button)return;
- button.textContent=state.alertSound?'♪ Suono ON':'♪ Suono OFF';
- button.setAttribute('aria-pressed',String(state.alertSound));
- button.title=state.alertSound?'Disattiva il suono degli avvisi':'Attiva il suono degli avvisi';
-}
 function unlockCryptoAlertAudio(){
  try{
   const Audio=window.AudioContext||window.webkitAudioContext;
@@ -2135,63 +2128,6 @@ function playCryptoAlertSound(){
    osc.start(start);osc.stop(start+.205);
   }
  }catch(_error){/* Browser autoplay restrictions take precedence. */}
-}
-function paintCryptoAlertPanel(){
- updateCryptoAlertIndicator();
- const panel=$('#cryptoAlertPopover');
- if(!panel||panel.hidden)return;
- syncCryptoAlertSoundButton();
- const count=$('#cryptoAlertRuleCount'),rules=$('#cryptoAlertRules'),history=$('#cryptoAlertHistory');
- if(count)count.textContent=state.alerts.length+' impostate';
- if(rules){
-  rules.innerHTML=state.alerts.length?state.alerts.map((rule,index)=>{
-   const asset=ASSET_BY_ID[rule.id],reached=alertState(rule)==='Soglia raggiunta';
-   const price=asset?assetValue(asset):'—';
-   const direction=rule.operator==='above'?'UPPER ≥':'LOWER ≤';
-   return '<div class="crypto-alert-rule"><div class="crypto-alert-rule-main">'+
-    '<strong>'+esc(asset?.name||rule.id)+' · '+direction+' '+
-     Number(rule.value).toLocaleString('it-IT',{maximumFractionDigits:10})+' USD</strong>'+
-    '<small>Ultimo: '+esc(price)+' · '+esc(quote(rule.id)?.source||'Dato non disponibile')+'</small>'+
-    '</div><span class="crypto-alert-state '+(reached?(rule.operator==='above'?'up':'down'):'wait')+'">'+
-    (reached?'Attivo':'In attesa')+'</span>'+
-    '<button type="button" data-crypto-alert-remove="'+index+'" aria-label="Rimuovi soglia">×</button></div>';
-  }).join(''):'<div class="crypto-alert-empty">Nessuna soglia impostata. Scegli una crypto e un prezzo UPPER o LOWER.</div>';
- }
- if(history){
-  history.innerHTML=cryptoAlertHistory.length?cryptoAlertHistory.slice(0,12).map(event=>{
-   const asset=ASSET_BY_ID[event.id];
-   const timestamp=new Date(event.at);
-   const date=Number.isFinite(timestamp.getTime())?
-    localeDate(timestamp.toISOString(),{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
-   return '<div class="crypto-alert-event"><div class="crypto-alert-event-main">'+
-    '<strong>'+esc(asset?.name||event.id)+' · '+
-    (event.operator==='above'?'UPPER ↑':'LOWER ↓')+'</strong>'+
-    '<small>Prezzo '+Number(event.price).toLocaleString('it-IT',{maximumFractionDigits:10})+
-    ' USD · '+esc(date)+'</small></div></div>';
-  }).join(''):'<div class="crypto-alert-empty">Nessun avviso scattato in questa sessione o nelle precedenti.</div>';
- }
-}
-function closeCryptoAlertPanel(){
- const panel=$('#cryptoAlertPopover'),bell=$('#notificationsButton');
- if(panel)panel.hidden=true;
- if(bell)bell.setAttribute('aria-expanded','false');
-}
-function toggleCryptoAlertPanel(){
- const panel=$('#cryptoAlertPopover'),bell=$('#notificationsButton');
- if(!panel||!bell)return;
- const open=panel.hidden;
- if(open){
-  unlockCryptoAlertAudio();
-  panel.hidden=false;
-  bell.setAttribute('aria-expanded','true');
-  paintCryptoAlertPanel();
- }else closeCryptoAlertPanel();
-}
-function initCryptoAlertPanel(){
- const select=$('#cryptoAlertAsset');
- if(select)select.innerHTML=ASSETS.filter(asset=>asset.group==='crypto').map(asset=>
-  '<option value="'+esc(asset.id)+'">'+esc(asset.name)+'</option>').join('');
- syncCryptoAlertSoundButton();paintCryptoAlertPanel();
 }
 function evaluateCryptoAlerts(){
  const newHits=[];
@@ -2221,7 +2157,7 @@ function evaluateCryptoAlerts(){
    (first.rule.operator==='above'?'UPPER ↑':'LOWER ↓')+
    ' · '+formatValue(first.value,ASSET_BY_ID[first.rule.id]));
  }
- paintCryptoAlertPanel();
+ updateCryptoAlertIndicator();
 }
 function settingsPage(){
  const choices=[['light','☀','Chiaro','Bianco e azzurro'],['dark','☾','Scuro','Blu notte'],['ocean','◈','Oceano','Blu e turchese'],['emerald','❖','Smeraldo','Verde elegante'],['violet','✦','Viola','Viola moderno']];
@@ -2286,7 +2222,6 @@ function render(){
  }
 }
 function navigate(page){
- closeCryptoAlertPanel();
  if(!SECTIONS[page])page='global';
  if(state.page==='orderbook'&&page!=='orderbook'){stopOrderBookLive();cancelOrderBookFetch()}
  state.page=page;
@@ -3557,66 +3492,8 @@ function setupEvents(){
  $('#menuToggle').addEventListener('click',()=>$('#sidebar').classList.toggle('open'));
  $$('.sidebar-theme-button[data-fixed-theme]').forEach(button=>button.addEventListener('click',()=>setTheme(button.dataset.fixedTheme)));
  $('#profileButton').addEventListener('click',()=>navigate('settings'));
- $('#notificationsButton').addEventListener('click',toggleCryptoAlertPanel);
- const cryptoAlertRoot=$('#cryptoAlertPopover');
- cryptoAlertRoot.addEventListener('submit',event=>{
-  if(event.target.id!=='cryptoAlertForm')return;
-  event.preventDefault();
-  unlockCryptoAlertAudio();
-  const data=new FormData(event.target);
-  const id=String(data.get('id')||''),operator=String(data.get('operator')||'');
-  const value=Number(data.get('value'));
-  if(ASSET_BY_ID[id]?.group!=='crypto'||!['above','below'].includes(operator)||
-    !Number.isFinite(value)||value<=0){
-   toast('Scegli una crypto e una soglia valida.');return;
-  }
-  const rule={id,operator,value},key=cryptoAlertKey(rule);
-  if(state.alerts.some(existing=>cryptoAlertKey(existing)===key)){
-   toast('Questa soglia è già presente.');return;
-  }
-  if(state.alerts.length>=50){toast('Puoi impostare al massimo 50 soglie crypto.');return;}
-  state.alerts.push(rule);
-  save('alerts',state.alerts);
-  // A newly created rule may immediately be active: make its first crossing audible.
-  cryptoAlertReached.set(key,false);
-  const immediatelyReached=alertState(rule)==='Soglia raggiunta';
-  evaluateCryptoAlerts();
-  const input=$('#cryptoAlertValue');
-  if(input)input.value='';
-  if(!immediatelyReached)toast('Soglia crypto salvata: '+(operator==='above'?'UPPER':'LOWER')+'.');
- });
- cryptoAlertRoot.addEventListener('click',event=>{
-  const button=event.target.closest('button');
-  if(!button)return;
-  if(button.id==='cryptoAlertClose'){closeCryptoAlertPanel();return;}
-  if(button.id==='cryptoAlertSoundToggle'){
-   state.alertSound=!state.alertSound;
-   save('cryptoAlertSound',state.alertSound);
-   if(state.alertSound){unlockCryptoAlertAudio();playCryptoAlertSound();}
-   syncCryptoAlertSoundButton();
-   return;
-  }
-  if(button.id==='cryptoAlertClear'){
-   cryptoAlertHistory.length=0;save('cryptoAlertHistory',cryptoAlertHistory);
-   paintCryptoAlertPanel();return;
-  }
-  if(button.dataset.cryptoAlertRemove!==undefined){
-   const index=Number(button.dataset.cryptoAlertRemove);
-   if(!Number.isInteger(index)||index<0||index>=state.alerts.length)return;
-   const removed=state.alerts.splice(index,1)[0];
-   cryptoAlertReached.delete(cryptoAlertKey(removed));
-   save('alerts',state.alerts);
-   paintCryptoAlertPanel();
-  }
- });
- document.addEventListener('click',event=>{
-  if(!event.target.closest('.crypto-bell-anchor'))closeCryptoAlertPanel();
- });
- document.addEventListener('keydown',event=>{
-  if(event.key==='Escape'&&!$('#cryptoAlertPopover').hidden){
-   closeCryptoAlertPanel();$('#notificationsButton').focus();
-  }
- });
+ // Keep the bell visible and enable alert audio without opening a page or popup.
+ $('#notificationsButton').addEventListener('click',unlockCryptoAlertAudio);
  $('#searchInput').addEventListener('input',updateSearch);
  $('#searchInput').addEventListener('keydown',e=>{
   if(e.key==='Escape'){$('#searchMenu').hidden=true;$('#searchInput').setAttribute('aria-expanded','false')}
@@ -3803,7 +3680,7 @@ function init(){
    if(reg.active)reg.active.postMessage({type:'VERTEX_WIDGETS_REFRESH'});
   }).catch(()=>{});
  }
- setupEvents();initCryptoAlertPanel();updateVertexAppIcon();applyTheme();applyBrightness();updateClock();
+ setupEvents();updateVertexAppIcon();applyTheme();applyBrightness();updateClock();
  setInterval(updateClock,30000);
  setInterval(()=>{if(state.adaptiveBrightness&&!document.hidden)applyBrightness()},60000);
  setInterval(updateWorldSunlight,1000);
