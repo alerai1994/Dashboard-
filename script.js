@@ -3562,6 +3562,64 @@ function setupEvents(){
  $$('.sidebar-theme-button[data-fixed-theme]').forEach(button=>button.addEventListener('click',()=>setTheme(button.dataset.fixedTheme)));
  $('#profileButton').addEventListener('click',()=>navigate('settings'));
  $('#notificationsButton').addEventListener('click',toggleCryptoAlertPanel);
+ const cryptoAlertRoot=$('#cryptoAlertPopover');
+ cryptoAlertRoot.addEventListener('submit',event=>{
+  if(event.target.id!=='cryptoAlertForm')return;
+  event.preventDefault();
+  unlockCryptoAlertAudio();
+  const data=new FormData(event.target);
+  const id=String(data.get('id')||''),operator=String(data.get('operator')||'');
+  const value=Number(data.get('value'));
+  if(ASSET_BY_ID[id]?.group!=='crypto'||!['above','below'].includes(operator)||
+    !Number.isFinite(value)||value<=0){
+   toast('Scegli una crypto e una soglia valida.');return;
+  }
+  const rule={id,operator,value},key=cryptoAlertKey(rule);
+  if(state.alerts.some(existing=>cryptoAlertKey(existing)===key)){
+   toast('Questa soglia è già presente.');return;
+  }
+  if(state.alerts.length>=50){toast('Puoi impostare al massimo 50 soglie crypto.');return;}
+  state.alerts.push(rule);
+  save('alerts',state.alerts);
+  // A newly created rule may immediately be active: make its first crossing audible.
+  cryptoAlertReached.set(key,false);
+  evaluateCryptoAlerts();
+  const input=$('#cryptoAlertValue');
+  if(input)input.value='';
+  toast('Soglia crypto salvata: '+(operator==='above'?'UPPER':'LOWER')+'.');
+ });
+ cryptoAlertRoot.addEventListener('click',event=>{
+  const button=event.target.closest('button');
+  if(!button)return;
+  if(button.id==='cryptoAlertClose'){closeCryptoAlertPanel();return;}
+  if(button.id==='cryptoAlertSoundToggle'){
+   state.alertSound=!state.alertSound;
+   save('cryptoAlertSound',state.alertSound);
+   if(state.alertSound){unlockCryptoAlertAudio();playCryptoAlertSound();}
+   syncCryptoAlertSoundButton();
+   return;
+  }
+  if(button.id==='cryptoAlertClear'){
+   cryptoAlertHistory.length=0;save('cryptoAlertHistory',cryptoAlertHistory);
+   paintCryptoAlertPanel();return;
+  }
+  if(button.dataset.cryptoAlertRemove!==undefined){
+   const index=Number(button.dataset.cryptoAlertRemove);
+   if(!Number.isInteger(index)||index<0||index>=state.alerts.length)return;
+   const removed=state.alerts.splice(index,1)[0];
+   cryptoAlertReached.delete(cryptoAlertKey(removed));
+   save('alerts',state.alerts);
+   paintCryptoAlertPanel();
+  }
+ });
+ document.addEventListener('click',event=>{
+  if(!event.target.closest('.crypto-bell-anchor'))closeCryptoAlertPanel();
+ });
+ document.addEventListener('keydown',event=>{
+  if(event.key==='Escape'&&!$('#cryptoAlertPopover').hidden){
+   closeCryptoAlertPanel();$('#notificationsButton').focus();
+  }
+ });
  $('#searchInput').addEventListener('input',updateSearch);
  $('#searchInput').addEventListener('keydown',e=>{
   if(e.key==='Escape'){$('#searchMenu').hidden=true;$('#searchInput').setAttribute('aria-expanded','false')}
