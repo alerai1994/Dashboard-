@@ -1306,47 +1306,65 @@ body.theme-light .vertex-boot-note{color:#56738f}
 #searchMenu .crypto-price-upper{color:#facc15!important}
 #searchMenu .crypto-price-lower{color:#ff415b!important}
 
-/* Vertex tactile minimal buttons v85 */
-/* Quiet, rounded 3D treatment: looks clickable without glossy, bulky gradients. */
+/* Vertex tactile raised buttons v86: stronger 3D volume, still minimal. */
+:root{
+ --button-top-glint:rgba(255,255,255,.21);
+ --button-ridge:rgba(0,5,14,.35);
+ --button-soft-shadow:rgba(0,0,0,.21);
+ --button-press-inset:rgba(0,0,0,.22);
+}
+body.theme-light{
+ --button-top-glint:rgba(255,255,255,.95);
+ --button-ridge:rgba(43,77,116,.24);
+ --button-soft-shadow:rgba(50,78,110,.19);
+ --button-press-inset:rgba(58,85,115,.17);
+}
+/* Physical controls: rounded face, visible upper rim and defined lower edge. */
 :is(
  .btn,.outline-button,.side-link,.sidebar-theme-button,
  .tab-filters button,.settings-theme-option,.settings-auto-theme,
  .settings-sound-toggle,.settings-app-icon-option,.settings-app-icon-copy,
- .crypto-expand-btn,.ob-coin,.icon-button,.avatar-button,
- .market-chart-card,.index-mini,.instrument-row,.crypto-etf-link
+ .crypto-expand-btn,.ob-coin,.icon-button,.avatar-button,.crypto-etf-link
 ){
  -webkit-tap-highlight-color:transparent;
  cursor:pointer;
- border-radius:12px;
- transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease,
-   background-color .16s ease,color .16s ease;
- box-shadow:inset 0 1px 0 rgba(255,255,255,.11),
-   inset 0 -1px 0 rgba(0,0,0,.08),
-   0 2px 0 rgba(0,0,0,.16),0 5px 12px rgba(0,0,0,.10);
+ border-radius:14px;
+ border-color:color-mix(in srgb,var(--line) 73%,var(--brand) 27%);
+ background-image:linear-gradient(168deg,rgba(255,255,255,.115),rgba(255,255,255,.015) 47%,rgba(0,0,0,.075));
+ box-shadow:
+  inset 0 2px 0 var(--button-top-glint),
+  inset 0 -1px 0 rgba(0,0,0,.11),
+  0 4px 0 var(--button-ridge),
+  0 9px 18px var(--button-soft-shadow);
+ transition:transform .16s ease,box-shadow .16s ease,
+  border-color .16s ease,background-color .16s ease,color .16s ease;
 }
 :is(.btn,.outline-button,.sidebar-theme-button,.settings-sound-toggle,
  .settings-theme-option,.settings-auto-theme,.settings-app-icon-option,
  .settings-app-icon-copy,.tab-filters button,.crypto-expand-btn,.crypto-etf-link){
- font-weight:650;
+ font-weight:680;
 }
 :is(.btn,.outline-button,.sidebar-theme-button,.tab-filters button,
  .settings-theme-option,.settings-auto-theme,.settings-sound-toggle,
  .settings-app-icon-option,.settings-app-icon-copy,.crypto-expand-btn,
  .icon-button,.avatar-button,.crypto-etf-link):hover:not(:disabled){
- transform:translateY(-1px);
- box-shadow:inset 0 1px 0 rgba(255,255,255,.16),
-   inset 0 -1px 0 rgba(0,0,0,.06),
-   0 3px 0 rgba(0,0,0,.13),0 8px 17px rgba(0,0,0,.13);
+ transform:translateY(-2px);
+ border-color:color-mix(in srgb,var(--brand) 65%,var(--line));
+ box-shadow:
+  inset 0 2px 0 var(--button-top-glint),
+  inset 0 -1px 0 rgba(0,0,0,.08),
+  0 6px 0 var(--button-ridge),
+  0 13px 23px var(--button-soft-shadow);
 }
 :is(.btn,.outline-button,.sidebar-theme-button,.tab-filters button,
  .settings-theme-option,.settings-auto-theme,.settings-sound-toggle,
  .settings-app-icon-option,.settings-app-icon-copy,.crypto-expand-btn,
  .icon-button,.avatar-button,.side-link,.ob-coin,.instrument-row,
  .market-chart-card,.index-mini,.crypto-etf-link):active:not(:disabled){
- transform:translateY(1px) scale(.995);
- box-shadow:inset 0 2px 5px rgba(0,0,0,.15),
-   inset 0 1px 0 rgba(255,255,255,.04),0 1px 1px rgba(0,0,0,.08);
- transition-duration:.07s;
+ transform:translateY(3px) scale(.992);
+ box-shadow:inset 0 3px 7px var(--button-press-inset),
+  inset 0 1px 0 rgba(255,255,255,.055),0 1px 1px rgba(0,0,0,.11);
+ transition-duration:.065s;
 }
 :is(.btn,.outline-button,.sidebar-theme-button,.tab-filters button,
  .settings-theme-option,.settings-auto-theme,.settings-sound-toggle,
@@ -1361,36 +1379,57 @@ body.theme-light .vertex-boot-note{color:#56738f}
  cursor:not-allowed;
  opacity:.55;
  transform:none;
+ box-shadow:none;
 }
-/* Navigation remains lightweight; the active side marker is preserved. */
-.side-link:not(.active),.ob-coin:not(.is-selected),.instrument-row{
- box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 1px 3px rgba(0,0,0,.045);
+/* Keep the menu slim while giving active items the same tactile depth. */
+.side-link:not(.active),.ob-coin:not(.is-selected){
+ background-image:linear-gradient(165deg,rgba(255,255,255,.035),transparent 65%);
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.055),0 2px 0 rgba(0,0,0,.15);
 }
 .side-link.active{
- box-shadow:inset 2px 0 0 var(--brand),inset 0 1px 0 rgba(255,255,255,.09),
- 0 2px 0 rgba(0,0,0,.14),0 5px 12px rgba(0,0,0,.10);
+ box-shadow:inset 3px 0 0 var(--brand),
+  inset 0 2px 0 var(--button-top-glint),
+  0 4px 0 var(--button-ridge),0 8px 18px var(--button-soft-shadow);
 }
-.index-mini,.market-chart-card{
- border-radius:14px;
-}
-.icon-button{
- border:1px solid var(--line);
- background-color:color-mix(in srgb,var(--surface) 52%,transparent);
+:is(.tab-filters button.active,.settings-theme-option.is-selected,
+ .sidebar-theme-button.is-selected,.settings-sound-toggle.is-on,
+ .ob-coin.is-selected){
+ border-color:var(--brand);
+ box-shadow:inset 0 2px 0 var(--button-top-glint),
+  0 4px 0 color-mix(in srgb,var(--brand) 40%,var(--button-ridge)),
+  0 10px 20px var(--button-soft-shadow);
 }
 .btn-primary{
- box-shadow:inset 0 1px 0 rgba(255,255,255,.26),
- 0 2px 0 color-mix(in srgb,var(--brand) 52%,#071523),
- 0 5px 13px rgba(0,0,0,.14);
+ border-color:color-mix(in srgb,var(--brand) 72%,white);
+ background-image:linear-gradient(165deg,rgba(255,255,255,.25),transparent 55%,rgba(0,0,0,.12));
+ box-shadow:inset 0 2px 0 rgba(255,255,255,.40),
+  0 4px 0 color-mix(in srgb,var(--brand) 45%,#06111d),
+  0 10px 21px var(--button-soft-shadow);
 }
-.btn-small{border-radius:10px}
+.btn-small{border-radius:12px}
 .settings-sound-toggle{border-radius:999px}
-.theme-light :is(.btn,.outline-button,.sidebar-theme-button,.tab-filters button,
- .settings-theme-option,.settings-auto-theme,.settings-sound-toggle,
- .settings-app-icon-option,.settings-app-icon-copy,.crypto-expand-btn,
- .icon-button,.avatar-button,.crypto-etf-link){
- box-shadow:inset 0 1px 0 rgba(255,255,255,.90),
-  inset 0 -1px 0 rgba(35,58,83,.045),
-  0 2px 0 rgba(45,76,110,.11),0 5px 11px rgba(45,76,110,.09);
+.icon-button{
+ border:1px solid var(--line);
+ background-color:color-mix(in srgb,var(--surface) 64%,transparent);
+}
+/* Card-like controls: enough depth to look clickable, not huge raised tiles. */
+.index-mini,.market-chart-card,.instrument-row{
+ cursor:pointer;
+ border-radius:15px;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.12),
+  0 3px 0 rgba(0,0,0,.19),0 8px 16px rgba(0,0,0,.13);
+ transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease;
+}
+:is(.index-mini,.market-chart-card,.instrument-row):hover{
+ transform:translateY(-2px);
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.17),
+  0 5px 0 rgba(0,0,0,.18),0 12px 21px rgba(0,0,0,.17);
+}
+body.theme-light :is(.btn,.outline-button,.sidebar-theme-button,
+ .tab-filters button,.settings-theme-option,.settings-auto-theme,
+ .settings-sound-toggle,.settings-app-icon-option,.settings-app-icon-copy,
+ .crypto-expand-btn,.icon-button,.avatar-button,.crypto-etf-link){
+ background-image:linear-gradient(165deg,rgba(255,255,255,.64),rgba(255,255,255,.12) 50%,rgba(82,110,139,.08));
 }
 @media(hover:none){
  :is(.btn,.outline-button,.sidebar-theme-button,.tab-filters button,
