@@ -1584,6 +1584,63 @@ function orderBookAssetList(){
    '<span class="ob-coin-venue" title="'+esc(book?book.venue:(src?src.venue+' · in attesa':'Coppia non verificata'))+'">'+(book?'●':'—')+'</span></button>';
  }).join('');
 }
+// Exchange-traded crypto products, shown BELOW the real spot order book.
+// A fund share price is different from the underlying crypto spot price.
+const CRYPTO_ETF_PRODUCTS=[
+ {crypto:'btc',ticker:'IBIT',name:'iShares Bitcoin Trust ETF',
+  issuer:'BlackRock · iShares',market:'Nasdaq · USA',kind:'ETF / ETP spot',
+  url:'https://www.ishares.com/us/products/333011/ishares-bitcoin-trust-etf',
+  description:'Esposizione al prezzo di Bitcoin tramite un prodotto quotato.'},
+ {crypto:'eth',ticker:'ETHA',name:'iShares Ethereum Trust ETF',
+  issuer:'BlackRock · iShares',market:'Nasdaq · USA',kind:'ETF / ETP spot',
+  url:'https://www.ishares.com/us/products/337614/',
+  description:'Esposizione a Ether senza detenere direttamente ETH.'},
+ {crypto:'sol',ticker:'BSOL',name:'Bitwise Solana Staking ETF',
+  issuer:'Bitwise',market:'NYSE Arca · USA',kind:'ETF / ETP con staking',
+  url:'https://bsoletf.com/',
+  description:'Esposizione a Solana con rendimento staking variabile, non garantito.'},
+ {crypto:'inj',ticker:'AINJ',name:'21Shares Injective Staking ETP',
+  issuer:'21Shares',market:'Amsterdam · Europa',kind:'ETP / ETN · non ETF USA',
+  url:'https://www.21shares.com/it-eu/product/ainj',
+  description:'ETP/ETN su Injective con staking. ETF spot INJ USA ancora in registrazione.'}
+];
+function cryptoEtfSection(){
+ const cards=CRYPTO_ETF_PRODUCTS.map(product=>{
+  const asset=ASSET_BY_ID[product.crypto],q=quote(product.crypto);
+  const spot=asset&&q&&num(q.value)&&q.value>0?assetValue(asset):'—';
+  const delta=q&&Number.isFinite(Number(q.change))?pct(q.change):'—';
+  const stamp=q?.time?instrumentQuoteStatus(product.crypto):'Quotazione sottostante non disponibile';
+  return '<article class="crypto-etf-card panel" data-asset="'+esc(product.crypto)+'">'+
+   '<div class="crypto-etf-card-head">'+
+    '<div class="crypto-etf-asset">'+(asset?assetLogo(asset):'')+
+     '<span>'+esc(product.crypto.toUpperCase())+'</span></div>'+
+    '<span class="crypto-etf-type '+(product.crypto==='inj'?'crypto-etf-etp':'')+'">'+esc(product.kind)+'</span>'+
+   '</div>'+
+   '<strong class="crypto-etf-ticker">'+esc(product.ticker)+'</strong>'+
+   '<h3>'+esc(product.name)+'</h3>'+
+   '<div class="crypto-etf-issuer">'+esc(product.issuer)+' · '+esc(product.market)+'</div>'+
+   '<p class="crypto-etf-description">'+esc(product.description)+'</p>'+
+   '<div class="crypto-etf-market-note"><small>Prezzo quota '+esc(product.ticker)+'</small>'+
+    '<strong>Consulta quotazione ufficiale</strong></div>'+
+   '<div class="crypto-etf-spot"><small>Crypto sottostante · prezzo spot (NON quota ETF)</small>'+
+    '<div><strong class="asset-price">'+esc(spot)+'</strong>'+
+    '<span class="asset-change '+(Number(q?.change)>0?'color-up':Number(q?.change)<0?'color-down':'')+'">'+esc(delta)+'</span></div>'+
+    '<small class="market-quote-asof">'+esc(stamp)+'</small></div>'+
+   '<a href="'+esc(product.url)+'" target="_blank" rel="noopener noreferrer" class="crypto-etf-link"'+
+    ' aria-label="Scheda ufficiale '+esc(product.ticker)+'">Scheda e quotazione del prodotto ↗</a>'+
+  '</article>';
+ }).join('');
+ return '<section class="crypto-etfs-section" aria-label="ETF ed ETP delle criptovalute">'+
+  '<div class="crypto-etf-title"><div><h2>ETF ed ETP Crypto</h2>'+
+  '<p>Bitcoin, Ethereum, Solana e Injective · prodotti quotati verificati</p></div>'+
+  '<span class="crypto-etf-total">4 prodotti</span></div>'+
+  '<div class="crypto-etf-grid">'+cards+'</div>'+
+  '<p class="crypto-etf-disclaimer">Attenzione: i valori spot mostrati sono prezzi delle criptovalute, '+ 
+  'non prezzi delle quote ETF/ETP. Per il valore negoziato e gli orari della borsa apri la scheda del prodotto. '+
+  'AINJ è un ETP/ETN europeo (ISIN CH1360612134): un ETF spot INJ statunitense non risulta ancora negoziato al 3 novembre 2026. '+
+  'I prodotti possono essere volatili e comportare perdita del capitale.</p>'+
+  '</section>';
+}
 function orderBookPage(){
  const coin=ASSET_BY_ID[orderBookState.id]||ORDER_BOOK_COINS[0],snap=cryptoBookEntry(coin.id),source=snap?{venue:snap.venue,pair:snap.pair}:orderBookSource(coin.id);
  return secHeader('Order Book Crypto','Profondità Spot reale, per exchange e coppia USDT. Nessun ordine simulato.')+
@@ -1598,7 +1655,7 @@ function orderBookPage(){
  '<button class="btn btn-small" type="button" data-order-book-refresh="1" aria-label="Aggiorna order book">'+sym('refresh')+' Aggiorna</button></div>'+
  '<div class="ob-content" id="orderBookContent" aria-live="off">'+orderBookDisplay()+'</div>'+
  '<p class="ob-footnote">Order Book Spot della criptovaluta selezionata: Binance, Gate e LBank ricevono aggiornamenti WebSocket in streaming (fino a 100 ms, secondo la fonte); MEXC utilizza richieste REST ogni circa 3 secondi, non uno stream live. Il badge indica se i dati sono LIVE, aggiornati con polling o uno snapshot di riserva. Solo livelli reali della coppia indicata, mai simulati. Se la rete o la fonte si interrompe, sono segnalati come non aggiornati. La pagina deve rimanere aperta.</p>'+
- '</section></div>';
+ '</section></div>'+cryptoEtfSection();
 }
 function orderBookNumber(v,price=false){
  const n=Number(v);if(!Number.isFinite(n))return '—';
