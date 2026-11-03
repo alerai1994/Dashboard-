@@ -2081,6 +2081,9 @@ async function refreshOrderBook(force=false){
 // Crypto alerts are always managed from the upper-right bell, not a page.
 const cryptoAlertReached=new Map();
 let cryptoAlertAudioContext=null;
+// Keep the last threshold-crossing color until the user acknowledges it by clicking the bell.
+let cryptoAlertVisualDirection=null;
+let cryptoAlertVisualAsset='';
 const cryptoAlertHistory=Array.isArray(load('cryptoAlertHistory',[]))?
  load('cryptoAlertHistory',[]).filter(x=>x&&typeof x.id==='string').slice(0,30):[];
 function cryptoAlertKey(rule){
@@ -2102,10 +2105,15 @@ function updateCryptoAlertIndicator(){
  if(dot)dot.hidden=count===0;
  if(!bell)return;
  bell.classList.toggle('bell-audio-on',state.alertSound);
+ bell.classList.toggle('bell-alert-upper',cryptoAlertVisualDirection==='above');
+ bell.classList.toggle('bell-alert-lower',cryptoAlertVisualDirection==='below');
  bell.setAttribute('aria-pressed',String(state.alertSound));
  const status=state.alertSound?'Suono attivo':'Suono disattivato';
  const hint=state.alertSound?'Clicca per disattivare':'Clicca per attivare';
- const label='Campanella crypto · '+status+
+ const lastEvent=cryptoAlertVisualDirection?
+  ' · '+(cryptoAlertVisualDirection==='above'?'UPPER raggiunto':'LOWER raggiunto')+
+   (cryptoAlertVisualAsset?' · '+cryptoAlertVisualAsset:''):' ';
+ const label='Campanella crypto · '+status+lastEvent+
   (count?' · '+count+' soglie raggiunte':'')+' · '+hint;
  bell.setAttribute('aria-label',label);
  bell.title=label;
@@ -2167,6 +2175,10 @@ function evaluateCryptoAlerts(){
    const directions=[...new Set(newHits.map(({rule})=>rule.operator))];
    directions.forEach((direction,index)=>playCryptoAlertSound(direction,index*.54));
   }
+  // Red takes priority if upper and lower thresholds are crossed in the same update.
+  const visualHit=newHits.find(hit=>hit.rule.operator==='below')||newHits[0];
+  cryptoAlertVisualDirection=visualHit.rule.operator;
+  cryptoAlertVisualAsset=ASSET_BY_ID[visualHit.rule.id]?.name||visualHit.rule.id;
   const first=newHits[0];
   toast((newHits.length>1?newHits.length+' avvisi crypto: ':'Avviso crypto: ')+
    (ASSET_BY_ID[first.rule.id]?.name||first.rule.id)+' '+
@@ -3511,6 +3523,9 @@ function setupEvents(){
  $('#profileButton').addEventListener('click',()=>navigate('settings'));
  // Keep the bell visible and enable alert audio without opening a page or popup.
  $('#notificationsButton').addEventListener('click',()=>{
+  // Clicking the bell acknowledges its latest yellow/red price alert.
+  cryptoAlertVisualDirection=null;
+  cryptoAlertVisualAsset='';
   state.alertSound=!state.alertSound;
   save('cryptoAlertSound',state.alertSound);
   if(state.alertSound){
