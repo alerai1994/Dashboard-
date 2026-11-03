@@ -1661,7 +1661,7 @@ function cryptoCapResults(){
  const A=ASSET_BY_ID[cryptoCapState.a],B=ASSET_BY_ID[cryptoCapState.b];
  const a=cryptoCapState.data.get(cryptoCapId(A)),b=cryptoCapState.data.get(cryptoCapId(B));
  const ready=!!a&&!!b&&validCap(a.circulating_supply)&&validCap(b.market_cap);
- const status=cryptoCapState.loading?'Aggiornamento da CoinGecko in corso…':
+ const status=cryptoCapState.loading?'Caricamento capitalizzazioni dai feed Vertex…':
   cryptoCapState.error?cryptoCapState.error:
   !cryptoCapState.updatedAt?'In attesa delle capitalizzazioni reali da CoinGecko…':'';
  if(!ready){
@@ -1688,7 +1688,7 @@ function cryptoCapResults(){
   '<div class="crypto-cap-growth '+(change===null?'':change>=0?'is-positive':'is-negative')+'"><span>'+esc(changeText)+'</span><small>'+
   (hasPrice?esc(new Intl.NumberFormat('it-IT',{maximumFractionDigits:2}).format(multiplier))+'× rispetto al prezzo attuale':'Prezzo A non disponibile per il confronto')+'</small></div></div>'+
   '<div class="crypto-cap-source">'+(status?'<span>'+esc(status)+'</span>':'')+
-  '<span>Dati CoinGecko (USD) · ultimo aggiornamento: '+esc(newest)+(!validCap(cgPrice)&&hasPrice?' · prezzo A dal feed Vertex':'')+'</span></div>';
+  '<span>Capitalizzazioni CoinGecko via Vertex (USD) · ultimo aggiornamento: '+esc(newest)+(!validCap(cgPrice)&&hasPrice?' · prezzo A dal feed Vertex':'')+'</span></div>';
 }
 function updateCryptoCapResults(){
  const target=$('#cryptoCapResults');
@@ -1713,38 +1713,67 @@ function cryptoCapCalculator(){
   'La simulazione assume che l’offerta circolante resti costante. Non è una previsione, né una garanzia di rendimento. '+
   'Se CoinGecko non fornisce dati verificabili, il risultato non viene inventato.</p></section>';
 }
+// Read CoinGecko market-cap data from Vertex's own verified GitHub feeds.
+// Browsers no longer call api.coingecko.com directly (CORS/429 on shared IPs).
 async function loadCryptoCapData(force=false){
  if(cryptoCapState.loading)return;
  if(!force&&cryptoCapState.updatedAt&&Date.now()-cryptoCapState.updatedAt<5*60*1000){
   updateCryptoCapResults();return;
  }
- cryptoCapState.loading=true;cryptoCapState.error='';
+ cryptoCapState.loading=true;
+ cryptoCapState.error='';
  updateCryptoCapResults();
- try{
-  const ids=[...new Set(cryptoCapCoins.map(cryptoCapId).filter(Boolean))];
-  const url='https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids='+
-   encodeURIComponent(ids.join(','))+'&per_page=50&page=1&sparkline=false';
-  const response=await fetch(url,{cache:'no-store',headers:{Accept:'application/json'}});
-  if(!response.ok)throw new Error(response.status===429?'Limite richieste CoinGecko raggiunto. Riprova più tardi.':'Errore CoinGecko (HTTP '+response.status+').');
-  const data=await response.json();
-  if(!Array.isArray(data))throw new Error('Risposta non valida dal servizio capitalizzazioni.');
-  const allowed=new Set(ids),fresh=new Map();
-  for(const x of data){
-   if(!x||!allowed.has(x.id))continue;
-   fresh.set(x.id,{market_cap:Number(x.market_cap),circulating_supply:Number(x.circulating_supply),
-    current_price:Number(x.current_price),last_updated:x.last_updated});
+ const fresh=new Map();
+ let failure='';
+ for(const file of ['market-quotes.json','market-data.json']){
+  try{
+   const response=await fetch('./'+file+'?v='+Math.floor(Date.now()/30000),{cache:'no-store'});
+   if(!response.ok)throw new Error(file+' HTTP '+response.status);
+   const payload=await response.json();
+   if(!payload||!Array.isArray(payload.crypto))throw new Error('Dati non validi in '+file);
+   for(const row of payload.crypto){
+    const asset=ASSET_BY_ID[row?.id];
+    if(!asset||asset.group!=='crypto')continue;
+    const id=cryptoCapId(asset);
+    if(!id)continue;
+    const cap=Number(row.market_cap),supply=Number(row.circulating_supply);
+    if(!validCap(cap)||!validCap(supply))continue;
+    const updated=row.cap_updated_at||row.last_updated||row.time||payload.generatedAt;
+    const stamp=Date.parse(updated||'');
+    // Do not display outdated capitalizations as if they were current.
+    if(!Number.isFinite(stamp)||Date.now()-stamp>36*60*60*1000||
+      stamp>Date.now()+10*60*1000)continue;
+    const existing=fresh.get(id);
+    if(existing&&Date.parse(existing.last_updated)>=stamp)continue;
+    fresh.set(id,{market_cap:cap,circulating_supply:supply,
+     current_price:validCap(row.value)?Number(row.value):null,
+     last_updated:updated});
+   }
+   // The compact feed normally contains all 42 coins; skip large OHLC download
+   // when both selected assets have their verified market data.
+   const aId=cryptoCapId(ASSET_BY_ID[cryptoCapState.a]);
+   const bId=cryptoCapId(ASSET_BY_ID[cryptoCapState.b]);
+   if(fresh.has(aId)&&fresh.has(bId))break;
+  }catch(error){
+   failure=String(error?.message||'Errore lettura feed Vertex');
   }
-  if(!fresh.size)throw new Error('Nessun dato di capitalizzazione restituito da CoinGecko.');
+ }
+ if(fresh.size){
   cryptoCapState.data=fresh;
   cryptoCapState.updatedAt=Date.now();
- }catch(error){
-  cryptoCapState.error=error instanceof TypeError?
-   'Connessione a CoinGecko non disponibile. Verifica la rete e riprova.':
-   String(error?.message||'Impossibile caricare le capitalizzazioni.');
- }finally{
-  cryptoCapState.loading=false;
-  updateCryptoCapResults();
+  cryptoCapState.error='';
+ }else{
+  cryptoCapState.error=failure?
+   'Capitalizzazioni non disponibili nei feed Vertex. Controlla la connessione al sito e premi Aggiorna dati.':
+   'Capitalizzazioni non ancora presenti nei feed Vertex. Premi Aggiorna dati dopo il prossimo aggiornamento dei dati di mercato.';
+  // Keep a last verified value if a temporary upstream outage occurs.
+  if(cryptoCapState.data.size){
+   cryptoCapState.error='Nuove capitalizzazioni non disponibili; ultimi dati verificati conservati.';
+   cryptoCapState.updatedAt=Date.now();
+  }
  }
+ cryptoCapState.loading=false;
+ updateCryptoCapResults();
 }
 function etfPage(){
  return cryptoEtfSection()+cryptoCapCalculator();
