@@ -2121,9 +2121,9 @@ function widgetsPage(){
  '<button type="button" data-widget-add="1" class="btn btn-primary" '+(!available.length||chosen.length>=12?'disabled':'')+'>+ Aggiungi widget</button></div>'+
  '<div class="vertex-widget-grid">'+(tiles||'<p class="subnote">Nessun widget selezionato. Scegli una crypto per iniziare.</p>')+'</div></section>'+
  '<section class="content-card panel vertex-widget-instructions"><h3>Widget del dispositivo</h3>'+
- '<p><strong>Windows 11:</strong> installa Vertex come app con Microsoft Edge, quindi apri la bacheca Widget (Win + W) e cerca “Vertex”. Il progetto include definizioni PWA per scegliere una singola criptovaluta.</p>'+
- '<p><strong>Android:</strong> per comparire tra i widget della schermata Home serve installare l’app Android con App Widget nativo, non soltanto il sito.</p>'+
- '<p><strong>iPhone e iPad:</strong> per comparire nella galleria Widget serve installare l’app iOS/iPadOS con estensione WidgetKit.</p>'+
+ '<p><strong>Windows 11:</strong> puoi installare la PWA con Microsoft Edge oppure il provider nativo Windows App SDK/MSIX. Dopo l’installazione premi Win + W e cerca “Vertex Crypto”.</p>'+
+ '<p><strong>Android:</strong> installa l’APK Vertex Crypto, poi aggiungi Widget dalla schermata Home. Tocca il nome del widget per cambiare crypto e ↻ per aggiornare il prezzo.</p>'+
+ '<p><strong>iPadOS e iOS:</strong> installa da Xcode l’app Vertex Crypto con estensione WidgetKit. Tieni premuto il widget e scegli Modifica widget per selezionare la moneta.</p>'+
  '<p class="subnote">Le quotazioni dipendono dalla fonte e dagli intervalli di aggiornamento imposti dal sistema. La scelta qui dentro è locale al browser; i widget nativi hanno una propria selezione.</p>'+
  '<p><a href="https://github.com/alerai1994/Dashboard-/tree/main/native" target="_blank" rel="noopener noreferrer">Codice dei widget nativi e istruzioni</a></p></section>';
 }
