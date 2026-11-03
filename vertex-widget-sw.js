@@ -100,6 +100,6 @@ self.addEventListener('message',event=>{
 });
 self.addEventListener('widgetclick',event=>{
  if(event.action==='open-vertex'){
-  event.waitUntil(self.clients.openWindow(new URL('./#widgets',self.registration.scope).href));
+  event.waitUntil(self.clients.openWindow(new URL('./#markets',self.registration.scope).href));
  }
 });
