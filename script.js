@@ -149,6 +149,7 @@ portfolio:['Portfolio','Tieni traccia delle posizioni inserite manualmente.'],
 news:['News','Accesso rapido a fonti finanziarie verificabili.'],
 analytics:['Analytics','Indicatori e andamento dei principali mercati mondiali.'],
 orderbook:['Order Book','Ordini Spot di acquisto e vendita delle criptovalute.'],
+etf:['ETF','ETF ed ETP su Bitcoin, Ethereum, Solana e Injective.'],
 settings:['Settings','Aspetto, origini dei dati e accesso al terminale originale.']
 };
 const REGIONS=[
@@ -1584,7 +1585,7 @@ function orderBookAssetList(){
    '<span class="ob-coin-venue" title="'+esc(book?book.venue:(src?src.venue+' · in attesa':'Coppia non verificata'))+'">'+(book?'●':'—')+'</span></button>';
  }).join('');
 }
-// Exchange-traded crypto products, shown BELOW the real spot order book.
+// Verified exchange-traded products shown in the dedicated ETF page below Order Book in the sidebar.
 // A fund share price is different from the underlying crypto spot price.
 const CRYPTO_ETF_PRODUCTS=[
  {crypto:'btc',ticker:'IBIT',name:'iShares Bitcoin Trust ETF',
@@ -1641,6 +1642,9 @@ function cryptoEtfSection(){
   'I prodotti possono essere volatili e comportare perdita del capitale.</p>'+
   '</section>';
 }
+function etfPage(){
+ return cryptoEtfSection();
+}
 function orderBookPage(){
  const coin=ASSET_BY_ID[orderBookState.id]||ORDER_BOOK_COINS[0],snap=cryptoBookEntry(coin.id),source=snap?{venue:snap.venue,pair:snap.pair}:orderBookSource(coin.id);
  return secHeader('Order Book Crypto','Profondità Spot reale, per exchange e coppia USDT. Nessun ordine simulato.')+
@@ -1655,7 +1659,7 @@ function orderBookPage(){
  '<button class="btn btn-small" type="button" data-order-book-refresh="1" aria-label="Aggiorna order book">'+sym('refresh')+' Aggiorna</button></div>'+
  '<div class="ob-content" id="orderBookContent" aria-live="off">'+orderBookDisplay()+'</div>'+
  '<p class="ob-footnote">Order Book Spot della criptovaluta selezionata: Binance, Gate e LBank ricevono aggiornamenti WebSocket in streaming (fino a 100 ms, secondo la fonte); MEXC utilizza richieste REST ogni circa 3 secondi, non uno stream live. Il badge indica se i dati sono LIVE, aggiornati con polling o uno snapshot di riserva. Solo livelli reali della coppia indicata, mai simulati. Se la rete o la fonte si interrompe, sono segnalati come non aggiornati. La pagina deve rimanere aperta.</p>'+
- '</section></div>'+cryptoEtfSection();
+ '</section></div>';
 }
 function orderBookNumber(v,price=false){
  const n=Number(v);if(!Number.isFinite(n))return '—';
@@ -2276,7 +2280,7 @@ function settingsPage(){
  '<input type="range" id="clickVolumeSlider" min="0" max="100" step="1" value="'+state.clickVolume+'" style="--volume-progress:'+state.clickVolume+'%" aria-label="Volume del suono al clic">'+
  '<div class="settings-volume-scale"><span>0%</span><span>100%</span></div></div></section>';
 }
-const PAGE_RENDERERS={home:homePage,global:globalPage,markets:marketsPage,watchlist:watchlistPage,portfolio:portfolioPage,news:newsPage,analytics:analyticsPage,orderbook:orderBookPage,settings:settingsPage};
+const PAGE_RENDERERS={home:homePage,global:globalPage,markets:marketsPage,watchlist:watchlistPage,portfolio:portfolioPage,news:newsPage,analytics:analyticsPage,orderbook:orderBookPage,etf:etfPage,settings:settingsPage};
 function updateNav(){
  $$('.side-link[data-page]').forEach(b=>{const sel=b.dataset.page===state.page;b.classList.toggle('active',sel);if(sel)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
  updateCryptoAlertIndicator();
@@ -2284,7 +2288,7 @@ function updateNav(){
 function render(){
  const page=SECTIONS[state.page]||SECTIONS.global;
  $('#pageTitle').textContent=page[0];$('#pageSubtitle').textContent=page[1];
- const hideSearch=['global','portfolio','settings','analytics','orderbook','news'].includes(state.page);
+ const hideSearch=['global','portfolio','settings','analytics','orderbook','etf','news'].includes(state.page);
  const searchWrap=$('.search-wrap');
  if(searchWrap)searchWrap.hidden=hideSearch;
  if(hideSearch){
