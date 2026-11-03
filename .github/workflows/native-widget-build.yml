@@ -1,0 +1,62 @@
+name: Build native device widgets
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'native/**'
+      - 'widgets/**'
+      - 'vertex-widget-sw.js'
+      - '.github/workflows/native-widget-build.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: Android widget APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK 35
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Build native Android app
+        run: gradle -p native/android :app:assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vertex-crypto-android-debug-apk
+          path: native/android/app/build/outputs/apk/debug/app-debug.apk
+
+  ipados:
+    name: iPadOS WidgetKit simulator
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: cd native/ios && xcodegen generate
+      - name: Build host app and WidgetKit extension (unsigned simulator)
+        run: |
+          cd native/ios
+          xcodebuild -project VertexCrypto.xcodeproj -scheme VertexCrypto \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build
+
+  windows:
+    name: Windows native widget provider (compile)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Compile Windows App SDK COM widget provider
+        run: dotnet build native/windows/VertexCryptoProvider/VertexCryptoProvider.csproj --configuration Release --runtime win-x64 -p:Platform=x64 -p:AppxPackageSigningEnabled=false
