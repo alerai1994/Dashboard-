@@ -28,7 +28,7 @@ function updateVertexAppIcon(){
  const manifest=document.querySelector('link[rel="manifest"]');
  if(favicon)favicon.href=vertexIconPath('192');
  if(apple)apple.href=vertexIconPath('192');
- if(manifest)manifest.href='manifest-vertex-'+selectedVertexIcon+'.webmanifest';
+ if(manifest)manifest.href='manifest-vertex-'+selectedVertexIcon+'.webmanifest?v=20261103-device-widgets';
 }
 function vertexInstallLink(){
  const url=new URL(location.href);
