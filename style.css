@@ -1218,6 +1218,8 @@ body.theme-light .vertex-boot-note{color:#56738f}
 @media(max-width:700px){.market-quote-asof{font-size:10px}}
 
 
+/* Keep the topbar popup above charts and market cards. */
+.topbar{position:relative;z-index:40}
 /* Top-right crypto price alert bell: no separate Alerts page. */
 .crypto-bell-anchor{position:relative;display:flex;align-items:center;flex:none}
 .crypto-alert-popover[hidden]{display:none!important}
