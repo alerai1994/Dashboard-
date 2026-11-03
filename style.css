@@ -1266,3 +1266,14 @@ body.theme-light .vertex-boot-note{color:#56738f}
 .crypto-etf-disclaimer{font-size:10px;line-height:1.6;color:var(--muted);margin:12px 0 0}
 @media(max-width:1250px){.crypto-etf-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:650px){.crypto-etf-grid{grid-template-columns:1fr}.crypto-etf-title h2{font-size:17px}}
+
+/* Settings: automatic price band for all 42 crypto, without an Alerts page. */
+.crypto-bell-settings{margin-top:16px}
+.crypto-bell-settings .settings-sound-row{align-items:center}
+.crypto-bell-settings-count{white-space:nowrap;border:1px solid var(--line);color:var(--muted);font-size:11px;border-radius:14px;padding:7px 10px;background:var(--surface)}
+.crypto-bell-settings .settings-volume{margin-top:14px}
+.crypto-bell-settings [data-crypto-bell-reset]{margin-top:12px;white-space:normal;text-align:center}
+@media(max-width:680px){
+ .crypto-bell-settings .settings-sound-row{align-items:flex-start;flex-wrap:wrap;gap:10px}
+ .crypto-bell-settings-count{white-space:normal}
+}
