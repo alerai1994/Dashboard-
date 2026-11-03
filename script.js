@@ -2299,6 +2299,18 @@ function settingsPage(){
   '<span class="settings-app-icon-dot" aria-hidden="true"></span></button>').join('')+
  '</div><p class="settings-app-icon-note">La favicon cambia subito. Su Android, per aggiornare l’icona nella schermata Home, apri la pagina in Chrome e installa nuovamente l’app: le icone già installate non si aggiornano automaticamente.</p>'+
  '<button type="button" class="btn btn-small settings-app-icon-copy" data-copy-vertex-install="1">Copia link per installare questa icona in Chrome</button></section>'+
+ '<section class="content-card panel settings-preferences crypto-bell-settings" aria-label="Monitoraggio automatico crypto">'+
+ '<div class="settings-sound-row"><div><h3>Campanellina crypto · UPPER / LOWER</h3>'+
+ '<p class="subnote">Attiva il suono con la campanella in alto a destra. Controlla automaticamente tutte le '+
+ ASSETS.filter(a=>a.group==='crypto').length+' criptovalute: giallo e note ascendenti se sale fino a UPPER, rosso e note discendenti se scende fino a LOWER.</p></div>'+
+ '<span class="crypto-bell-settings-count">'+cryptoAutoBaselines.size+'/'+ASSETS.filter(a=>a.group==='crypto').length+' prezzi inizializzati</span></div>'+
+ '<div class="settings-volume"><div class="settings-volume-heading"><label for="cryptoAutoPercentSlider">Movimento prezzo per scattare UPPER / LOWER</label>'+
+ '<output id="cryptoAutoPercentValue" for="cryptoAutoPercentSlider">±'+state.cryptoAutoPercent.toLocaleString('it-IT',{maximumFractionDigits:1})+'%</output></div>'+
+ '<input type="range" id="cryptoAutoPercentSlider" min="0.1" max="5" step="0.1" value="'+state.cryptoAutoPercent+
+ '" style="--volume-progress:'+(state.cryptoAutoPercent/5*100)+'%" aria-label="Sensibilità campanella, percentuale di movimento">'+
+ '<div class="settings-volume-scale"><span>±0,1%</span><span>±5%</span></div>'+
+ '<p class="subnote">Ogni crypto parte dal primo prezzo realmente ricevuto in questa sessione. Dopo un avviso la sua soglia automatica si ricalibra sul prezzo raggiunto. Il colore resta visibile fino al clic sulla campanella; nessuna pagina Alerts viene aperta. Eventuali soglie di prezzo già salvate continuano a funzionare.</p>'+
+ '<button type="button" class="btn btn-small" data-crypto-bell-reset="1">Ricalibra tutte le 42 crypto ai prezzi attuali</button></div></section>'+
  '<section class="content-card panel settings-preferences"><div class="settings-sound-row"><div><h3>Suono al clic</h3><p class="subnote">Un breve suono quando premi i pulsanti. Puoi disattivarlo quando vuoi.</p></div>'+
  '<button type="button" data-sound-toggle="1" class="settings-sound-toggle'+(state.clickSound?' is-on':'')+'" role="switch" aria-checked="'+state.clickSound+'" aria-label="Suono al clic">'+(state.clickSound?'Attivo':'Disattivo')+'</button></div>'+
  '<div class="settings-volume"><div class="settings-volume-heading"><label for="clickVolumeSlider">Volume dei clic</label><output id="clickVolumeValue" for="clickVolumeSlider">'+state.clickVolume+'%</output></div>'+
@@ -3663,6 +3675,13 @@ function setupEvents(){
    if(!previous&&state.clickSound)playClickSound();
    render();return;
   }
+  if(btn.dataset.cryptoBellReset!==undefined){
+   cryptoAutoBaselines.clear();
+   evaluateCryptoAlerts();
+   if(state.page==='settings')render();
+   toast('Soglie automatiche ricalibrate sui prezzi ricevuti.');
+   return;
+  }
   if(btn.dataset.cryptoExpand){state.cryptoExpanded=!state.cryptoExpanded;render();return;}
   if(btn.dataset.asset){openAsset(btn.dataset.asset);return;}
   if(btn.dataset.region){selectRegion(btn.dataset.region);return;}
@@ -3719,6 +3738,18 @@ function setupEvents(){
   if(e.target.id==='orderBookSearch'){
    orderBookState.search=e.target.value;
    const list=$('#orderBookAssetList');if(list)list.innerHTML=orderBookAssetList();
+   return;
+  }
+  if(e.target.id==='cryptoAutoPercentSlider'){
+   const percent=Number(e.target.value);
+   if(!Number.isFinite(percent))return;
+   state.cryptoAutoPercent=Math.min(5,Math.max(.1,Math.round(percent*10)/10));
+   save('cryptoAutoPercent',state.cryptoAutoPercent);
+   cryptoAutoBaselines.clear();
+   evaluateCryptoAlerts();
+   const output=$('#cryptoAutoPercentValue');
+   if(output)output.textContent='±'+state.cryptoAutoPercent.toLocaleString('it-IT',{maximumFractionDigits:1})+'%';
+   e.target.style.setProperty('--volume-progress',(state.cryptoAutoPercent/5*100)+'%');
    return;
   }
   if(e.target.id==='brightnessSlider'){
