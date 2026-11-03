@@ -1660,7 +1660,8 @@ function cryptoEtfSection(){
   '<div class="crypto-etf-grid">'+cards+'</div></div>'+
   '<p class="crypto-etf-disclaimer">Attenzione: i valori spot mostrati sono prezzi delle criptovalute, '+
   'non prezzi delle quote ETF/ETP. Per il valore negoziato e gli orari della borsa apri la scheda del prodotto. '+
-  'AINJ è un ETP europeo, non un ETF USA. I prodotti possono comportare perdita del capitale.</p>'+
+  (group.id==='b'?'AINJ è un ETP europeo, non un ETF USA. ':'')+
+  'I prodotti possono comportare perdita del capitale.</p>'+
   '</section>';
 }
 function etfPage(){
