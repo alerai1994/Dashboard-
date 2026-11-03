@@ -51,7 +51,6 @@ enum VertexCoin: String, AppEnum, CaseIterable {
   .tao: "Bittensor (TAO)",
   .luna: "Terra (LUNA)"
  ]
- var label: String { Self.caseDisplayRepresentations[self]?.title.localizedStringResource?.key ?? rawValue.uppercased() }
 }
 
 struct SelectVertexCoinIntent: WidgetConfigurationIntent {
