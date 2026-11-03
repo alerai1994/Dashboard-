@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Vertex Crypto
+Comment=Criptovalute e quotazioni in un'app GTK nativa
+Exec=vertex-crypto
+Icon=vertex-crypto
+Terminal=false
+Categories=Office;Finance;
+StartupNotify=true
