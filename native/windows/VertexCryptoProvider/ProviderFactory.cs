@@ -5,9 +5,11 @@ using WinRT;
 
 namespace VertexCryptoProvider;
 
+// Standard packaged COM local-server class factory for Windows Widgets.
 internal static class COMGuids
 {
  public const string ClassFactory = "00000001-0000-0000-C000-000000000046";
+ public const string IUnknown = "00000000-0000-0000-C000-000000000046";
 }
 
 [ComImport, ComVisible(false), InterfaceType(ComInterfaceType.InterfaceIsIUnknown), Guid(COMGuids.ClassFactory)]
@@ -21,16 +23,20 @@ internal interface IClassFactory
 internal sealed class ProviderFactory<T> : IClassFactory where T : IWidgetProvider, new()
 {
  private const int CLASS_E_NOAGGREGATION = -2147221232;
+ private const int E_NOINTERFACE = -2147467262;
+
  public int CreateInstance(IntPtr outer, ref Guid riid, out IntPtr instance)
  {
   instance=IntPtr.Zero;
   if(outer!=IntPtr.Zero)return CLASS_E_NOAGGREGATION;
-  IntPtr ptr=IntPtr.Zero;
+  if(riid!=typeof(T).GUID&&riid!=Guid.Parse(COMGuids.IUnknown))
+   return E_NOINTERFACE;
   try {
-   ptr=MarshalInspectable<IWidgetProvider>.FromManaged(new T());
-   return Marshal.QueryInterface(ptr, in riid, out instance);
-  } catch(Exception error) {return Marshal.GetHRForException(error);}
-  finally {if(ptr!=IntPtr.Zero)Marshal.Release(ptr);}
+   instance=MarshalInspectable<IWidgetProvider>.FromManaged(new T());
+   return 0;
+  }catch(Exception error){
+   return Marshal.GetHRForException(error);
+  }
  }
  public int LockServer(bool locked)=>0;
 }
