@@ -2242,7 +2242,7 @@ function paintCryptoPriceHighlights(){
  const menu=$('#searchMenu');
  if(menu&&!menu.hidden)menu.querySelectorAll('button[data-asset]').forEach(node=>{
   const boundary=cryptoBoundaryFor(node.dataset.asset);
-  const price=node.querySelector('span:last-child');
+  const price=node.lastElementChild;
   if(!price)return;
   price.classList.toggle('crypto-price-upper',boundary==='above');
   price.classList.toggle('crypto-price-lower',boundary==='below');
