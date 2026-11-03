@@ -66,7 +66,7 @@ public sealed class CryptoWidgetProvider : IWidgetProvider
   ]
 }
 """;
- private static readonly Timer UpdateTimer =
+ private static readonly System.Threading.Timer UpdateTimer =
   new(_=>_ = UpdateAllAsync(),null,TimeSpan.FromMinutes(15),TimeSpan.FromMinutes(15));
 
  public CryptoWidgetProvider()
