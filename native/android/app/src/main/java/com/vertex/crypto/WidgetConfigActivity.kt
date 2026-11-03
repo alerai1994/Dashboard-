@@ -20,6 +20,10 @@ class WidgetConfigActivity : Activity() {
   val spinner=findViewById<Spinner>(R.id.coin_spinner)
   spinner.adapter=ArrayAdapter(this,android.R.layout.simple_spinner_dropdown_item,
    CoinCatalog.entries.map { it.second })
+  val previous=getSharedPreferences("vertex_widgets",MODE_PRIVATE)
+   .getString("coin_$widgetId", "btc")
+  val selectedIndex=CoinCatalog.entries.indexOfFirst { it.first==previous }
+  if(selectedIndex>=0)spinner.setSelection(selectedIndex)
   findViewById<Button>(R.id.save_widget).setOnClickListener {
    val selected=CoinCatalog.entries[spinner.selectedItemPosition].first
    getSharedPreferences("vertex_widgets",MODE_PRIVATE)
