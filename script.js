@@ -149,7 +149,6 @@ portfolio:['Portfolio','Tieni traccia delle posizioni inserite manualmente.'],
 news:['News','Accesso rapido a fonti finanziarie verificabili.'],
 analytics:['Analytics','Indicatori e andamento dei principali mercati mondiali.'],
 orderbook:['Order Book','Ordini Spot di acquisto e vendita delle criptovalute.'],
-alerts:['Alerts','Soglie di prezzo controllate quando la dashboard è aperta.'],
 settings:['Settings','Aspetto, origini dei dati e accesso al terminale originale.']
 };
 const REGIONS=[
@@ -203,7 +202,11 @@ const state={
  page:(location.hash||'#global').slice(1).toLowerCase(),quotes:{},feedTime:null,feedError:false,loading:true,
  watch:Array.isArray(load('watch',[]))?load('watch',[]):[],
  holdings:loadPortfolioHoldings(),
- alerts:Array.isArray(load('alerts',[]))?load('alerts',[]):[],
+ alerts:(()=>{const saved=load('alerts',[]);return Array.isArray(saved)?saved.filter(a=>
+  a&&ASSET_BY_ID[a.id]?.group==='crypto'&&
+  ['above','below'].includes(a.operator)&&Number.isFinite(Number(a.value))&&Number(a.value)>0
+ ).map(a=>({id:a.id,operator:a.operator,value:Number(a.value)})):[]})(),
+ alertSound:load('cryptoAlertSound',true)!==false,
  theme:load('theme','dark'),themeMode:load('themeMode',load('theme','dark')),clickSound:load('clickSound',true),clickVolume:load('clickVolume',70),brightness:load('brightness',100),adaptiveBrightness:load('adaptiveBrightness',false)===true,region:null,marketFilter:'all',marketSearch:'',dialogId:null,chartShift:0,chartHover:null,
  land:'',searchResults:[],errorText:'',cryptoExpanded:false,
  solarLastRoot:null,solarLastUpdate:0,solarLastStatus:0
@@ -815,7 +818,7 @@ function updatePriceDom(){
   patchRegions();
   patchPortfolio();
   patchSummary();
-  if(state.alerts.length)updateNav();
+  evaluateCryptoAlerts();
  }
  updateLiveBadges();
 }
@@ -2075,23 +2078,154 @@ async function refreshOrderBook(force=false){
  if(serial===orderBookState.serial){orderBookState.busy=false;paintOrderBook();}
 }
 
-function alertState(a){
- const v=quote(a.id)&&quote(a.id).value;
- if(!num(v))return 'Senza quotazione';
- return a.operator==='above'?(v>=a.value?'Soglia raggiunta':'In attesa'):(v<=a.value?'Soglia raggiunta':'In attesa');
+// Crypto alerts are always managed from the upper-right bell, not a page.
+const cryptoAlertReached=new Map();
+let cryptoAlertMonitoringReady=false;
+let cryptoAlertAudioContext=null;
+const cryptoAlertHistory=Array.isArray(load('cryptoAlertHistory',[]))?
+ load('cryptoAlertHistory',[]).filter(x=>x&&typeof x.id==='string').slice(0,30):[];
+function cryptoAlertKey(rule){
+ return rule.id+'|'+rule.operator+'|'+Number(rule.value);
 }
-function triggeredAlerts(){return state.alerts.filter(x=>alertState(x)==='Soglia raggiunta');}
-function alertsPage(){
- const options=ASSETS.map(a=>'<option value="'+a.id+'">'+esc(a.name)+'</option>').join('');
- return secHeader('Price Alerts','Controllo locale del prezzo quando questa pagina è aperta')+
- '<section class="content-card panel"><h3>Nuovo alert</h3><form id="alertForm" class="form-grid">'+
- '<div class="form-field"><label for="alertAsset">Asset</label><select name="id" id="alertAsset">'+options+'</select></div>'+
- '<div class="form-field"><label for="alertOperator">Condizione</label><select name="operator" id="alertOperator"><option value="above">Prezzo ≥</option><option value="below">Prezzo ≤</option></select></div>'+
- '<div class="form-field"><label for="alertValue">Prezzo soglia (unità di quotazione)</label><input id="alertValue" name="value" type="number" min="0" step="any" required></div>'+
- '<div class="form-actions"><button class="btn btn-primary" type="submit">'+sym('plus')+' Aggiungi alert</button></div></form>'+
- '<p class="notice">Gli alert sono conservati nel browser e valutati sui dati disponibili al caricamento/aggiornamento. Nessuna notifica push e nessun monitoraggio a browser chiuso.</p></section>'+
- '<section class="content-card panel" style="margin-top:14px"><h3>Alert salvati ('+state.alerts.length+')</h3>'+
- (state.alerts.length?state.alerts.map((x,i)=>'<div class="alert-row"><div><strong>'+esc(ASSET_BY_ID[x.id]?.name||x.id)+' · '+(x.operator==='above'?'≥':'≤')+' '+Number(x.value).toLocaleString('it-IT')+'</strong><small>'+esc(alertState(x))+' · Prezzo '+assetValue(ASSET_BY_ID[x.id]||{id:x.id,group:'markets'})+'</small></div><button type="button" data-delete-alert="'+i+'">Rimuovi</button></div>').join(''):'<div class="empty-state"><h3>Nessun alert</h3><p>Aggiungi una soglia per monitorarla quando usi la dashboard.</p></div>')+'</section>'+feedStatus();
+function alertState(rule){
+ const value=quote(rule.id)?.value;
+ if(!num(value)||value<=0)return 'Senza quotazione';
+ const threshold=Number(rule.value);
+ return (rule.operator==='above'?value>=threshold:value<=threshold)?
+  'Soglia raggiunta':'In attesa';
+}
+function triggeredAlerts(){
+ return state.alerts.filter(rule=>alertState(rule)==='Soglia raggiunta');
+}
+function updateCryptoAlertIndicator(){
+ const bell=$('#notificationsButton'),dot=$('#notifDot');
+ const count=triggeredAlerts().length;
+ if(dot)dot.hidden=count===0;
+ if(bell)bell.setAttribute('aria-label','Avvisi prezzi crypto'+(count?' · '+count+' soglie raggiunte':''));
+}
+function syncCryptoAlertSoundButton(){
+ const button=$('#cryptoAlertSoundToggle');
+ if(!button)return;
+ button.textContent=state.alertSound?'♪ Suono ON':'♪ Suono OFF';
+ button.setAttribute('aria-pressed',String(state.alertSound));
+ button.title=state.alertSound?'Disattiva il suono degli avvisi':'Attiva il suono degli avvisi';
+}
+function unlockCryptoAlertAudio(){
+ try{
+  const Audio=window.AudioContext||window.webkitAudioContext;
+  if(!Audio)return;
+  if(!cryptoAlertAudioContext)cryptoAlertAudioContext=new Audio();
+  if(cryptoAlertAudioContext.state==='suspended')
+   cryptoAlertAudioContext.resume().catch(()=>{});
+ }catch(_error){/* Some browsers do not permit audio. */}
+}
+function playCryptoAlertSound(){
+ if(!state.alertSound)return;
+ try{
+  unlockCryptoAlertAudio();
+  const ctx=cryptoAlertAudioContext;
+  if(!ctx||ctx.state==='closed')return;
+  const base=ctx.currentTime+0.018;
+  for(const [i,freq] of [784,1046].entries()){
+   const start=base+i*.16,osc=ctx.createOscillator(),gain=ctx.createGain();
+   osc.type='sine';osc.frequency.value=freq;
+   gain.gain.setValueAtTime(.0001,start);
+   gain.gain.exponentialRampToValueAtTime(.085,start+.018);
+   gain.gain.exponentialRampToValueAtTime(.0001,start+.20);
+   osc.connect(gain);gain.connect(ctx.destination);
+   osc.start(start);osc.stop(start+.205);
+  }
+ }catch(_error){/* Browser autoplay restrictions take precedence. */}
+}
+function paintCryptoAlertPanel(){
+ updateCryptoAlertIndicator();
+ const panel=$('#cryptoAlertPopover');
+ if(!panel||panel.hidden)return;
+ syncCryptoAlertSoundButton();
+ const count=$('#cryptoAlertRuleCount'),rules=$('#cryptoAlertRules'),history=$('#cryptoAlertHistory');
+ if(count)count.textContent=state.alerts.length+' impostate';
+ if(rules){
+  rules.innerHTML=state.alerts.length?state.alerts.map((rule,index)=>{
+   const asset=ASSET_BY_ID[rule.id],reached=alertState(rule)==='Soglia raggiunta';
+   const price=asset?assetValue(asset):'—';
+   const direction=rule.operator==='above'?'UPPER ≥':'LOWER ≤';
+   return '<div class="crypto-alert-rule"><div class="crypto-alert-rule-main">'+
+    '<strong>'+esc(asset?.name||rule.id)+' · '+direction+' '+
+     Number(rule.value).toLocaleString('it-IT',{maximumFractionDigits:10})+' USD</strong>'+
+    '<small>Ultimo: '+esc(price)+' · '+esc(quote(rule.id)?.source||'Dato non disponibile')+'</small>'+
+    '</div><span class="crypto-alert-state '+(reached?(rule.operator==='above'?'up':'down'):'wait')+'">'+
+    (reached?'Attivo':'In attesa')+'</span>'+
+    '<button type="button" data-crypto-alert-remove="'+index+'" aria-label="Rimuovi soglia">×</button></div>';
+  }).join(''):'<div class="crypto-alert-empty">Nessuna soglia impostata. Scegli una crypto e un prezzo UPPER o LOWER.</div>';
+ }
+ if(history){
+  history.innerHTML=cryptoAlertHistory.length?cryptoAlertHistory.slice(0,12).map(event=>{
+   const asset=ASSET_BY_ID[event.id];
+   const timestamp=new Date(event.at);
+   const date=Number.isFinite(timestamp.getTime())?
+    localeDate(timestamp.toISOString(),{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+   return '<div class="crypto-alert-event"><div class="crypto-alert-event-main">'+
+    '<strong>'+esc(asset?.name||event.id)+' · '+
+    (event.operator==='above'?'UPPER ↑':'LOWER ↓')+'</strong>'+
+    '<small>Prezzo '+Number(event.price).toLocaleString('it-IT',{maximumFractionDigits:10})+
+    ' USD · '+esc(date)+'</small></div></div>';
+  }).join(''):'<div class="crypto-alert-empty">Nessun avviso scattato in questa sessione o nelle precedenti.</div>';
+ }
+}
+function closeCryptoAlertPanel(){
+ const panel=$('#cryptoAlertPopover'),bell=$('#notificationsButton');
+ if(panel)panel.hidden=true;
+ if(bell)bell.setAttribute('aria-expanded','false');
+}
+function toggleCryptoAlertPanel(){
+ const panel=$('#cryptoAlertPopover'),bell=$('#notificationsButton');
+ if(!panel||!bell)return;
+ const open=panel.hidden;
+ if(open){
+  unlockCryptoAlertAudio();
+  panel.hidden=false;
+  bell.setAttribute('aria-expanded','true');
+  paintCryptoAlertPanel();
+ }else closeCryptoAlertPanel();
+}
+function initCryptoAlertPanel(){
+ const select=$('#cryptoAlertAsset');
+ if(select)select.innerHTML=ASSETS.filter(asset=>asset.group==='crypto').map(asset=>
+  '<option value="'+esc(asset.id)+'">'+esc(asset.name)+'</option>').join('');
+ syncCryptoAlertSoundButton();paintCryptoAlertPanel();
+}
+function evaluateCryptoAlerts(){
+ let anyQuote=false;
+ const newHits=[];
+ const currentKeys=new Set(state.alerts.map(cryptoAlertKey));
+ for(const key of cryptoAlertReached.keys())if(!currentKeys.has(key))cryptoAlertReached.delete(key);
+ for(const rule of state.alerts){
+  const value=quote(rule.id)?.value;
+  if(!num(value)||value<=0)continue;
+  anyQuote=true;
+  const key=cryptoAlertKey(rule),hit=rule.operator==='above'?
+   value>=Number(rule.value):value<=Number(rule.value);
+  const prev=cryptoAlertReached.get(key);
+  // Sound only on a new crossing, not every tick and not for initial snapshots.
+  if(cryptoAlertMonitoringReady&&prev===false&&hit)newHits.push({rule,value});
+  cryptoAlertReached.set(key,hit);
+ }
+ if(anyQuote)cryptoAlertMonitoringReady=true;
+ if(newHits.length){
+  for(const {rule,value} of newHits){
+   cryptoAlertHistory.unshift({id:rule.id,operator:rule.operator,
+    value:Number(rule.value),price:value,at:Date.now()});
+  }
+  cryptoAlertHistory.length=Math.min(30,cryptoAlertHistory.length);
+  save('cryptoAlertHistory',cryptoAlertHistory);
+  if(state.alertSound)playCryptoAlertSound();
+  const first=newHits[0];
+  toast((newHits.length>1?newHits.length+' avvisi crypto: ':'Avviso crypto: ')+
+   (ASSET_BY_ID[first.rule.id]?.name||first.rule.id)+' '+
+   (first.rule.operator==='above'?'UPPER ↑':'LOWER ↓')+
+   ' · '+formatValue(first.value,ASSET_BY_ID[first.rule.id]));
+ }
+ paintCryptoAlertPanel();
 }
 function settingsPage(){
  const choices=[['light','☀','Chiaro','Bianco e azzurro'],['dark','☾','Scuro','Blu notte'],['ocean','◈','Oceano','Blu e turchese'],['emerald','❖','Smeraldo','Verde elegante'],['violet','✦','Viola','Viola moderno']];
@@ -2125,11 +2259,10 @@ function settingsPage(){
  '<input type="range" id="clickVolumeSlider" min="0" max="100" step="1" value="'+state.clickVolume+'" style="--volume-progress:'+state.clickVolume+'%" aria-label="Volume del suono al clic">'+
  '<div class="settings-volume-scale"><span>0%</span><span>100%</span></div></div></section>';
 }
-const PAGE_RENDERERS={home:homePage,global:globalPage,markets:marketsPage,watchlist:watchlistPage,portfolio:portfolioPage,news:newsPage,analytics:analyticsPage,orderbook:orderBookPage,alerts:alertsPage,settings:settingsPage};
+const PAGE_RENDERERS={home:homePage,global:globalPage,markets:marketsPage,watchlist:watchlistPage,portfolio:portfolioPage,news:newsPage,analytics:analyticsPage,orderbook:orderBookPage,settings:settingsPage};
 function updateNav(){
  $$('.side-link[data-page]').forEach(b=>{const sel=b.dataset.page===state.page;b.classList.toggle('active',sel);if(sel)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
- const count=triggeredAlerts().length;$('#alertCount').hidden=count===0;if(count)$('#alertCount').textContent=String(count);
- $('#notifDot').hidden=count===0;
+ updateCryptoAlertIndicator();
 }
 function render(){
  const page=SECTIONS[state.page]||SECTIONS.global;
@@ -2157,6 +2290,7 @@ function render(){
  }
 }
 function navigate(page){
+ closeCryptoAlertPanel();
  if(!SECTIONS[page])page='global';
  if(state.page==='orderbook'&&page!=='orderbook'){stopOrderBookLive();cancelOrderBookFetch()}
  state.page=page;
@@ -2316,6 +2450,7 @@ async function fetchQuotes(isManual=false){
    if(!next[id])changed.push(id);
   }
   state.quotes=next;
+  evaluateCryptoAlerts();
   const incomingFeedTime=Date.parse(data.generatedAt||'');
   const oldFeedTime=Date.parse(state.feedTime||'');
   if(Number.isFinite(incomingFeedTime)&&
@@ -3426,7 +3561,7 @@ function setupEvents(){
  $('#menuToggle').addEventListener('click',()=>$('#sidebar').classList.toggle('open'));
  $$('.sidebar-theme-button[data-fixed-theme]').forEach(button=>button.addEventListener('click',()=>setTheme(button.dataset.fixedTheme)));
  $('#profileButton').addEventListener('click',()=>navigate('settings'));
- $('#notificationsButton').addEventListener('click',()=>navigate('alerts'));
+ $('#notificationsButton').addEventListener('click',toggleCryptoAlertPanel);
  $('#searchInput').addEventListener('input',updateSearch);
  $('#searchInput').addEventListener('keydown',e=>{
   if(e.key==='Escape'){$('#searchMenu').hidden=true;$('#searchInput').setAttribute('aria-expanded','false')}
@@ -3506,7 +3641,6 @@ function setupEvents(){
    portfolioEditIndex=-1;render();toast('Posizione rimossa dal portafoglio.');
    return;
   }
-  if(btn.dataset.deleteAlert!=null){state.alerts.splice(Number(btn.dataset.deleteAlert),1);save('alerts',state.alerts);render();return;}
  });
  $('#pageContainer').addEventListener('keydown',e=>{if(e.key==='Enter'){const tr=e.target.closest('tr[data-asset]');if(tr)openAsset(tr.dataset.asset)}});
  $('#pageContainer').addEventListener('change',e=>{
@@ -3563,12 +3697,6 @@ function setupEvents(){
   if(e.target.id==='portfolioForm'){
    e.preventDefault();savePortfolioForm(e.target);return;
   }
-  if(e.target.id==='alertForm'){
-   e.preventDefault();
-   const form=new FormData(e.target),id=String(form.get('id')),operator=String(form.get('operator')),value=Number(form.get('value'));
-   if(!ASSET_BY_ID[id]||!['above','below'].includes(operator)||!num(value)||value<=0){toast('Inserisci una soglia valida.');return;}
-   state.alerts.push({id,operator,value});save('alerts',state.alerts);render();toast('Alert locale salvato.');
-  }
  });
  $('#closeDialog').addEventListener('click',closeAsset);
  $('#assetDialog').addEventListener('click',e=>{
@@ -3620,7 +3748,7 @@ function init(){
    if(reg.active)reg.active.postMessage({type:'VERTEX_WIDGETS_REFRESH'});
   }).catch(()=>{});
  }
- setupEvents();updateVertexAppIcon();applyTheme();applyBrightness();updateClock();
+ setupEvents();initCryptoAlertPanel();updateVertexAppIcon();applyTheme();applyBrightness();updateClock();
  setInterval(updateClock,30000);
  setInterval(()=>{if(state.adaptiveBrightness&&!document.hidden)applyBrightness()},60000);
  setInterval(updateWorldSunlight,1000);
