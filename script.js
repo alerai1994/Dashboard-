@@ -208,6 +208,8 @@ const state={
   ['above','below'].includes(a.operator)&&Number.isFinite(Number(a.value))&&Number(a.value)>0
  ).map(a=>({id:a.id,operator:a.operator,value:Number(a.value)})):[]})(),
  alertSound:load('cryptoAlertSound',false)===true,
+ // Automatic UPPER/LOWER threshold as a percent of the first observed spot price.
+ cryptoAutoPercent:(()=>{const p=Number(load('cryptoAutoPercent',1));return Number.isFinite(p)?Math.min(5,Math.max(.1,p)):1})(),
  theme:load('theme','dark'),themeMode:load('themeMode',load('theme','dark')),clickSound:load('clickSound',true),clickVolume:load('clickVolume',70),brightness:load('brightness',100),adaptiveBrightness:load('adaptiveBrightness',false)===true,region:null,marketFilter:'all',marketSearch:'',dialogId:null,chartShift:0,chartHover:null,
  land:'',searchResults:[],errorText:'',cryptoExpanded:false,
  solarLastRoot:null,solarLastUpdate:0,solarLastStatus:0
@@ -2140,6 +2142,7 @@ async function refreshOrderBook(force=false){
 }
 
 // Crypto alerts are always managed from the upper-right bell, not a page.
+const cryptoAutoBaselines=new Map();
 const cryptoAlertReached=new Map();
 let cryptoAlertAudioContext=null;
 // Keep the last threshold-crossing color until the user acknowledges it by clicking the bell.
@@ -2163,7 +2166,7 @@ function triggeredAlerts(){
 function updateCryptoAlertIndicator(){
  const bell=$('#notificationsButton'),dot=$('#notifDot');
  const count=triggeredAlerts().length;
- if(dot)dot.hidden=count===0;
+ if(dot)dot.hidden=count===0&&!cryptoAlertVisualDirection;
  if(!bell)return;
  bell.classList.toggle('bell-audio-on',state.alertSound);
  bell.classList.toggle('bell-alert-upper',cryptoAlertVisualDirection==='above');
@@ -2174,7 +2177,7 @@ function updateCryptoAlertIndicator(){
  const lastEvent=cryptoAlertVisualDirection?
   ' · '+(cryptoAlertVisualDirection==='above'?'UPPER raggiunto':'LOWER raggiunto')+
    (cryptoAlertVisualAsset?' · '+cryptoAlertVisualAsset:''):' ';
- const label='Campanella crypto · '+status+lastEvent+
+ const label='Campanella crypto · '+status+' · Monitoraggio '+ASSETS.filter(a=>a.group==='crypto').length+' crypto (±'+state.cryptoAutoPercent+'%)'+lastEvent+
   (count?' · '+count+' soglie raggiunte':'')+' · '+hint;
  bell.setAttribute('aria-label',label);
  bell.title=label;
@@ -2212,6 +2215,28 @@ function playCryptoAlertSound(direction='above',delay=0){
 }
 function evaluateCryptoAlerts(){
  const newHits=[];
+ // Automatic thresholds are active for ALL cryptocurrencies listed in Vertex.
+ // The first verified quote arms each instrument; a ±P% movement fires once
+ // and resets that instrument's reference price. Never use the 24h percentage
+ // or the prices in a static example as if they were real-time crossings.
+ for(const asset of ASSETS){
+  if(asset.group!=='crypto')continue;
+  const id=asset.id,value=Number(quote(id)?.value);
+  if(!Number.isFinite(value)||value<=0)continue;
+  const baseline=cryptoAutoBaselines.get(id);
+  if(!Number.isFinite(baseline)||baseline<=0){
+   cryptoAutoBaselines.set(id,value);
+   continue;
+  }
+  const percent=state.cryptoAutoPercent/100;
+  if(value>=baseline*(1+percent)){
+   newHits.push({rule:{id,operator:'above',value:baseline*(1+percent)},value,automatic:true});
+   cryptoAutoBaselines.set(id,value);
+  }else if(value<=baseline*(1-percent)){
+   newHits.push({rule:{id,operator:'below',value:baseline*(1-percent)},value,automatic:true});
+   cryptoAutoBaselines.set(id,value);
+  }
+ }
  const currentKeys=new Set(state.alerts.map(cryptoAlertKey));
  for(const key of cryptoAlertReached.keys())if(!currentKeys.has(key))cryptoAlertReached.delete(key);
  for(const rule of state.alerts){
