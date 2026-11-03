@@ -128,7 +128,7 @@ struct VertexCryptoWidgetView: View {
    Text(changeText).font(.subheadline.bold())
     .foregroundStyle((entry.change ?? 0) < 0 ? .red : .green)
    Spacer(minLength: 0)
-   Text(entry.quoteTime.map { "Dato: " + $0.prefix(16).replacingOccurrences(of: "T", with: " ") + " UTC" } ?? "Quotazione non disponibile")
+   Text(entry.quoteTime.map { "Dato: " + String($0.prefix(16)).replacingOccurrences(of: "T", with: " ") + " UTC" } ?? "Quotazione non disponibile")
     .font(.caption2).foregroundStyle(.secondary).lineLimit(2)
    Text(entry.source ?? "Vertex").font(.caption2).foregroundStyle(.secondary).lineLimit(1)
   }
