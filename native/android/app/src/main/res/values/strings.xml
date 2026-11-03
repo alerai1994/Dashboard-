@@ -1,4 +1,5 @@
 <resources>
  <string name="app_name">Vertex Crypto</string>
  <string name="widget_description">Prezzi e variazioni delle crypto a tua scelta</string>
+ <string name="widget_refresh">Aggiorna il prezzo del widget</string>
 </resources>
