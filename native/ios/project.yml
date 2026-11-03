@@ -3,6 +3,7 @@ options:
   bundleIdPrefix: com.vertex
   deploymentTarget:
     iOS: "17.0"
+    macOS: "14.0"
 settings:
   base:
     SWIFT_VERSION: "5.0"
@@ -51,3 +52,32 @@ targets:
         CFBundleDisplayName: Widget Crypto Vertex
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
+
+  VertexCryptoMac:
+    type: application
+    platform: macOS
+    sources:
+      - path: App/VertexCryptoApp.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.vertex.crypto.mac
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        GENERATE_INFOPLIST_FILE: "NO"
+    info:
+      path: Mac/Info.plist
+    dependencies:
+      - target: VertexCryptoMacWidget
+        embed: true
+  VertexCryptoMacWidget:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: VertexCryptoWidget.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.vertex.crypto.mac.widgets
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        APPLICATION_EXTENSION_API_ONLY: "YES"
+        GENERATE_INFOPLIST_FILE: "NO"
+    info:
+      path: MacWidget/Info.plist
