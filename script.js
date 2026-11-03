@@ -1660,7 +1660,7 @@ const cryptoCapCount=n=>new Intl.NumberFormat('it-IT',{maximumFractionDigits:2})
 function cryptoCapResults(){
  const A=ASSET_BY_ID[cryptoCapState.a],B=ASSET_BY_ID[cryptoCapState.b];
  const a=cryptoCapState.data.get(cryptoCapId(A)),b=cryptoCapState.data.get(cryptoCapId(B));
- const ready=!!a&&!!b&&validCap(a.circulating_supply)&&validCap(b.market_cap)&&validCap(a.current_price);
+ const ready=!!a&&!!b&&validCap(a.circulating_supply)&&validCap(b.market_cap);
  const status=cryptoCapState.loading?'Aggiornamento da CoinGecko in corso…':
   cryptoCapState.error?cryptoCapState.error:
   !cryptoCapState.updatedAt?'In attesa delle capitalizzazioni reali da CoinGecko…':'';
@@ -1669,23 +1669,26 @@ function cryptoCapResults(){
    '<p>'+esc(status||'Capitalizzazione o token circolanti non disponibili per una delle crypto scelte. Prova un’altra coppia o aggiorna.')+'</p></div>';
  }
  const supply=Number(a.circulating_supply),targetCap=Number(b.market_cap);
- const price=Number(a.current_price),predicted=targetCap/supply;
+ const cgPrice=Number(a.current_price),dashboardPrice=Number(quote(A.id)?.value);
+ const price=validCap(cgPrice)?cgPrice:dashboardPrice;
+ const hasPrice=validCap(price);
+ const predicted=targetCap/supply;
  if(!validCap(predicted)||!Number.isFinite(predicted))return '<div class="crypto-cap-placeholder">Dati insufficienti per calcolare il prezzo ipotetico.</div>';
- const multiplier=predicted/price,change=(multiplier-1)*100;
- const changeText=(change>=0?'+':'')+new Intl.NumberFormat('it-IT',{maximumFractionDigits:2}).format(change)+'%';
+ const multiplier=hasPrice?predicted/price:null,change=hasPrice?(multiplier-1)*100:null;
+ const changeText=hasPrice?(change>=0?'+':'')+new Intl.NumberFormat('it-IT',{maximumFractionDigits:2}).format(change)+'%':'—';
  const updated=[a.last_updated,b.last_updated].map(t=>Date.parse(t||'')).filter(Number.isFinite);
  const newest=updated.length?new Date(Math.min(...updated)).toLocaleString('it-IT'):'orario non comunicato';
  return '<div class="crypto-cap-metrics">'+
-  '<article class="crypto-cap-metric"><small>Prezzo attuale A · '+esc(A.short||A.name)+'</small><strong>'+esc(formatValue(price,A))+'</strong></article>'+
+  '<article class="crypto-cap-metric"><small>Prezzo attuale A · '+esc(A.short||A.name)+'</small><strong>'+esc(hasPrice?formatValue(price,A):'Non disponibile')+'</strong></article>'+
   '<article class="crypto-cap-metric"><small>Capitalizzazione A</small><strong>'+esc(validCap(a.market_cap)?cryptoCapMoney(a.market_cap):'Non disponibile')+'</strong></article>'+
   '<article class="crypto-cap-metric"><small>Capitalizzazione B · '+esc(B.short||B.name)+'</small><strong>'+esc(cryptoCapMoney(targetCap))+'</strong></article>'+
   '<article class="crypto-cap-metric"><small>Token circolanti A</small><strong>'+esc(cryptoCapCount(supply))+'</strong></article></div>'+
   '<div class="crypto-cap-answer"><div><small>Prezzo ipotetico di '+esc(A.short||A.name)+' con la capitalizzazione di '+esc(B.short||B.name)+'</small>'+
   '<strong>'+esc(formatValue(predicted,A))+'</strong></div>'+
-  '<div class="crypto-cap-growth '+(change>=0?'is-positive':'is-negative')+'"><span>'+esc(changeText)+'</span><small>'+
-  esc(new Intl.NumberFormat('it-IT',{maximumFractionDigits:2}).format(multiplier))+'× rispetto al prezzo attuale</small></div></div>'+
+  '<div class="crypto-cap-growth '+(change===null?'':change>=0?'is-positive':'is-negative')+'"><span>'+esc(changeText)+'</span><small>'+
+  (hasPrice?esc(new Intl.NumberFormat('it-IT',{maximumFractionDigits:2}).format(multiplier))+'× rispetto al prezzo attuale':'Prezzo A non disponibile per il confronto')+'</small></div></div>'+
   '<div class="crypto-cap-source">'+(status?'<span>'+esc(status)+'</span>':'')+
-  '<span>Dati CoinGecko (USD) · ultimo aggiornamento: '+esc(newest)+'</span></div>';
+  '<span>Dati CoinGecko (USD) · ultimo aggiornamento: '+esc(newest)+(!validCap(cgPrice)&&hasPrice?' · prezzo A dal feed Vertex':'')+'</span></div>';
 }
 function updateCryptoCapResults(){
  const target=$('#cryptoCapResults');
