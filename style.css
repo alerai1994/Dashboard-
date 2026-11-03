@@ -1452,3 +1452,18 @@ body.theme-light :is(.btn,.outline-button,.sidebar-theme-button,
  color:#274b91;
  filter:drop-shadow(0 0 2px rgba(116,166,255,.60));
 }
+
+/* ETF page: two distinct cryptocurrency product groups under the ETF heading. */
+.crypto-etf-groups{display:grid;gap:22px}
+.crypto-etf-group{min-width:0;padding:16px;border:1px solid var(--line);border-radius:18px;background:color-mix(in srgb,var(--panel) 90%,var(--surface))}
+.crypto-etf-group-heading{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.crypto-etf-group-letter{display:grid;place-items:center;flex:none;width:36px;height:36px;border:1px solid color-mix(in srgb,var(--brand) 55%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--brand) 15%,var(--panel));color:var(--brand);font-size:16px;font-weight:800;box-shadow:inset 0 2px 0 rgba(255,255,255,.1),0 3px 0 rgba(0,0,0,.13)}
+.crypto-etf-group-heading h3{margin:0 0 3px;font-size:16px;font-weight:750}
+.crypto-etf-group-heading p{margin:0;color:var(--muted);font-size:11px}
+.crypto-etf-group-count{margin-left:auto;color:var(--muted);font-size:11px;white-space:nowrap}
+.crypto-etf-group .crypto-etf-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:640px){
+ .crypto-etf-group{padding:12px}
+ .crypto-etf-group .crypto-etf-grid{grid-template-columns:minmax(0,1fr)}
+ .crypto-etf-group-heading{gap:9px}
+}
