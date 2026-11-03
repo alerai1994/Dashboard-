@@ -101,7 +101,9 @@ def yahoo_fast(pair):
 def crypto_fast():
     rows = {identity: {"id": identity, "symbol": coin.upper(), "value": None,
                        "change": None, "currency": "USD", "time": None,
-                       "source": "CoinGecko"} for identity, coin in COINS}
+                       "source": "CoinGecko", "market_cap": None,
+                       "circulating_supply": None, "cap_updated_at": None}
+            for identity, coin in COINS}
     lookup = {coin: identity for identity, coin in COINS}
     url = "https://api.coingecko.com/api/v3/coins/markets?" + urlencode({
         "vs_currency": "usd", "ids": ",".join(lookup),
@@ -114,12 +116,17 @@ def crypto_fast():
                 if not isinstance(item, dict) or item.get("id") not in lookup:
                     continue
                 price = positive(item.get("current_price"))
-                if price is None:
-                    continue
                 row = rows[lookup[item["id"]]]
-                row.update({"value": price,
-                            "change": number(item.get("price_change_percentage_24h")),
-                            "time": item.get("last_updated") or None})
+                cap = positive(item.get("market_cap"))
+                supply = positive(item.get("circulating_supply"))
+                if cap is not None and supply is not None:
+                    row.update({"market_cap": cap, "circulating_supply": supply,
+                                "cap_updated_at": item.get("last_updated") or
+                                datetime.now(timezone.utc).isoformat()})
+                if price is not None:
+                    row.update({"value": price,
+                                "change": number(item.get("price_change_percentage_24h")),
+                                "time": item.get("last_updated") or None})
                 image = item.get("image")
                 if isinstance(image, str) and image.startswith(
                         ("https://coin-images.coingecko.com/", "https://assets.coingecko.com/")):
@@ -195,13 +202,27 @@ def main():
     crypto_rows = crypto_fast()
     for identity, _ in COINS:
         row = crypto_rows[identity]
+        old = older.get(identity, {})
         if positive(row.get("value")):
             received += 1
-        elif older.get(identity):
-            old = older[identity]
-            row = {key: old[key] for key in
-                   ("id", "symbol", "value", "change", "currency", "time",
-                    "source", "marketState", "delayMinutes", "logo") if key in old}
+        elif old:
+            # Keep a previous verified quote with its original source timestamp.
+            row.update({key: old[key] for key in
+                        ("value", "change", "currency", "time", "source", "logo")
+                        if key in old})
+        if not (positive(row.get("market_cap")) and positive(row.get("circulating_supply"))):
+            # An upstream 429/CORS outage must not erase a recently verified cap.
+            old_time = old.get("cap_updated_at")
+            try:
+                stamp = datetime.fromisoformat(str(old_time).replace("Z", "+00:00"))
+                if stamp.tzinfo is None:
+                    stamp = stamp.replace(tzinfo=timezone.utc)
+                recent = 0 <= (datetime.now(timezone.utc) - stamp).total_seconds() <= 36 * 3600
+            except (TypeError, ValueError, OverflowError):
+                recent = False
+            if recent and positive(old.get("market_cap")) and positive(old.get("circulating_supply")):
+                row.update({key: old[key] for key in
+                            ("market_cap", "circulating_supply", "cap_updated_at")})
         payload["crypto"].append(row)
     for group in GROUPS:
         order = {identity: idx for idx, (identity, _) in enumerate(GROUPS[group])}
