@@ -154,7 +154,7 @@ public sealed class CryptoMainForm : Form
      r.Id.Contains(needle,StringComparison.OrdinalIgnoreCase)||
      r.Name.Contains(needle,StringComparison.OrdinalIgnoreCase)))
    {
-    var price=row.Price is >0 p?
+    var price=row.Price is double p && p>0?
      p.ToString(p>=1?"N2":"N7",CultureInfo.GetCultureInfo("it-IT")):"—";
     var change=row.Change is double pct?pct.ToString("+0.00;-0.00;0.00")+"%":"—";
     var time=DateTimeOffset.TryParse(row.Time,out var date)?
