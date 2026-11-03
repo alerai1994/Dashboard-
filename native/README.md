@@ -4,9 +4,13 @@ Questo repository contiene:
 - **Android**: app Android con `AppWidgetProvider`, schermata di configurazione per 42 crypto, refresh e più widget indipendenti.
 - **iOS/iPadOS**: app SwiftUI e target WidgetKit/App Intents che consente di modificare la crypto di ciascun widget.
 - **Windows 11**: provider **nativo** Windows App SDK (.NET 8 / C# con registrazione COM tramite pacchetto MSIX) e, in alternativa, integrazione nella bacheca Widget dell'app PWA installata da Edge.
-- **Web**: sezione `#widgets` per anteprime e selezione dei riquadri dentro Vertex (le scelte web non sincronizzano automaticamente le istanze native).
+- **Dashboard web**: non contiene più la sezione Widget Crypto. I widget sono gestiti e selezionati soltanto dal sistema operativo, dopo l'installazione dell'app nativa (Android/iPadOS) o del provider/PWA per Windows.
 
 I tre sistemi leggono `market-quotes.json` verificato dal repository. Quando il feed non è aggiornato o irraggiungibile **non vengono inventati prezzi**. Il timestamp della fonte può essere precedente al momento del refresh.
+
+## Come aggiungere i widget sulla schermata Home
+
+Su **Android** e **iPhone/iPad** i widget compaiono nella schermata Home del dispositivo dopo l'installazione dell'app e l'aggiunta dalla galleria Widget. Su **Windows 11**, i widget nativi compaiono nella **bacheca Widget** (Win + W), non direttamente sul desktop come normali icone.
 
 ## Android — installazione APK
 
