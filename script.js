@@ -1633,12 +1633,23 @@ function cryptoEtfSection(){
    '<a href="'+esc(product.url)+'" target="_blank" rel="noopener noreferrer" class="crypto-etf-link"'+
     ' aria-label="Scheda ufficiale '+esc(product.ticker)+'">Scheda e quotazione del prodotto ↗</a>'+
   '</article>';
- }).join('');
+ });
+ const groups=[
+  {label:'Crypto A',subtitle:'Bitcoin ed Ethereum',cards:cards.slice(0,2)},
+  {label:'Crypto B',subtitle:'Solana e Injective',cards:cards.slice(2,4)}
+ ];
+ const groupedCards=groups.map((group,index)=>
+  '<section class="crypto-etf-group" aria-label="'+group.label+'">'+
+  '<div class="crypto-etf-group-heading"><span class="crypto-etf-group-letter">'+(index===0?'A':'B')+'</span>'+
+  '<div><h3>'+group.label+'</h3><p>'+group.subtitle+'</p></div>'+
+  '<span class="crypto-etf-group-count">2 prodotti</span></div>'+
+  '<div class="crypto-etf-grid">'+group.cards.join('')+'</div></section>'
+ ).join('');
  return '<section class="crypto-etfs-section" aria-label="ETF ed ETP delle criptovalute">'+
   '<div class="crypto-etf-title"><div><h2>ETF ed ETP Crypto</h2>'+
   '<p>Bitcoin, Ethereum, Solana e Injective · prodotti quotati verificati</p></div>'+
   '<span class="crypto-etf-total">4 prodotti</span></div>'+
-  '<div class="crypto-etf-grid">'+cards+'</div>'+
+  '<div class="crypto-etf-groups">'+groupedCards+'</div>'+
   '<p class="crypto-etf-disclaimer">Attenzione: i valori spot mostrati sono prezzi delle criptovalute, '+ 
   'non prezzi delle quote ETF/ETP. Per il valore negoziato e gli orari della borsa apri la scheda del prodotto. '+
   'AINJ è un ETP/ETN europeo (ISIN CH1360612134): un ETF spot INJ statunitense non risulta ancora negoziato al 3 novembre 2026. '+
