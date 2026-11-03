@@ -150,6 +150,7 @@ news:['News','Accesso rapido a fonti finanziarie verificabili.'],
 analytics:['Analytics','Indicatori e andamento dei principali mercati mondiali.'],
 orderbook:['Order Book','Ordini Spot di acquisto e vendita delle criptovalute.'],
 alerts:['Alerts','Soglie di prezzo controllate quando la dashboard è aperta.'],
+widgets:['Widget Crypto','Scegli le criptovalute da seguire su smartphone, tablet e computer.'],
 settings:['Settings','Aspetto, origini dei dati e accesso al terminale originale.']
 };
 const REGIONS=[
@@ -199,8 +200,12 @@ function loadPortfolioHoldings(){
  const saved=load('holdings',[]);
  return Array.isArray(saved)?saved:[];
 }
+const WIDGET_CRYPTO_IDS=ASSETS.filter(a=>a.group==='crypto').map(a=>a.id);
+const storedWidgetCoins=load('widgetCoins',['btc','eth','sol']);
+const widgetCoins=Array.isArray(storedWidgetCoins)?
+ [...new Set(storedWidgetCoins)].filter(id=>WIDGET_CRYPTO_IDS.includes(id)).slice(0,12):['btc','eth','sol'];
 const state={
- page:(location.hash||'#global').slice(1).toLowerCase(),quotes:{},feedTime:null,feedError:false,loading:true,
+ page:(location.hash||'#global').slice(1).toLowerCase(),widgetCoins,quotes:{},feedTime:null,feedError:false,loading:true,
  watch:Array.isArray(load('watch',[]))?load('watch',[]):[],
  holdings:loadPortfolioHoldings(),
  alerts:Array.isArray(load('alerts',[]))?load('alerts',[]):[],
@@ -2093,6 +2098,35 @@ function alertsPage(){
  '<section class="content-card panel" style="margin-top:14px"><h3>Alert salvati ('+state.alerts.length+')</h3>'+
  (state.alerts.length?state.alerts.map((x,i)=>'<div class="alert-row"><div><strong>'+esc(ASSET_BY_ID[x.id]?.name||x.id)+' · '+(x.operator==='above'?'≥':'≤')+' '+Number(x.value).toLocaleString('it-IT')+'</strong><small>'+esc(alertState(x))+' · Prezzo '+assetValue(ASSET_BY_ID[x.id]||{id:x.id,group:'markets'})+'</small></div><button type="button" data-delete-alert="'+i+'">Rimuovi</button></div>').join(''):'<div class="empty-state"><h3>Nessun alert</h3><p>Aggiungi una soglia per monitorarla quando usi la dashboard.</p></div>')+'</section>'+feedStatus();
 }
+function widgetsPage(){
+ const chosen=state.widgetCoins.filter(id=>ASSET_BY_ID[id]);
+ const available=ASSETS.filter(a=>a.group==='crypto'&&!chosen.includes(a.id));
+ const tiles=chosen.map(id=>{
+  const a=ASSET_BY_ID[id],q=quote(id),v=q&&num(q.value);
+  return '<article class="vertex-crypto-widget" aria-label="Widget '+esc(a.name)+'">'+
+   '<div class="vertex-widget-head"><span class="vertex-widget-ticker">'+esc((a.short||a.name))+'</span>'+
+   '<button type="button" data-widget-remove="'+esc(id)+'" aria-label="Rimuovi '+esc(a.name)+'" title="Rimuovi">×</button></div>'+
+   '<div class="vertex-widget-price">'+(v?assetValue(a):'—')+'</div>'+
+   '<div class="vertex-widget-bottom"><span class="'+classArrow(id)+'">'+pct(change(id))+'</span>'+
+    '<span>'+esc(q?.time?localeDate(q.time,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'Dati non disponibili')+'</span></div>'+
+   '<div class="vertex-widget-plot">'+sparkLine(id,225,50)+'</div>'+
+   '<p class="vertex-widget-foot">Fonte: '+esc(q?.source||'feed di mercato')+' · valori anche ritardati</p></article>';
+ }).join('');
+ return secHeader('Widget Crypto','Scegli le crypto da mostrare nei tuoi riquadri personalizzati')+
+ '<section class="content-card panel vertex-widget-builder"><h3>La tua selezione ('+chosen.length+'/12)</h3>'+
+ '<p class="subnote">Scegli fino a 12 criptovalute. La selezione rimane salvata in questo browser.</p>'+
+ '<div class="vertex-widget-pick"><label for="vertexWidgetCoin">Criptovaluta</label>'+
+ '<select id="vertexWidgetCoin" '+(!available.length?'disabled':'')+'>'+
+ available.map(a=>'<option value="'+esc(a.id)+'">'+esc(a.name)+'</option>').join('')+'</select>'+
+ '<button type="button" data-widget-add="1" class="btn btn-primary" '+(!available.length||chosen.length>=12?'disabled':'')+'>+ Aggiungi widget</button></div>'+
+ '<div class="vertex-widget-grid">'+(tiles||'<p class="subnote">Nessun widget selezionato. Scegli una crypto per iniziare.</p>')+'</div></section>'+
+ '<section class="content-card panel vertex-widget-instructions"><h3>Widget del dispositivo</h3>'+
+ '<p><strong>Windows 11:</strong> installa Vertex come app con Microsoft Edge, quindi apri la bacheca Widget (Win + W) e cerca “Vertex”. Il progetto include definizioni PWA per scegliere una singola criptovaluta.</p>'+
+ '<p><strong>Android:</strong> per comparire tra i widget della schermata Home serve installare l’app Android con App Widget nativo, non soltanto il sito.</p>'+
+ '<p><strong>iPhone e iPad:</strong> per comparire nella galleria Widget serve installare l’app iOS/iPadOS con estensione WidgetKit.</p>'+
+ '<p class="subnote">Le quotazioni dipendono dalla fonte e dagli intervalli di aggiornamento imposti dal sistema. La scelta qui dentro è locale al browser; i widget nativi hanno una propria selezione.</p>'+
+ '<p><a href="https://github.com/alerai1994/Dashboard-/tree/main/native" target="_blank" rel="noopener noreferrer">Codice dei widget nativi e istruzioni</a></p></section>';
+}
 function settingsPage(){
  const choices=[['light','☀','Chiaro','Bianco e azzurro'],['dark','☾','Scuro','Blu notte'],['ocean','◈','Oceano','Blu e turchese'],['emerald','❖','Smeraldo','Verde elegante'],['violet','✦','Viola','Viola moderno']];
  return secHeader('Impostazioni','Personalizza aspetto, icona e suoni della dashboard')+
@@ -2125,7 +2159,7 @@ function settingsPage(){
  '<input type="range" id="clickVolumeSlider" min="0" max="100" step="1" value="'+state.clickVolume+'" style="--volume-progress:'+state.clickVolume+'%" aria-label="Volume del suono al clic">'+
  '<div class="settings-volume-scale"><span>0%</span><span>100%</span></div></div></section>';
 }
-const PAGE_RENDERERS={home:homePage,global:globalPage,markets:marketsPage,watchlist:watchlistPage,portfolio:portfolioPage,news:newsPage,analytics:analyticsPage,orderbook:orderBookPage,alerts:alertsPage,settings:settingsPage};
+const PAGE_RENDERERS={home:homePage,global:globalPage,markets:marketsPage,watchlist:watchlistPage,portfolio:portfolioPage,news:newsPage,analytics:analyticsPage,orderbook:orderBookPage,alerts:alertsPage,widgets:widgetsPage,settings:settingsPage};
 function updateNav(){
  $$('.side-link[data-page]').forEach(b=>{const sel=b.dataset.page===state.page;b.classList.toggle('active',sel);if(sel)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
  const count=triggeredAlerts().length;$('#alertCount').hidden=count===0;if(count)$('#alertCount').textContent=String(count);
@@ -2134,7 +2168,7 @@ function updateNav(){
 function render(){
  const page=SECTIONS[state.page]||SECTIONS.global;
  $('#pageTitle').textContent=page[0];$('#pageSubtitle').textContent=page[1];
- const hideSearch=['global','portfolio','settings','analytics','orderbook','news'].includes(state.page);
+ const hideSearch=['global','portfolio','settings','analytics','orderbook','news','widgets'].includes(state.page);
  const searchWrap=$('.search-wrap');
  if(searchWrap)searchWrap.hidden=hideSearch;
  if(hideSearch){
@@ -3469,6 +3503,16 @@ function setupEvents(){
    save('clickSound',state.clickSound);
    if(!previous&&state.clickSound)playClickSound();
    render();return;
+  }
+  if(btn.dataset.widgetAdd){
+   const input=$('#vertexWidgetCoin'),id=input&&input.value;
+   if(id&&WIDGET_CRYPTO_IDS.includes(id)&&!state.widgetCoins.includes(id)&&state.widgetCoins.length<12){
+    state.widgetCoins.push(id);save('widgetCoins',state.widgetCoins);render();
+   }return;
+  }
+  if(btn.dataset.widgetRemove){
+   state.widgetCoins=state.widgetCoins.filter(id=>id!==btn.dataset.widgetRemove);
+   save('widgetCoins',state.widgetCoins);render();return;
   }
   if(btn.dataset.cryptoExpand){state.cryptoExpanded=!state.cryptoExpanded;render();return;}
   if(btn.dataset.asset){openAsset(btn.dataset.asset);return;}
