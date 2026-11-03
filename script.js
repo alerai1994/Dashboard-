@@ -2365,6 +2365,7 @@ async function fetchQuotes(isManual=false){
    changed.forEach(id=>streamStatus.dirty.add(id));
    if(changed.length)updatePriceDom();
    else updateLiveBadges();
+   if(state.page==='widgets'&&changed.length)render();
    // Also refresh the Middle East mini-chart when history changes but
    // price/percentage stays the same between market-data snapshots.
    if(state.page==='global')patchRegions();
