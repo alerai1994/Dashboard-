@@ -2239,6 +2239,14 @@ function paintCryptoPriceHighlights(){
    }
   });
  }
+ const menu=$('#searchMenu');
+ if(menu&&!menu.hidden)menu.querySelectorAll('button[data-asset]').forEach(node=>{
+  const boundary=cryptoBoundaryFor(node.dataset.asset);
+  const price=node.querySelector('span:last-child');
+  if(!price)return;
+  price.classList.toggle('crypto-price-upper',boundary==='above');
+  price.classList.toggle('crypto-price-lower',boundary==='below');
+ });
  const dialogPrice=$('#dialogBody .dialog-stats strong');
  if(dialogPrice){
   const boundary=cryptoBoundaryFor(state.dialogId);
@@ -2585,7 +2593,7 @@ function updateSearch(){
  const input=$('#searchInput'),menu=$('#searchMenu'),matches=findAssets(input.value);
  state.searchResults=matches;
  if(!matches.length){menu.hidden=true;input.setAttribute('aria-expanded','false');return}
- menu.innerHTML=matches.map(a=>'<button type="button" data-asset="'+a.id+'"><span class="search-asset-label">'+(showAssetLogo(a)?assetLogo(a):'')+'<span><strong>'+esc(a.name)+'</strong><small>'+esc(a.group.toUpperCase()+' · '+a.symbol)+'</small></span></span><span class="'+classArrow(a.id)+'">'+assetValue(a)+'</span></button>').join('');
+ menu.innerHTML=matches.map(a=>'<button type="button" data-asset="'+a.id+'"><span class="search-asset-label">'+(showAssetLogo(a)?assetLogo(a):'')+'<span><strong>'+esc(a.name)+'</strong><small>'+esc(a.group.toUpperCase()+' · '+a.symbol)+'</small></span></span><span class="'+classArrow(a.id)+' '+(cryptoBoundaryFor(a.id)==='above'?'crypto-price-upper':cryptoBoundaryFor(a.id)==='below'?'crypto-price-lower':'')+'">'+assetValue(a)+'</span></button>').join('');
  menu.hidden=false;input.setAttribute('aria-expanded','true');
 }
 function loadWorldShape(){
@@ -3369,6 +3377,7 @@ function refreshDialog(){
   'Prezzi: Yahoo Finance. Candele OHLC: '+esc(q&&q.candleSource||'Yahoo Finance, se disponibile')+'. Storico non necessariamente in tempo reale.')+'</span>'+
  '<a href="'+esc(externalUrl(a))+'" target="_blank" rel="noopener noreferrer">Apri fonte '+sym('external')+'</a></div>';
  if(isCrypto)updateChartHistoryStatus();
+ paintCryptoPriceHighlights();
  requestAnimationFrame(drawChart);
 }
 function toggleWatch(id){
@@ -3713,6 +3722,7 @@ function setupEvents(){
   }
   if(btn.dataset.cryptoBellReset!==undefined){
    cryptoAutoBaselines.clear();
+   cryptoPriceBoundaryStates.clear();
    evaluateCryptoAlerts();
    if(state.page==='settings')render();
    toast('Soglie automatiche ricalibrate sui prezzi ricevuti.');
@@ -3782,6 +3792,7 @@ function setupEvents(){
    state.cryptoAutoPercent=Math.min(5,Math.max(.1,Math.round(percent*10)/10));
    save('cryptoAutoPercent',state.cryptoAutoPercent);
    cryptoAutoBaselines.clear();
+   cryptoPriceBoundaryStates.clear();
    evaluateCryptoAlerts();
    const output=$('#cryptoAutoPercentValue');
    if(output)output.textContent='±'+state.cryptoAutoPercent.toLocaleString('it-IT',{maximumFractionDigits:1})+'%';
