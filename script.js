@@ -2144,13 +2144,16 @@ async function refreshOrderBook(force=false){
 
 // Crypto alerts are always managed from the upper-right bell, not a page.
 const cryptoAutoBaselines=new Map();
-// Last verified UPPER or LOWER crossing per crypto, kept across page navigation.
+// Each UPPER/LOWER price highlight expires 15 seconds after its own crossing.
+const CRYPTO_PRICE_HIGHLIGHT_MS=15000;
 const cryptoPriceBoundaryStates=new Map();
 const cryptoAlertReached=new Map();
 let cryptoAlertAudioContext=null;
-// Keep the last threshold-crossing color until the user acknowledges it by clicking the bell.
+// The bell also returns to its usual color 15 seconds after the latest alert.
 let cryptoAlertVisualDirection=null;
 let cryptoAlertVisualAsset='';
+let cryptoAlertVisualExpiresAt=0;
+let cryptoAlertVisualTimer=null;
 const cryptoAlertHistory=Array.isArray(load('cryptoAlertHistory',[]))?
  load('cryptoAlertHistory',[]).filter(x=>x&&typeof x.id==='string').slice(0,30):[];
 function cryptoAlertKey(rule){
@@ -2167,6 +2170,11 @@ function triggeredAlerts(){
  return state.alerts.filter(rule=>alertState(rule)==='Soglia raggiunta');
 }
 function updateCryptoAlertIndicator(){
+ if(cryptoAlertVisualDirection&&Date.now()>=cryptoAlertVisualExpiresAt){
+  cryptoAlertVisualDirection=null;
+  cryptoAlertVisualAsset='';
+  cryptoAlertVisualExpiresAt=0;
+ }
  const bell=$('#notificationsButton'),dot=$('#notifDot');
  const count=triggeredAlerts().length;
  if(dot)dot.hidden=count===0&&!cryptoAlertVisualDirection;
@@ -2217,7 +2225,14 @@ function playCryptoAlertSound(direction='above',delay=0){
  }catch(_error){/* Browser autoplay restrictions take precedence. */}
 }
 function cryptoBoundaryFor(id){
- return ASSET_BY_ID[id]?.group==='crypto'?cryptoPriceBoundaryStates.get(id)||null:null;
+ if(ASSET_BY_ID[id]?.group!=='crypto')return null;
+ const signal=cryptoPriceBoundaryStates.get(id);
+ if(!signal)return null;
+ if(Date.now()>=signal.expiresAt){
+  cryptoPriceBoundaryStates.delete(id);
+  return null;
+ }
+ return signal.direction;
 }
 function paintCryptoPriceHighlights(){
  const main=$('#pageContainer');
@@ -2291,10 +2306,27 @@ function evaluateCryptoAlerts(){
   cryptoAlertReached.set(key,hit);
  }
  if(newHits.length){
+  const expiresAt=Date.now()+CRYPTO_PRICE_HIGHLIGHT_MS;
+  const newPriceColors=new Map();
   for(const {rule,value} of newHits){
-   if(ASSET_BY_ID[rule.id]?.group==='crypto')cryptoPriceBoundaryStates.set(rule.id,rule.operator);
+   if(ASSET_BY_ID[rule.id]?.group==='crypto'){
+    // When two rules for the same crypto trigger together, LOWER/red wins.
+    if(newPriceColors.get(rule.id)!=='below')
+     newPriceColors.set(rule.id,rule.operator);
+   }
    cryptoAlertHistory.unshift({id:rule.id,operator:rule.operator,
     value:Number(rule.value),price:value,at:Date.now()});
+  }
+  for(const [id,direction] of newPriceColors){
+   const signal={direction,expiresAt};
+   cryptoPriceBoundaryStates.set(id,signal);
+   window.setTimeout(()=>{
+    // Do not erase a newer signal for the same crypto.
+    if(cryptoPriceBoundaryStates.get(id)!==signal)return;
+    if(Date.now()<signal.expiresAt)return;
+    cryptoPriceBoundaryStates.delete(id);
+    paintCryptoPriceHighlights();
+   },CRYPTO_PRICE_HIGHLIGHT_MS+30);
   }
   cryptoAlertHistory.length=Math.min(30,cryptoAlertHistory.length);
   save('cryptoAlertHistory',cryptoAlertHistory);
@@ -2307,6 +2339,16 @@ function evaluateCryptoAlerts(){
   const visualHit=newHits.find(hit=>hit.rule.operator==='below')||newHits[0];
   cryptoAlertVisualDirection=visualHit.rule.operator;
   cryptoAlertVisualAsset=ASSET_BY_ID[visualHit.rule.id]?.name||visualHit.rule.id;
+  cryptoAlertVisualExpiresAt=expiresAt;
+  if(cryptoAlertVisualTimer!==null)window.clearTimeout(cryptoAlertVisualTimer);
+  cryptoAlertVisualTimer=window.setTimeout(()=>{
+   cryptoAlertVisualTimer=null;
+   if(Date.now()<cryptoAlertVisualExpiresAt)return;
+   cryptoAlertVisualDirection=null;
+   cryptoAlertVisualAsset='';
+   cryptoAlertVisualExpiresAt=0;
+   updateCryptoAlertIndicator();
+  },CRYPTO_PRICE_HIGHLIGHT_MS+30);
   const first=newHits[0];
   toast((newHits.length>1?newHits.length+' avvisi crypto: ':'Avviso crypto: ')+
    (ASSET_BY_ID[first.rule.id]?.name||first.rule.id)+' '+
@@ -2352,7 +2394,7 @@ function settingsPage(){
  '<input type="range" id="cryptoAutoPercentSlider" min="0.1" max="5" step="0.1" value="'+state.cryptoAutoPercent+
  '" style="--volume-progress:'+(state.cryptoAutoPercent/5*100)+'%" aria-label="Sensibilità campanella, percentuale di movimento">'+
  '<div class="settings-volume-scale"><span>±0,1%</span><span>±5%</span></div>'+
- '<p class="subnote">Ogni crypto parte dal primo prezzo realmente ricevuto in questa sessione. Dopo un avviso la sua soglia automatica si ricalibra sul prezzo raggiunto. Il colore resta visibile fino al clic sulla campanella; nessuna pagina Alerts viene aperta. Eventuali soglie di prezzo già salvate continuano a funzionare.</p>'+
+ '<p class="subnote">Ogni crypto parte dal primo prezzo realmente ricevuto in questa sessione. Dopo un avviso la sua soglia automatica si ricalibra sul prezzo raggiunto. Il prezzo e la campanella diventano gialli (UPPER) o rossi (LOWER) per 15 secondi, poi tornano al colore normale. Ogni nuovo segnale riavvia i 15 secondi per la relativa crypto. Nessuna pagina Alerts viene aperta. Eventuali soglie di prezzo già salvate continuano a funzionare.</p>'+
  '<button type="button" class="btn btn-small" data-crypto-bell-reset="1">Ricalibra tutte le 42 crypto ai prezzi attuali</button></div></section>'+
  '<section class="content-card panel settings-preferences"><div class="settings-sound-row"><div><h3>Suono al clic</h3><p class="subnote">Un breve suono quando premi i pulsanti. Puoi disattivarlo quando vuoi.</p></div>'+
  '<button type="button" data-sound-toggle="1" class="settings-sound-toggle'+(state.clickSound?' is-on':'')+'" role="switch" aria-checked="'+state.clickSound+'" aria-label="Suono al clic">'+(state.clickSound?'Attivo':'Disattivo')+'</button></div>'+
@@ -3666,9 +3708,14 @@ function setupEvents(){
  $('#profileButton').addEventListener('click',()=>navigate('settings'));
  // Keep the bell visible and enable alert audio without opening a page or popup.
  $('#notificationsButton').addEventListener('click',()=>{
-  // Clicking the bell acknowledges its latest yellow/red price alert.
+  // Clicking the bell acknowledges its current alert and toggles the sound.
   cryptoAlertVisualDirection=null;
   cryptoAlertVisualAsset='';
+  cryptoAlertVisualExpiresAt=0;
+  if(cryptoAlertVisualTimer!==null){
+   window.clearTimeout(cryptoAlertVisualTimer);
+   cryptoAlertVisualTimer=null;
+  }
   state.alertSound=!state.alertSound;
   save('cryptoAlertSound',state.alertSound);
   if(state.alertSound){
