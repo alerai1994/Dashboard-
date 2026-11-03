@@ -2080,7 +2080,6 @@ async function refreshOrderBook(force=false){
 
 // Crypto alerts are always managed from the upper-right bell, not a page.
 const cryptoAlertReached=new Map();
-let cryptoAlertMonitoringReady=false;
 let cryptoAlertAudioContext=null;
 const cryptoAlertHistory=Array.isArray(load('cryptoAlertHistory',[]))?
  load('cryptoAlertHistory',[]).filter(x=>x&&typeof x.id==='string').slice(0,30):[];
@@ -2195,22 +2194,19 @@ function initCryptoAlertPanel(){
  syncCryptoAlertSoundButton();paintCryptoAlertPanel();
 }
 function evaluateCryptoAlerts(){
- let anyQuote=false;
  const newHits=[];
  const currentKeys=new Set(state.alerts.map(cryptoAlertKey));
  for(const key of cryptoAlertReached.keys())if(!currentKeys.has(key))cryptoAlertReached.delete(key);
  for(const rule of state.alerts){
   const value=quote(rule.id)?.value;
   if(!num(value)||value<=0)continue;
-  anyQuote=true;
   const key=cryptoAlertKey(rule),hit=rule.operator==='above'?
    value>=Number(rule.value):value<=Number(rule.value);
   const prev=cryptoAlertReached.get(key);
   // Sound only on a new crossing, not every tick and not for initial snapshots.
-  if(cryptoAlertMonitoringReady&&prev===false&&hit)newHits.push({rule,value});
+  if(prev===false&&hit)newHits.push({rule,value});
   cryptoAlertReached.set(key,hit);
  }
- if(anyQuote)cryptoAlertMonitoringReady=true;
  if(newHits.length){
   for(const {rule,value} of newHits){
    cryptoAlertHistory.unshift({id:rule.id,operator:rule.operator,
@@ -3583,10 +3579,11 @@ function setupEvents(){
   save('alerts',state.alerts);
   // A newly created rule may immediately be active: make its first crossing audible.
   cryptoAlertReached.set(key,false);
+  const immediatelyReached=alertState(rule)==='Soglia raggiunta';
   evaluateCryptoAlerts();
   const input=$('#cryptoAlertValue');
   if(input)input.value='';
-  toast('Soglia crypto salvata: '+(operator==='above'?'UPPER':'LOWER')+'.');
+  if(!immediatelyReached)toast('Soglia crypto salvata: '+(operator==='above'?'UPPER':'LOWER')+'.');
  });
  cryptoAlertRoot.addEventListener('click',event=>{
   const button=event.target.closest('button');
