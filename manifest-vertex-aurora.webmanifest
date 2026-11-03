@@ -21,5 +21,1183 @@
       "type": "image/png",
       "purpose": "any"
     }
+  ],
+  "widgets": [
+    {
+      "name": "Vertex · Bitcoin (BTC)",
+      "short_name": "BTC",
+      "description": "Prezzo e variazione di Bitcoin (BTC) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-btc",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Ethereum (ETH)",
+      "short_name": "ETH",
+      "description": "Prezzo e variazione di Ethereum (ETH) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-eth",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Solana (SOL)",
+      "short_name": "SOL",
+      "description": "Prezzo e variazione di Solana (SOL) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-sol",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · XRP",
+      "short_name": "XRP",
+      "description": "Prezzo e variazione di XRP nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-xrp",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · BNB",
+      "short_name": "BNB",
+      "description": "Prezzo e variazione di BNB nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-bnb",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Dogecoin (DOGE)",
+      "short_name": "DOGE",
+      "description": "Prezzo e variazione di Dogecoin (DOGE) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-doge",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Injective (INJ)",
+      "short_name": "INJ",
+      "description": "Prezzo e variazione di Injective (INJ) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-inj",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · ORE Protocol (ORE)",
+      "short_name": "ORE",
+      "description": "Prezzo e variazione di ORE Protocol (ORE) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-ore",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Cardano (ADA)",
+      "short_name": "ADA",
+      "description": "Prezzo e variazione di Cardano (ADA) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-ada",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Avalanche (AVAX)",
+      "short_name": "AVAX",
+      "description": "Prezzo e variazione di Avalanche (AVAX) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-avax",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Chainlink (LINK)",
+      "short_name": "LINK",
+      "description": "Prezzo e variazione di Chainlink (LINK) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-link",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Polkadot (DOT)",
+      "short_name": "DOT",
+      "description": "Prezzo e variazione di Polkadot (DOT) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-dot",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · TRON (TRX)",
+      "short_name": "TRX",
+      "description": "Prezzo e variazione di TRON (TRX) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-trx",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Toncoin (TON)",
+      "short_name": "TON",
+      "description": "Prezzo e variazione di Toncoin (TON) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-ton",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Sui (SUI)",
+      "short_name": "SUI",
+      "description": "Prezzo e variazione di Sui (SUI) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-sui",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Litecoin (LTC)",
+      "short_name": "LTC",
+      "description": "Prezzo e variazione di Litecoin (LTC) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-ltc",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Bitcoin Cash (BCH)",
+      "short_name": "BCH",
+      "description": "Prezzo e variazione di Bitcoin Cash (BCH) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-bch",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Stellar (XLM)",
+      "short_name": "XLM",
+      "description": "Prezzo e variazione di Stellar (XLM) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-xlm",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Hedera (HBAR)",
+      "short_name": "HBAR",
+      "description": "Prezzo e variazione di Hedera (HBAR) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-hbar",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · NEAR Protocol (NEAR)",
+      "short_name": "NEAR",
+      "description": "Prezzo e variazione di NEAR Protocol (NEAR) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-near",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Aptos (APT)",
+      "short_name": "APT",
+      "description": "Prezzo e variazione di Aptos (APT) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-apt",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Cosmos (ATOM)",
+      "short_name": "ATOM",
+      "description": "Prezzo e variazione di Cosmos (ATOM) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-atom",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Uniswap (UNI)",
+      "short_name": "UNI",
+      "description": "Prezzo e variazione di Uniswap (UNI) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-uni",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Aave (AAVE)",
+      "short_name": "AAVE",
+      "description": "Prezzo e variazione di Aave (AAVE) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-aave",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Arbitrum (ARB)",
+      "short_name": "ARB",
+      "description": "Prezzo e variazione di Arbitrum (ARB) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-arb",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Optimism (OP)",
+      "short_name": "OP",
+      "description": "Prezzo e variazione di Optimism (OP) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-op",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Shiba Inu (SHIB)",
+      "short_name": "SHIB",
+      "description": "Prezzo e variazione di Shiba Inu (SHIB) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-shib",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Pepe (PEPE)",
+      "short_name": "PEPE",
+      "description": "Prezzo e variazione di Pepe (PEPE) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-pepe",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Render (RENDER)",
+      "short_name": "RENDER",
+      "description": "Prezzo e variazione di Render (RENDER) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-render",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Raydium (RAY)",
+      "short_name": "RAY",
+      "description": "Prezzo e variazione di Raydium (RAY) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-ray",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Terra Luna Classic (LUNC)",
+      "short_name": "LUNC",
+      "description": "Prezzo e variazione di Terra Luna Classic (LUNC) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-lunc",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Verasity (VRA)",
+      "short_name": "VRA",
+      "description": "Prezzo e variazione di Verasity (VRA) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-vra",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · World Liberty Financial (WLFI)",
+      "short_name": "WLFI",
+      "description": "Prezzo e variazione di World Liberty Financial (WLFI) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-wlfi",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Holo (HOT)",
+      "short_name": "HOT",
+      "description": "Prezzo e variazione di Holo (HOT) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-hot",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Kusama (KSM)",
+      "short_name": "KSM",
+      "description": "Prezzo e variazione di Kusama (KSM) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-ksm",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Worldcoin (WLD)",
+      "short_name": "WLD",
+      "description": "Prezzo e variazione di Worldcoin (WLD) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-wld",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Fetch.ai / Artificial Superintelligence Alliance (FET)",
+      "short_name": "FET",
+      "description": "Prezzo e variazione di Fetch.ai / Artificial Superintelligence Alliance (FET) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-fet",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Oraichain (ORAI)",
+      "short_name": "ORAI",
+      "description": "Prezzo e variazione di Oraichain (ORAI) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-orai",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · TARS AI (TAI)",
+      "short_name": "TAI",
+      "description": "Prezzo e variazione di TARS AI (TAI) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-tai",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Virtuals Protocol (VIRTUAL)",
+      "short_name": "VIRTUAL",
+      "description": "Prezzo e variazione di Virtuals Protocol (VIRTUAL) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-virtual",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Bittensor (TAO)",
+      "short_name": "TAO",
+      "description": "Prezzo e variazione di Bittensor (TAO) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-tao",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    },
+    {
+      "name": "Vertex · Terra (LUNA)",
+      "short_name": "LUNA",
+      "description": "Prezzo e variazione di Terra (LUNA) nel pannello Widget di Windows 11",
+      "tag": "vertex-crypto-luna",
+      "template": "vertex-crypto-price",
+      "ms_ac_template": "./widgets/crypto-card-template.json",
+      "data": "./widgets/crypto-card-default.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./icons/vertex-aurora-512.png",
+          "sizes": "512x512",
+          "type": "image/png",
+          "label": "Anteprima widget Vertex"
+        }
+      ],
+      "icons": [
+        {
+          "src": "./icons/vertex-aurora-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ],
+      "auth": false,
+      "update": 900,
+      "multiple": true
+    }
   ]
 }
