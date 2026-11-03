@@ -1442,3 +1442,13 @@ body.theme-light :is(.btn,.outline-button,.sidebar-theme-button,
 @media(prefers-reduced-motion:reduce){
  :is(button,.btn,.crypto-etf-link){transition:none!important}
 }
+
+/* Sidebar theme icons: fixed colors in every theme and selection state. */
+.sidebar-theme-pair .sidebar-theme-button[data-fixed-theme="light"] .icon{
+ color:#ffd21f;
+ filter:drop-shadow(0 0 2px rgba(255,192,25,.30));
+}
+.sidebar-theme-pair .sidebar-theme-button[data-fixed-theme="dark"] .icon{
+ color:#274b91;
+ filter:drop-shadow(0 0 2px rgba(116,166,255,.60));
+}
