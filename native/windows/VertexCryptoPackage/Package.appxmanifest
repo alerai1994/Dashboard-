@@ -1,0 +1,604 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+ xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+ xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+ xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
+ xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+ IgnorableNamespaces="uap uap3 com rescap">
+  <Identity Name="VertexCryptoWidgets" Publisher="CN=VertexDevelopment"
+   Version="1.0.0.0" ProcessorArchitecture="x64"/>
+  <Properties>
+    <DisplayName>Vertex Crypto Widgets</DisplayName>
+    <PublisherDisplayName>Vertex</PublisherDisplayName>
+    <Logo>ProviderAssets\Icon.png</Logo>
+  </Properties>
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0"
+     MaxVersionTested="10.0.26100.0"/>
+  </Dependencies>
+  <Resources><Resource Language="it-IT"/></Resources>
+  <Applications>
+    <Application Id="App" Executable="VertexCryptoProvider.exe"
+     EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements DisplayName="Vertex Crypto Widgets"
+       Description="Criptovalute sulla bacheca Widget" BackgroundColor="#07111D"
+       Square150x150Logo="ProviderAssets\Icon.png"
+       Square44x44Logo="ProviderAssets\Icon.png"/>
+      <Extensions>
+        <com:Extension Category="windows.comServer">
+          <com:ComServer>
+            <com:ExeServer Executable="VertexCryptoProvider.exe" DisplayName="Vertex Crypto">
+              <com:Class Id="95E6D4EC-2FAD-4B5D-97CC-58D213321A44"
+                DisplayName="Vertex Crypto Widget Provider"/>
+            </com:ExeServer>
+          </com:ComServer>
+        </com:Extension>
+        <uap3:Extension Category="windows.appExtension">
+          <uap3:AppExtension Name="com.microsoft.windows.widgets"
+           DisplayName="Vertex Crypto Widgets" Id="VertexCrypto" PublicFolder="Public">
+            <uap3:Properties>
+              <WidgetProvider>
+                <ProviderIcons><Icon Path="ProviderAssets\Icon.png"/></ProviderIcons>
+                <Activation>
+                  <CreateInstance ClassId="95E6D4EC-2FAD-4B5D-97CC-58D213321A44"/>
+                </Activation>
+                <TrustedPackageFamilyNames>
+                  <TrustedPackageFamilyName>Microsoft.MicrosoftEdge.Stable_8wekyb3d8bbwe</TrustedPackageFamilyName>
+                </TrustedPackageFamilyNames>
+                <Definitions>
+          <Definition Id="btc" DisplayName="Vertex · Bitcoin (BTC)"
+            Description="Prezzo e variazione Bitcoin (BTC)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Bitcoin (BTC)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="eth" DisplayName="Vertex · Ethereum (ETH)"
+            Description="Prezzo e variazione Ethereum (ETH)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Ethereum (ETH)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="sol" DisplayName="Vertex · Solana (SOL)"
+            Description="Prezzo e variazione Solana (SOL)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Solana (SOL)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="xrp" DisplayName="Vertex · XRP"
+            Description="Prezzo e variazione XRP" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget XRP"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="bnb" DisplayName="Vertex · BNB"
+            Description="Prezzo e variazione BNB" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget BNB"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="doge" DisplayName="Vertex · Dogecoin (DOGE)"
+            Description="Prezzo e variazione Dogecoin (DOGE)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Dogecoin (DOGE)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="inj" DisplayName="Vertex · Injective (INJ)"
+            Description="Prezzo e variazione Injective (INJ)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Injective (INJ)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="ore" DisplayName="Vertex · ORE Protocol (ORE)"
+            Description="Prezzo e variazione ORE Protocol (ORE)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget ORE Protocol (ORE)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="ada" DisplayName="Vertex · Cardano (ADA)"
+            Description="Prezzo e variazione Cardano (ADA)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Cardano (ADA)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="avax" DisplayName="Vertex · Avalanche (AVAX)"
+            Description="Prezzo e variazione Avalanche (AVAX)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Avalanche (AVAX)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="link" DisplayName="Vertex · Chainlink (LINK)"
+            Description="Prezzo e variazione Chainlink (LINK)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Chainlink (LINK)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="dot" DisplayName="Vertex · Polkadot (DOT)"
+            Description="Prezzo e variazione Polkadot (DOT)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Polkadot (DOT)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="trx" DisplayName="Vertex · TRON (TRX)"
+            Description="Prezzo e variazione TRON (TRX)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget TRON (TRX)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="ton" DisplayName="Vertex · Toncoin (TON)"
+            Description="Prezzo e variazione Toncoin (TON)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Toncoin (TON)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="sui" DisplayName="Vertex · Sui (SUI)"
+            Description="Prezzo e variazione Sui (SUI)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Sui (SUI)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="ltc" DisplayName="Vertex · Litecoin (LTC)"
+            Description="Prezzo e variazione Litecoin (LTC)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Litecoin (LTC)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="bch" DisplayName="Vertex · Bitcoin Cash (BCH)"
+            Description="Prezzo e variazione Bitcoin Cash (BCH)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Bitcoin Cash (BCH)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="xlm" DisplayName="Vertex · Stellar (XLM)"
+            Description="Prezzo e variazione Stellar (XLM)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Stellar (XLM)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="hbar" DisplayName="Vertex · Hedera (HBAR)"
+            Description="Prezzo e variazione Hedera (HBAR)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Hedera (HBAR)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="near" DisplayName="Vertex · NEAR Protocol (NEAR)"
+            Description="Prezzo e variazione NEAR Protocol (NEAR)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget NEAR Protocol (NEAR)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="apt" DisplayName="Vertex · Aptos (APT)"
+            Description="Prezzo e variazione Aptos (APT)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Aptos (APT)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="atom" DisplayName="Vertex · Cosmos (ATOM)"
+            Description="Prezzo e variazione Cosmos (ATOM)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Cosmos (ATOM)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="uni" DisplayName="Vertex · Uniswap (UNI)"
+            Description="Prezzo e variazione Uniswap (UNI)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Uniswap (UNI)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="aave" DisplayName="Vertex · Aave (AAVE)"
+            Description="Prezzo e variazione Aave (AAVE)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Aave (AAVE)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="arb" DisplayName="Vertex · Arbitrum (ARB)"
+            Description="Prezzo e variazione Arbitrum (ARB)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Arbitrum (ARB)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="op" DisplayName="Vertex · Optimism (OP)"
+            Description="Prezzo e variazione Optimism (OP)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Optimism (OP)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="shib" DisplayName="Vertex · Shiba Inu (SHIB)"
+            Description="Prezzo e variazione Shiba Inu (SHIB)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Shiba Inu (SHIB)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="pepe" DisplayName="Vertex · Pepe (PEPE)"
+            Description="Prezzo e variazione Pepe (PEPE)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Pepe (PEPE)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="render" DisplayName="Vertex · Render (RENDER)"
+            Description="Prezzo e variazione Render (RENDER)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Render (RENDER)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="ray" DisplayName="Vertex · Raydium (RAY)"
+            Description="Prezzo e variazione Raydium (RAY)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Raydium (RAY)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="lunc" DisplayName="Vertex · Terra Luna Classic (LUNC)"
+            Description="Prezzo e variazione Terra Luna Classic (LUNC)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Terra Luna Classic (LUNC)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="vra" DisplayName="Vertex · Verasity (VRA)"
+            Description="Prezzo e variazione Verasity (VRA)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Verasity (VRA)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="wlfi" DisplayName="Vertex · World Liberty Financial (WLFI)"
+            Description="Prezzo e variazione World Liberty Financial (WLFI)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget World Liberty Financial (WLFI)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="hot" DisplayName="Vertex · Holo (HOT)"
+            Description="Prezzo e variazione Holo (HOT)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Holo (HOT)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="ksm" DisplayName="Vertex · Kusama (KSM)"
+            Description="Prezzo e variazione Kusama (KSM)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Kusama (KSM)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="wld" DisplayName="Vertex · Worldcoin (WLD)"
+            Description="Prezzo e variazione Worldcoin (WLD)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Worldcoin (WLD)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="fet" DisplayName="Vertex · Fetch.ai / Artificial Superintelligence Alliance (FET)"
+            Description="Prezzo e variazione Fetch.ai / Artificial Superintelligence Alliance (FET)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Fetch.ai / Artificial Superintelligence Alliance (FET)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="orai" DisplayName="Vertex · Oraichain (ORAI)"
+            Description="Prezzo e variazione Oraichain (ORAI)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Oraichain (ORAI)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="tai" DisplayName="Vertex · TARS AI (TAI)"
+            Description="Prezzo e variazione TARS AI (TAI)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget TARS AI (TAI)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="virtual" DisplayName="Vertex · Virtuals Protocol (VIRTUAL)"
+            Description="Prezzo e variazione Virtuals Protocol (VIRTUAL)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Virtuals Protocol (VIRTUAL)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="tao" DisplayName="Vertex · Bittensor (TAO)"
+            Description="Prezzo e variazione Bittensor (TAO)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Bittensor (TAO)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+          <Definition Id="luna" DisplayName="Vertex · Terra (LUNA)"
+            Description="Prezzo e variazione Terra (LUNA)" AllowMultiple="true">
+            <Capabilities>
+              <Capability><Size Name="small"/></Capability>
+              <Capability><Size Name="medium"/></Capability>
+            </Capabilities>
+            <ThemeResources>
+              <Icons><Icon Path="ProviderAssets\Icon.png"/></Icons>
+              <Screenshots><Screenshot Path="ProviderAssets\Screenshot.png"
+                DisplayAltText="Anteprima widget Terra (LUNA)"/></Screenshots>
+              <DarkMode/><LightMode/>
+            </ThemeResources>
+          </Definition>
+                </Definitions>
+              </WidgetProvider>
+            </uap3:Properties>
+          </uap3:AppExtension>
+        </uap3:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+  <Capabilities><rescap:Capability Name="runFullTrust"/></Capabilities>
+</Package>
