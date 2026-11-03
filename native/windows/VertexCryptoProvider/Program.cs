@@ -10,29 +10,29 @@ internal static class Program
  [STAThread]
  private static void Main(string[] args)
  {
-  // Native Windows desktop app when launched by user; background COM server
-  // when activated by Windows Widgets Board.
   WinRT.ComWrappersSupport.InitializeComWrappers();
-  var isComActivation=args.Any(arg=>
-   arg.Equals("-Embedding",StringComparison.OrdinalIgnoreCase)||
-   arg.Equals("/Embedding",StringComparison.OrdinalIgnoreCase)||
-   arg.Equals("--com-server",StringComparison.OrdinalIgnoreCase));
-
-  if(!isComActivation)
-  {
-   ApplicationConfiguration.Initialize();
-   Application.Run(new CryptoMainForm());
-   return;
-  }
-
   var factory=new ProviderFactory<CryptoWidgetProvider>();
+
+  // Register the native Windows Widget provider for both direct app launches
+  // and COM activations. The registration is local to this process.
   Marshal.ThrowExceptionForHR(CoRegisterClassObject(
     ProviderClsid,factory,0x4,0x1,out uint cookie));
   try
   {
-   // The COM host drives widget lifecycle callbacks.
-   using var keepAlive=new ManualResetEvent(false);
-   keepAlive.WaitOne();
+   bool background=args.Any(arg=>
+    arg.Equals("-Embedding",StringComparison.OrdinalIgnoreCase)||
+    arg.Equals("/Embedding",StringComparison.OrdinalIgnoreCase)||
+    arg.Equals("--com-server",StringComparison.OrdinalIgnoreCase));
+   if(background)
+   {
+    using var keepAlive=new ManualResetEvent(false);
+    keepAlive.WaitOne();
+   }
+   else
+   {
+    ApplicationConfiguration.Initialize();
+    Application.Run(new CryptoMainForm());
+   }
   }
   finally
   {
