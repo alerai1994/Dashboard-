@@ -1,0 +1,50 @@
+package com.vertex.crypto
+
+/** All coins offered in Vertex, including ORE Protocol. */
+object CoinCatalog {
+ val entries = listOf(
+  "btc" to "Bitcoin (BTC)",
+  "eth" to "Ethereum (ETH)",
+  "sol" to "Solana (SOL)",
+  "xrp" to "XRP",
+  "bnb" to "BNB",
+  "doge" to "Dogecoin (DOGE)",
+  "inj" to "Injective (INJ)",
+  "ore" to "ORE Protocol (ORE)",
+  "ada" to "Cardano (ADA)",
+  "avax" to "Avalanche (AVAX)",
+  "link" to "Chainlink (LINK)",
+  "dot" to "Polkadot (DOT)",
+  "trx" to "TRON (TRX)",
+  "ton" to "Toncoin (TON)",
+  "sui" to "Sui (SUI)",
+  "ltc" to "Litecoin (LTC)",
+  "bch" to "Bitcoin Cash (BCH)",
+  "xlm" to "Stellar (XLM)",
+  "hbar" to "Hedera (HBAR)",
+  "near" to "NEAR Protocol (NEAR)",
+  "apt" to "Aptos (APT)",
+  "atom" to "Cosmos (ATOM)",
+  "uni" to "Uniswap (UNI)",
+  "aave" to "Aave (AAVE)",
+  "arb" to "Arbitrum (ARB)",
+  "op" to "Optimism (OP)",
+  "shib" to "Shiba Inu (SHIB)",
+  "pepe" to "Pepe (PEPE)",
+  "render" to "Render (RENDER)",
+  "ray" to "Raydium (RAY)",
+  "lunc" to "Terra Luna Classic (LUNC)",
+  "vra" to "Verasity (VRA)",
+  "wlfi" to "World Liberty Financial (WLFI)",
+  "hot" to "Holo (HOT)",
+  "ksm" to "Kusama (KSM)",
+  "wld" to "Worldcoin (WLD)",
+  "fet" to "Fetch.ai / Artificial Superintelligence Alliance (FET)",
+  "orai" to "Oraichain (ORAI)",
+  "tai" to "TARS AI (TAI)",
+  "virtual" to "Virtuals Protocol (VIRTUAL)",
+  "tao" to "Bittensor (TAO)",
+  "luna" to "Terra (LUNA)"
+ )
+ val names = entries.toMap()
+}
