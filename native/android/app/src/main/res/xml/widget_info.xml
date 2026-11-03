@@ -1,0 +1,10 @@
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+  android:minWidth="180dp" android:minHeight="110dp"
+  android:minResizeWidth="140dp" android:minResizeHeight="90dp"
+  android:targetCellWidth="3" android:targetCellHeight="2"
+  android:initialLayout="@layout/widget_crypto"
+  android:resizeMode="horizontal|vertical"
+  android:widgetCategory="home_screen"
+  android:configure="com.vertex.crypto.WidgetConfigActivity"
+  android:updatePeriodMillis="1800000"
+  android:description="@string/widget_description"/>
