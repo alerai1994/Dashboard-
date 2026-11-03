@@ -9,11 +9,11 @@
 <link rel="icon" href="icons/vertex-original-192.png">
 <link rel="apple-touch-icon" href="icons/vertex-original-192.png">
 <link rel="manifest" href="manifest-vertex-original.webmanifest?v=20261103-device-widgets">
-<link rel="stylesheet" href="style.css?v=20261103-device-widgets-only-v73">
+<link rel="stylesheet" href="style.css?v=20261103-bell-crypto-alerts-v74">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js" defer crossorigin="anonymous"></script>
 <script src="crypto-orderbooks-data.js?v=20261101-all42-crypto-v35" defer></script>
 <script src="ore-orderbook-data.js?v=20261101-ore-backup-v34" defer></script>
-<script src="script.js?v=20261103-device-widgets-only-v73" defer></script>
+<script src="script.js?v=20261103-bell-crypto-alerts-v74" defer></script>
 </head>
 <body class="theme-dark">
 <div class="vertex-boot-screen" id="vertexBootScreen" role="status" aria-live="polite" aria-label="Caricamento di Vertex">
@@ -82,7 +82,6 @@
       <button class="side-link" data-page="news" type="button"><svg class="icon"><use href="#ic-news"/></svg><span>News</span></button>
       <button class="side-link" data-page="analytics" type="button"><svg class="icon"><use href="#ic-trend"/></svg><span>Analytics</span></button>
       <button class="side-link" data-page="orderbook" type="button"><svg class="icon"><use href="#ic-bars"/></svg><span>Order Book</span></button>
-      <button class="side-link" data-page="alerts" type="button"><svg class="icon"><use href="#ic-bell"/></svg><span>Alerts</span><span class="nav-alert-count" id="alertCount" hidden></span></button>
     </nav>
     <div class="sidebar-bottom">
       <div class="sidebar-theme-pair" role="group" aria-label="Scegli il tema chiaro o scuro">
@@ -102,7 +101,51 @@
           <input id="searchInput" type="search" placeholder="Cerca mercati, asset o crypto..." autocomplete="off" aria-label="Cerca mercati, asset o crypto" aria-expanded="false" aria-controls="searchMenu">
           <div class="search-menu" id="searchMenu" hidden></div>
         </div>
-        <button class="icon-button" id="notificationsButton" type="button" aria-label="Visualizza gli alert"><svg class="icon"><use href="#ic-bell"/></svg><i id="notifDot" hidden></i></button>
+        <div class="crypto-bell-anchor">
+          <button class="icon-button" id="notificationsButton" type="button"
+            aria-label="Avvisi prezzi crypto" aria-haspopup="dialog" aria-controls="cryptoAlertPopover"
+            aria-expanded="false"><svg class="icon"><use href="#ic-bell"/></svg><i id="notifDot" hidden></i></button>
+          <section id="cryptoAlertPopover" class="crypto-alert-popover" role="dialog"
+            aria-label="Avvisi prezzo criptovalute" hidden>
+            <div class="crypto-alert-popover-header">
+              <div><strong>Avvisi crypto</strong><small>Prezzi UPPER e LOWER</small></div>
+              <div class="crypto-alert-header-actions">
+                <button id="cryptoAlertSoundToggle" class="crypto-alert-icon-btn" type="button"
+                  aria-pressed="true" title="Attiva o disattiva suono">♪ Suono ON</button>
+                <button id="cryptoAlertClose" class="crypto-alert-icon-btn" type="button"
+                  aria-label="Chiudi avvisi">×</button>
+              </div>
+            </div>
+            <div class="crypto-alert-popover-body">
+              <form id="cryptoAlertForm" class="crypto-alert-form">
+                <label for="cryptoAlertAsset">Criptovaluta</label>
+                <select id="cryptoAlertAsset" name="id" required></select>
+                <div class="crypto-alert-inline">
+                  <div><label for="cryptoAlertOperator">Condizione</label>
+                    <select id="cryptoAlertOperator" name="operator">
+                      <option value="above">UPPER ≥</option>
+                      <option value="below">LOWER ≤</option>
+                    </select></div>
+                  <div><label for="cryptoAlertValue">Prezzo soglia (USD)</label>
+                    <input id="cryptoAlertValue" name="value" type="number" min="0.0000000001"
+                      step="any" placeholder="Es. 150" required></div>
+                </div>
+                <button class="crypto-alert-submit" type="submit">+ Crea avviso</button>
+              </form>
+              <div class="crypto-alert-section-heading">
+                <strong>Le tue soglie</strong><span id="cryptoAlertRuleCount"></span>
+              </div>
+              <div id="cryptoAlertRules" class="crypto-alert-rules" aria-live="polite"></div>
+              <div class="crypto-alert-section-heading">
+                <strong>Ultimi avvisi</strong><button type="button" id="cryptoAlertClear">Svuota</button>
+              </div>
+              <div id="cryptoAlertHistory" class="crypto-alert-history" aria-live="polite"></div>
+              <p class="crypto-alert-disclaimer">Controlli locali mentre Vertex è aperto.
+                Il suono richiede l'audio consentito dal browser. Prezzi e avvisi
+                dipendono dai dati effettivamente ricevuti; nessuna notifica a browser chiuso.</p>
+            </div>
+          </section>
+        </div>
         <button class="avatar-button" id="profileButton" type="button" aria-label="Apri le impostazioni">AR</button>
         <div class="live-clock"><time id="localDate"></time><strong id="localTime"></strong></div>
       </div>
