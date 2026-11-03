@@ -317,7 +317,9 @@ def crypto_quotes():
     items = {
         cid: {"id": cid, "symbol": token.upper(), "value": None,
               "change": None, "currency": "USD", "history": [],
-              "candles": [], "time": None, "logo": None}
+              "candles": [], "time": None, "logo": None,
+              "market_cap": None, "circulating_supply": None,
+              "cap_updated_at": None}
         for cid, token in CRYPTO
     }
     ids = ",".join(token for _, token in CRYPTO)
@@ -339,6 +341,12 @@ def crypto_quotes():
             cid = by_coingecko_id.get(market.get("id"))
             if cid is None:
                 continue
+            cap = valid(market.get("market_cap"))
+            supply = valid(market.get("circulating_supply"))
+            if cap is not None and cap > 0 and supply is not None and supply > 0:
+                items[cid]["market_cap"] = cap
+                items[cid]["circulating_supply"] = supply
+                items[cid]["cap_updated_at"] = market.get("last_updated") or datetime.now(timezone.utc).isoformat()
             # Verified 7-day close-price series, useful where Yahoo OHLC is unavailable.
             sparkline = market.get("sparkline_in_7d")
             samples = sparkline.get("price") if isinstance(sparkline, dict) else None
@@ -409,6 +417,22 @@ def crypto_quotes():
     # Daily OHLC from Yahoo Finance; unsupported pairs use verified Binance/CoinGecko candles.
     old_candles = previous_crypto_snapshot()
     now_utc = datetime.now(timezone.utc)
+    for cid, _ in CRYPTO:
+        item, old = items[cid], old_candles.get(cid, {})
+        if item["market_cap"] is not None and item["circulating_supply"] is not None:
+            continue
+        try:
+            stamp = datetime.fromisoformat(str(old.get("cap_updated_at", "")).replace("Z", "+00:00"))
+            if stamp.tzinfo is None:
+                stamp = stamp.replace(tzinfo=timezone.utc)
+            recent = 0 <= (now_utc - stamp).total_seconds() <= 36 * 3600
+        except (ValueError, TypeError, OverflowError):
+            recent = False
+        cap = valid(old.get("market_cap"))
+        supply = valid(old.get("circulating_supply"))
+        if recent and cap is not None and cap > 0 and supply is not None and supply > 0:
+            item.update({"market_cap": cap, "circulating_supply": supply,
+                         "cap_updated_at": old["cap_updated_at"]})
     try:
         for cid, _ in CRYPTO:
             old = old_candles.get(cid, {})
