@@ -3968,7 +3968,7 @@ function macd(values){
 const round=(x,n=2)=>x.toFixed(n);
 const candleDateFormatter=new Intl.DateTimeFormat('it-IT',{
  timeZone:'Europe/Rome',day:'2-digit',month:'2-digit',year:'numeric',
- hour:'2-digit',minute:'2-digit',hourCycle:'h23'
+ hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'
 });
 let chartHoverForex=false;
 function candleTooltipMarkup(c){
@@ -3978,7 +3978,7 @@ function candleTooltipMarkup(c){
  const formatPrice=value=>{
   const x=Number(value);
   if(!Number.isFinite(x))return '—';
-  const n=Math.abs(x),digits=n<0.00001?10:n<0.001?8:n<0.1?6:n<1?5:n<10?4:2;
+  const n=Math.abs(x),digits=n<0.00001?12:n<0.001?10:n<0.1?8:n<10?6:n<100?5:n<1000?4:2;
   return x.toLocaleString('it-IT',{maximumFractionDigits:digits});
  };
  return '<span class="candle-tooltip-date">'+esc(date)+' <small>ora italiana</small></span>'+
