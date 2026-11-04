@@ -4414,6 +4414,7 @@ function candleTooltipMarkup(c){
   return x.toLocaleString('it-IT',{maximumFractionDigits:digits});
  };
  return '<span class="candle-tooltip-date">'+esc(date)+' <small>ora italiana</small></span>'+
+  '<span class="candle-tooltip-price">PREZZO <strong>'+formatPrice(c.c)+'</strong> <small>(chiusura)</small></span>'+
   '<span class="candle-tooltip-high">HIGH <strong>'+formatPrice(c.h)+'</strong></span>'+
   '<span class="candle-tooltip-low">LOW <strong>'+formatPrice(c.l)+'</strong></span>'+
   (c.observed?'<span class="candle-tooltip-partial">Candela parziale</span>':'');
@@ -4450,7 +4451,7 @@ function updateDetailCandleTooltip(candles,start,end,fxCandle,anchor){
   const container=el.closest('.chart-frame');
   if(container){
    const width=container.clientWidth,height=container.clientHeight;
-   const positionKey=[anchor.x,anchor.lowY,anchor.canvasWidth,anchor.canvasHeight,width,height].join(':');
+   const positionKey=[key,anchor.x,anchor.lowY,anchor.canvasWidth,anchor.canvasHeight,width,height].join(':');
    if(el.dataset.anchorKey!==positionKey){
     const localX=anchor.x*width/anchor.canvasWidth;
     const localY=anchor.lowY*height/anchor.canvasHeight;
@@ -4485,6 +4486,8 @@ function drawChart(){
  const chartColors=getComputedStyle(document.body);
  const color=chartColors.getPropertyValue('--muted').trim()||'#9db4c8';
  const grid=chartColors.getPropertyValue('--line-soft').trim()||'#173149';
+ // Theme-aware highlighted candle; avoids undefined dark on pointer hover.
+ const dark=!['light','sand','ice'].includes(state.theme);
  ctx.fillStyle=chartColors.getPropertyValue('--panel').trim()||'#071523';ctx.fillRect(0,0,width,height);
  const left=19,right=fxCandle?110:67,chartW=width-left-right,visible=chartVisibleCandleCount(candles,width);
  const maxShift=Math.max(0,candles.length-visible);
