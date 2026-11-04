@@ -1801,6 +1801,11 @@ function useCryptoBookEntry(id,serial){
  return true;
 }
 function updateOrderBookAssetList(){
+ if(state.page==='workspace'&&workspaceShown('orderbook')){
+  const list=$('#workspaceBookChoiceList');
+  if(list){const top=list.scrollTop;list.innerHTML=workspaceOrderBookChoices();list.scrollTop=top;}
+  return;
+ }
  if(state.page!=='orderbook')return;
  const list=$('#orderBookAssetList');
  if(list){
@@ -2165,6 +2170,10 @@ function paintOrderBook(){
    }
   }
  }
+ if(state.page==='workspace'&&workspaceShown('orderbook')){
+  const detail=$('#workspaceBookDetail');
+  if(detail)detail.innerHTML=workspaceOrderBookLevels();
+ }
 }
 function cancelOrderBookFetch(){
  orderBookState.serial++;
@@ -2209,11 +2218,11 @@ function scheduleOrderBookLivePaint(){
  // Cap DOM table refreshes at ~4/sec, even for 100ms market-data streams.
  orderBookLive.paintTimer=setTimeout(()=>{
   orderBookLive.paintTimer=null;
-  if(state.page==='orderbook'&&!document.hidden)paintOrderBook();
+  if(orderBookViewActive()&&!document.hidden)paintOrderBook();
  },250);
 }
 function receiveLiveBook(coin,config,rawBids,rawAsks,sequence){
- if(orderBookLive.coin!==coin||state.page!=='orderbook'||document.hidden)return false;
+ if(orderBookLive.coin!==coin||!orderBookViewActive()||document.hidden)return false;
  const validated=normalizeLiveLevels(rawBids,rawAsks);
  if(!validated)return false;
  const id=Number(sequence);
@@ -2232,7 +2241,7 @@ function receiveLiveBook(coin,config,rawBids,rawAsks,sequence){
  return true;
 }
 function receiveLiveTrade(coin,config,rawPrice){
- if(coin!==orderBookLive.coin||state.page!=='orderbook'||document.hidden)return;
+ if(coin!==orderBookLive.coin||!orderBookViewActive()||document.hidden)return;
  const price=Number(rawPrice);
  if(!Number.isFinite(price)||price<=0)return;
  const old=Number(orderBookState.lastTrade);
@@ -2256,7 +2265,7 @@ function stopOrderBookLive(){
  orderBookLive.polling=false;
 }
 async function pollOrderBookOnce(coin,config,session){
- if(orderBookLive.polling||orderBookLive.session!==session||state.page!=='orderbook'||
+ if(orderBookLive.polling||orderBookLive.session!==session||!orderBookViewActive()||
   document.hidden||!navigator.onLine)return;
  orderBookLive.polling=true;
  const controller=new AbortController();orderBookLive.pollAbort=controller;
@@ -2290,7 +2299,7 @@ async function pollOrderBookOnce(coin,config,session){
  }
 }
 function startOrderBookLive(force=false,fallback=false){
- if(state.page!=='orderbook'||document.hidden||!navigator.onLine)return;
+ if(!orderBookViewActive()||document.hidden||!navigator.onLine)return;
  const coin=orderBookState.id,baseConfig=liveBookConfig(coin);
  if(!baseConfig)return;
  // When Binance WebSocket is interrupted, keep real bids/asks refreshing
@@ -2386,7 +2395,7 @@ function startOrderBookLive(force=false,fallback=false){
  }
 }
 function keepOrderBookLive(){
- if(state.page!=='orderbook'||document.hidden||!navigator.onLine)return;
+ if(!orderBookViewActive()||document.hidden||!navigator.onLine)return;
  if(orderBookLive.transport==='poll'&&orderBookLive.coin===orderBookState.id){
   if(liveBookConfig(orderBookState.id)?.kind==='binance'&&orderBookLive.wsRetryAt&&
      Date.now()>=orderBookLive.wsRetryAt){
@@ -2487,7 +2496,7 @@ async function loadOreBookSnapshot(serial,coin){
  throw Error('Snapshot verificato non raggiungibile: '+errors.join('; '));
 }
 async function refreshOrderBook(force=false){
- if(state.page!=='orderbook'||document.hidden)return;
+ if(!orderBookViewActive()||document.hidden)return;
  if(!force&&(orderBookIsStreaming()||orderBookIsFastPolling()))return;
  if(orderBookState.busy&&!force)return;
  if(!force&&Date.now()-orderBookState.lastTry<14000)return;
@@ -2902,6 +2911,7 @@ let workspaceEditMode=false;
 let workspaceBookCoin=orderBookState.id;
 let workspaceBookSearch='';
 function workspaceShown(id){return !workspaceLayout.hidden.includes(id)}
+function orderBookViewActive(){return state.page==='orderbook'||(state.page==='workspace'&&workspaceShown('orderbook'))}
 function workspaceSave(){save('workspaceLayout',workspaceLayout)}
 function workspaceChange(action,id){
  if(action==='edit'){workspaceEditMode=!workspaceEditMode;render();return}
@@ -2924,6 +2934,7 @@ function workspaceChange(action,id){
   const i=order.indexOf(id),j=order.indexOf(visible[next]);
   [order[i],order[j]]=[order[j],order[i]];
  }else return;
+ if(state.page==='workspace'&&!workspaceShown('orderbook')){stopOrderBookLive();cancelOrderBookFetch()}
  workspaceSave();render();
 }
 function workspaceAssets(ids){return '<div class="ws-asset-grid">'+ids.filter(id=>ASSET_BY_ID[id]).map(indexCard).join('')+'</div>'}
@@ -3122,14 +3133,14 @@ function render(){
   updateWorldSunlight(true);
  }
  if(state.page==='workspace'&&workspaceShown('news')&&!secNewsState.loaded&&!secNewsState.loading)loadSecNews();
- if(state.page==='orderbook'){
+ if(orderBookViewActive()){
   refreshOrderBook();
   startOrderBookLive();
  }
 }
 function navigate(page){
  if(!SECTIONS[page])page='global';
- if(state.page==='orderbook'&&page!=='orderbook'){stopOrderBookLive();cancelOrderBookFetch()}
+ if(orderBookViewActive()&&page!=='orderbook'&&!(page==='workspace'&&workspaceShown('orderbook'))){stopOrderBookLive();cancelOrderBookFetch()}
  state.page=page;
  if(location.hash!=='#'+page)history.replaceState(null,'','#'+page);
  $('#sidebar').classList.remove('open');
@@ -4837,8 +4848,10 @@ function setupEvents(){
    if(!ORDER_BOOK_COINS.some(a=>a.id===btn.dataset.wsBook))return;
    const list=$('#workspaceBookChoiceList'),scroll=list?.scrollTop||0;
    workspaceBookCoin=btn.dataset.wsBook;
+   selectOrderBookAsset(workspaceBookCoin);
    const slot=document.querySelector('[data-ws-content="orderbook"]');
    if(slot){slot.innerHTML=workspaceWidgetBody('orderbook');const next=$('#workspaceBookChoiceList');if(next)next.scrollTop=scroll;}
+   refreshOrderBook(true);startOrderBookLive(true);
    return;
   }
   if(btn.dataset.themeMode){setTheme(btn.dataset.themeMode);return;}
@@ -5037,7 +5050,7 @@ function startVertexApp(){
  setInterval(()=>{if(state.adaptiveBrightness&&!document.hidden)applyBrightness()},60000);
  setInterval(updateWorldSunlight,1000);
  setInterval(()=>{
-  if(state.page==='orderbook'&&!document.hidden){
+  if(orderBookViewActive()&&!document.hidden){
    keepOrderBookLive();
    if(!orderBookIsStreaming()&&!orderBookIsFastPolling())refreshOrderBook();
   }
@@ -5061,17 +5074,17 @@ function startVertexApp(){
   if(document.hidden){closeStream();disconnectForexStream();stopOrderBookLive()}
   else {
    connectCryptoStream();connectForexStream();fetchQuotes();pollCryptoPrices();updateWorldSunlight(true);applyBrightness();
-   if(state.page==='orderbook'){startOrderBookLive();refreshOrderBook()}
+   if(orderBookViewActive()){startOrderBookLive();refreshOrderBook()}
     if(state.dialogId){scheduleDetailChartDraw();scheduleChartLiveRefresh()}
   }
  });
  window.addEventListener('online',()=>{
   connectCryptoStream();connectForexStream();fetchQuotes();pollCryptoPrices();
-  if(state.page==='orderbook'){startOrderBookLive(true);refreshOrderBook(true)}
+  if(orderBookViewActive()){startOrderBookLive(true);refreshOrderBook(true)}
  });
  window.addEventListener('offline',()=>{
   closeStream();disconnectForexStream();stopOrderBookLive();updateLiveBadges();
-  if(state.page==='orderbook')paintOrderBook();
+  if(orderBookViewActive())paintOrderBook();
  });
 }
 function init(){
