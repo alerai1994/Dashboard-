@@ -820,6 +820,7 @@ function updatePriceDom(){
    if(p)p.textContent=assetValue(a);
    if(c){c.textContent=pct(q.change);setMovementClass(c,q.change)}
    if(m)m.textContent=(q.live?'Tick '+(q.source||'streaming')+' · ':'Ultimo prezzo · ')+refTime(id);
+    updateChartLiveQuoteStatus();
   }
  }
  if(ids.length){
@@ -846,6 +847,7 @@ function applyLiveTick(d){
  const fresh={value:close,change:change24h,currency:'USDT',source:'Binance Spot (USDT)',time:new Date(timeMs).toISOString(),live:true,polled:false,received:Date.now()};
  STREAM_OVERLAY.set(id,fresh);
  state.quotes[id]={...(state.quotes[id]||{id,history:[],candles:[]}),...fresh};
+ observeChartQuote(id,fresh);scheduleMarketMiniPaint();
  streamStatus.last=Date.now();streamStatus.seen.add(id);streamStatus.dirty.add(id);
  scheduleLivePaint();
 }
@@ -926,6 +928,7 @@ async function pollCryptoPrices(){
     live:false,polled:true,received:now};
    STREAM_OVERLAY.set(id,fresh);
    state.quotes[id]={...(state.quotes[id]||{id,history:[],candles:[]}),...fresh};
+   observeChartQuote(id,fresh);scheduleMarketMiniPaint();
    streamStatus.dirty.add(id);added++;
   }
   if(!added)throw new Error('Binance REST non disponibile');
@@ -979,6 +982,7 @@ function forexTick(tick){
  };
  FX_OVERLAY.set(id,fresh);
  state.quotes[id]={...(state.quotes[id]||{id,history:[],candles:[]}),...fresh};
+ observeChartQuote(id,fresh);scheduleMarketMiniPaint();
  fxStatus.last=Date.now();fxStatus.seen.add(id);
  streamStatus.dirty.add(id);scheduleLivePaint();
 }
@@ -2816,6 +2820,8 @@ async function fetchQuotes(isManual=false){
    if(!next[id])changed.push(id);
   }
   state.quotes=next;
+  for(const id of changed)if(next[id])observeChartQuote(id,next[id]);
+  if(changed.length)scheduleMarketMiniPaint();
   evaluateCryptoAlerts();
   const incomingFeedTime=Date.parse(data.generatedAt||'');
   const oldFeedTime=Date.parse(state.feedTime||'');
@@ -3731,7 +3737,7 @@ function refreshDialog(){
   (q&&Array.isArray(q.candles)&&q.candles.length>=2);
  $('#dialogBody').innerHTML='<div class="dialog-stats"><strong>'+assetValue(a)+'</strong><span class="change '+classArrow(a.id)+'">'+pct(q&&q.change)+'</span><span class="dialog-meta">Ultima quotazione: '+esc(refTime(a.id))+'</span></div>'+
  '<div class="chart-toolbar"><div class="chart-legend"><span><i style="background:#74b2ff"></i>EMA 12</span><span><i style="background:#f1ba55"></i>EMA 26</span><span><i style="background:#b382ee"></i>EMA 50</span><span><i style="background:#ef7192"></i>EMA 200</span></div><span class="badge"'+(isCrypto?' id="chartHistoryBadge" role="status"':'')+'>'+(isCrypto?'Periodo '+chartRange:(candleAvailable?'Candele OHLC · storico':'Candele OHLC non disponibili'))+'</span></div>'+
- '<div class="chart-coverage" id="chartHistoryDates" role="status" aria-live="polite" hidden></div>'+
+ '<div class="chart-coverage" id="chartHistoryDates" role="status" aria-live="polite" hidden></div>'+\n  '<div class="chart-live-quote-status" id="chartLiveQuoteStatus" role="status" aria-live="off"></div>'+
  '<div class="chart-frame"><canvas id="detailChart" width="900" height="470" role="img" aria-label="Grafico di '+esc(a.name)+', medie mobili e indicatori" tabindex="0"></canvas></div>'+
  '<div class="chart-toolbar chart-time-toolbar"><div class="chart-legend"><span>RSI (14)</span><span>Stochastic RSI (14/14/3/3)</span><span>MACD (12/26/9)</span></div>'+
  (isCrypto?'<div class="chart-periods" role="group" aria-label="Periodo storico del grafico">'+
@@ -3747,6 +3753,7 @@ function refreshDialog(){
   'Prezzi: Yahoo Finance. Candele OHLC: '+esc(q&&q.candleSource||'Yahoo Finance, se disponibile')+'. Storico non necessariamente in tempo reale.')+'</span>'+
  '<a href="'+esc(externalUrl(a))+'" target="_blank" rel="noopener noreferrer">Apri fonte '+sym('external')+'</a></div>';
  if(isCrypto)updateChartHistoryStatus();
+ updateChartLiveQuoteStatus();
  paintCryptoPriceHighlights();
  requestAnimationFrame(drawChart);
 }
@@ -3927,7 +3934,9 @@ function drawChart(){
     ASSET_BY_ID[state.dialogId]?.group==='crypto'?
      new Intl.DateTimeFormat('it-IT',spec&&(spec.months||spec.ms>=604800000)?
       {day:'2-digit',month:'short'}:{day:'2-digit',hour:'2-digit',minute:'2-digit'}).format(date):
-     localeDate(c.t*1000,{month:'short',day:'2-digit'})):
+     (chartRange==='MAX'||(spec&&spec.months))?
+      localeDate(c.t*1000,{month:'short',day:'2-digit'}):
+      localeDate(c.t*1000,{day:'2-digit',hour:'2-digit',minute:'2-digit'})):
    '−'+(candles.length-idx)+'g';
   text(d,chartRange==='MAX'&&i===0?left+4:chartRange==='MAX'&&i===4?width-right-4:ix(idx),
    height-5,chartRange==='MAX'&&i===0?'left':chartRange==='MAX'&&i===4?'right':'center',9);
