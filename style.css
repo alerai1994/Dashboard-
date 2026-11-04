@@ -1775,3 +1775,19 @@ body .vertex-boot-progress{box-shadow:none}
 @media(prefers-reduced-motion:reduce){
  body *{transition-duration:0ms!important}
 }
+
+/* Global: compact notification bell immediately before the rightmost AR avatar. */
+body.page-global .top-actions{
+ justify-content:flex-end;
+ gap:7px;
+ margin-left:auto;
+}
+body.page-global .top-actions #notificationsButton,
+body.page-global .top-actions #profileButton{flex:0 0 auto}
+@media(max-width:600px){
+ body.page-global .top-actions{
+  width:100%;
+  justify-content:flex-end;
+  gap:5px;
+ }
+}
