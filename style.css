@@ -1531,7 +1531,7 @@ body.theme-light :is(.btn,.outline-button,.sidebar-theme-button,
  color:#e9f5fc;background:rgba(8,24,40,.50);
  border:1px solid rgba(122,183,221,.48);
  border-radius:7px;box-shadow:0 3px 12px rgba(0,0,0,.14);
- backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+ backdrop-filter:none;-webkit-backdrop-filter:none;
  font-size:10px;font-weight:600;line-height:1.18;
  font-variant-numeric:tabular-nums;pointer-events:none;
 }
@@ -1566,4 +1566,13 @@ body.theme-light :is(.btn,.outline-button,.sidebar-theme-button,
  .chart-candle-tooltip .candle-tooltip-date{font-size:9px}
  .chart-candle-tooltip .candle-tooltip-high strong,
  .chart-candle-tooltip .candle-tooltip-low strong{font-size:10px}
+}
+
+/* Performance: skip paint/style work for market cards until they scroll onscreen.
+   Keep an intrinsic block size close to the card's existing min-height. */
+@supports (content-visibility:auto){
+ .market-chart-card{
+  content-visibility:auto;
+  contain-intrinsic-block-size:auto 254px;
+ }
 }
