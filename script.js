@@ -132,8 +132,8 @@ async function biometricVerify(){
  const verified=await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},key,
   biometricDerToRaw(response.signature),signed);
  if(!verified)throw new Error('Firma della passkey non valida.');
- if(record.counter>0&&counter>0&&counter<=record.counter)
-  throw new Error('La passkey non ha superato il controllo di sicurezza.');
+ // Synced platform passkeys may have non-monotonic signature counters.
+ // Keep the highest observed value, without rejecting a valid signature.
  if(counter>record.counter){
   const updated={...record,counter};
   try{localStorage.setItem(BIOMETRIC_STORAGE,JSON.stringify(updated));
@@ -169,12 +169,13 @@ async function biometricUnlock(){
   await biometricVerify();
   biometricSessionUnlocked=true;
   biometricBackgroundAt=0;
-  biometricToggleGate(false);
   if(!vertexAppStarted)startVertexApp();
   else{
    connectCryptoStream();connectForexStream();fetchQuotes();pollCryptoPrices();
    if(state.page==='orderbook'){startOrderBookLive();refreshOrderBook()}
   }
+  // Show the application only after its first render is ready.
+  biometricToggleGate(false);
  }catch(error){biometricFeedback(biometricFailure(error))}
  finally{
   biometricBusy=false;
