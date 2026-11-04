@@ -1979,3 +1979,32 @@ body:is(.theme-sand,.theme-ice) .settings-theme-swatch{border-color:var(--line)}
 @media(max-width:1250px){.ws-chart-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ws-map-layout{grid-template-columns:1fr}.ws-widget-content .market-live-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:1000px){.ws-widget{grid-column:span 12}.ws-chart-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:640px){.ws-grid{gap:10px}.ws-toolbar{padding:12px}.ws-widget-header{padding:12px;align-items:flex-start}.ws-widget-content{padding:11px}.ws-chart-grid{grid-template-columns:1fr}.ws-asset-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.ws-book-grid{grid-template-columns:1fr}.ws-etf-grid{grid-template-columns:1fr}.ws-widget-actions button{min-width:35px;min-height:38px}.ws-widget-content .market-live-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Workspace 42-crypto order book selector */
+.ws-book-layout{display:grid;grid-template-columns:minmax(210px,280px) minmax(0,1fr);gap:14px;align-items:start;min-width:0}
+.ws-book-picker,.ws-book-detail{min-width:0}
+.ws-book-picker{border:1px solid var(--line);border-radius:10px;padding:11px;background:var(--panel-2)}
+.ws-book-picker-heading{display:flex;align-items:center;justify-content:space-between;gap:6px;padding-bottom:9px;border-bottom:1px solid var(--line-soft);font-size:12px}
+.ws-book-picker-heading span{font-size:10px;color:var(--muted);white-space:nowrap}
+.ws-book-picker label{display:block;color:var(--muted);font-size:10px;margin:10px 0 6px}
+.ws-book-search{box-sizing:border-box;width:100%;min-width:0;min-height:38px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--text);font:inherit;font-size:12px}
+.ws-book-search:focus-visible{outline:2px solid var(--brand);outline-offset:1px}
+.ws-book-choice-list{max-height:590px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;padding:5px 1px}
+.ws-book-choice{display:flex;align-items:center;gap:8px;width:100%;min-width:0;min-height:48px;padding:7px 8px;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--text);text-align:left;cursor:pointer}
+.ws-book-choice:hover{background:var(--surface)}
+.ws-book-choice.is-selected{background:color-mix(in srgb,var(--brand) 13%,var(--panel));border-color:var(--brand)}
+.ws-book-choice:focus-visible{outline:2px solid var(--brand);outline-offset:1px}
+.ws-book-choice-logo{flex:0 0 27px;display:grid;place-items:center;width:27px;height:27px}
+.ws-book-choice-logo .asset-logo,.ws-book-choice-logo .crypto-logo{width:27px;height:27px;min-width:27px}
+.ws-book-choice-info{display:flex;flex:1;flex-direction:column;gap:3px;min-width:0}
+.ws-book-choice-info strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}
+.ws-book-choice-info small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px;color:var(--muted)}
+.ws-book-choice-indicator{flex:0 0 auto;color:var(--muted);font-size:12px}
+.ws-book-choice-indicator.has-book{color:var(--green)}
+.ws-book-active-head{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+.ws-book-active-head>.asset-logo,.ws-book-active-head>.crypto-logo{width:34px;height:34px;flex:none}
+.ws-book-active-head>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.ws-book-active-head strong{font-size:13px;color:var(--text)}
+.ws-book-active-head small{font-size:10px;color:var(--muted);overflow-wrap:anywhere}
+.ws-book-detail>.ws-subnote{margin-bottom:12px}
+@media(max-width:760px){.ws-book-layout{grid-template-columns:minmax(0,1fr)}.ws-book-choice-list{max-height:240px}.ws-book-picker{padding:9px}}
