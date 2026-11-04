@@ -713,6 +713,12 @@ body:is(.theme-ocean,.theme-emerald,.theme-violet) .settings-theme-option.is-sel
 .theme-swatch-ocean{background:linear-gradient(135deg,#041b2b 0 45%,#0e5872 45% 75%,#40c9f5 75%);color:#bbf7ff}
 .theme-swatch-emerald{background:linear-gradient(135deg,#071f18 0 45%,#1d5845 45% 75%,#5be0b4 75%);color:#c4ffde}
 .theme-swatch-violet{background:linear-gradient(135deg,#190d2b 0 45%,#49316b 45% 75%,#c395ff 75%);color:#f0dbff}
+.theme-swatch-sand{background:linear-gradient(135deg,#fff8eb 0 45%,#e9c99f 45% 75%,#ac6131 75%);color:#8b4b20}
+.theme-swatch-ice{background:linear-gradient(135deg,#f8feff 0 45%,#bddfe9 45% 75%,#0a7899 75%);color:#0a678a}
+.theme-swatch-sunset{background:linear-gradient(135deg,#24161b 0 45%,#703f53 45% 75%,#ff9b72 75%);color:#ffe4d5}
+.theme-swatch-graphite{background:linear-gradient(135deg,#171a1b 0 45%,#4f5558 45% 75%,#e7b76a 75%);color:#fff0ca}
+.theme-swatch-ruby{background:linear-gradient(135deg,#230f1a 0 45%,#773553 45% 75%,#ff91b2 75%);color:#ffe0eb}
+
 .settings-auto-theme{width:100%;display:flex;align-items:center;gap:11px;text-align:left;margin-top:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:10px;color:var(--text)}
 .settings-auto-theme .settings-choice-icon{font-size:23px}
 .settings-auto-theme>span:nth-child(2){display:flex;flex-direction:column;gap:3px}
@@ -769,73 +775,73 @@ body.theme-violet{
  --theme-card-outline:#5a4778;
  background:radial-gradient(ellipse at 58% 28%,#432e69 0%,#241734 55%,#110d1e 100%);
 }
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) .sidebar{
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) .sidebar{
  background:linear-gradient(175deg,var(--shell),var(--bg));
  border-right-color:var(--line);
 }
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) .panel{
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) .panel{
  background:linear-gradient(145deg,var(--panel),var(--panel-2));
  border-color:var(--line-soft);
  color:var(--text);
 }
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) .search-wrap{
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) .search-wrap{
  background:var(--panel);border-color:var(--line);color:var(--muted);
 }
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) .side-link:hover{
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) .side-link:hover{
  background:var(--surface);color:var(--text);
 }
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) .side-link.active{
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) .side-link.active{
  background:var(--surface);border-color:var(--line);color:var(--text);
  box-shadow:inset 3px 0 0 var(--brand);
 }
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) .side-link.active .icon{
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) .side-link.active .icon{
  color:var(--brand);
 }
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) .market-chart-card,
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) .market-data-pill,
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) .photo-card{
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) .market-chart-card,
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) .market-data-pill,
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) .photo-card{
  background:linear-gradient(140deg,var(--panel),var(--panel-2));
  border-color:var(--theme-card-outline);
  color:var(--text);
 }
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) .market-chart-card:hover,
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) .photo-card:hover{
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) .market-chart-card:hover,
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) .photo-card:hover{
  border-color:var(--brand);
 }
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) .asset-dialog{
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) .asset-dialog{
  background:var(--panel);border-color:var(--line);color:var(--text);
 }
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) .market-feed-pill{
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) .market-feed-pill{
  background:var(--surface);border-color:var(--line);color:var(--muted);
 }
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) .region-list-item:hover,
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) .region-list-item.selected,
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) .data-table tbody tr:hover{
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) .region-list-item:hover,
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) .region-list-item.selected,
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) .data-table tbody tr:hover{
  background:var(--surface);
 }
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) .text-action{
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) .text-action{
  color:var(--brand);
 }
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) .world-map-panel{
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) .world-map-panel{
  border-color:var(--line);background:var(--theme-map-deep);
 }
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) #globeGrad stop:first-child{
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) #globeGrad stop:first-child{
  stop-color:var(--theme-map-bright);
 }
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) #globeGrad stop:nth-child(2){
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) #globeGrad stop:nth-child(2){
  stop-color:var(--theme-map-mid);
 }
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) #globeGrad stop:last-child{
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) #globeGrad stop:last-child{
  stop-color:var(--theme-map-deep);
 }
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) .map-callout{
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) .map-callout{
  background:color-mix(in srgb,var(--theme-map-deep) 91%,black);
  border-color:var(--line);color:#f5fbff;
 }
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) .map-callout:hover{
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) .map-callout:hover{
  border-color:var(--brand);
 }
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) .btn-primary{
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) .btn-primary{
  background:var(--brand);border-color:var(--brand);color:var(--bg);font-weight:750;
 }
 body.theme-light .btn-primary{color:#fff}
@@ -1614,10 +1620,10 @@ body.theme-violet{
  --surface:#352a47;--line:#544368;--line-soft:#403651;--shadow:none
 }
 html{scroll-behavior:auto}
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet){
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby){
  background:var(--bg);color:var(--text)
 }
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) .sidebar{
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) .sidebar{
  background:var(--shell);border-right:1px solid var(--line-soft);box-shadow:none
 }
 .brand{font-weight:750;letter-spacing:-.035em;font-size:18px}
@@ -1629,7 +1635,7 @@ body .side-link{
 }
 body .side-link:not(.active){background:transparent;border-color:transparent;box-shadow:none}
 body .side-link:hover:not(.active){background:var(--surface);color:var(--text)}
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) .side-link.active{
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) .side-link.active{
  background:color-mix(in srgb,var(--brand) 9%,var(--shell));
  border-color:transparent;border-left-color:var(--brand);
  border-radius:7px;box-shadow:inset 2px 0 0 var(--brand);
@@ -1644,7 +1650,7 @@ body .page-heading h1{
 }
 body .page-heading p{font-size:12px;line-height:1.5}
 body .top-actions{gap:10px}
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) .search-wrap{
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) .search-wrap{
  background:var(--panel);border:1px solid var(--line);border-radius:9px;
  box-shadow:none;height:41px;color:var(--muted)
 }
@@ -1652,7 +1658,7 @@ body .search-wrap:focus-within{box-shadow:0 0 0 2px color-mix(in srgb,var(--bran
 body .avatar-button{border-radius:9px;background:var(--surface);color:var(--text)}
 body .icon-button{border:1px solid transparent;background:transparent}
 body .icon-button:hover{background:var(--surface)}
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) .panel{
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) .panel{
  background:var(--panel);border:1px solid var(--line-soft);
  border-radius:var(--minimal-radius);box-shadow:none
 }
@@ -1664,7 +1670,7 @@ body .summary-card{padding:16px;min-height:102px}
 body .summary-card strong{font-size:clamp(20px,2vw,25px);font-weight:740;letter-spacing:-.025em;margin-top:10px}
 body .content-card{padding:17px}
 body .content-card h3{font-size:14px;font-weight:720}
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet)
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby)
  :is(.market-chart-card,.market-data-pill,.photo-card){
  background:var(--panel);border:1px solid var(--line-soft);
  border-radius:var(--minimal-radius);box-shadow:none;color:var(--text)
@@ -1817,3 +1823,78 @@ body.page-global .top-actions #profileButton{flex:0 0 auto}
 .font-preview-lora{font-family:'Lora',Georgia,serif}
 .font-preview-nunito{font-family:'Nunito Sans','Trebuchet MS',Arial,sans-serif}
 @media(max-width:560px){.settings-font-grid{grid-template-columns:1fr;gap:8px}.settings-font-option{min-height:94px;padding:12px 13px}}
+
+/* Additional five complete dashboard themes — light: Sabbia/Ghiaccio;
+   dark: Tramonto/Grafite/Rubino. Palette properties propagate to all
+   shared panels, market cards, navigation, map, tables, and controls. */
+body.theme-sand{
+ color-scheme:light;
+ --bg:#f7f2e9;--shell:#fffbf3;--panel:#fffcf8;--panel-2:#f6ecde;
+ --surface:#f3e5d4;--line:#dbc7ad;--line-soft:#eadacc;
+ --text:#372c26;--muted:#715d4c;--subtle:#887665;--brand:#a85d2a;
+ --green:#107559;--red:#b64353;--yellow:#96600b;--shadow:none;
+ --theme-map-deep:#402f28;--theme-map-mid:#69503c;--theme-map-bright:#a07a58;
+ --theme-card-outline:#dbc7ad;--theme-image-overlay:#fff3df;
+ background:var(--bg);color:var(--text)
+}
+body.theme-ice{
+ color-scheme:light;
+ --bg:#eff9fc;--shell:#fff;--panel:#fbfeff;--panel-2:#e9f7fa;
+ --surface:#dff0f6;--line:#c1dce6;--line-soft:#d8ebf0;
+ --text:#173b4b;--muted:#52798b;--subtle:#708f9e;--brand:#087a9b;
+ --green:#007e6b;--red:#ba415b;--yellow:#94651b;--shadow:none;
+ --theme-map-deep:#103448;--theme-map-mid:#246782;--theme-map-bright:#65bacd;
+ --theme-card-outline:#c1dce6;--theme-image-overlay:#effeff;
+ background:var(--bg);color:var(--text)
+}
+body.theme-sunset{
+ color-scheme:dark;
+ --bg:#24161b;--shell:#2d1c25;--panel:#35232b;--panel-2:#422a34;
+ --surface:#4a303d;--line:#785463;--line-soft:#59404c;
+ --text:#fff3ee;--muted:#e0bec4;--subtle:#bc99a4;--brand:#ff9b72;
+ --green:#70e3ae;--red:#ff8797;--yellow:#ffd18e;--shadow:none;
+ --theme-map-deep:#2a1823;--theme-map-mid:#713951;--theme-map-bright:#b95e60;
+ --theme-card-outline:#785463;
+ background:var(--bg);color:var(--text)
+}
+body.theme-graphite{
+ color-scheme:dark;
+ --bg:#151819;--shell:#1c2022;--panel:#24292b;--panel-2:#2b3134;
+ --surface:#343c3f;--line:#526065;--line-soft:#3b4549;
+ --text:#f3f5f3;--muted:#b4bec1;--subtle:#929fa4;--brand:#e7b76a;
+ --green:#78d9a7;--red:#ff8f97;--yellow:#f4d285;--shadow:none;
+ --theme-map-deep:#1b2325;--theme-map-mid:#3c5056;--theme-map-bright:#8a7861;
+ --theme-card-outline:#526065;
+ background:var(--bg);color:var(--text)
+}
+body.theme-ruby{
+ color-scheme:dark;
+ --bg:#230f1a;--shell:#301420;--panel:#3a1e2d;--panel-2:#492438;
+ --surface:#593047;--line:#815066;--line-soft:#633a50;
+ --text:#fff0f5;--muted:#e3b9cc;--subtle:#bc92a9;--brand:#ff91b2;
+ --green:#78e0b4;--red:#ff8995;--yellow:#f3c88d;--shadow:none;
+ --theme-map-deep:#260f1d;--theme-map-mid:#65243e;--theme-map-bright:#a34468;
+ --theme-card-outline:#815066;
+ background:var(--bg);color:var(--text)
+}
+/* Ensure new palettes color interactive surfaces even in older components. */
+body:is(.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) :is(.pill,.avatar-button,.switch.on){
+ background:var(--surface);color:var(--text);border-color:var(--line)
+}
+body:is(.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) .side-link.active .icon{
+ color:var(--brand)
+}
+body:is(.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) .btn-primary{
+ background:var(--brand);border-color:var(--brand);color:var(--bg)
+}
+body:is(.theme-sand,.theme-ice) .btn-primary{color:#fff}
+body:is(.theme-sand,.theme-ice) :is(.chart-candle-tooltip,.mini-candle-tooltip){
+ color:var(--text);background:color-mix(in srgb,var(--panel) 83%,transparent);
+ border-color:var(--line)
+}
+body:is(.theme-sand,.theme-ice) .candle-tooltip-high{color:var(--green)}
+body:is(.theme-sand,.theme-ice) .candle-tooltip-low{color:var(--red)}
+body:is(.theme-sand,.theme-ice) .candle-tooltip-partial{color:var(--muted)}
+body:is(.theme-sand,.theme-ice) .market-chart-unavailable{color:var(--muted);border-color:var(--line)}
+body:is(.theme-sand,.theme-ice) .settings-theme-swatch{border-color:var(--line)}
+
