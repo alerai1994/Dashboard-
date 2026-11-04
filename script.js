@@ -1803,7 +1803,7 @@ function useCryptoBookEntry(id,serial){
 function updateOrderBookAssetList(){
  if(state.page==='workspace'&&workspaceShown('orderbook')){
   const list=$('#workspaceBookChoiceList');
-  if(list){const top=list.scrollTop;list.innerHTML=workspaceOrderBookChoices();list.scrollTop=top;}
+  if(list){const left=list.scrollLeft;list.innerHTML=workspaceOrderBookChoices();list.scrollLeft=left;}
   return;
  }
  if(state.page!=='orderbook')return;
@@ -3036,13 +3036,20 @@ function workspaceWidgetBody(id){
     '" style="width:'+(num(meanRegion(r))?Math.min(100,Math.abs(meanRegion(r))*20+3):0)+'%"></div></div>'+
     '<strong class="'+trendClass(meanRegion(r))+'">'+pct(meanRegion(r))+'</strong></div>').join('')+'</div>';
  }
- if(id==='orderbook')return '<div class="ws-book-layout"><div class="ws-book-picker">'+
+ if(id==='orderbook')return '<div class="ws-book-layout">'+
+  '<div class="ws-book-picker">'+
+  '<div class="ws-book-picker-topbar">'+
   '<div class="ws-book-picker-heading"><strong>Tutte le criptovalute</strong><span>'+ORDER_BOOK_COINS.length+' asset</span></div>'+
-  '<label for="workspaceBookSearch">Cerca crypto</label>'+
+  '<label class="ws-book-search-label" for="workspaceBookSearch">Cerca crypto</label>'+
   '<input type="search" id="workspaceBookSearch" class="ws-book-search" autocomplete="off" '+
-  'placeholder="Nome o simbolo..." value="'+esc(workspaceBookSearch)+'">'+
-  '<div class="ws-book-choice-list" id="workspaceBookChoiceList" role="group" aria-label="Tutte le criptovalute">'+workspaceOrderBookChoices()+'</div></div>'+
-  '<div class="ws-book-detail" id="workspaceBookDetail">'+workspaceOrderBookLevels()+'</div></div>';
+  'placeholder="Nome o simbolo..." value="'+esc(workspaceBookSearch)+'"></div>'+
+  '<div class="ws-book-scrollbar">'+
+  '<button type="button" class="ws-book-scroll-control" data-ws-book-scroll="prev" aria-label="Scorri criptovalute verso sinistra" title="Scorri a sinistra">‹</button>'+
+  '<div class="ws-book-choice-list" id="workspaceBookChoiceList" role="group" tabindex="0" '+
+  'aria-label="Criptovalute scorrevoli in orizzontale">'+workspaceOrderBookChoices()+'</div>'+
+  '<button type="button" class="ws-book-scroll-control" data-ws-book-scroll="next" aria-label="Scorri criptovalute verso destra" title="Scorri a destra">›</button></div>'+
+  '<p class="ws-book-scroll-hint">Scorri lateralmente per vedere tutte le crypto, poi seleziona quella da analizzare.</p>'+
+  '</div><div class="ws-book-detail" id="workspaceBookDetail">'+workspaceOrderBookLevels()+'</div></div>';
  if(id==='etf')return '<div class="ws-etf-grid">'+CRYPTO_ETF_PRODUCTS.map(product=>{
   const a=ASSET_BY_ID[product.crypto];
   return '<article class="ws-etf-item"><strong>'+esc(product.ticker)+'</strong>'+
@@ -4860,13 +4867,22 @@ function setupEvents(){
    workspaceChange(btn.dataset.wsAction,btn.dataset.wsId||'');
    return;
   }
+  if(btn.dataset.wsBookScroll){
+   const list=$('#workspaceBookChoiceList');
+   if(list){
+    const direction=btn.dataset.wsBookScroll==='prev'?-1:1;
+    const distance=Math.max(180,Math.floor(list.clientWidth*.75))*direction;
+    list.scrollBy({left:distance,behavior:'smooth'});
+   }
+   return;
+  }
   if(btn.dataset.wsBook){
    if(!ORDER_BOOK_COINS.some(a=>a.id===btn.dataset.wsBook))return;
-   const list=$('#workspaceBookChoiceList'),scroll=list?.scrollTop||0;
+   const list=$('#workspaceBookChoiceList'),scroll=list?.scrollLeft||0;
    workspaceBookCoin=btn.dataset.wsBook;
    selectOrderBookAsset(workspaceBookCoin);
    const slot=document.querySelector('[data-ws-content="orderbook"]');
-   if(slot){slot.innerHTML=workspaceWidgetBody('orderbook');const next=$('#workspaceBookChoiceList');if(next)next.scrollTop=scroll;}
+   if(slot){slot.innerHTML=workspaceWidgetBody('orderbook');const next=$('#workspaceBookChoiceList');if(next)next.scrollLeft=scroll;}
    refreshOrderBook(true);startOrderBookLive(true);
    return;
   }
@@ -4956,7 +4972,7 @@ function setupEvents(){
   }
   if(e.target.id==='workspaceBookSearch'){
    workspaceBookSearch=e.target.value;
-   const list=$('#workspaceBookChoiceList');if(list)list.innerHTML=workspaceOrderBookChoices();
+   const list=$('#workspaceBookChoiceList');if(list){list.innerHTML=workspaceOrderBookChoices();list.scrollLeft=0;}
    return;
   }
   if(e.target.id==='cryptoAutoPercentSlider'){
