@@ -1,5 +1,11 @@
 /* Vertex Global v2 — redesigned from the supplied reference, Oct 2026 */
-:root{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;font-size:14px;color-scheme:dark;--bg:#06101b;--shell:#081421;--panel:#0b1928;--panel-2:#0e2033;--surface:#102238;--line:#203449;--line-soft:#1a2c3c;--text:#f2f6fd;--muted:#90a5bc;--subtle:#59728d;--brand:#439eff;--green:#15e69b;--red:#ff5e69;--yellow:#eeb456;--shadow:0 12px 30px #0003}
+ :root{--vertex-font:'Inter',ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-family:var(--vertex-font);font-size:14px;color-scheme:dark;--bg:#06101b;--shell:#081421;--panel:#0b1928;--panel-2:#0e2033;--surface:#102238;--line:#203449;--line-soft:#1a2c3c;--text:#f2f6fd;--muted:#90a5bc;--subtle:#59728d;--brand:#439eff;--green:#15e69b;--red:#ff5e69;--yellow:#eeb456;--shadow:0 12px 30px #0003}
+/* Vertex font preferences — same font used by page text and form controls. */
+:root[data-vertex-font="inter"]{--vertex-font:'Inter',ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif}
+:root[data-vertex-font="roboto"]{--vertex-font:'Roboto','Arial',sans-serif}
+:root[data-vertex-font="poppins"]{--vertex-font:'Poppins','Trebuchet MS',Arial,sans-serif}
+:root[data-vertex-font="montserrat"]{--vertex-font:'Montserrat','Arial',sans-serif}
+:root[data-vertex-font="lora"]{--vertex-font:'Lora',Georgia,'Times New Roman',serif}
 *{box-sizing:border-box}
 html{min-height:100%;scroll-behavior:smooth}
 body{margin:0;min-height:100vh;background:radial-gradient(ellipse 65% 80% at 55% 38%,#0b2537 0%,#081522 55%,#060e17 100%);color:var(--text);overflow-x:hidden}
@@ -1791,3 +1797,21 @@ body.page-global .top-actions #profileButton{flex:0 0 auto}
   gap:5px;
  }
 }
+
+/* Font selector with distinct previews, clear active state, and mobile layout. */
+.settings-font-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:16px}
+.settings-font-option{display:flex;flex-direction:column;align-items:stretch;gap:8px;min-width:0;min-height:111px;text-align:left;padding:14px 15px;border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--text);transition:background .16s,border-color .16s,box-shadow .16s}
+.settings-font-option:hover{border-color:var(--brand)}
+.settings-font-option.is-selected{border-color:var(--brand);background:color-mix(in srgb,var(--brand) 13%,var(--panel));box-shadow:inset 0 0 0 1px var(--brand)}
+.settings-font-option-head{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px}
+.settings-font-check{display:grid;place-items:center;width:20px;height:20px;border:1px solid var(--line);border-radius:50%;color:var(--brand);font-size:12px;font-weight:750}
+.settings-font-option.is-selected .settings-font-check{background:var(--brand);color:var(--panel);border-color:var(--brand)}
+.settings-font-demo{font-size:16px;font-weight:600;line-height:1.4;overflow-wrap:anywhere}
+.settings-font-option small{color:var(--muted);font-size:11px}
+.settings-font-section .settings-font-footnote{margin-top:12px}
+.font-preview-inter{font-family:'Inter',ui-sans-serif,Arial,sans-serif}
+.font-preview-roboto{font-family:'Roboto',Arial,sans-serif}
+.font-preview-poppins{font-family:'Poppins','Trebuchet MS',Arial,sans-serif}
+.font-preview-montserrat{font-family:'Montserrat',Arial,sans-serif}
+.font-preview-lora{font-family:'Lora',Georgia,serif}
+@media(max-width:560px){.settings-font-grid{grid-template-columns:1fr;gap:8px}.settings-font-option{min-height:94px;padding:12px 13px}}
