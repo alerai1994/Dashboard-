@@ -1439,7 +1439,7 @@ if(!ORDER_BOOK_COINS.some(a=>a.id===orderBookState.id))orderBookState.id='btc';
 const orderBookLive={
  socket:null,coin:null,transport:'',connected:false,startedAt:0,lastDepthAt:0,
  retryAt:0,attempt:0,session:0,paintTimer:null,pollTimer:null,pollAbort:null,
- polling:false,updateId:0
+ polling:false,updateId:0,wsRetryAt:0
 };
 function orderBookIsStreaming(){
  return orderBookLive.coin===orderBookState.id&&orderBookLive.connected&&
@@ -1913,7 +1913,9 @@ function liveBookConfig(id){
  const symbol=pair.replace('/','');
  if(venue==='Binance Spot')return {venue,pair,symbol,kind:'binance',
   url:'wss://data-stream.binance.vision/stream?streams='+symbol.toLowerCase()+
-   '@depth20@100ms/'+symbol.toLowerCase()+'@trade'};
+   '@depth20@100ms/'+symbol.toLowerCase()+'@trade',
+  restUrl:'https://data-api.binance.vision/api/v3/depth?symbol='+symbol+'&limit=20',
+  priceUrl:'https://data-api.binance.vision/api/v3/ticker/price?symbol='+symbol};
  if(venue==='Gate Spot'||venue==='Gate.io Spot')return {venue:'Gate Spot',pair,
   symbol,pairCode:pair.replace('/','_'),kind:'gate',url:'wss://api.gateio.ws/ws/v4/'};
  if(venue==='LBank Spot')return {venue,pair,symbol,pairCode:pair.toLowerCase().replace('/','_'),
@@ -2016,10 +2018,14 @@ async function pollOrderBookOnce(coin,config,session){
   orderBookLive.polling=false;
  }
 }
-function startOrderBookLive(force=false){
+function startOrderBookLive(force=false,fallback=false){
  if(state.page!=='orderbook'||document.hidden||!navigator.onLine)return;
- const coin=orderBookState.id,config=liveBookConfig(coin);
- if(!config)return;
+ const coin=orderBookState.id,baseConfig=liveBookConfig(coin);
+ if(!baseConfig)return;
+ // When Binance WebSocket is interrupted, keep real bids/asks refreshing
+ // via its public REST endpoint while waiting to retry the stream.
+ const config=fallback&&baseConfig.kind==='binance'?{
+  ...baseConfig,kind:'poll',url:baseConfig.restUrl}:baseConfig;
  if(!force&&Date.now()<orderBookLive.retryAt)return;
  if(!force&&orderBookLive.coin===coin&&
    (orderBookLive.transport==='poll'||(orderBookLive.socket&&orderBookLive.socket.readyState<=1)))return;
@@ -2033,7 +2039,11 @@ function startOrderBookLive(force=false){
   return;
  }
  if(typeof WebSocket!=='function'){
-  orderBookLive.retryAt=Date.now()+30000;return;
+  if(config.kind==='binance'){
+   orderBookLive.wsRetryAt=Date.now()+30000;
+   startOrderBookLive(true,true);
+  }else orderBookLive.retryAt=Date.now()+30000;
+  return;
  }
  try{
   const endpoint=config.kind==='binance'&&orderBookLive.attempt%2===1?
@@ -2043,6 +2053,7 @@ function startOrderBookLive(force=false){
   orderBookLive.socket=ws;
   ws.onopen=()=>{
    if(orderBookLive.session!==session)return;
+   orderBookLive.wsRetryAt=0;
    if(config.kind==='gate'){
     const req=(channel,payload)=>ws.send(JSON.stringify({
      time:Math.floor(Date.now()/1000),channel,event:'subscribe',payload
@@ -2088,16 +2099,31 @@ function startOrderBookLive(force=false){
    orderBookLive.socket=null;orderBookLive.connected=false;
    orderBookLive.attempt+=1;
    orderBookLive.retryAt=Date.now()+Math.min(30000,2000*Math.pow(2,Math.min(4,orderBookLive.attempt)));
+   if(config.kind==='binance'){
+    orderBookLive.wsRetryAt=Date.now()+30000;
+    startOrderBookLive(true,true);
+   }
    scheduleOrderBookLivePaint();
   };
  }catch(_e){
   orderBookLive.socket=null;orderBookLive.connected=false;
   orderBookLive.retryAt=Date.now()+10000;
+  if(config.kind==='binance'){
+   orderBookLive.wsRetryAt=Date.now()+30000;
+   startOrderBookLive(true,true);
+  }
  }
 }
 function keepOrderBookLive(){
  if(state.page!=='orderbook'||document.hidden||!navigator.onLine)return;
- if(orderBookLive.transport==='poll'&&orderBookLive.coin===orderBookState.id)return;
+ if(orderBookLive.transport==='poll'&&orderBookLive.coin===orderBookState.id){
+  if(liveBookConfig(orderBookState.id)?.kind==='binance'&&orderBookLive.wsRetryAt&&
+     Date.now()>=orderBookLive.wsRetryAt){
+   orderBookLive.wsRetryAt=0;
+   startOrderBookLive(true);
+  }
+  return;
+ }
  if(orderBookLive.coin===orderBookState.id&&orderBookLive.socket){
   // A socket may be OPEN but silent (invalid pair/subscription). Recover.
   const noDataFor=Date.now()-(orderBookLive.lastDepthAt||orderBookLive.startedAt);
@@ -2118,6 +2144,7 @@ function selectOrderBookAsset(id){
   cancelOrderBookFetch();
   orderBookState.id=id;orderBookState.data=null;orderBookState.error=null;
   orderBookState.lastTry=0;orderBookState.updatedAt=0;orderBookState.venue='';orderBookState.mode='';
+   orderBookLive.wsRetryAt=0;orderBookLive.attempt=0;
   orderBookState.lastTrade=null;orderBookState.lastTradeAt=0;orderBookState.previousTrade=null;
   save('orderBookCoin',id);
  }
@@ -2250,7 +2277,7 @@ async function refreshOrderBook(force=false){
    if(serial!==orderBookState.serial||coin!==orderBookState.id)return;
    orderBookState.data={bids,asks,unit:ASSET_BY_ID[coin].symbol.replace('-USD','')};
    orderBookState.updatedAt=Date.now();
-   orderBookState.venue=src.venue;orderBookState.pair=src.pair;orderBookState.mode='live';
+   orderBookState.venue=src.venue;orderBookState.pair=src.pair;orderBookState.mode='snapshot';
    orderBookState.lastTrade=null;orderBookState.lastTradeAt=0;orderBookState.previousTrade=null;orderBookState.error=null;
    success=true;break;
   }catch(err){
