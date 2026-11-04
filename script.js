@@ -2419,6 +2419,7 @@ function keepOrderBookLive(){
 
 function selectOrderBookAsset(id){
  if(!ASSET_BY_ID[id]||ASSET_BY_ID[id].group!=='crypto')return;
+ workspaceBookCoin=id;
  if(id!==orderBookState.id){
   stopOrderBookLive();
   cancelOrderBookFetch();
@@ -2944,29 +2945,44 @@ function workspaceOrderBookChoices(){
  if(!matches.length)return '<p class="ws-empty">Nessuna criptovaluta trovata.</p>';
  return matches.map(a=>{
   const selected=a.id===workspaceBookCoin,book=cryptoBookEntry(a.id),src=orderBookSource(a.id);
+  const hasData=selected&&!!orderBookState.data&&Date.now()-orderBookState.updatedAt<90000;
+  const live=selected&&(orderBookIsStreaming()||orderBookIsFastPolling());
   return '<button type="button" class="ws-book-choice'+(selected?' is-selected':'')+
    '" data-ws-book="'+esc(a.id)+'" aria-pressed="'+selected+'">'+
    '<span class="ws-book-choice-logo">'+assetLogo(a)+'</span>'+
    '<span class="ws-book-choice-info"><strong>'+esc(a.short||a.name)+'</strong>'+
    '<small>'+esc(a.symbol.replace('-USD',''))+' · '+esc(book?.venue||src?.venue||'Nessuna fonte')+'</small></span>'+
-   '<span class="ws-book-choice-indicator'+(book?' has-book':'')+'">'+(book?'●':'○')+'</span></button>';
+   '<span class="ws-book-choice-indicator'+(book||hasData?' has-book':'')+'" title="'+(live?'Feed attivo':book||hasData?'Book presente':'Book in attesa')+'">'+(book||hasData?'●':'○')+'</span></button>';
  }).join('');
 }
 function workspaceOrderBookLevels(){
- const coin=ASSET_BY_ID[workspaceBookCoin]||ORDER_BOOK_COINS[0],book=cryptoBookEntry(coin.id),src=orderBookSource(coin.id);
- const venue=book?.venue||src?.venue||'Fonte non disponibile';
+ const coin=ASSET_BY_ID[workspaceBookCoin]||ORDER_BOOK_COINS[0],snapshot=cryptoBookEntry(coin.id);
+ const elapsed=Date.now()-orderBookState.updatedAt;
+ const current=coin.id===orderBookState.id&&!!orderBookState.data&&elapsed>=0&&
+  elapsed<=(orderBookState.mode==='snapshot'?3*60*60*1000:90000);
+ const book=current?{bids:orderBookState.data.bids,asks:orderBookState.data.asks,
+  venue:orderBookState.venue,pair:orderBookState.pair,time:orderBookState.updatedAt}:snapshot;
+ const src=orderBookSource(coin.id),venue=book?.venue||src?.venue||'Fonte non verificata';
  const pair=book?.pair||src?.pair||coin.symbol.replace('-USD','')+'/USDT';
+ const live=coin.id===orderBookState.id&&orderBookIsStreaming();
+ const poll=coin.id===orderBookState.id&&orderBookIsFastPolling();
+ const status=live?'● LIVE · WebSocket':
+  poll?'● AGGIORNAMENTO RAPIDO · REST ogni ~3 s':
+  current&&orderBookState.mode!=='snapshot'?'⚠ Aggiornamento interrotto · ultimi livelli ricevuti':
+  book?'Snapshot verificato · non in streaming':
+  orderBookState.busy?'Caricamento dei livelli BID/ASK…':'Book non disponibile: dati verificati assenti';
  const side=(rows,bid)=>'<div class="ws-book-side '+(bid?'ws-book-bid':'ws-book-ask')+'">'+
   '<strong>'+(bid?'BID · Acquisti':'ASK · Vendite')+'</strong>'+
   '<div class="ws-book-headers"><span>Prezzo</span><span>Quantità</span><span>Totale (USDT)</span></div>'+
   rows.slice(0,10).map(([price,qty])=>'<div class="ws-book-row"><span>'+orderBookNumber(price,true)+'</span>'+
    '<span>'+orderBookNumber(qty)+'</span><span>'+orderBookNumber(price*qty)+'</span></div>').join('')+'</div>';
+ const time=book?.time?' · '+esc(localeDate(book.time,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'})):'';
  return '<div class="ws-book-active-head">'+assetLogo(coin)+'<div><strong>'+esc(coin.name)+
   '</strong><small>'+esc(venue+' · '+pair)+'</small></div></div>'+
-  (book?'<p class="ws-subnote">Snapshot verificato del '+esc(localeDate(book.time,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+
-   ' · non in streaming. Apri Order Book per i dati live.</p>'+
+  '<p class="ws-subnote ws-book-status" role="status">'+esc(status)+time+'</p>'+
+  (book&&Array.isArray(book.bids)&&Array.isArray(book.asks)?
    '<div class="ws-book-grid">'+side(book.asks,false)+side(book.bids,true)+'</div>':
-   '<p class="ws-empty">Livelli BID/ASK verificati non disponibili. Apri Order Book per aggiornare i dati.</p>');
+   '<p class="ws-empty">Livelli BID/ASK non disponibili. Apri l’Order Book completo per riprovare.</p>');
 }
 function workspaceWidgetBody(id){
  if(id==='summary'){
