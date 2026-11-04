@@ -1,0 +1,36 @@
+name: Vertex Site Smoke Tests
+on:
+  push:
+    branches: [main]
+    paths:
+      - script.js
+      - style.css
+      - index.html
+      - tests/site-smoke.cjs
+      - .github/workflows/site-smoke.yml
+      - manifest-*.webmanifest
+      - icons/**
+      - crypto-orderbooks-data.js
+      - ore-orderbook-data.js
+  pull_request:
+    paths:
+      - script.js
+      - style.css
+      - index.html
+      - tests/site-smoke.cjs
+      - .github/workflows/site-smoke.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    name: Verify site and integrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JavaScript syntax and all Vertex sections
+        run: node tests/site-smoke.cjs
