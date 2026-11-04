@@ -205,6 +205,13 @@ function loadPortfolioHoldings(){
  const saved=load('holdings',[]);
  return Array.isArray(saved)?saved:[];
 }
+const VERTEX_FONTS=Object.freeze({
+ inter:{name:'Inter',description:'Moderno e pulito'},
+ roboto:{name:'Roboto',description:'Essenziale e leggibile'},
+ poppins:{name:'Poppins',description:'Morbido e contemporaneo'},
+ montserrat:{name:'Montserrat',description:'Deciso ed elegante'},
+ lora:{name:'Lora',description:'Raffinato, con grazie'}
+});
 const state={
  page:(location.hash||'#global').slice(1).toLowerCase(),quotes:{},feedTime:null,feedError:false,loading:true,
  watch:Array.isArray(load('watch',[]))?load('watch',[]):[],
@@ -216,11 +223,12 @@ const state={
  alertSound:load('cryptoAlertSound',false)===true,
  // Automatic UPPER/LOWER threshold as a percent of the first observed spot price.
  cryptoAutoPercent:(()=>{const p=Number(load('cryptoAutoPercent',1));return Number.isFinite(p)?Math.min(5,Math.max(.1,p)):1})(),
- theme:load('theme','dark'),themeMode:load('themeMode',load('theme','dark')),clickSound:load('clickSound',true),clickVolume:load('clickVolume',70),brightness:load('brightness',100),adaptiveBrightness:load('adaptiveBrightness',false)===true,region:null,marketFilter:'all',marketSearch:'',dialogId:null,chartShift:0,chartHover:null,
+ theme:load('theme','dark'),themeMode:load('themeMode',load('theme','dark')),fontStyle:load('fontStyle','inter'),clickSound:load('clickSound',true),clickVolume:load('clickVolume',70),brightness:load('brightness',100),adaptiveBrightness:load('adaptiveBrightness',false)===true,region:null,marketFilter:'all',marketSearch:'',dialogId:null,chartShift:0,chartHover:null,
  land:'',searchResults:[],errorText:'',cryptoExpanded:false,
  solarLastRoot:null,solarLastUpdate:0,solarLastStatus:0
 };
 if(!SECTIONS[state.page])state.page='global';
+if(!Object.hasOwn(VERTEX_FONTS,state.fontStyle))state.fontStyle='inter';
 if(!(state.themeMode==='auto'||Object.hasOwn(THEME_NAMES,state.themeMode)))state.themeMode='dark';
 state.theme=resolvedTheme(state.themeMode);
 state.clickSound=state.clickSound!==false;
@@ -2781,6 +2789,15 @@ function settingsPage(){
  '<div class="settings-volume-scale"><span>0%</span><span>100%</span></div>'+
  '<p class="subnote">'+(state.adaptiveBrightness?'Luminosità adattiva attiva: la pagina cambia automaticamente tra giorno, sera e notte. Disattivala per riprendere il controllo manuale.':'Regola la luminosità della pagina, non quella fisica dello schermo. Al minimo resta leggibile per poterla aumentare di nuovo.')+'</p></div></section>'+
 
+ '<section class="content-card panel settings-preferences settings-font-section" aria-label="Carattere della dashboard">'+
+ '<h3>Caratteri dei testi</h3><p class="subnote">Scegli uno dei cinque font: viene applicato subito a tutta la dashboard e resta salvato su questo dispositivo.</p>'+
+ '<div class="settings-font-grid" role="group" aria-label="Scegli il font dei testi">'+
+ Object.entries(VERTEX_FONTS).map(([id,info])=>
+  '<button type="button" data-font-style="'+id+'" class="settings-font-option font-preview-'+id+(state.fontStyle===id?' is-selected':'')+'" aria-pressed="'+(state.fontStyle===id)+'" aria-label="'+info.name+': '+info.description+'">'+
+  '<span class="settings-font-option-head"><strong>'+info.name+'</strong><span class="settings-font-check" aria-hidden="true">'+(state.fontStyle===id?'✓':'')+'</span></span>'+
+  '<span class="settings-font-demo" aria-hidden="true">Mercati e criptovalute · 123,45</span>'+
+  '<small>'+info.description+'</small></button>').join('')+
+ '</div><p class="subnote settings-font-footnote">Se un font non è disponibile offline, il sistema utilizza un carattere alternativo leggibile.</p></section>'+
  '<section class="content-card panel settings-preferences settings-app-icon-section">'+
  '<div class="settings-app-icon-heading"><div><h3>Icona app · Vertex</h3><p class="subnote">Personalizza il logo dell’app. Scegli lo stile da utilizzare per l’icona e per le nuove installazioni.</p></div>'+
  '<img class="settings-app-icon-current" src="'+vertexIconPath('192')+'" alt="Anteprima icona Vertex selezionata"></div>'+
@@ -2910,6 +2927,17 @@ function applyTheme(){
   button.classList.toggle('is-selected',selected);
   button.setAttribute('aria-pressed',String(selected));
  });
+}
+function applyFontStyle(){
+ document.documentElement.dataset.vertexFont=state.fontStyle;
+}
+function setFontStyle(id){
+ if(!Object.hasOwn(VERTEX_FONTS,id))return;
+ state.fontStyle=id;
+ applyFontStyle();
+ save('fontStyle',id);
+ if(state.dialogId)scheduleDetailChartDraw();
+ if(state.page==='settings')render();
 }
 function setTheme(mode){
  state.themeMode=(mode==='auto'||Object.hasOwn(THEME_NAMES,mode))?mode:'dark';
@@ -4183,7 +4211,8 @@ function drawChart(){
   {top:397+extra*.85,bottom:453+extra,label:'MACD'}
  ];
  function line(x1,y1,x2,y2,stroke,width=1){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.strokeStyle=stroke;ctx.lineWidth=width;ctx.stroke();}
- function text(value,x,y,align='left',size=10){ctx.fillStyle=color;ctx.font=size+'px Inter,Segoe UI,Arial';ctx.textAlign=align;ctx.fillText(value,x,y);}
+ const detailChartFont=getComputedStyle(document.documentElement).fontFamily;
+ function text(value,x,y,align='left',size=10){ctx.fillStyle=color;ctx.font=size+'px '+detailChartFont;ctx.textAlign=align;ctx.fillText(value,x,y);}
  for(const p of regions){
   for(let k=0;k<=3;k++){const y=p.top+(p.bottom-p.top)*k/3;line(left,y,width-right+4,y,grid,.6)}
   text(p.label,left+3,p.top+11,'left',9);
@@ -4527,6 +4556,7 @@ function setupEvents(){
    return;
   }
   if(btn.dataset.themeMode){setTheme(btn.dataset.themeMode);return;}
+  if(btn.dataset.fontStyle){setFontStyle(btn.dataset.fontStyle);return;}
   if(btn.dataset.soundToggle){
    const previous=state.clickSound;
    state.clickSound=!state.clickSound;
@@ -4711,7 +4741,7 @@ function startVertexApp(){
    if(reg.active)reg.active.postMessage({type:'VERTEX_WIDGETS_REFRESH'});
   }).catch(()=>{});
  }
- setupEvents();updateVertexAppIcon();applyTheme();applyBrightness();updateClock();
+ setupEvents();updateVertexAppIcon();applyTheme();applyFontStyle();applyBrightness();updateClock();
  setInterval(updateClock,30000);
  setInterval(()=>{if(state.adaptiveBrightness&&!document.hidden)applyBrightness()},60000);
  setInterval(updateWorldSunlight,1000);
