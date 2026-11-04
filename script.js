@@ -2899,7 +2899,8 @@ function workspaceReadLayout(){
 }
 let workspaceLayout=workspaceReadLayout();
 let workspaceEditMode=false;
-let workspaceBookCoin='btc';
+let workspaceBookCoin=orderBookState.id;
+let workspaceBookSearch='';
 function workspaceShown(id){return !workspaceLayout.hidden.includes(id)}
 function workspaceSave(){save('workspaceLayout',workspaceLayout)}
 function workspaceChange(action,id){
@@ -2926,6 +2927,36 @@ function workspaceChange(action,id){
  workspaceSave();render();
 }
 function workspaceAssets(ids){return '<div class="ws-asset-grid">'+ids.filter(id=>ASSET_BY_ID[id]).map(indexCard).join('')+'</div>'}
+function workspaceOrderBookChoices(){
+ const term=workspaceBookSearch.trim().toLowerCase();
+ const matches=ORDER_BOOK_COINS.filter(a=>(a.name+' '+a.short+' '+a.symbol).toLowerCase().includes(term));
+ if(!matches.length)return '<p class="ws-empty">Nessuna criptovaluta trovata.</p>';
+ return matches.map(a=>{
+  const selected=a.id===workspaceBookCoin,book=cryptoBookEntry(a.id),src=orderBookSource(a.id);
+  return '<button type="button" class="ws-book-choice'+(selected?' is-selected':'')+
+   '" data-ws-book="'+esc(a.id)+'" aria-pressed="'+selected+'">'+
+   '<span class="ws-book-choice-logo">'+assetLogo(a)+'</span>'+
+   '<span class="ws-book-choice-info"><strong>'+esc(a.short||a.name)+'</strong>'+
+   '<small>'+esc(a.symbol.replace('-USD',''))+' · '+esc(book?.venue||src?.venue||'Nessuna fonte')+'</small></span>'+
+   '<span class="ws-book-choice-indicator'+(book?' has-book':'')+'">'+(book?'●':'○')+'</span></button>';
+ }).join('');
+}
+function workspaceOrderBookLevels(){
+ const coin=ASSET_BY_ID[workspaceBookCoin]||ORDER_BOOK_COINS[0],book=cryptoBookEntry(coin.id),src=orderBookSource(coin.id);
+ const venue=book?.venue||src?.venue||'Fonte non disponibile';
+ const pair=book?.pair||src?.pair||coin.symbol.replace('-USD','')+'/USDT';
+ const side=(rows,bid)=>'<div class="ws-book-side '+(bid?'ws-book-bid':'ws-book-ask')+'">'+
+  '<strong>'+(bid?'BID · Acquisti':'ASK · Vendite')+'</strong>'+
+  '<div class="ws-book-headers"><span>Prezzo</span><span>Quantità</span><span>Totale (USDT)</span></div>'+
+  rows.slice(0,10).map(([price,qty])=>'<div class="ws-book-row"><span>'+orderBookNumber(price,true)+'</span>'+
+   '<span>'+orderBookNumber(qty)+'</span><span>'+orderBookNumber(price*qty)+'</span></div>').join('')+'</div>';
+ return '<div class="ws-book-active-head">'+assetLogo(coin)+'<div><strong>'+esc(coin.name)+
+  '</strong><small>'+esc(venue+' · '+pair)+'</small></div></div>'+
+  (book?'<p class="ws-subnote">Snapshot verificato del '+esc(localeDate(book.time,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+
+   ' · non in streaming. Apri Order Book per i dati live.</p>'+
+   '<div class="ws-book-grid">'+side(book.asks,false)+side(book.bids,true)+'</div>':
+   '<p class="ws-empty">Livelli BID/ASK verificati non disponibili. Apri Order Book per aggiornare i dati.</p>');
+}
 function workspaceWidgetBody(id){
  if(id==='summary'){
   const s=countMarketMood();
@@ -2978,23 +3009,13 @@ function workspaceWidgetBody(id){
     '" style="width:'+(num(meanRegion(r))?Math.min(100,Math.abs(meanRegion(r))*20+3):0)+'%"></div></div>'+
     '<strong class="'+trendClass(meanRegion(r))+'">'+pct(meanRegion(r))+'</strong></div>').join('')+'</div>';
  }
- if(id==='orderbook'){
-  const ids=['btc','eth','sol','ore'];
-  const coin=ASSET_BY_ID[workspaceBookCoin]||ASSET_BY_ID.btc;
-  const book=cryptoBookEntry(coin.id);
-  const lineSide=(rows,isBid)=>'<div class="ws-book-side '+(isBid?'ws-book-bid':'ws-book-ask')+'">'+
-   '<strong>'+(isBid?'BID · Acquisti':'ASK · Vendite')+'</strong>'+
-   '<div class="ws-book-headers"><span>Prezzo</span><span>Quantità</span><span>Totale</span></div>'+
-   rows.slice(0,10).map(([price,qty])=>'<div class="ws-book-row"><span>'+orderBookNumber(price,true)+'</span>'+
-    '<span>'+orderBookNumber(qty)+'</span><span>'+orderBookNumber(price*qty)+'</span></div>').join('')+'</div>';
-  return '<div class="ws-book-choices" role="group" aria-label="Scegli la crypto nel Workspace">'+
-   ids.map(id=>'<button type="button" data-ws-book="'+id+'" class="ws-chip'+(coin.id===id?' is-selected':'')+
-    '" aria-pressed="'+(coin.id===id)+'">'+esc(ASSET_BY_ID[id]?.short||id.toUpperCase())+'</button>').join('')+'</div>'+
-   (book?'<p class="ws-subnote">'+esc(book.venue+' · '+book.pair)+
-    ' · snapshot del '+esc(localeDate(book.time,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+
-    ' · non streaming nel Workspace</p><div class="ws-book-grid">'+lineSide(book.asks,false)+lineSide(book.bids,true)+'</div>':
-    '<p class="ws-empty">Order Book verificato non disponibile: apri la sezione completa per controllare lo streaming.</p>');
- }
+ if(id==='orderbook')return '<div class="ws-book-layout"><div class="ws-book-picker">'+
+  '<div class="ws-book-picker-heading"><strong>Tutte le criptovalute</strong><span>'+ORDER_BOOK_COINS.length+' asset</span></div>'+
+  '<label for="workspaceBookSearch">Cerca crypto</label>'+
+  '<input type="search" id="workspaceBookSearch" class="ws-book-search" autocomplete="off" '+
+  'placeholder="Nome o simbolo..." value="'+esc(workspaceBookSearch)+'">'+
+  '<div class="ws-book-choice-list" id="workspaceBookChoiceList" role="group" aria-label="Tutte le criptovalute">'+workspaceOrderBookChoices()+'</div></div>'+
+  '<div class="ws-book-detail" id="workspaceBookDetail">'+workspaceOrderBookLevels()+'</div></div>';
  if(id==='etf')return '<div class="ws-etf-grid">'+CRYPTO_ETF_PRODUCTS.map(product=>{
   const a=ASSET_BY_ID[product.crypto];
   return '<article class="ws-etf-item"><strong>'+esc(product.ticker)+'</strong>'+
@@ -4813,10 +4834,11 @@ function setupEvents(){
    return;
   }
   if(btn.dataset.wsBook){
-   if(!['btc','eth','sol','ore'].includes(btn.dataset.wsBook))return;
+   if(!ORDER_BOOK_COINS.some(a=>a.id===btn.dataset.wsBook))return;
+   const list=$('#workspaceBookChoiceList'),scroll=list?.scrollTop||0;
    workspaceBookCoin=btn.dataset.wsBook;
    const slot=document.querySelector('[data-ws-content="orderbook"]');
-   if(slot)slot.innerHTML=workspaceWidgetBody('orderbook');
+   if(slot){slot.innerHTML=workspaceWidgetBody('orderbook');const next=$('#workspaceBookChoiceList');if(next)next.scrollTop=scroll;}
    return;
   }
   if(btn.dataset.themeMode){setTheme(btn.dataset.themeMode);return;}
@@ -4901,6 +4923,11 @@ function setupEvents(){
   if(e.target.id==='orderBookSearch'){
    orderBookState.search=e.target.value;
    const list=$('#orderBookAssetList');if(list)list.innerHTML=orderBookAssetList();
+   return;
+  }
+  if(e.target.id==='workspaceBookSearch'){
+   workspaceBookSearch=e.target.value;
+   const list=$('#workspaceBookChoiceList');if(list)list.innerHTML=workspaceOrderBookChoices();
    return;
   }
   if(e.target.id==='cryptoAutoPercentSlider'){
