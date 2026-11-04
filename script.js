@@ -694,9 +694,9 @@ function updateLiveBadges(){
   n.textContent=liveLabel();n.classList.toggle('live-online',liveConnected());
  });
  document.querySelectorAll('.live-stream-note').forEach(n=>{
-  n.textContent=(liveConnected()?'Crypto Binance in streaming':'Crypto CoinGecko · refresh automatico')+
-   ' · '+(fxConnected()?'Forex broker MT5 in streaming':'Forex snapshot automatico')+
-   ' · Indici, Tech, Big Tech e Commodities: Yahoo Finance, anche ritardato.';
+  n.textContent=(liveConnected()?'Crypto Binance WebSocket LIVE':Date.now()-cryptoRestStatus.last<45000?'Crypto Binance REST ~15 s':'Crypto CoinGecko · feed ~5 min')+
+    ' · '+(fxConnected()?'Forex MT5 LIVE':'Forex Yahoo · feed ~5 min')+
+    ' · Indici, Tech, Big Tech e materie prime: Yahoo Finance ~5 min, quotazioni anche ritardate.';
  });
  document.querySelectorAll('.feed-summary-text').forEach(n=>n.textContent=feedSummaryLabel());
  document.querySelectorAll('.data-status').forEach(n=>n.classList.toggle('error',state.feedError));
@@ -887,6 +887,57 @@ function scheduleReconnect(){
  if(streamStatus.retryTimer||document.hidden||!navigator.onLine)return;
  const ms=Math.min(45000,1500*Math.pow(2,Math.min(5,streamStatus.attempt++)));
  streamStatus.retryTimer=setTimeout(()=>{streamStatus.retryTimer=null;connectCryptoStream()},ms);
+}
+/* Real Binance Spot prices while the WebSocket is down. REST is never labeled LIVE.
+   Fetch the public mini ticker for each available market in small batches; a
+   delisted pair cannot suppress the entire market list. */
+async function pollCryptoPrices(){
+ if(document.hidden||!navigator.onLine||cryptoRestStatus.busy||liveConnected()||
+    Date.now()<cryptoRestStatus.retryAt)return;
+ cryptoRestStatus.busy=true;
+ const controller=new AbortController();
+ const timer=setTimeout(()=>controller.abort(),9000);
+ try{
+  const symbols=Object.values(STREAM_PAIRS).map(pair=>pair.toUpperCase());
+  const chunks=[];
+  for(let i=0;i<symbols.length;i+=10)chunks.push(symbols.slice(i,i+10));
+  let added=0;
+  const rows=await Promise.all(chunks.map(async chunk=>{
+   try{
+    const url='https://data-api.binance.vision/api/v3/ticker/24hr?type=MINI&symbols='+
+     encodeURIComponent(JSON.stringify(chunk));
+    const response=await fetch(url,{cache:'no-store',signal:controller.signal});
+    if(!response.ok)return [];
+    const data=await response.json();
+    return Array.isArray(data)?data:[];
+   }catch(_error){return []}
+  }));
+  if(liveConnected())return;
+  const now=Date.now();
+  for(const row of rows.flat()){
+   const id=STREAM_IDS[row.symbol],price=Number(row.lastPrice),open=Number(row.openPrice);
+   if(!id||!Number.isFinite(price)||price<=0)continue;
+   const exchangeMs=Number(row.closeTime);
+   const stamp=Number.isFinite(exchangeMs)&&exchangeMs>now-120000&&exchangeMs<=now+60000?
+    exchangeMs:now;
+   const changePct=Number.isFinite(open)&&open>0?(price/open-1)*100:null;
+   const fresh={value:price,change:changePct,currency:'USDT',
+    source:'Binance Spot · REST',time:new Date(stamp).toISOString(),
+    live:false,polled:true,received:now};
+   STREAM_OVERLAY.set(id,fresh);
+   state.quotes[id]={...(state.quotes[id]||{id,history:[],candles:[]}),...fresh};
+   streamStatus.dirty.add(id);added++;
+  }
+  if(!added)throw new Error('Binance REST non disponibile');
+  cryptoRestStatus.last=now;cryptoRestStatus.failures=0;cryptoRestStatus.retryAt=0;
+  scheduleLivePaint();
+ }catch(_error){
+  cryptoRestStatus.failures++;
+  cryptoRestStatus.retryAt=Date.now()+Math.min(120000,15000*cryptoRestStatus.failures);
+  updateLiveBadges();
+ }finally{
+  clearTimeout(timer);cryptoRestStatus.busy=false;
+ }
 }
 function keepStreamAlive(){
  if(document.hidden||!navigator.onLine){closeStream();updateLiveBadges();return}
@@ -2723,14 +2774,16 @@ async function fetchQuotes(isManual=false){
   let answer;
   try{answer=await requestFeed(full)}
   catch(error){
-   if(full)throw error;
-   // Avoid downloading the large OHLC archive every 30s if the compact
-   // feed has not been published yet or is temporarily unavailable.
-   snapshotFetch.fastRetryAfter=Date.now()+5*60*1000;
-   if(snapshotFetch.fullAt&&Date.now()-snapshotFetch.fullAt<5*60*1000){
-    updateLiveBadges();return;
+   if(full){
+    // Load compact prices even when the large historical feed is unavailable.
+    full=false;answer=await requestFeed(false);
+   }else{
+    snapshotFetch.fastRetryAfter=Date.now()+60000;
+    if(snapshotFetch.fullAt&&Date.now()-snapshotFetch.fullAt<5*60*1000){
+     updateLiveBadges();return;
+    }
+    full=true;answer=await requestFeed(true);
    }
-   full=true;answer=await requestFeed(true);
   }
   if(!full)snapshotFetch.fastRetryAfter=0;
   const {payload:data,response}=answer;
@@ -4138,6 +4191,7 @@ function init(){
  connectCryptoStream();
  connectForexStream();
  setInterval(()=>{if(!document.hidden)fetchQuotes()},30000);
+ setInterval(pollCryptoPrices,15000);
  setInterval(keepStreamAlive,15000);
  setInterval(()=>{if(!document.hidden)connectForexStream();updateLiveBadges()},15000);
  document.addEventListener('visibilitychange',()=>{
@@ -4145,12 +4199,12 @@ function init(){
    navigator.serviceWorker.controller.postMessage({type:'VERTEX_WIDGETS_REFRESH'});
   if(document.hidden){closeStream();disconnectForexStream();stopOrderBookLive()}
   else {
-   connectCryptoStream();connectForexStream();fetchQuotes();updateWorldSunlight(true);applyBrightness();
+   connectCryptoStream();connectForexStream();fetchQuotes();pollCryptoPrices();updateWorldSunlight(true);applyBrightness();
    if(state.page==='orderbook'){startOrderBookLive();refreshOrderBook()}
   }
  });
  window.addEventListener('online',()=>{
-  connectCryptoStream();connectForexStream();fetchQuotes();
+  connectCryptoStream();connectForexStream();fetchQuotes();pollCryptoPrices();
   if(state.page==='orderbook'){startOrderBookLive(true);refreshOrderBook(true)}
  });
  window.addEventListener('offline',()=>{
