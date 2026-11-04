@@ -2914,6 +2914,110 @@ const CHART_PERIODS=[
 const CHART_PERIOD_BY_ID=Object.fromEntries(CHART_PERIODS.map(p=>[p.id,p]));
 let chartRange='1D';
 let chartSeries={id:null,range:null,candles:[],source:'',loading:false,error:'',partial:false};
+/* Keep observed prices separate from verified historical OHLC. A current candle
+   built from quotes is partial, and no missing ticks/bars are fabricated. */
+const chartObservedQuotes=new Map();
+let chartLivePaintTimer=null,marketMiniPaintTimer=null;
+function chartQuoteVenue(q){
+ const source=String(q&&q.source||'').toLowerCase();
+ if(source.includes('binance'))return 'binance';
+ if(source.includes('lbank'))return 'lbank';
+ if(source.includes('yahoo'))return 'yahoo';
+ if(source.includes('biquote')||source.includes('mt5'))return 'mt5';
+ return '';
+}
+function chartQuoteCompatible(id,venue,source){
+ const asset=ASSET_BY_ID[id],history=String(source||'').toLowerCase();
+ if(!asset||!venue)return false;
+ if(venue==='yahoo')return asset.group!=='crypto'&&history.includes('yahoo');
+ if(venue==='binance')return asset.group==='crypto'&&history.includes('binance');
+ if(venue==='lbank')return asset.group==='crypto'&&history.includes('lbank');
+ // Do not merge broker MT5 indicative prices with Yahoo historical candles.
+ return false;
+}
+function observeChartQuote(id,q){
+ if(!ASSET_BY_ID[id]||!q)return;
+ const price=Number(q.value),ts=Date.parse(q.time||''),now=Date.now(),venue=chartQuoteVenue(q);
+ if(!Number.isFinite(price)||price<=0||!Number.isFinite(ts)||!venue||
+    ts>now+60000||ts<now-4*3600000)return;
+ let values=chartObservedQuotes.get(id);
+ if(!values){values=[];chartObservedQuotes.set(id,values);}
+ const last=values[values.length-1];
+ if(last&&(ts<last.ts||(ts===last.ts&&price===last.price)))return;
+ values.push({ts,price,venue});
+ if(values.length>850)values.splice(0,values.length-850);
+ if(state.dialogId===id)scheduleChartLivePaint();
+}
+function scheduleChartLivePaint(){
+ if(chartLivePaintTimer!==null||document.hidden||!state.dialogId)return;
+ chartLivePaintTimer=setTimeout(()=>{
+  chartLivePaintTimer=null;
+  if(!state.dialogId||document.hidden)return;
+  updateChartLiveQuoteStatus();drawChart();
+ },240);
+}
+function chartCandleStepMs(id){
+ const period=CHART_PERIOD_BY_ID[chartRange],source=String(chartSeries.source||'').toLowerCase();
+ if(chartRange==='MAX')return ASSET_BY_ID[id]?.group==='crypto'?86400000:0;
+ if(period?.seconds){
+  if(source.includes('1m')||source.includes('minute1'))return 60000;
+  if(source.includes('5m')||source.includes('minute5'))return 300000;
+  return period.step;
+ }
+ if(ASSET_BY_ID[id]?.group==='crypto')return period?.step||60000;
+ const interval=period?.months?'1d':chartMarketInterval(period);
+ return interval==='1m'?60000:interval==='5m'?300000:
+  interval==='60m'?3600000:86400000;
+}
+function chartBucket(time,step){
+ if(step===0){
+  const date=new Date(time);
+  return Date.UTC(date.getUTCFullYear(),date.getUTCMonth(),1);
+ }
+ return Math.floor(time/step)*step;
+}
+function chartWithObservedQuotes(id,base){
+ if(base.length<2||chartSeries.id!==id||chartSeries.range!==chartRange)return base;
+ const observations=chartObservedQuotes.get(id);
+ if(!observations?.length)return base;
+ const step=chartCandleStepMs(id),now=Date.now(),out=base.slice();
+ const historicalEnd=base[base.length-1].t*1000;
+ let latestBucket=chartBucket(historicalEnd,step),lastTime=historicalEnd,changed=false;
+ for(const tick of observations){
+  if(!chartQuoteCompatible(id,tick.venue,chartSeries.source)||tick.ts<historicalEnd||
+     tick.ts>now+60000||tick.ts<now-4*3600000)continue;
+  const bucket=chartBucket(tick.ts,step);
+  if(bucket<latestBucket||tick.ts<lastTime)continue;
+  if(bucket>latestBucket){
+   out.push({t:bucket/1000,o:tick.price,h:tick.price,
+    l:tick.price,c:tick.price,observed:true});
+   latestBucket=bucket;changed=true;
+  }else{
+   const index=out.length-1,prev=out[index];
+   out[index]={...prev,h:Math.max(prev.h,tick.price),
+    l:Math.min(prev.l,tick.price),c:tick.price,observed:true};
+   changed=true;
+  }
+  lastTime=tick.ts;
+ }
+ return changed?out:base;
+}
+function updateChartLiveQuoteStatus(){
+ const el=$('#chartLiveQuoteStatus');
+ if(!el||!state.dialogId)return;
+ const id=state.dialogId,q=quote(id),label=instrumentQuoteStatus(id);
+ const venue=chartQuoteVenue(q),compatible=chartQuoteCompatible(id,venue,chartSeries.source);
+ el.textContent=label+(q&&q.live&&venue==='mt5'?' · prezzo broker indicativo separato dallo storico Yahoo':
+  compatible?' · candela recente parziale aggiornata da prezzi osservati':'');
+ el.classList.toggle('live-online',label.startsWith('● LIVE'));
+}
+function scheduleMarketMiniPaint(){
+ if(marketMiniPaintTimer!==null||state.page!=='markets'||document.hidden)return;
+ marketMiniPaintTimer=setTimeout(()=>{
+  marketMiniPaintTimer=null;
+  if(state.page==='markets'&&!document.hidden)updateMarketsSnapshotCharts();
+ },1600);
+}
 const chartFetchState={sequence:0,abort:null,cache:new Map()};
 function chartStartTime(period,now){
  if(period.all)return 0;
@@ -3581,7 +3685,7 @@ function openAsset(id){
  const a=ASSET_BY_ID[id];if(!a)return;
  chartFetchState.sequence++;
  if(chartFetchState.abort)chartFetchState.abort.abort();
- chartRange='MAX';
+ chartRange='1D';
  chartSeries={id:null,range:null,candles:[],source:'',loading:false,error:'',partial:false};
  state.dialogId=id;state.chartShift=0;state.chartHover=null;
  const dlg=$('#assetDialog');
@@ -3602,6 +3706,7 @@ function openAsset(id){
 }
 function closeAsset(){
  stopChartLiveRefresh();
+ if(chartLivePaintTimer!==null){clearTimeout(chartLivePaintTimer);chartLivePaintTimer=null;}
  const dlg=$('#assetDialog');
  if(dlg.open)dlg.close();
  chartFetchState.sequence++;
@@ -3655,7 +3760,8 @@ function toggleWatch(id){
 }
 function getCandles(id){
  if(chartSupportsRanges(ASSET_BY_ID[id])){
-  return chartSeries.id===id&&chartSeries.range===chartRange?chartSeries.candles:[];
+  const raw=chartSeries.id===id&&chartSeries.range===chartRange?chartSeries.candles:[];
+  return chartWithObservedQuotes(id,raw);
  }
  const q=quote(id);
  if(!q||!Array.isArray(q.candles))return [];
