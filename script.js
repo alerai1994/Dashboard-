@@ -2564,7 +2564,35 @@ const cryptoAutoBaselines=new Map();
 const CRYPTO_PRICE_HIGHLIGHT_MS=15000;
 const cryptoPriceBoundaryStates=new Map();
 const cryptoAlertReached=new Map();
-let cryptoAlertAudioContext=null;
+/* One Web Audio context for all feedback, unlocked from a real touch/click.
+   iOS Safari can suspend or interrupt an older context after backgrounding. */
+let vertexAudioContext=null;
+let vertexAudioPrimed=false;
+function unlockVertexAudio(userGesture=false){
+ try{
+  const Audio=window.AudioContext||window.webkitAudioContext;
+  if(!Audio)return null;
+  if(!vertexAudioContext||vertexAudioContext.state==='closed'){
+   vertexAudioContext=new Audio();
+   vertexAudioPrimed=false;
+  }
+  const ctx=vertexAudioContext;
+  if(ctx.state!=='running'&&typeof ctx.resume==='function'){
+   const resumed=ctx.resume();
+   if(resumed&&typeof resumed.catch==='function')resumed.catch(()=>{});
+  }
+  if(userGesture&&!vertexAudioPrimed){
+   // A silent sound started on the user's gesture unlocks Safari's audio graph
+   // without producing an audible click or requiring a sound file download.
+   const osc=ctx.createOscillator(),gain=ctx.createGain(),t=ctx.currentTime;
+   gain.gain.setValueAtTime(0,t);
+   osc.connect(gain);gain.connect(ctx.destination);
+   osc.start(t);osc.stop(t+.02);
+   vertexAudioPrimed=true;
+  }
+  return ctx;
+ }catch(_error){return null}
+}
 // The bell also returns to its usual color 15 seconds after the latest alert.
 let cryptoAlertVisualDirection=null;
 let cryptoAlertVisualAsset='';
@@ -2609,22 +2637,12 @@ function updateCryptoAlertIndicator(){
  bell.setAttribute('aria-label',label);
  bell.title=label;
 }
-function unlockCryptoAlertAudio(){
+// UPPER: rising chime; LOWER: falling chime. Preview does not change alerts.
+function playCryptoAlertSound(direction='above',delay=0,preview=false){
+ if(!state.alertSound&&!preview)return false;
  try{
-  const Audio=window.AudioContext||window.webkitAudioContext;
-  if(!Audio)return;
-  if(!cryptoAlertAudioContext)cryptoAlertAudioContext=new Audio();
-  if(cryptoAlertAudioContext.state==='suspended')
-   cryptoAlertAudioContext.resume().catch(()=>{});
- }catch(_error){/* Some browsers do not permit audio. */}
-}
-// UPPER: rising three-tone chime; LOWER: falling three-tone chime.
-function playCryptoAlertSound(direction='above',delay=0){
- if(!state.alertSound)return;
- try{
-  unlockCryptoAlertAudio();
-  const ctx=cryptoAlertAudioContext;
-  if(!ctx||ctx.state==='closed')return;
+  const ctx=unlockVertexAudio(preview);
+  if(!ctx||ctx.state==='closed')return false;
   const notes=direction==='below'?[880,660,440]:
    direction==='enabled'?[660,880]:[660,880,1100];
   const startAt=ctx.currentTime+.025+delay;
@@ -2633,12 +2651,13 @@ function playCryptoAlertSound(direction='above',delay=0){
    osc.type=direction==='below'?'triangle':'sine';
    osc.frequency.setValueAtTime(frequency,start);
    gain.gain.setValueAtTime(.0001,start);
-   gain.gain.exponentialRampToValueAtTime(.065,start+.013);
-   gain.gain.exponentialRampToValueAtTime(.0001,start+.175);
+   gain.gain.exponentialRampToValueAtTime(.105,start+.013);
+   gain.gain.exponentialRampToValueAtTime(.0001,start+.19);
    osc.connect(gain);gain.connect(ctx.destination);
-   osc.start(start);osc.stop(start+.18);
+   osc.start(start);osc.stop(start+.20);
   });
- }catch(_error){/* Browser autoplay restrictions take precedence. */}
+  return true;
+ }catch(_error){return false}
 }
 function cryptoBoundaryFor(id){
  if(ASSET_BY_ID[id]?.group!=='crypto')return null;
@@ -2820,9 +2839,14 @@ function settingsPage(){
  '" style="--volume-progress:'+(state.cryptoAutoPercent/5*100)+'%" aria-label="Sensibilità campanella, percentuale di movimento">'+
  '<div class="settings-volume-scale"><span>±0,1%</span><span>±5%</span></div>'+
  '<p class="subnote">Ogni crypto parte dal primo prezzo realmente ricevuto in questa sessione. Dopo un avviso la sua soglia automatica si ricalibra sul prezzo raggiunto. Il prezzo e la campanella diventano gialli (UPPER) o rossi (LOWER) per 15 secondi, poi tornano al colore normale. Ogni nuovo segnale riavvia i 15 secondi per la relativa crypto. Nessuna pagina Alerts viene aperta. Eventuali soglie di prezzo già salvate continuano a funzionare.</p>'+
+ '<div class="settings-audio-tests" role="group" aria-label="Prova il suono degli avvisi crypto">'+
+ '<button type="button" class="outline-button" data-test-crypto-alert-sound="above">▶ Prova UPPER ↑</button>'+
+ '<button type="button" class="outline-button" data-test-crypto-alert-sound="below">▶ Prova LOWER ↓</button></div>'+
+ '<p class="subnote settings-audio-help">I pulsanti di prova riproducono solo un suono, senza generare falsi avvisi di prezzo. Per ascoltare gli avvisi reali attiva la campanella in alto a destra. Su iPhone e iPad serve un primo tocco per sbloccare l’audio; browser e sistema possono silenziare le schede in background.</p>'+
  '<button type="button" class="btn btn-small" data-crypto-bell-reset="1">Ricalibra tutte le 42 crypto ai prezzi attuali</button></div></section>'+
  '<section class="content-card panel settings-preferences"><div class="settings-sound-row"><div><h3>Suono al clic</h3><p class="subnote">Un breve suono quando premi i pulsanti. Puoi disattivarlo quando vuoi.</p></div>'+
  '<button type="button" data-sound-toggle="1" class="settings-sound-toggle'+(state.clickSound?' is-on':'')+'" role="switch" aria-checked="'+state.clickSound+'" aria-label="Suono al clic">'+(state.clickSound?'Attivo':'Disattivo')+'</button></div>'+
+ '<div class="settings-audio-tests" role="group" aria-label="Prova il suono al clic"><button type="button" class="outline-button" data-test-click-sound="1">▶ Prova suono clic</button></div>'+
  '<div class="settings-volume"><div class="settings-volume-heading"><label for="clickVolumeSlider">Volume dei clic</label><output id="clickVolumeValue" for="clickVolumeSlider">'+state.clickVolume+'%</output></div>'+
  '<input type="range" id="clickVolumeSlider" min="0" max="100" step="1" value="'+state.clickVolume+'" style="--volume-progress:'+state.clickVolume+'%" aria-label="Volume del suono al clic">'+
  '<div class="settings-volume-scale"><span>0%</span><span>100%</span></div></div></section>';
@@ -2948,28 +2972,22 @@ function setTheme(mode){
  if(state.dialogId)scheduleDetailChartDraw();
  if(state.page==='settings')render();
 }
-let clickAudioContext=null;
-function playClickSound(){
- if(!state.clickSound||state.clickVolume===0)return;
+function playClickSound(preview=false){
+ if((!state.clickSound&&!preview)||state.clickVolume===0)return false;
  try{
-  const Audio=window.AudioContext||window.webkitAudioContext;
-  if(!Audio)return;
-  if(!clickAudioContext)clickAudioContext=new Audio();
-  if(clickAudioContext.state==='suspended')clickAudioContext.resume().catch(()=>{});
-  const t=clickAudioContext.currentTime;
-  const tone=clickAudioContext.createOscillator();
-  const volume=clickAudioContext.createGain();
+  const ctx=unlockVertexAudio(preview);
+  if(!ctx||ctx.state==='closed')return false;
+  const t=ctx.currentTime,tone=ctx.createOscillator(),volume=ctx.createGain();
   tone.type='sine';
-  tone.frequency.setValueAtTime(680,t);
-  tone.frequency.exponentialRampToValueAtTime(490,t+0.05);
-  volume.gain.setValueAtTime(0.0001,t);
-  volume.gain.exponentialRampToValueAtTime(0.05*state.clickVolume/100,t+0.006);
-  volume.gain.exponentialRampToValueAtTime(0.0001,t+0.065);
-  tone.connect(volume);
-  volume.connect(clickAudioContext.destination);
-  tone.start(t);
-  tone.stop(t+0.07);
- }catch(e){/* Audio is optional; dashboard remains usable without it. */}
+  tone.frequency.setValueAtTime(790,t);
+  tone.frequency.exponentialRampToValueAtTime(520,t+.075);
+  volume.gain.setValueAtTime(.0001,t);
+  volume.gain.exponentialRampToValueAtTime(.095*state.clickVolume/100,t+.008);
+  volume.gain.exponentialRampToValueAtTime(.0001,t+.105);
+  tone.connect(volume);volume.connect(ctx.destination);
+  tone.start(t);tone.stop(t+.11);
+  return true;
+ }catch(_error){return false}
 }
 function toast(message){
  const el=$('#toast');el.textContent=String(message);el.hidden=false;clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.hidden=true,3400);
@@ -4476,11 +4494,22 @@ function savePortfolioForm(formElement){
     editing?'Posizione aggiornata e salvata.':'Posizione aggiunta e salvata.');
 }
 function setupEvents(){
+ // User gestures are required to unlock Web Audio on Safari/iOS and Chromium.
+ const unlockFromGesture=()=>{if(state.clickSound||state.alertSound)unlockVertexAudio(true)};
+ document.addEventListener('pointerdown',unlockFromGesture,true);
+ document.addEventListener('touchstart',unlockFromGesture,{capture:true,passive:true});
+ document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'||e.key===' ')unlockFromGesture();
+ },true);
  // A single delegated handler also covers buttons added when pages are rendered.
  document.addEventListener('click',e=>{
   const target=e.target instanceof Element?e.target.closest('button,a[href],tr[data-asset]'):null;
   if(target&&target.id!=='notificationsButton'&&!target.disabled&&
-    target.getAttribute('aria-disabled')!=='true')playClickSound();
+    target.dataset.testClickSound===undefined&&
+    target.dataset.testCryptoAlertSound===undefined&&
+    target.getAttribute('aria-disabled')!=='true'){
+   if(state.clickSound){unlockVertexAudio(true);playClickSound();}
+  }
  },true);
  if(deviceThemeQuery){
   const updateAutoTheme=()=>{if(state.themeMode==='auto'){applyTheme();if(state.page==='settings')render();}};
@@ -4508,8 +4537,8 @@ function setupEvents(){
   state.alertSound=!state.alertSound;
   save('cryptoAlertSound',state.alertSound);
   if(state.alertSound){
-   unlockCryptoAlertAudio();
-   playCryptoAlertSound('enabled');
+   const ctx=unlockVertexAudio(true);
+   if(!ctx||!playCryptoAlertSound('enabled'))toast('Il browser non supporta la riproduzione audio.');
   }
   updateCryptoAlertIndicator();
  });
@@ -4560,6 +4589,16 @@ function setupEvents(){
    if(navigator.clipboard&&navigator.clipboard.writeText){
     navigator.clipboard.writeText(link).then(()=>toast('Link copiato: aprilo in Chrome e installa l’app.'),()=>window.prompt('Copia questo link e aprilo in Chrome:',link));
    }else window.prompt('Copia questo link e aprilo in Chrome:',link);
+   return;
+  }
+  if(btn.dataset.testClickSound!==undefined){
+   if(state.clickVolume===0){toast('Aumenta il volume dei clic sopra 0% per ascoltare la prova.');return;}
+   if(!playClickSound(true))toast('Audio non disponibile nel browser. Verifica volume e audio del dispositivo.');
+   return;
+  }
+  if(btn.dataset.testCryptoAlertSound!==undefined){
+   if(!playCryptoAlertSound(btn.dataset.testCryptoAlertSound,0,true))
+    toast('Audio non disponibile nel browser. Verifica volume e audio del dispositivo.');
    return;
   }
   if(btn.dataset.themeMode){setTheme(btn.dataset.themeMode);return;}
