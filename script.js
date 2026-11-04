@@ -799,35 +799,55 @@ function patchSummary(){
 function updatePriceDom(){
  const ids=[...streamStatus.dirty];streamStatus.dirty.clear();
  if(document.hidden)return;
+ // A single page DOM traversal handles all currently dirty prices.
+ const dirty=new Set(ids),nodesById=new Map();
+ if(ids.length)document.querySelectorAll('#pageContainer [data-asset]').forEach(el=>{
+  const id=el.dataset.asset;
+  if(!dirty.has(id))return;
+  if(!nodesById.has(id))nodesById.set(id,[]);
+  nodesById.get(id).push(el);
+ });
  for(const id of ids){
   const a=ASSET_BY_ID[id],q=quote(id);
   if(!a||!q)continue;
-  document.querySelectorAll('#pageContainer [data-asset="'+id+'"]').forEach(el=>{
+  const shownPrice=assetValue(a),shownChange=pct(q.change),shownStatus=instrumentQuoteStatus(id);
+  for(const el of nodesById.get(id)||[]){
    const price=el.querySelector('.asset-price,.mini-price,.tech-asset-value');
    const delta=el.querySelector('.asset-change,.mini-change,.tech-asset-change');
-   if(price)price.textContent=assetValue(a);
-   if(delta){delta.textContent=pct(q.change);setMovementClass(delta,q.change)}
+   if(price&&price.textContent!==shownPrice)price.textContent=shownPrice;
+   if(delta){
+    if(delta.textContent!==shownChange)delta.textContent=shownChange;
+    setMovementClass(delta,q.change);
+   }
    if(el.matches('tr[data-asset]')){
     const cells=el.querySelectorAll('td');
     if(cells.length>=3){
-     cells[1].textContent=assetValue(a);
-     cells[2].textContent=pct(q.change);
+     if(cells[1].textContent!==shownPrice)cells[1].textContent=shownPrice;
+     if(cells[2].textContent!==shownChange)cells[2].textContent=shownChange;
      setMovementClass(cells[2],q.change);
     }
    }
-   if(el.hasAttribute('data-trend'))el.dataset.trend=trend(q.change);
+   if(el.hasAttribute('data-trend')){
+    const current=trend(q.change);
+    if(el.dataset.trend!==current)el.dataset.trend=current;
+   }
    const asof=el.querySelector('.market-quote-asof');
-   if(asof)asof.textContent=instrumentQuoteStatus(id);
-   if(el.classList.contains('market-chart-card'))el.title=instrumentQuoteStatus(id);
-  });
+   if(asof&&asof.textContent!==shownStatus)asof.textContent=shownStatus;
+   if(el.classList.contains('market-chart-card')&&el.title!==shownStatus)
+    el.title=shownStatus;
+  }
   if(state.dialogId===id){
    const p=document.querySelector('#dialogBody .dialog-stats strong');
    const c=document.querySelector('#dialogBody .dialog-stats .change');
    const m=document.querySelector('#dialogBody .dialog-meta');
-   if(p)p.textContent=assetValue(a);
-   if(c){c.textContent=pct(q.change);setMovementClass(c,q.change)}
-   if(m)m.textContent=(q.live?'Tick '+(q.source||'streaming')+' · ':'Ultimo prezzo · ')+refTime(id);
-    updateChartLiveQuoteStatus();
+   if(p&&p.textContent!==shownPrice)p.textContent=shownPrice;
+   if(c){
+    if(c.textContent!==shownChange)c.textContent=shownChange;
+    setMovementClass(c,q.change);
+   }
+   const metadata=(q.live?'Tick '+(q.source||'streaming')+' · ':'Ultimo prezzo · ')+refTime(id);
+   if(m&&m.textContent!==metadata)m.textContent=metadata;
+   updateChartLiveQuoteStatus();
   }
  }
  if(ids.length){
