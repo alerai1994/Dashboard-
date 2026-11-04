@@ -1126,16 +1126,24 @@ function marketPreviewCandles(id,base){
  }
  return out.slice(-48);
 }
+const marketPreviewCache=new Map();
 function marketPreviewCandleData(id){
  const q=quote(id);
  if(!q||!Array.isArray(q.candles))return [];
+ const version=chartObservedVersions.get(id)||0,epoch=Math.floor(Date.now()/60000);
+ const cached=marketPreviewCache.get(id);
+ if(cached&&cached.base===q.candles&&cached.version===version&&
+    cached.epoch===epoch&&cached.source===q.candleSource)return cached.result;
  const valid=c=>{
   if(!c)return false;
   const o=Number(c.o),h=Number(c.h),l=Number(c.l),cl=Number(c.c);
   return [o,h,l,cl].every(Number.isFinite)&&o>0&&l>0&&cl>0&&
    h>=Math.max(o,cl)&&l<=Math.min(o,cl);
  };
- return marketPreviewCandles(id,q.candles.filter(valid).slice(-48));
+ const result=marketPreviewCandles(id,q.candles.filter(valid).slice(-48));
+ marketPreviewCache.set(id,{base:q.candles,version,epoch,source:q.candleSource,result});
+ if(marketPreviewCache.size>250)marketPreviewCache.delete(marketPreviewCache.keys().next().value);
+ return result;
 }
 function marketChartPlot(id){
  const q=quote(id),W=320,H=142,L=10,R=10,T=10,B=14,chartW=W-L-R,chartH=H-T-B;
@@ -1214,7 +1222,15 @@ function inspectMiniCandle(card,clientX){
  const index=Math.max(0,Math.min(candles.length-1,
   Math.floor((chartX-10)/(300/candles.length))));
  const candle=candles[index];
- tooltip.innerHTML=candleTooltipMarkup(candle);
+ const tooltipKey=[candle.t,candle.h,candle.l,candle.observed||false].join(':');
+ if(miniCandleHover?.card===card&&miniCandleHover.index===index&&
+    tooltip.dataset.candleKey===tooltipKey&&!tooltip.hidden){
+  miniCandleHover.clientX=clientX;return;
+ }
+ if(tooltip.dataset.candleKey!==tooltipKey){
+  tooltip.innerHTML=candleTooltipMarkup(candle);
+  tooltip.dataset.candleKey=tooltipKey;
+ }
  tooltip.hidden=false;
  // Position this compact label so its lower edge reaches the candle LOW,
  // using the same real OHLC scale as the miniature SVG.
@@ -1240,7 +1256,7 @@ function inspectMiniCandle(card,clientX){
  guide.setAttribute('y','10');
  guide.setAttribute('width',String(Math.max(1,step)));
  guide.setAttribute('height','118');
- miniCandleHover={card,clientX};
+ miniCandleHover={card,clientX,index};
 }
 function hideMiniCandle(card){
  if(!card)return;
@@ -4065,16 +4081,23 @@ function updateDetailCandleTooltip(candles,start,end,fxCandle,anchor){
   Number.isInteger(state.chartHover)&&state.chartHover>=start&&state.chartHover<end?
    candles[state.chartHover]:null;
  if(!selected){el.hidden=true;return;}
- const html=candleTooltipMarkup(selected);
- if(el.innerHTML!==html)el.innerHTML=html;
+ const key=[state.dialogId,selected.t,selected.h,selected.l,selected.observed||false].join(':');
+ if(el.dataset.candleKey!==key){
+  el.innerHTML=candleTooltipMarkup(selected);
+  el.dataset.candleKey=key;
+ }
  el.hidden=false;
  if(anchor){
   const container=el.closest('.chart-frame');
   if(container){
    const width=container.clientWidth,height=container.clientHeight;
-   const localX=anchor.x*width/anchor.canvasWidth;
-   const localY=anchor.lowY*height/anchor.canvasHeight;
-   positionCandleTooltip(el,container,localX,localY);
+   const positionKey=[anchor.x,anchor.lowY,anchor.canvasWidth,anchor.canvasHeight,width,height].join(':');
+   if(el.dataset.anchorKey!==positionKey){
+    const localX=anchor.x*width/anchor.canvasWidth;
+    const localY=anchor.lowY*height/anchor.canvasHeight;
+    positionCandleTooltip(el,container,localX,localY);
+    el.dataset.anchorKey=positionKey;
+   }
   }
  }
 }
