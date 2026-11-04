@@ -187,7 +187,7 @@ const CITY_MARKETS=[
 [-74,40.7,'sp500'],[-79.38,43.65,'tsx'],[-46.63,-23.55,'ibov'],[-0.13,51.51,'ftse'],[8.68,50.11,'dax'],[2.35,48.86,'cac'],[28.04,-26.2,'jse'],[46.7,24.7,'tadawul'],[139.7,35.7,'nikkei'],[114.17,22.31,'hsi'],[72.8,19.1,'nifty'],[126.9,37.5,'kospi'],[151.2,-33.87,'asx']
 ];
 const deviceThemeQuery=typeof window.matchMedia==='function'?window.matchMedia('(prefers-color-scheme: dark)'):null;
-const THEME_NAMES={light:'Chiaro',dark:'Scuro',ocean:'Oceano',emerald:'Smeraldo',violet:'Viola'};
+const THEME_NAMES={light:'Chiaro',dark:'Scuro',ocean:'Oceano',emerald:'Smeraldo',violet:'Viola',sand:'Sabbia',ice:'Ghiaccio',sunset:'Tramonto',graphite:'Grafite',ruby:'Rubino'};
 function resolvedTheme(mode){
  if(mode==='auto')return deviceThemeQuery&&deviceThemeQuery.matches?'dark':'light';
  return Object.hasOwn(THEME_NAMES,mode)?mode:'dark';
@@ -2775,10 +2775,10 @@ function evaluateCryptoAlerts(){
  paintCryptoPriceHighlights();
 }
 function settingsPage(){
- const choices=[['light','☀','Chiaro','Bianco e azzurro'],['dark','☾','Scuro','Blu notte'],['ocean','◈','Oceano','Blu e turchese'],['emerald','❖','Smeraldo','Verde elegante'],['violet','✦','Viola','Viola moderno']];
+ const choices=[['light','☀','Chiaro','Bianco e azzurro'],['dark','☾','Scuro','Blu notte'],['ocean','◈','Oceano','Blu e turchese'],['emerald','❖','Smeraldo','Verde elegante'],['violet','✦','Viola','Viola moderno'],['sand','☼','Sabbia','Crema e terracotta'],['ice','❅','Ghiaccio','Bianco e azzurro ghiaccio'],['sunset','◒','Tramonto','Corallo e prugna'],['graphite','◆','Grafite','Grigio e oro'],['ruby','♦','Rubino','Bordeaux e rosa']];
  return secHeader('Impostazioni','Personalizza aspetto, icona e suoni della dashboard')+
- '<section class="content-card panel settings-preferences"><h3>Temi della dashboard</h3><p class="subnote">Scegli fra cinque stili. Il tema cambia subito in tutte le sezioni e la tua preferenza rimane salvata.</p>'+
- '<div class="settings-theme-options" role="group" aria-label="Scegli uno dei cinque temi">'+
+ '<section class="content-card panel settings-preferences"><h3>Temi della dashboard</h3><p class="subnote">Scegli fra dieci stili. Il tema cambia subito in tutte le sezioni e la tua preferenza rimane salvata.</p>'+
+ '<div class="settings-theme-options" role="group" aria-label="Scegli uno dei dieci temi">'+
  choices.map(([mode,icon,label,description])=>'<button type="button" data-theme-mode="'+mode+'" class="settings-theme-option'+(state.themeMode===mode?' is-selected':'')+'" aria-label="'+label+': '+description+'" aria-pressed="'+(state.themeMode===mode)+'"><span class="settings-theme-swatch theme-swatch-'+mode+'" aria-hidden="true"><span>'+icon+'</span></span><span class="settings-theme-caption"><strong>'+label+'</strong><small>'+description+'</small></span></button>').join('')+
  '</div>'+
  '<button type="button" data-theme-mode="auto" class="settings-auto-theme'+(state.themeMode==='auto'?' is-selected':'')+'" aria-pressed="'+(state.themeMode==='auto')+'"><span class="settings-choice-icon" aria-hidden="true">◐</span><span><strong>Automatico</strong><small>Segue il tema chiaro/scuro del dispositivo</small></span><span class="settings-auto-state">'+(state.themeMode==='auto'?'Attivo':'Seleziona')+'</span></button>'+
@@ -2945,6 +2945,7 @@ function setTheme(mode){
  applyTheme();
  save('themeMode',state.themeMode);
  save('theme',state.theme);
+ if(state.dialogId)scheduleDetailChartDraw();
  if(state.page==='settings')render();
 }
 let clickAudioContext=null;
@@ -4198,8 +4199,10 @@ function drawChart(){
  if(canvas.height!==pixelHeight)canvas.height=pixelHeight;
  ctx.setTransform(dpr,0,0,dpr,0,0);
  ctx.clearRect(0,0,width,height);
- const dark=state.theme==='dark',color=dark?'#9db4c8':'#536c82',grid=dark?'#173149':'#dbe3e8';
- ctx.fillStyle=dark?'#071523':'#f5f9fd';ctx.fillRect(0,0,width,height);
+ const chartColors=getComputedStyle(document.body);
+ const color=chartColors.getPropertyValue('--muted').trim()||'#9db4c8';
+ const grid=chartColors.getPropertyValue('--line-soft').trim()||'#173149';
+ ctx.fillStyle=chartColors.getPropertyValue('--panel').trim()||'#071523';ctx.fillRect(0,0,width,height);
  const left=19,right=fxCandle?110:67,chartW=width-left-right,visible=chartVisibleCandleCount(candles,width);
  const maxShift=Math.max(0,candles.length-visible);
  state.chartShift=Math.max(0,Math.min(maxShift,state.chartShift));
