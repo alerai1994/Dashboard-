@@ -1,6 +1,6 @@
 {
   "source": "U.S. Securities and Exchange Commission",
-  "updated_at": "2026-11-04T15:54:13Z",
+  "updated_at": "2026-11-04T16:46:48Z",
   "seed_date": "2026-10-31T12:00:00Z",
   "feeds_updated": [
     "press",
@@ -8,6 +8,20 @@
     "testimony"
   ],
   "items": [
+    {
+      "category": "press",
+      "title": "SEC Adopts Amendments to Update Definitions of Small Entity for Investment Companies and Investment Advisers",
+      "url": "https://www.sec.gov/newsroom/press-releases/2026-112-sec-adopts-amendments-update-definitions-small-entity-investment-companies-investment-advisers",
+      "date": "2026-11-04T16:28:00Z",
+      "summary": "The Securities and Exchange Commission today adopted amendments to the rules that define which registered investment companies, investment advisers, and business development companies qualify as small entities for purposes of the"
+    },
+    {
+      "category": "speeches",
+      "title": "Statement on the Adoption of Amendments to Small Entity Definitions",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/uyeda-statement-small-entity-definitions-110426",
+      "date": "2026-11-04T13:09:55Z",
+      "summary": "Commissioner Mark T. Uyeda"
+    },
     {
       "category": "speeches",
       "title": "Remarks at the Practicing Law Institute’s 58th Annual Institute on Securities Regulation",
