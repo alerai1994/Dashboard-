@@ -863,6 +863,7 @@ function updatePriceDom(){
    const metadata=(q.live?'Tick '+(q.source||'streaming')+' · ':'Ultimo prezzo · ')+refTime(id);
    if(m&&m.textContent!==metadata)m.textContent=metadata;
    updateChartLiveQuoteStatus();
+   scheduleDetailChartDraw();
   }
  }
  if(ids.length){
@@ -4471,6 +4472,56 @@ function chartVisibleCandleCount(candles,width){
  }
  return Math.max(25,Math.min(280,Math.floor((Math.max(360,width)-86)/8)));
 }
+
+/* Right-edge current-price marker for full charts (crypto and all markets).
+   Uses the last shown genuine candle; newer quotes only from compatible venues. */
+function detailChartRightMargin(broker){return broker?156:133;}
+function detailChartPriceMarker(id,candles,end,broker){
+ const last=candles[end-1],previous=candles[end-2],asset=ASSET_BY_ID[id];
+ if(!last||!asset)return null;
+ let price=Number(broker?broker.c:last.c);
+ let baseline=Number(broker?broker.o:last.o);
+ const q=quote(id),time=Date.parse(q?.time||''),incoming=Number(q?.value);
+ const compatible=!broker&&end===candles.length&&
+  chartQuoteCompatible(id,chartQuoteVenue(q),chartSeries.source);
+ const fresh=compatible&&Number.isFinite(incoming)&&incoming>0&&
+  Number.isFinite(time)&&time>=Number(last.t)*1000&&
+  time<=Date.now()+60000&&Date.now()-time<=(asset.group==='crypto'?15*60000:36*3600000);
+ if(fresh){
+  price=incoming;
+  const ticks=chartObservedQuotes.get(id);
+  const previousTick=ticks?.length>=2?ticks[ticks.length-2]:null;
+  const lastTick=ticks?.length?ticks[ticks.length-1]:null;
+  if(previousTick&&lastTick&&previousTick.venue===lastTick.venue&&
+     lastTick.ts<=time&&Math.abs(time-lastTick.ts)<120000&&
+     Number.isFinite(previousTick.price)&&previousTick.price>0&&
+     previousTick.price!==price)baseline=previousTick.price;
+ }
+ if(!Number.isFinite(price)||price<=0)return null;
+ if(!Number.isFinite(baseline)||baseline<=0)baseline=Number(previous?.c)||price;
+ return {price,direction:price>baseline?1:price<baseline?-1:0,
+  label:formatValue(price,asset),fresh};
+}
+function drawDetailRightPriceMarker(ctx,marker,layout){
+ if(!marker||!Number.isFinite(marker.price))return;
+ const {width,left,right,top,bottom,y}=layout;
+ const up=marker.direction>=0,color=up?'#119d68':'#d4475a';
+ const guide=up?'rgba(17,157,104,.52)':'rgba(212,71,90,.52)';
+ const tagHeight=23,centerY=Math.max(top+tagHeight/2+2,
+  Math.min(bottom-tagHeight/2-2,y));
+ const label=(up?'▲ ':'▼ ')+marker.label;
+ ctx.save();
+ ctx.font='700 11px Inter, sans-serif';
+ const tagWidth=Math.min(right-10,Math.max(66,Math.ceil(ctx.measureText(label).width)+16));
+ const rightEdge=width-5,x=rightEdge-tagWidth;
+ ctx.setLineDash([4,4]);ctx.lineWidth=1;ctx.strokeStyle=guide;
+ ctx.beginPath();ctx.moveTo(left,centerY);ctx.lineTo(x-3,centerY);ctx.stroke();
+ ctx.setLineDash([]);
+ ctx.fillStyle=color;ctx.beginPath();ctx.roundRect(x,centerY-tagHeight/2,tagWidth,tagHeight,6);ctx.fill();
+ ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='middle';
+ ctx.fillText(label,x+tagWidth/2,centerY+.5,tagWidth-8);
+ ctx.restore();
+}
 function drawChart(){
  if(!state.dialogId)return;
  const canvas=$('#detailChart');if(!canvas||!canvas.isConnected)return;
@@ -4489,7 +4540,7 @@ function drawChart(){
  // Theme-aware highlighted candle; avoids undefined dark on pointer hover.
  const dark=!['light','sand','ice'].includes(state.theme);
  ctx.fillStyle=chartColors.getPropertyValue('--panel').trim()||'#071523';ctx.fillRect(0,0,width,height);
- const left=19,right=fxCandle?110:67,chartW=width-left-right,visible=chartVisibleCandleCount(candles,width);
+ const left=19,right=detailChartRightMargin(!!fxCandle),chartW=width-left-right,visible=chartVisibleCandleCount(candles,width);
  const maxShift=Math.max(0,candles.length-visible);
  state.chartShift=Math.max(0,Math.min(maxShift,state.chartShift));
  const start=Math.max(0,candles.length-visible-state.chartShift),end=Math.min(candles.length,start+visible),sample=candles.slice(start,end);
@@ -4515,9 +4566,11 @@ function drawChart(){
   return;
  }
  const ix=i=>left+(i-start+.5)*chartW/sample.length;
+ const priceMarker=detailChartPriceMarker(state.dialogId,candles,end,fxCandle);
  const {closes,emaSets,rsiValues,st,m}=chartPreparedIndicators(candles);
  const lows=sample.map(x=>x.l),highs=sample.map(x=>x.h);
  if(fxCandle){lows.push(fxCandle.l);highs.push(fxCandle.h)}
+ if(priceMarker?.fresh){lows.push(priceMarker.price);highs.push(priceMarker.price)}
  emaSets.forEach(a=>a.values.slice(start,end).forEach(v=>{if(num(v)){lows.push(v);highs.push(v)}}));
  const lo=Math.min(...lows),hi=Math.max(...highs),pad=(hi-lo||Math.max(hi*.03,1))*.07;
  const min=lo-pad,max=hi+pad;
@@ -4623,6 +4676,9 @@ function drawChart(){
   ctx.fillStyle=dark?'#a7eecf':'#007b56';ctx.fill();
  }
  updateDetailCandleTooltip(candles,start,end,fxCandle,lowAnchor);
+ if(priceMarker)drawDetailRightPriceMarker(ctx,priceMarker,{
+  width,left,right,top:regions[0].top,bottom:regions[0].bottom,y:yPrice(priceMarker.price)
+ });
  if(closes.length<205){text('EMA 200: storico insufficiente',width-right-9,26,'right',9)}
 }
 function setupCanvasInteractions(){
@@ -4637,7 +4693,7 @@ function setupCanvasInteractions(){
   const candles=getCandles(state.dialogId);
   if(!candles.length){state.chartHover=null;chartHoverForex=false;scheduleDetailChartDraw();return;}
   const fx=forexBrokerObservedCandle(state.dialogId);
-  const right=fx?110:67;
+  const right=detailChartRightMargin(!!fx);
   if(fx&&px>=width-right+1&&px<width-right+34){
    chartHoverForex=true;state.chartHover=null;scheduleDetailChartDraw();return;
   }
