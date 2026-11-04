@@ -6,6 +6,7 @@
 :root[data-vertex-font="poppins"]{--vertex-font:'Poppins','Trebuchet MS',Arial,sans-serif}
 :root[data-vertex-font="montserrat"]{--vertex-font:'Montserrat','Arial',sans-serif}
 :root[data-vertex-font="lora"]{--vertex-font:'Lora',Georgia,'Times New Roman',serif}
+:root[data-vertex-font="nunito"]{--vertex-font:'Nunito Sans','Trebuchet MS',Arial,sans-serif}
 *{box-sizing:border-box}
 html{min-height:100%;scroll-behavior:smooth}
 body{margin:0;min-height:100vh;background:radial-gradient(ellipse 65% 80% at 55% 38%,#0b2537 0%,#081522 55%,#060e17 100%);color:var(--text);overflow-x:hidden}
@@ -1814,4 +1815,5 @@ body.page-global .top-actions #profileButton{flex:0 0 auto}
 .font-preview-poppins{font-family:'Poppins','Trebuchet MS',Arial,sans-serif}
 .font-preview-montserrat{font-family:'Montserrat',Arial,sans-serif}
 .font-preview-lora{font-family:'Lora',Georgia,serif}
+.font-preview-nunito{font-family:'Nunito Sans','Trebuchet MS',Arial,sans-serif}
 @media(max-width:560px){.settings-font-grid{grid-template-columns:1fr;gap:8px}.settings-font-option{min-height:94px;padding:12px 13px}}
