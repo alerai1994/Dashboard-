@@ -3034,7 +3034,10 @@ function workspacePage(){
     (position===visible.length-1?' disabled':'')+' title="Sposta sotto">↓</button>'+
     '<button type="button" data-ws-action="size" data-ws-id="'+id+'" aria-label="'+(wide?'Riduci':'Allarga')+' '+esc(w.label)+'" title="'+(wide?'Riduci':'Allarga')+'">'+(wide?'↘':'⤢')+'</button>'+
     '<button type="button" data-ws-action="toggle" data-ws-id="'+id+'" aria-label="Nascondi '+esc(w.label)+'" title="Nascondi">×</button>':'')+
-   '<button type="button" class="ws-open" data-page="'+w.page+'" aria-label="Apri la sezione '+esc(w.label)+'">Apri ↗</button></div></div>'+
+   '<button type="button" class="ws-open" data-page="'+w.page+'"'+
+    (w.page==='markets'?' data-category="'+
+      (['crypto','tech','bigtech','forex','commodities'].includes(id)?id:id==='markets'?'markets':'all')+'"':'')+
+    ' aria-label="Apri la sezione '+esc(w.label)+'">Apri ↗</button></div></div>'+
    '<div class="ws-widget-content" data-ws-content="'+id+'">'+workspaceWidgetBody(id)+'</div></section>';
  };
  return secHeader('Workspace','La tua postazione modulare, con tutte le aree di Vertex in un unico posto')+
