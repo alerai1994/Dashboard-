@@ -1124,16 +1124,22 @@ function marketPreviewCandles(id,base){
  }
  return out.slice(-48);
 }
+function marketPreviewCandleData(id){
+ const q=quote(id);
+ if(!q||!Array.isArray(q.candles))return [];
+ const valid=c=>{
+  if(!c)return false;
+  const o=Number(c.o),h=Number(c.h),l=Number(c.l),cl=Number(c.c);
+  return [o,h,l,cl].every(Number.isFinite)&&o>0&&l>0&&cl>0&&
+   h>=Math.max(o,cl)&&l<=Math.min(o,cl);
+ };
+ return marketPreviewCandles(id,q.candles.filter(valid).slice(-48));
+}
 function marketChartPlot(id){
  const q=quote(id),W=320,H=142,L=10,R=10,T=10,B=14,chartW=W-L-R,chartH=H-T-B;
  const grid='<path d="M10 42H310 M10 82H310 M10 122H310" stroke="currentColor" stroke-opacity=".13" stroke-width=".7" fill="none"/>';
  const plot=(svg,note)=>'<svg viewBox="0 0 320 142" preserveAspectRatio="none" aria-hidden="true">'+grid+svg+'</svg><span class="market-chart-note">'+note+'</span>';
- const valid=c=>{
-  if(!c)return false;
-  const o=Number(c.o),h=Number(c.h),l=Number(c.l),cl=Number(c.c);
-  return [o,h,l,cl].every(num)&&o>0&&h>0&&l>0&&cl>0&&h>=Math.max(o,cl)&&l<=Math.min(o,cl);
- };
- const candles=q&&Array.isArray(q.candles)?marketPreviewCandles(id,q.candles.filter(valid).slice(-48)):[];
+ const candles=marketPreviewCandleData(id);
  if(candles.length>=2){
   const low=Math.min(...candles.map(c=>Number(c.l))),high=Math.max(...candles.map(c=>Number(c.h)));
   const pad=Math.max((high-low)*.09,high*.0002),min=low-pad,max=high+pad;
@@ -1177,7 +1183,8 @@ function marketChartCard(a){
  '<span class="market-chart-values"><strong class="asset-price">'+assetValue(a)+'</strong>'+
  '<span class="asset-change '+classArrow(a.id)+'">'+pct(q&&q.change)+'</span></span>'+
  '<small class="market-quote-asof">'+esc(instrumentQuoteStatus(a.id))+'</small>'+
- '<span class="market-mini-chart">'+marketChartPlot(a.id)+'</span>'+
+ '<span class="market-mini-chart">'+marketChartPlot(a.id)+'</span>'+ 
+  '<span class="mini-candle-tooltip" aria-hidden="true" hidden></span>'+
  '<span class="market-chart-open">Grafico completo · EMA · RSI · Stoch RSI · MACD</span></button>';
 }
 function marketsCards(items){
@@ -1190,12 +1197,93 @@ function marketsCards(items){
    '<div class="market-chart-grid">'+assets.map(marketChartCard).join('')+'</div></section>';
  }).join('');
 }
+let miniCandlePointer=null,miniCandleHover=null,miniCandleSuppressClickUntil=0;
+function inspectMiniCandle(card,clientX){
+ if(!card||!card.isConnected)return;
+ const svg=card.querySelector('.market-mini-chart svg');
+ const tooltip=card.querySelector('.mini-candle-tooltip');
+ if(!svg||!tooltip)return;
+ const candles=marketPreviewCandleData(card.dataset.asset);
+ if(candles.length<2){tooltip.hidden=true;return;}
+ const box=svg.getBoundingClientRect();
+ if(!box.width)return;
+ const chartX=((clientX-box.left)/box.width)*320;
+ const index=Math.max(0,Math.min(candles.length-1,
+  Math.floor((chartX-10)/(300/candles.length))));
+ const candle=candles[index];
+ tooltip.innerHTML=candleTooltipMarkup(candle);
+ tooltip.hidden=false;
+ const cardBox=card.getBoundingClientRect();
+ tooltip.style.top=Math.max(8,box.top-cardBox.top+6)+'px';
+ let guide=svg.querySelector('[data-mini-candle-guide]');
+ if(!guide){
+  guide=document.createElementNS('http://www.w3.org/2000/svg','rect');
+  guide.setAttribute('data-mini-candle-guide','1');
+  guide.setAttribute('fill','rgba(95,173,220,.23)');
+  guide.setAttribute('pointer-events','none');
+  svg.appendChild(guide);
+ }
+ const step=300/candles.length;
+ guide.setAttribute('x',String(10+index*step));
+ guide.setAttribute('y','10');
+ guide.setAttribute('width',String(Math.max(1,step)));
+ guide.setAttribute('height','118');
+ miniCandleHover={card,clientX};
+}
+function hideMiniCandle(card){
+ if(!card)return;
+ const tooltip=card.querySelector('.mini-candle-tooltip');
+ if(tooltip)tooltip.hidden=true;
+ const guide=card.querySelector('[data-mini-candle-guide]');
+ if(guide)guide.remove();
+ if(miniCandleHover?.card===card)miniCandleHover=null;
+}
+function setupMiniCandleInteractions(){
+ const page=$('#pageContainer');
+ page.addEventListener('pointerdown',e=>{
+  if(state.page!=='markets')return;
+  const chart=e.target.closest('.market-mini-chart');
+  if(!chart)return;
+  miniCandlePointer={chart,id:e.pointerId,x:e.clientX,y:e.clientY,dragged:false};
+  if(e.pointerType==='touch'){
+   e.preventDefault();
+   try{chart.setPointerCapture(e.pointerId)}catch(_error){}
+  }
+  inspectMiniCandle(chart.closest('.market-chart-card'),e.clientX);
+ });
+ page.addEventListener('pointermove',e=>{
+  if(state.page!=='markets')return;
+  const chart=e.target.closest('.market-mini-chart')||
+   (miniCandlePointer?.id===e.pointerId?miniCandlePointer.chart:null);
+  if(!chart)return;
+  if(miniCandlePointer?.id===e.pointerId){
+   if(Math.hypot(e.clientX-miniCandlePointer.x,e.clientY-miniCandlePointer.y)>9)
+    miniCandlePointer.dragged=true;
+  }
+  inspectMiniCandle(chart.closest('.market-chart-card'),e.clientX);
+ });
+ const finish=e=>{
+  if(miniCandlePointer?.id!==e.pointerId)return;
+  if(miniCandlePointer.dragged)miniCandleSuppressClickUntil=Date.now()+550;
+  miniCandlePointer=null;
+ };
+ page.addEventListener('pointerup',finish);
+ page.addEventListener('pointercancel',finish);
+ page.addEventListener('pointerleave',e=>{
+  if(!e.target.classList?.contains('market-mini-chart')||e.pointerType==='touch')return;
+  if(miniCandlePointer?.chart===e.target)return;
+  hideMiniCandle(e.target.closest('.market-chart-card'));
+ },true);
+}
 function updateMarketsSnapshotCharts(){
  if(state.page!=='markets')return;
  document.querySelectorAll('#marketRows .market-chart-card[data-asset]').forEach(card=>{
   const node=card.querySelector('.market-mini-chart');if(!node)return;
   const next=marketChartPlot(card.dataset.asset);
-  if(node.innerHTML!==next)node.innerHTML=next;
+  if(node.innerHTML!==next){
+   node.innerHTML=next;
+   if(miniCandleHover?.card===card)inspectMiniCandle(card,miniCandleHover.clientX);
+  }
  });
 }
 function marketsPage(){
@@ -4233,6 +4321,9 @@ function setupEvents(){
   if($('#sidebar').classList.contains('open'))$('#sidebar').classList.remove('open');
  });
  $('#pageContainer').addEventListener('click',e=>{
+  if(Date.now()<miniCandleSuppressClickUntil&&e.target.closest('.market-mini-chart')){
+   e.preventDefault();e.stopPropagation();return;
+  }
   const btn=e.target.closest('button,a,tr[data-asset]');
   if(!btn)return;
   if(btn.dataset.secCategory){secNewsState.selected=btn.dataset.secCategory;secNewsState.visible=20;render();return;}
@@ -4420,7 +4511,7 @@ function setupEvents(){
   state.dialogId=null;state.chartHover=null;
  });
  $('#dialogWatch').addEventListener('click',()=>state.dialogId&&toggleWatch(state.dialogId));
- setupCanvasInteractions();
+ setupCanvasInteractions();setupMiniCandleInteractions();
  window.addEventListener('resize',()=>{if(state.dialogId)requestAnimationFrame(drawChart)});
  window.addEventListener('hashchange',()=>navigate(location.hash.slice(1)));
 }
