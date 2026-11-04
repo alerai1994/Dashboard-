@@ -39,12 +39,25 @@ const ore=JSON.parse(read('ore-orderbook-data.js').replace(/^window\.__VERTEX_OR
 assert(ore.bids?.length>0&&ore.asks?.length>0,'ORE orderbook missing bids or asks');
 
 const adapted=source.replace('(function () {','return (function () {')
- .replace(/\}\)\(\);\s*$/,'return {PAGE_RENDERERS,state,portfolioPage,edit:i=>portfolioEditIndex=i};})();');
+ .replace(/\}\)\(\);\s*$/,'return {PAGE_RENDERERS,state,portfolioPage,edit:i=>portfolioEditIndex=i,unlockVertexAudio,playClickSound,playCryptoAlertSound};})();');
 assert(adapted.includes('edit:i=>'),'Cannot instrument app for smoke test');
+/* Simulated WebAudio: exercise sound scheduling without playing real audio in CI. */
+const audioEvents={created:0,resumes:0,notes:[]};
+class MockAudioContext{
+ constructor(){audioEvents.created++;this.state='suspended';this.currentTime=10;this.destination={};MockAudioContext.last=this}
+ resume(){audioEvents.resumes++;this.state='running';return Promise.resolve()}
+ createOscillator(){
+  const note={type:'sine',frequency:0};
+  return {get type(){return note.type},set type(v){note.type=v},
+   frequency:{setValueAtTime(v){note.frequency=v},exponentialRampToValueAtTime(){}},
+   connect(){},start(){audioEvents.notes.push({...note})},stop(){}};
+ }
+ createGain(){return {gain:{setValueAtTime(){},exponentialRampToValueAtTime(){}},connect(){}}}
+}
 const emptyStorage={getItem:()=>null,setItem(){},removeItem(){}};
 const document={readyState:'loading',body:{className:''},querySelector:()=>null,querySelectorAll:()=>[],addEventListener(){}};
 const app=new Function('window','document','location','localStorage','sessionStorage','navigator','URLSearchParams',adapted)(
- {matchMedia:()=>({matches:true,addEventListener(){}}),__VERTEX_CRYPTO_BOOKS__:books,__VERTEX_ORE_BOOK__:ore},
+ {matchMedia:()=>({matches:true,addEventListener(){}}),AudioContext:MockAudioContext,__VERTEX_CRYPTO_BOOKS__:books,__VERTEX_ORE_BOOK__:ore},
  document,{hash:'#global',search:'',origin:'https://example.test',hostname:'example.test'},
  emptyStorage,emptyStorage,{onLine:false},URLSearchParams);
 app.state.quotes=Object.fromEntries(rows.map(row=>[row.id,row]));
@@ -68,3 +81,32 @@ for(const key of ['themeMode','fontStyle','portfolioSave','orderBookAsset','asse
 app.state.holdings=[null];app.edit(0);
 assert(app.portfolioPage().includes('portfolioForm'),'Corrupt portfolio holding crashes edit');
 console.log('PASS themes/fonts/feeds/icons/orderbook/portfolio corruption');
+
+assert(settings.includes('data-test-click-sound="1"'),'No test for click sound');
+assert(settings.includes('data-test-crypto-alert-sound="above"'),'No UPPER audio preview');
+assert(settings.includes('data-test-crypto-alert-sound="below"'),'No LOWER audio preview');
+const startCount=audioEvents.notes.length;
+app.state.alertSound=true;
+assert.equal(app.playCryptoAlertSound('above'),false,'Alerts should not queue before user unlock');
+assert.equal(audioEvents.notes.length,startCount);
+app.unlockVertexAudio(true);
+assert.equal(audioEvents.created,1,'Expected a single audio context');
+assert.equal(audioEvents.resumes,1,'Audio context should resume on gesture');
+assert.equal(audioEvents.notes.length,startCount+1,'Gesture should schedule a silent primer');
+assert.equal(app.playClickSound(),true,'Button click sound must schedule');
+assert.equal(audioEvents.notes.length,startCount+2);
+assert.equal(app.playCryptoAlertSound('above'),true,'UPPER chime must schedule');
+assert.deepEqual(audioEvents.notes.slice(-3).map(x=>x.frequency),[660,880,1100]);
+assert.equal(app.playCryptoAlertSound('below'),true,'LOWER chime must schedule');
+assert.deepEqual(audioEvents.notes.slice(-3).map(x=>x.frequency),[880,660,440]);
+app.state.alertSound=false;
+assert.equal(app.playCryptoAlertSound('above'),false,'Disabled alerts must remain silent');
+assert.equal(app.playCryptoAlertSound('above',0,true),true,'UPPER preview must work even if bell off');
+app.state.clickSound=false;
+assert.equal(app.playClickSound(),false,'Disabled click feedback must remain silent');
+assert.equal(app.playClickSound(true),true,'Click preview must play even if normal feedback off');
+MockAudioContext.last.state='interrupted';
+app.unlockVertexAudio(true);
+assert.equal(audioEvents.resumes,2,'Audio must recover after iOS interruption');
+assert.equal(audioEvents.created,1,'Click and alert sounds must share one context');
+console.log('PASS gesture-unlocked audio, UPPER/LOWER tones, sound previews, silent mode and recovery');
