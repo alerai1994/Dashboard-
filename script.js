@@ -3420,7 +3420,7 @@ function observeChartQuote(id,q){
  values.push({ts,price,venue});
  if(values.length>850)values.splice(0,values.length-850);
  chartObservedVersions.set(id,(chartObservedVersions.get(id)||0)+1);
- if(state.page==='markets'){marketMiniDirty.add(id);scheduleMarketMiniPaint()}
+ if(state.page==='markets'||state.page==='workspace'){marketMiniDirty.add(id);scheduleMarketMiniPaint()}
  if(state.dialogId===id)scheduleChartLivePaint();
 }
 function scheduleChartLivePaint(){
