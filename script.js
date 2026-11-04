@@ -4054,30 +4054,87 @@ function drawChart(){
 }
 function setupCanvasInteractions(){
  const dlg=$('#assetDialog');
+ function inspectAtPointer(canvas,event){
+  if(!state.dialogId)return;
+  const bounds=canvas.getBoundingClientRect();
+  if(!bounds.width)return;
+  // Canvas uses a 360px minimum logical width even on narrower phones.
+  const width=Math.max(360,Math.floor(bounds.width));
+  const px=(event.clientX-bounds.left)*width/bounds.width;
+  const candles=getCandles(state.dialogId);
+  if(!candles.length){state.chartHover=null;chartHoverForex=false;drawChart();return;}
+  const fx=forexBrokerObservedCandle(state.dialogId);
+  const right=fx?110:67;
+  if(fx&&px>=width-right+1&&px<width-right+34){
+   chartHoverForex=true;state.chartHover=null;drawChart();return;
+  }
+  chartHoverForex=false;
+  const count=chartVisibleCandleCount(candles,width),size=Math.min(count,candles.length);
+  const start=Math.max(0,candles.length-count-state.chartShift);
+  const scaled=(px-19)/(width-19-right);
+  const offset=Math.max(0,Math.min(size-1,Math.floor(scaled*size)));
+  state.chartHover=start+offset;
+  drawChart();
+ }
  dlg.addEventListener('pointerdown',e=>{
   if(e.target.id!=='detailChart')return;
-  const can=e.target;
-  can.setPointerCapture(e.pointerId);
-  can.dataset.downX=String(e.clientX);can.dataset.startShift=String(state.chartShift);
+  const canvas=e.target;
+  if(e.pointerType==='touch')e.preventDefault();
+  try{canvas.setPointerCapture(e.pointerId)}catch(_err){}
+  canvas.dataset.downX=String(e.clientX);
+  canvas.dataset.startShift=String(state.chartShift);
+  inspectAtPointer(canvas,e);
  });
  dlg.addEventListener('pointermove',e=>{
   if(e.target.id!=='detailChart')return;
-  const can=e.target;
-  const width=can.getBoundingClientRect().width;
-  const candles=getCandles(state.dialogId);
-  const visible=chartVisibleCandleCount(candles,width);
-  const start=Math.max(0,candles.length-visible-state.chartShift);
-  const relative=(e.clientX-can.getBoundingClientRect().left)/width;
-  const idx=Math.floor(start+relative*visible);
-  state.chartHover=Math.max(0,Math.min(candles.length-1,idx));
-  if(can.hasPointerCapture(e.pointerId)){
-   const moved=e.clientX-Number(can.dataset.downX||e.clientX);
-   const begin=Number(can.dataset.startShift)||0;
-   state.chartShift=Math.max(0,Math.min(Math.max(0,candles.length-visible),Math.round(begin+moved/Math.max(5,width/visible))));
+  const canvas=e.target;
+  if(canvas.hasPointerCapture?.(e.pointerId)&&canvas.dataset.downX!==undefined){
+   const rect=canvas.getBoundingClientRect(),candles=getCandles(state.dialogId);
+   const width=Math.max(360,Math.floor(rect.width));
+   const size=chartVisibleCandleCount(candles,width);
+   const physicalStep=Math.max(5,rect.width/Math.max(1,Math.min(size,candles.length)));
+   const delta=e.clientX-Number(canvas.dataset.downX);
+   const begin=Number(canvas.dataset.startShift)||0;
+   state.chartShift=Math.max(0,Math.min(Math.max(0,candles.length-size),
+    Math.round(begin+delta/physicalStep)));
   }
+  inspectAtPointer(canvas,e);
+ });
+ dlg.addEventListener('pointerup',e=>{
+  if(e.target.id!=='detailChart')return;
+  delete e.target.dataset.downX;
+  delete e.target.dataset.startShift;
+ });
+ dlg.addEventListener('pointercancel',e=>{
+  if(e.target.id!=='detailChart')return;
+  delete e.target.dataset.downX;
+  delete e.target.dataset.startShift;
+  // Keep the selected touch candle readable after a cancelled gesture.
+ });
+ dlg.addEventListener('pointerleave',e=>{
+  if(e.target.id!=='detailChart'||e.pointerType==='touch'||
+     e.target.hasPointerCapture?.(e.pointerId))return;
+  state.chartHover=null;chartHoverForex=false;drawChart();
+ },true);
+ dlg.addEventListener('keydown',e=>{
+  if(e.target.id!=='detailChart'||!['ArrowLeft','ArrowRight','Escape'].includes(e.key))return;
+  e.preventDefault();
+  if(e.key==='Escape'){
+   state.chartHover=null;chartHoverForex=false;drawChart();return;
+  }
+  const candles=getCandles(state.dialogId);
+  if(!candles.length)return;
+  const delta=e.key==='ArrowLeft'?-1:1;
+  const current=Number.isInteger(state.chartHover)?state.chartHover:candles.length-1;
+  state.chartHover=Math.max(0,Math.min(candles.length-1,current+delta));
+  chartHoverForex=false;
+  const canvas=$('#detailChart'),width=Math.max(360,Math.floor(canvas.getBoundingClientRect().width));
+  const size=chartVisibleCandleCount(candles,width);
+  const start=Math.max(0,candles.length-size-state.chartShift);
+  if(state.chartHover<start)state.chartShift=Math.min(candles.length-size,state.chartShift+(start-state.chartHover));
+  if(state.chartHover>=start+size)state.chartShift=Math.max(0,state.chartShift-(state.chartHover-start-size+1));
   drawChart();
  });
- dlg.addEventListener('pointerleave',e=>{if(e.target.id==='detailChart'){state.chartHover=null;drawChart()}},true);
  dlg.addEventListener('wheel',e=>{if(e.target.id==='detailChart')e.preventDefault()},{passive:false});
 }
 function savePortfolioForm(formElement){
