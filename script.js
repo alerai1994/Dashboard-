@@ -1272,6 +1272,8 @@ function setupMiniCandleInteractions(){
  const finish=e=>{
   if(miniCandlePointer?.id!==e.pointerId)return;
   if(miniCandlePointer.dragged)miniCandleSuppressClickUntil=Date.now()+550;
+  // Remove the rectangle and LOW indicator as soon as touch/mouse is lifted.
+  hideMiniCandle(miniCandlePointer.chart.closest('.market-chart-card'));
   miniCandlePointer=null;
  };
  page.addEventListener('pointerup',finish);
@@ -4235,16 +4237,19 @@ function setupCanvasInteractions(){
   if(e.target.id!=='detailChart')return;
   delete e.target.dataset.downX;
   delete e.target.dataset.startShift;
+  // Releasing a finger or mouse button clears the floating candle box.
+  state.chartHover=null;chartHoverForex=false;drawChart();
  });
  dlg.addEventListener('pointercancel',e=>{
   if(e.target.id!=='detailChart')return;
   delete e.target.dataset.downX;
   delete e.target.dataset.startShift;
-  // Keep the selected touch candle readable after a cancelled gesture.
+  state.chartHover=null;chartHoverForex=false;drawChart();
  });
  dlg.addEventListener('pointerleave',e=>{
-  if(e.target.id!=='detailChart'||e.pointerType==='touch'||
-     e.target.hasPointerCapture?.(e.pointerId))return;
+  if(e.target.id!=='detailChart')return;
+  // No lingering box after the cursor leaves the candle area.
+  if(e.target.hasPointerCapture?.(e.pointerId))return;
   state.chartHover=null;chartHoverForex=false;drawChart();
  },true);
  dlg.addEventListener('keydown',e=>{
