@@ -1517,3 +1517,52 @@ body.theme-light :is(.btn,.outline-button,.sidebar-theme-button,
  .crypto-cap-metric{padding:10px}
 }
 @media(prefers-reduced-motion:reduce){.crypto-cap-swap{transition:none}}
+
+
+/* Translucent candle inspection bands: desktop hover, touch scrub and keyboard. */
+.chart-frame{position:relative}
+.chart-frame canvas{touch-action:none}
+.chart-candle-tooltip,.mini-candle-tooltip{
+ display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;
+ gap:6px 18px;padding:10px 13px;
+ color:#e9f5fc;background:rgba(8,24,40,.78);
+ border:1px solid rgba(122,183,221,.45);
+ border-radius:9px;box-shadow:0 5px 22px rgba(0,0,0,.18);
+ backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+ font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;
+ line-height:1.35;pointer-events:none;z-index:7;
+}
+.chart-candle-tooltip[hidden],.mini-candle-tooltip[hidden]{display:none!important}
+.chart-candle-tooltip{position:absolute;top:10px;left:10px;right:10px}
+.candle-tooltip-date{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.candle-tooltip-date small{font-size:10px;opacity:.74;font-weight:500}
+.candle-tooltip-high,.candle-tooltip-low{white-space:nowrap;font-size:10px;letter-spacing:.02em}
+.candle-tooltip-high{color:#75efbb}
+.candle-tooltip-low{color:#ff9caa}
+.candle-tooltip-high strong,.candle-tooltip-low strong{
+ margin-left:5px;font-size:13px;font-weight:770;letter-spacing:0;
+}
+.candle-tooltip-partial{font-size:10px;font-weight:500;color:#bcd8e9;white-space:nowrap}
+.market-chart-card{position:relative}
+.market-mini-chart svg{touch-action:none}
+.mini-candle-tooltip{
+ position:absolute;left:9px;right:9px;top:108px;z-index:4;
+ gap:5px 9px;padding:7px 9px;font-size:10px;
+}
+.mini-candle-tooltip .candle-tooltip-date{flex-basis:100%;font-size:11px}
+.mini-candle-tooltip .candle-tooltip-date small{font-size:9px}
+.mini-candle-tooltip .candle-tooltip-high strong,
+.mini-candle-tooltip .candle-tooltip-low strong{font-size:11px}
+.theme-light .chart-candle-tooltip,.theme-light .mini-candle-tooltip{
+ color:#143146;background:rgba(239,248,255,.88);
+ border-color:rgba(62,129,168,.4);
+}
+.theme-light .candle-tooltip-high{color:#007a51}
+.theme-light .candle-tooltip-low{color:#b02f46}
+.theme-light .candle-tooltip-partial{color:#45677f}
+@media(max-width:760px){
+ .chart-candle-tooltip{top:7px;left:6px;right:6px;padding:8px 10px;gap:5px 12px}
+ .chart-candle-tooltip .candle-tooltip-date{width:100%;font-size:11px}
+ .chart-candle-tooltip .candle-tooltip-high strong,
+ .chart-candle-tooltip .candle-tooltip-low strong{font-size:12px}
+}
