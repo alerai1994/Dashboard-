@@ -2810,14 +2810,20 @@ function updateNav(){
  updateCryptoAlertIndicator();
 }
 function render(){
- // Global: place AR immediately to the left of the notification bell.
- // Other sections keep their original header order.
+ // Global header: UTC/local clock (when visible), notification bell, then
+ // AR aligned at the far right. Preserve the other pages' original order.
  const bell=$('#notificationsButton'),profile=$('#profileButton'),actions=$('.top-actions');
+ const clock=actions?.querySelector('.live-clock');
+ document.body.classList.toggle('page-global',state.page==='global');
  if(actions&&bell&&profile){
   if(state.page==='global'){
-   if(profile.nextElementSibling!==bell)actions.insertBefore(profile,bell);
-  }else if(bell.nextElementSibling!==profile){
-   actions.insertBefore(bell,profile);
+   if(clock)actions.appendChild(clock);
+   actions.appendChild(bell);
+   actions.appendChild(profile);
+  }else{
+   actions.appendChild(bell);
+   actions.appendChild(profile);
+   if(clock)actions.appendChild(clock);
   }
  }
  const page=SECTIONS[state.page]||SECTIONS.global;
