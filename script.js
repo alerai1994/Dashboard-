@@ -162,6 +162,7 @@ const REGIONS=[
 {id:'oceania',name:'Oceania',italian:'Oceania',glyph:'🌏',ids:['asx'],lead:'asx',pin:[136,-27],callout:[86,77]}
 ];
 const REGION_BY_ID=Object.fromEntries(REGIONS.map(r=>[r.id,r]));
+const REGIONAL_ASSET_IDS=new Set(REGIONS.flatMap(r=>r.ids));
 const QUOTE_GROUPS=[
 {group:'commodities',title:'Commodities',icon:'🌐',ids:['gold','brent','wti','silver','naturalgas','copper']},
 {group:'forex',title:'Forex',icon:'🌐',ids:['eurusd','gbpusd','usdjpy','usdchf','audusd','usdcny']},
@@ -648,8 +649,8 @@ function marketGroupFacts(group){
  return {total:all.length,available:rows.length,live,polled,recent,latest,
   age:latest===null?null:Math.max(0,Math.round((now-latest)/60000))};
 }
-function marketGroupStatus(group){
- const f=marketGroupFacts(group),age=snapshotAgeMinutes();
+function marketGroupStatus(group,f=marketGroupFacts(group)){
+ const age=snapshotAgeMinutes();
  if(f.live>0){
   const venue=group==='crypto'?'Binance Spot':'Forex MT5';
   return '● LIVE '+venue+' '+f.live+'/'+f.total+(f.available>f.live?' · altre quotazioni differite':'');
@@ -664,11 +665,14 @@ function marketGroupStatus(group){
   return '⚠ Feed non recente · '+f.recent+'/'+f.total+' quotazioni recenti';
  return '↻ Feed ~5 min · '+f.recent+'/'+f.total+' quotazioni recenti · possibili ritardi';
 }
-function marketGroupLive(group){return marketGroupFacts(group).live>0}
+function marketGroupLive(group,facts){return (facts||marketGroupFacts(group)).live>0}
 function marketStatusStrip(){
  const groups=[['markets','Indici'],['tech','Tech'],['bigtech','Big Tech'],['forex','Forex'],['commodities','Commodities'],['crypto','Crypto']];
  return '<div class="market-live-strip" aria-label="Aggiornamento automatico dei mercati">'+
- groups.map(([key,name])=>'<span class="market-data-pill'+(marketGroupLive(key)?' live':'')+'" data-market-group="'+key+'"><strong>'+name+'</strong><small>'+marketGroupStatus(key)+'</small></span>').join('')+
+ groups.map(([key,name])=>{
+  const facts=marketGroupFacts(key);
+  return '<span class="market-data-pill'+(marketGroupLive(key,facts)?' live':'')+'" data-market-group="'+key+'"><strong>'+name+'</strong><small>'+marketGroupStatus(key,facts)+'</small></span>';
+ }).join('')+
  '</div>';
 }
 function feedSummaryLabel(){
@@ -682,13 +686,13 @@ function updateLiveBadges(){
  document.querySelectorAll('[data-market-group]').forEach(n=>{
   const group=n.dataset.marketGroup;
   if(!group)return;
-  const body=n.querySelector('small');
-  if(body)body.textContent=marketGroupStatus(group);else n.textContent=marketGroupStatus(group);
-  n.classList.toggle('live',marketGroupLive(group));
-  const facts=marketGroupFacts(group);
-  n.classList.toggle('stale',!marketGroupLive(group)&&
-   (state.feedError||snapshotAgeMinutes()===null||snapshotAgeMinutes()>18||
-    (facts.age!==null&&facts.age>20)));
+  const facts=marketGroupFacts(group),live=facts.live>0,age=snapshotAgeMinutes();
+  const status=marketGroupStatus(group,facts),body=n.querySelector('small');
+  if(body){if(body.textContent!==status)body.textContent=status}
+  else if(n.textContent!==status)n.textContent=status;
+  n.classList.toggle('live',live);
+  n.classList.toggle('stale',!live&&
+   (state.feedError||age===null||age>18||(facts.age!==null&&facts.age>20)));
   n.title='Fonte: '+(group==='crypto'?'Binance Spot/USDT e CoinGecko':group==='forex'?'Broker MT5 e Yahoo Finance':'Yahoo Finance')+
    '. Gli orari e i ritardi dipendono dalla fonte e dalle sessioni di mercato.';
  });
@@ -706,9 +710,10 @@ function updateLiveBadges(){
 
 function setMovementClass(element,value){
  if(!element)return;
- const classes=['color-up','color-down','color-flat','color-unknown'];
- element.classList.remove(...classes);
- element.classList.add(trendClass(value));
+ const target=trendClass(value);
+ if(element.classList.contains(target))return;
+ element.classList.remove('color-up','color-down','color-flat','color-unknown');
+ element.classList.add(target);
 }
 function patchRegions(){
  if(state.page!=='global')return;
@@ -826,11 +831,11 @@ function updatePriceDom(){
   }
  }
  if(ids.length){
-  patchRegions();
+  if(ids.some(id=>REGIONAL_ASSET_IDS.has(id)))patchRegions();
   patchPortfolio();
   patchSummary();
   evaluateCryptoAlerts();
-  paintCryptoPriceHighlights();
+  if(ids.some(id=>ASSET_BY_ID[id]?.group==='crypto'))paintCryptoPriceHighlights();
  }
  updateLiveBadges();
 }
