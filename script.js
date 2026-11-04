@@ -3049,7 +3049,16 @@ let chartSeries={id:null,range:null,candles:[],source:'',loading:false,error:'',
 /* Keep observed prices separate from verified historical OHLC. A current candle
    built from quotes is partial, and no missing ticks/bars are fabricated. */
 const chartObservedQuotes=new Map();
-let chartLivePaintTimer=null,marketMiniPaintTimer=null;
+const chartObservedVersions=new Map();
+let observedCandlesCache={id:null,range:null,base:null,version:-1,epoch:-1,result:null};
+let chartLivePaintTimer=null,marketMiniPaintTimer=null,chartFrameRequest=0;
+function scheduleDetailChartDraw(){
+ if(chartFrameRequest||!state.dialogId||document.hidden)return;
+ chartFrameRequest=requestAnimationFrame(()=>{
+  chartFrameRequest=0;
+  if(state.dialogId&&!document.hidden)drawChart();
+ });
+}
 function chartQuoteVenue(q){
  const source=String(q&&q.source||'').toLowerCase();
  if(source.includes('binance'))return 'binance';
@@ -3078,6 +3087,7 @@ function observeChartQuote(id,q){
  if(last&&(ts<last.ts||(ts===last.ts&&price===last.price)))return;
  values.push({ts,price,venue});
  if(values.length>850)values.splice(0,values.length-850);
+ chartObservedVersions.set(id,(chartObservedVersions.get(id)||0)+1);
  if(state.dialogId===id)scheduleChartLivePaint();
 }
 function scheduleChartLivePaint(){
@@ -3085,7 +3095,7 @@ function scheduleChartLivePaint(){
  chartLivePaintTimer=setTimeout(()=>{
   chartLivePaintTimer=null;
   if(!state.dialogId||document.hidden)return;
-  updateChartLiveQuoteStatus();drawChart();
+  updateChartLiveQuoteStatus();scheduleDetailChartDraw();
  },240);
 }
 function chartCandleStepMs(id){
@@ -3282,12 +3292,12 @@ async function loadSecondChartHistory(force=false){
  const key=asset.id+':'+selected,cached=chartFetchState.cache.get(key);
  if(!force&&cached&&Date.now()-cached.loadedAt<15000){
   chartSeries={...cached,id:asset.id,range:selected,loading:false};
-  updateChartHistoryStatus();requestAnimationFrame(drawChart);return;
+  updateChartHistoryStatus();scheduleDetailChartDraw();return;
  }
  chartSeries=chartSeries.id===asset.id&&chartSeries.range===selected&&chartSeries.candles.length>=2?
   {...chartSeries,loading:true,error:''}:
   {id:asset.id,range:selected,candles:[],source:'',loading:true,error:'',partial:false};
- updateChartHistoryStatus();requestAnimationFrame(drawChart);
+ updateChartHistoryStatus();scheduleDetailChartDraw();
  const controller=new AbortController();chartFetchState.abort=controller;
  const timer=setTimeout(()=>controller.abort(),8500);
  const now=Date.now();
@@ -3421,7 +3431,7 @@ async function loadSecondChartHistory(force=false){
     '. Il feed al secondo non è disponibile; riprova con Aggiorna o 1H.'+
     (error?' '+error:''),partial:false};
  }
- updateChartHistoryStatus();requestAnimationFrame(drawChart);
+ updateChartHistoryStatus();scheduleDetailChartDraw();
 }
 
 async function loadCryptoChartHistory(force=false){
@@ -3437,14 +3447,14 @@ async function loadCryptoChartHistory(force=false){
  if(!force&&cached&&Date.now()-cached.loadedAt<60000){
   chartSeries={...cached,id:asset.id,range:selected,loading:false,error:''};
   updateChartHistoryStatus();
-  requestAnimationFrame(drawChart);
+  scheduleDetailChartDraw();
   return;
  }
  chartSeries=chartSeries.id===asset.id&&chartSeries.range===selected&&chartSeries.candles.length>=2?
   {...chartSeries,loading:true,error:''}:
   {id:asset.id,range:selected,candles:[],source:'',loading:true,error:'',partial:false};
  updateChartHistoryStatus();
- requestAnimationFrame(drawChart);
+ scheduleDetailChartDraw();
  const now=Date.now(),from=chartStartTime(period,now);
  let failure='Impossibile ricevere le candele OHLC per '+selected+' dalle fonti disponibili.';
  for(const endpoint of chartMarketUrls(asset,period,from,now)){
@@ -3471,7 +3481,7 @@ async function loadCryptoChartHistory(force=false){
    chartFetchState.cache.set(key,result);
    if(chartFetchState.cache.size>35)chartFetchState.cache.delete(chartFetchState.cache.keys().next().value);
    updateChartHistoryStatus();
-   requestAnimationFrame(drawChart);
+   scheduleDetailChartDraw();
    return;
   }catch(err){
    failure='Impossibile caricare '+selected+' da Binance/LBank. Verifica rete o disponibilità del mercato.';
@@ -3489,7 +3499,7 @@ async function loadCryptoChartHistory(force=false){
   loading:false,error:snapshot.length>=2?'':failure,partial:snapshot.length>=2};
  if(snapshot.length<2)chartSeries.candles=[];
  updateChartHistoryStatus();
- requestAnimationFrame(drawChart);
+ scheduleDetailChartDraw();
 }
 async function loadOreChartHistory(force=false){
  const asset=ASSET_BY_ID[state.dialogId];
@@ -3503,14 +3513,14 @@ async function loadOreChartHistory(force=false){
  if(!force&&cached&&Date.now()-cached.loadedAt<60000){
   chartSeries={...cached,id:'ore',range:selected,loading:false,error:''};
   updateChartHistoryStatus();
-  requestAnimationFrame(drawChart);
+  scheduleDetailChartDraw();
   return;
  }
  chartSeries=chartSeries.id==='ore'&&chartSeries.range===selected&&chartSeries.candles.length>=2?
   {...chartSeries,loading:true,error:''}:
   {id:'ore',range:selected,candles:[],source:'',loading:true,error:'',partial:false};
  updateChartHistoryStatus();
- requestAnimationFrame(drawChart);
+ scheduleDetailChartDraw();
  const now=Date.now();
  const endpoints=chartMarketUrls(asset,period,now-period.step*750,now);
  const methods=force?['live','snapshot']:['snapshot','live'];
@@ -3567,7 +3577,7 @@ async function loadOreChartHistory(force=false){
     chartFetchState.cache.set(key,result);
     if(chartFetchState.cache.size>90)chartFetchState.cache.delete(chartFetchState.cache.keys().next().value);
     updateChartHistoryStatus();
-    requestAnimationFrame(drawChart);
+    scheduleDetailChartDraw();
     return;
    }catch(err){
     error='Storico ORE/USDT '+selected+' non disponibile (LBank). Verifica la connessione o riprova.';
@@ -3594,13 +3604,13 @@ async function loadOreChartHistory(force=false){
     source:'Candele giornaliere '+(q&&q.candleSource||'della fonte quotazioni'),
     loading:false,error:'',partial:true,loadedAt:Date.now()};
    updateChartHistoryStatus();
-   requestAnimationFrame(drawChart);
+   scheduleDetailChartDraw();
    return;
   }
  }
  chartSeries={id:'ore',range:selected,candles:[],source:'',loading:false,error,partial:false};
  updateChartHistoryStatus();
- requestAnimationFrame(drawChart);
+ scheduleDetailChartDraw();
 }
 // Shared timeframe controls for every asset class; crypto continues to use
 // its Binance/LBank route, while other markets use verified Yahoo snapshots.
@@ -3631,12 +3641,12 @@ async function loadAllChartHistory(force=false){
  if(!force&&cached&&Date.now()-cached.loadedAt<300000){
   chartSeries={...cached,id,range:'MAX',loading:false,error:''};
   updateChartHistoryStatus();
-  requestAnimationFrame(drawChart);
+  scheduleDetailChartDraw();
   return;
  }
  chartSeries={id,range:'MAX',candles:[],source:'',loading:true,error:'',partial:false};
  updateChartHistoryStatus();
- requestAnimationFrame(drawChart);
+ scheduleDetailChartDraw();
  const isOre=id==='ore',isCrypto=asset.group==='crypto';
  const path=isOre?'./ore-chart-history.json':
   isCrypto?'./chart-history/crypto/'+encodeURIComponent(id)+'.json':
@@ -3699,7 +3709,7 @@ async function loadAllChartHistory(force=false){
   chartSeries={id,range:'MAX',candles:[],source:'',loading:false,error:failure,partial:false};
  }
  updateChartHistoryStatus();
- requestAnimationFrame(drawChart);
+ scheduleDetailChartDraw();
 }
 function loadChartHistory(force=false){
  const asset=ASSET_BY_ID[state.dialogId];
@@ -3738,14 +3748,14 @@ async function loadMarketChartHistory(force=false){
  if(!force&&cached&&Date.now()-cached.loadedAt<120000){
   chartSeries={...cached,id:asset.id,range:selected,loading:false,error:''};
   updateChartHistoryStatus();
-  requestAnimationFrame(drawChart);
+  scheduleDetailChartDraw();
   return;
  }
  chartSeries=chartSeries.id===asset.id&&chartSeries.range===selected&&chartSeries.candles.length>=2?
   {...chartSeries,loading:true,error:''}:
   {id:asset.id,range:selected,candles:[],source:'',loading:true,error:'',partial:false};
  updateChartHistoryStatus();
- requestAnimationFrame(drawChart);
+ scheduleDetailChartDraw();
  let candles=[],source='',failure='',visibleCount=0;
  const now=Date.now();
  if(period.months){
@@ -3805,7 +3815,7 @@ async function loadMarketChartHistory(force=false){
   }
  }
  updateChartHistoryStatus();
- requestAnimationFrame(drawChart);
+ scheduleDetailChartDraw();
 }
 // Refresh the visible instrument while the detail dialog is open; actual
 // freshness depends on the exchange and snapshot provider.
@@ -3854,7 +3864,7 @@ function openAsset(id){
    catch(_error){}
   }
  }
- requestAnimationFrame(drawChart);
+ scheduleDetailChartDraw();
 }
 function closeAsset(){
  stopChartLiveRefresh();
@@ -3903,7 +3913,7 @@ function refreshDialog(){
  if(isCrypto)updateChartHistoryStatus();
  updateChartLiveQuoteStatus();
  paintCryptoPriceHighlights();
- requestAnimationFrame(drawChart);
+ scheduleDetailChartDraw();
 }
 function toggleWatch(id){
  if(!ASSET_BY_ID[id])return;
@@ -3916,7 +3926,13 @@ function toggleWatch(id){
 function getCandles(id){
  if(chartSupportsRanges(ASSET_BY_ID[id])){
   const raw=chartSeries.id===id&&chartSeries.range===chartRange?chartSeries.candles:[];
-  return chartWithObservedQuotes(id,raw);
+  const version=chartObservedVersions.get(id)||0,epoch=Math.floor(Date.now()/60000);
+  const cached=observedCandlesCache;
+  if(cached.id===id&&cached.range===chartRange&&cached.base===raw&&
+     cached.version===version&&cached.epoch===epoch)return cached.result;
+  const result=chartWithObservedQuotes(id,raw);
+  observedCandlesCache={id,range:chartRange,base:raw,version,epoch,result};
+  return result;
  }
  const q=quote(id);
  if(!q||!Array.isArray(q.candles))return [];
@@ -3974,6 +3990,21 @@ function macd(values){
  const signal=ema(line,9);
  return {line,signal,hist:line.map((v,i)=>num(v)&&num(signal[i])?v-signal[i]:null)};
 }
+// Math depends on the candle series, not on cursor/pan movements.
+let chartMathCache={candles:null,values:null};
+function chartPreparedIndicators(candles){
+ if(chartMathCache.candles===candles)return chartMathCache.values;
+ const closes=candles.map(c=>c.c);
+ const emaSets=[{values:ema(closes,12),color:'#6fb2ff'},
+  {values:ema(closes,26),color:'#f1b954'},
+  {values:ema(closes,50),color:'#b18aff'},
+  {values:ema(closes,200),color:'#e96798'}];
+ const rsiValues=rsi(closes,14);
+ const st=stochRsi(rsiValues),m=macd(closes);
+ const values={closes,emaSets,rsiValues,st,m};
+ chartMathCache={candles,values};
+ return values;
+}
 const round=(x,n=2)=>x.toFixed(n);
 const candleDateFormatter=new Intl.DateTimeFormat('it-IT',{
  timeZone:'Europe/Rome',day:'2-digit',month:'2-digit',year:'numeric',
@@ -4017,7 +4048,8 @@ function updateDetailCandleTooltip(candles,start,end,fxCandle,anchor){
   Number.isInteger(state.chartHover)&&state.chartHover>=start&&state.chartHover<end?
    candles[state.chartHover]:null;
  if(!selected){el.hidden=true;return;}
- el.innerHTML=candleTooltipMarkup(selected);
+ const html=candleTooltipMarkup(selected);
+ if(el.innerHTML!==html)el.innerHTML=html;
  el.hidden=false;
  if(anchor){
   const container=el.closest('.chart-frame');
@@ -4033,7 +4065,9 @@ function chartVisibleCandleCount(candles,width){
  const same=chartSeries.id===state.dialogId&&chartSeries.range===chartRange;
  const count=same?Number(chartSeries.visibleCount):NaN;
  if(Number.isFinite(count)&&count>=2){
-  return Math.max(2,Math.min(candles.length,Math.ceil(count)));
+  // Keep full history for panning; draw only a manageable window per frame.
+  const maxVisible=Math.max(28,Math.min(280,Math.floor((Math.max(360,width)-86)/5.8)));
+  return Math.max(2,Math.min(candles.length,Math.ceil(count),maxVisible));
  }
  return Math.max(25,Math.min(280,Math.floor((Math.max(360,width)-86)/8)));
 }
@@ -4044,7 +4078,10 @@ function drawChart(){
  const fxCandle=forexBrokerObservedCandle(state.dialogId);
  const rect=canvas.getBoundingClientRect();
  const width=Math.max(360,Math.floor(rect.width)),height=Math.max(470,Math.floor(rect.height||470)),dpr=Math.min(2,window.devicePixelRatio||1);
- canvas.width=Math.floor(width*dpr);canvas.height=Math.floor(height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);
+ const pixelWidth=Math.floor(width*dpr),pixelHeight=Math.floor(height*dpr);
+ if(canvas.width!==pixelWidth)canvas.width=pixelWidth;
+ if(canvas.height!==pixelHeight)canvas.height=pixelHeight;
+ ctx.setTransform(dpr,0,0,dpr,0,0);
  ctx.clearRect(0,0,width,height);
  const dark=state.theme==='dark',color=dark?'#9db4c8':'#536c82',grid=dark?'#173149':'#dbe3e8';
  ctx.fillStyle=dark?'#071523':'#f5f9fd';ctx.fillRect(0,0,width,height);
@@ -4073,8 +4110,7 @@ function drawChart(){
   return;
  }
  const ix=i=>left+(i-start+.5)*chartW/sample.length;
- const closes=candles.map(x=>x.c);
- const emaSets=[{values:ema(closes,12),color:'#6fb2ff'},{values:ema(closes,26),color:'#f1b954'},{values:ema(closes,50),color:'#b18aff'},{values:ema(closes,200),color:'#e96798'}];
+ const {closes,emaSets,rsiValues,st,m}=chartPreparedIndicators(candles);
  const lows=sample.map(x=>x.l),highs=sample.map(x=>x.h);
  if(fxCandle){lows.push(fxCandle.l);highs.push(fxCandle.h)}
  emaSets.forEach(a=>a.values.slice(start,end).forEach(v=>{if(num(v)){lows.push(v);highs.push(v)}}));
@@ -4114,7 +4150,6 @@ function drawChart(){
   ctx.strokeStyle=a.color;ctx.lineWidth=1.6;ctx.stroke();
  });
  for(let i=0;i<=4;i++){const v=min+(max-min)*i/4;text(v.toLocaleString('it-IT',{maximumFractionDigits:Math.abs(v)>=10?1:3}),width-right+(fxCandle?32:7),yPrice(v)+4,'left',10)}
- const rsiValues=rsi(closes,14),st=stochRsi(rsiValues),m=macd(closes);
  const drawIndicator=(values,yMap,stroke,widthLine=1.35)=>{
   ctx.beginPath();let started=false;
   for(let i=start;i<end;i++){
@@ -4195,11 +4230,11 @@ function setupCanvasInteractions(){
   const width=Math.max(360,Math.floor(bounds.width));
   const px=(event.clientX-bounds.left)*width/bounds.width;
   const candles=getCandles(state.dialogId);
-  if(!candles.length){state.chartHover=null;chartHoverForex=false;drawChart();return;}
+  if(!candles.length){state.chartHover=null;chartHoverForex=false;scheduleDetailChartDraw();return;}
   const fx=forexBrokerObservedCandle(state.dialogId);
   const right=fx?110:67;
   if(fx&&px>=width-right+1&&px<width-right+34){
-   chartHoverForex=true;state.chartHover=null;drawChart();return;
+   chartHoverForex=true;state.chartHover=null;scheduleDetailChartDraw();return;
   }
   chartHoverForex=false;
   const count=chartVisibleCandleCount(candles,width),size=Math.min(count,candles.length);
@@ -4207,7 +4242,7 @@ function setupCanvasInteractions(){
   const scaled=(px-19)/(width-19-right);
   const offset=Math.max(0,Math.min(size-1,Math.floor(scaled*size)));
   state.chartHover=start+offset;
-  drawChart();
+  scheduleDetailChartDraw();
  }
  dlg.addEventListener('pointerdown',e=>{
   if(e.target.id!=='detailChart')return;
@@ -4238,25 +4273,25 @@ function setupCanvasInteractions(){
   delete e.target.dataset.downX;
   delete e.target.dataset.startShift;
   // Releasing a finger or mouse button clears the floating candle box.
-  state.chartHover=null;chartHoverForex=false;drawChart();
+  state.chartHover=null;chartHoverForex=false;scheduleDetailChartDraw();
  });
  dlg.addEventListener('pointercancel',e=>{
   if(e.target.id!=='detailChart')return;
   delete e.target.dataset.downX;
   delete e.target.dataset.startShift;
-  state.chartHover=null;chartHoverForex=false;drawChart();
+  state.chartHover=null;chartHoverForex=false;scheduleDetailChartDraw();
  });
  dlg.addEventListener('pointerleave',e=>{
   if(e.target.id!=='detailChart')return;
   // No lingering box after the cursor leaves the candle area.
   if(e.target.hasPointerCapture?.(e.pointerId))return;
-  state.chartHover=null;chartHoverForex=false;drawChart();
+  state.chartHover=null;chartHoverForex=false;scheduleDetailChartDraw();
  },true);
  dlg.addEventListener('keydown',e=>{
   if(e.target.id!=='detailChart'||!['ArrowLeft','ArrowRight','Escape'].includes(e.key))return;
   e.preventDefault();
   if(e.key==='Escape'){
-   state.chartHover=null;chartHoverForex=false;drawChart();return;
+   state.chartHover=null;chartHoverForex=false;scheduleDetailChartDraw();return;
   }
   const candles=getCandles(state.dialogId);
   if(!candles.length)return;
@@ -4269,7 +4304,7 @@ function setupCanvasInteractions(){
   const start=Math.max(0,candles.length-size-state.chartShift);
   if(state.chartHover<start)state.chartShift=Math.min(candles.length-size,state.chartShift+(start-state.chartHover));
   if(state.chartHover>=start+size)state.chartShift=Math.max(0,state.chartShift-(state.chartHover-start-size+1));
-  drawChart();
+  scheduleDetailChartDraw();
  });
  dlg.addEventListener('wheel',e=>{if(e.target.id==='detailChart')e.preventDefault()},{passive:false});
 }
@@ -4560,7 +4595,7 @@ function setupEvents(){
  });
  $('#dialogWatch').addEventListener('click',()=>state.dialogId&&toggleWatch(state.dialogId));
  setupCanvasInteractions();setupMiniCandleInteractions();
- window.addEventListener('resize',()=>{if(state.dialogId)requestAnimationFrame(drawChart)});
+ window.addEventListener('resize',()=>{if(state.dialogId)scheduleDetailChartDraw()});
  window.addEventListener('hashchange',()=>navigate(location.hash.slice(1)));
 }
 function dismissVertexBoot(){
