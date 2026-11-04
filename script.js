@@ -2640,6 +2640,10 @@ function updateCryptoAlertIndicator(){
 // UPPER: rising chime; LOWER: falling chime. Preview does not change alerts.
 function playCryptoAlertSound(direction='above',delay=0,preview=false){
  if(!state.alertSound&&!preview)return false;
+ // Never queue old market alerts in a suspended context: Safari would replay
+ // them all after the next tap. User-initiated previews may unlock the graph.
+ if(!preview&&(!vertexAudioPrimed||!vertexAudioContext||
+   vertexAudioContext.state!=='running'))return false;
  try{
   const ctx=unlockVertexAudio(preview);
   if(!ctx||ctx.state==='closed')return false;
@@ -4538,7 +4542,7 @@ function setupEvents(){
   save('cryptoAlertSound',state.alertSound);
   if(state.alertSound){
    const ctx=unlockVertexAudio(true);
-   if(!ctx||!playCryptoAlertSound('enabled'))toast('Il browser non supporta la riproduzione audio.');
+   if(!ctx||!playCryptoAlertSound('enabled',0,true))toast('Il browser non supporta la riproduzione audio.');
   }
   updateCryptoAlertIndicator();
  });
