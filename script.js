@@ -12,254 +12,9 @@ const STORE='vertex-global-v2-';
 const load=(key,fallback)=>{try{const v=localStorage.getItem(STORE+key);return v===null?fallback:JSON.parse(v)}catch(e){return fallback}};
 const save=(key,value)=>{try{localStorage.setItem(STORE+key,JSON.stringify(value))}catch(e){}};
 
-/* Optional LOCAL screen lock through WebAuthn/passkeys. This is not server
-   account authentication; only the public credential is stored in this browser.
-   Platform biometrics/PIN are handled entirely by the operating system. */
-const BIOMETRIC_STORAGE=STORE+'biometricAccess';
-function validBiometricRecord(x){
- return !!(x&&x.version===1&&x.algorithm===-7&&
-  typeof x.id==='string'&&x.id.length>15&&
-  typeof x.publicKey==='string'&&x.publicKey.length>50&&
-  x.origin===location.origin&&x.rpId===location.hostname);
-}
-const storedBiometricRecord=load('biometricAccess',null);
-let biometricAccess=validBiometricRecord(storedBiometricRecord)?storedBiometricRecord:null;
-let biometricSessionUnlocked=!biometricAccess,biometricBusy=false;
-let biometricBackgroundAt=0,vertexAppStarted=false;
-
-function biometricSupported(){
- return !!(window.isSecureContext&&window.PublicKeyCredential&&
-  navigator.credentials?.create&&navigator.credentials?.get&&
-  window.crypto?.subtle&&window.crypto?.getRandomValues&&
-  window.TextDecoder&&window.TextEncoder);
-}
-function biometricToB64(bytes){
- const u=bytes instanceof Uint8Array?bytes:new Uint8Array(bytes);
- let binary='';for(const byte of u)binary+=String.fromCharCode(byte);
- return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-}
-function biometricFromB64(value){
- const padded=String(value).replace(/-/g,'+').replace(/_/g,'/');
- const binary=atob(padded+'='.repeat((4-padded.length%4)%4));
- const out=new Uint8Array(binary.length);
- for(let i=0;i<binary.length;i++)out[i]=binary.charCodeAt(i);
- return out;
-}
-function biometricRandom(){return crypto.getRandomValues(new Uint8Array(32))}
-function biometricFeedback(message){
- const el=$('#vertexAccessFeedback');
- if(el)el.textContent=message||'';
-}
-function biometricFailure(error){
- if(error?.name==='NotAllowedError'||error?.name==='AbortError')
-  return 'Verifica annullata o non autorizzata. Riprova usando il blocco del dispositivo.';
- if(error?.name==='SecurityError')
-  return 'L’accesso richiede HTTPS e un dominio valido.';
- if(error?.name==='NotSupportedError')
-  return 'Questa modalità non è supportata dal browser o dal dispositivo.';
- return String(error?.message||'Autenticazione non riuscita. Riprova.');
-}
-function biometricClientData(response,challenge,type){
- const text=new TextDecoder().decode(response.clientDataJSON);
- const data=JSON.parse(text);
- if(data.type!==type||data.challenge!==biometricToB64(challenge)||
-    data.origin!==location.origin||data.crossOrigin===true)
-  throw new Error('La richiesta di autenticazione non corrisponde a Vertex.');
-}
-async function biometricCheckAuthenticator(authenticatorData){
- const bytes=new Uint8Array(authenticatorData);
- if(bytes.length<37)throw new Error('Risposta dell’autenticatore incompleta.');
- // User presence and user verification are both mandatory.
- if((bytes[32]&5)!==5)
-  throw new Error('Il dispositivo non ha confermato l’identità.');
- const expected=new Uint8Array(await crypto.subtle.digest('SHA-256',
-  new TextEncoder().encode(location.hostname)));
- if(!expected.every((value,i)=>bytes[i]===value))
-  throw new Error('Passkey associata a un altro sito.');
- return new DataView(bytes.buffer,bytes.byteOffset+33,4).getUint32(0,false);
-}
-function biometricDerToRaw(signature){
- const bytes=new Uint8Array(signature);
- if(bytes.length===64)return bytes;
- let p=0;
- const length=()=>{
-  if(p>=bytes.length)throw new Error('Firma digitale incompleta.');
-  const first=bytes[p++];
-  if(first<128)return first;
-  const count=first&127;
-  if(!count||count>2||p+count>bytes.length)throw new Error('Firma digitale non valida.');
-  let value=0;for(let j=0;j<count;j++)value=value*256+bytes[p++];
-  return value;
- };
- if(bytes[p++]!==0x30)throw new Error('Formato firma non supportato.');
- const sequenceLength=length();
- if(sequenceLength!==bytes.length-p)throw new Error('Lunghezza firma non valida.');
- const result=new Uint8Array(64);
- for(let k=0;k<2;k++){
-  if(bytes[p++]!==0x02)throw new Error('Componente firma mancante.');
-  const n=length(),end=p+n;
-  if(n<1||n>33||end>bytes.length)throw new Error('Componente firma non valida.');
-  let start=p;
-  while(start<end-1&&bytes[start]===0)start++;
-  if(end-start>32)throw new Error('Componente firma troppo lunga.');
-  result.set(bytes.subarray(start,end),k*32+32-(end-start));
-  p=end;
- }
- if(p!==bytes.length)throw new Error('Firma digitale malformata.');
- return result;
-}
-async function biometricVerify(){
- if(!biometricAccess||!biometricSupported())
-  throw new Error('Apri Vertex tramite HTTPS su un dispositivo e browser compatibili.');
- const record=biometricAccess,challenge=biometricRandom();
- // Must be called in direct response to a user gesture (no preliminary await).
- const assertion=await navigator.credentials.get({publicKey:{
-  challenge,rpId:record.rpId,
-  allowCredentials:[{type:'public-key',id:biometricFromB64(record.id)}],
-  userVerification:'required',timeout:60000
- }});
- if(!assertion||assertion.type!=='public-key'||biometricToB64(assertion.rawId)!==record.id)
-  throw new Error('Passkey differente da quella configurata.');
- const response=assertion.response;
- biometricClientData(response,challenge,'webauthn.get');
- const counter=await biometricCheckAuthenticator(response.authenticatorData);
- const authenticatorData=new Uint8Array(response.authenticatorData);
- const clientHash=new Uint8Array(await crypto.subtle.digest('SHA-256',response.clientDataJSON));
- const signed=new Uint8Array(authenticatorData.length+clientHash.length);
- signed.set(authenticatorData);signed.set(clientHash,authenticatorData.length);
- const key=await crypto.subtle.importKey('spki',biometricFromB64(record.publicKey),
-  {name:'ECDSA',namedCurve:'P-256'},false,['verify']);
- const verified=await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},key,
-  biometricDerToRaw(response.signature),signed);
- if(!verified)throw new Error('Firma della passkey non valida.');
- // Synced platform passkeys may have non-monotonic signature counters.
- // Keep the highest observed value, without rejecting a valid signature.
- if(counter>record.counter){
-  const updated={...record,counter};
-  try{localStorage.setItem(BIOMETRIC_STORAGE,JSON.stringify(updated));
-   biometricAccess=updated;}catch(_e){}
- }
- return true;
-}
-function biometricToggleGate(locked){
- const gate=$('#vertexAccessGate');
- if(gate)gate.hidden=!locked;
- document.documentElement.classList.toggle('vertex-biometric-locked',locked);
- const app=$('.app-shell'),dialog=$('#assetDialog');
- if(app)app.inert=locked;
- if(dialog)dialog.inert=locked;
- if(!locked)biometricFeedback('');
-}
-function biometricLock(){
- if(!biometricAccess||!biometricSessionUnlocked)return;
- biometricSessionUnlocked=false;
- biometricToggleGate(true);
- const dialog=$('#assetDialog');
- if(dialog?.open)dialog.close();
- closeStream();disconnectForexStream();stopOrderBookLive();
- $('#vertexAccessUnlock')?.focus();
-}
-async function biometricUnlock(){
- if(biometricBusy||biometricSessionUnlocked)return;
- biometricBusy=true;
- const button=$('#vertexAccessUnlock');
- if(button){button.disabled=true;button.textContent='Verifica in corso…'}
- biometricFeedback('Segui le istruzioni del tuo dispositivo.');
- try{
-  await biometricVerify();
-  biometricSessionUnlocked=true;
-  biometricBackgroundAt=0;
-  if(!vertexAppStarted)startVertexApp();
-  else{
-   connectCryptoStream();connectForexStream();fetchQuotes();pollCryptoPrices();
-   if(state.page==='orderbook'){startOrderBookLive();refreshOrderBook()}
-  }
-  // Show the application only after its first render is ready.
-  biometricToggleGate(false);
- }catch(error){biometricFeedback(biometricFailure(error))}
- finally{
-  biometricBusy=false;
-  if(button){button.disabled=false;button.textContent='Sblocca con biometria'}
- }
-}
-async function biometricEnable(){
- if(biometricBusy||biometricAccess)return;
- if(!biometricSupported()){
-  toast('Per attivare la passkey serve HTTPS, Chrome o Safari aggiornato e un blocco schermo configurato.');
-  return;
- }
- biometricBusy=true;
- try{
-  const challenge=biometricRandom(),userId=biometricRandom();
-  const credential=await navigator.credentials.create({publicKey:{
-   challenge,rp:{name:'Vertex'},
-   user:{id:userId,name:'vertex-local',displayName:'Accesso Vertex'},
-   pubKeyCredParams:[{type:'public-key',alg:-7}],
-   authenticatorSelection:{authenticatorAttachment:'platform',
-    residentKey:'preferred',userVerification:'required'},
-   attestation:'none',timeout:60000
-  }});
-  if(!credential||credential.type!=='public-key')throw new Error('Passkey non creata.');
-  const response=credential.response;
-  if(typeof response.getPublicKey!=='function'||
-     typeof response.getAuthenticatorData!=='function')
-   throw new Error('Aggiorna il browser per usare la verifica con passkey.');
-  biometricClientData(response,challenge,'webauthn.create');
-  await biometricCheckAuthenticator(response.getAuthenticatorData());
-  if(response.getPublicKeyAlgorithm()!==-7)throw new Error('Tipo di passkey non supportato.');
-  const publicKey=response.getPublicKey();
-  if(!publicKey)throw new Error('Chiave pubblica non disponibile.');
-  await crypto.subtle.importKey('spki',publicKey,
-   {name:'ECDSA',namedCurve:'P-256'},false,['verify']);
-  const record={version:1,algorithm:-7,id:biometricToB64(credential.rawId),
-   publicKey:biometricToB64(publicKey),rpId:location.hostname,origin:location.origin,counter:0};
-  localStorage.setItem(BIOMETRIC_STORAGE,JSON.stringify(record));
-  if(localStorage.getItem(BIOMETRIC_STORAGE)!==JSON.stringify(record))
-   throw new Error('Salvataggio del blocco non riuscito.');
-  biometricAccess=record;biometricSessionUnlocked=true;
-  toast('Accesso biometrico configurato. Ti verrà richiesto alla prossima apertura.');
-  if(state.page==='settings')render();
- }catch(error){toast('Attivazione non riuscita: '+biometricFailure(error))}
- finally{biometricBusy=false}
-}
-async function biometricDisable(){
- if(biometricBusy||!biometricAccess)return;
- biometricBusy=true;
- try{
-  await biometricVerify();
-  localStorage.removeItem(BIOMETRIC_STORAGE);
-  biometricAccess=null;biometricSessionUnlocked=true;biometricBackgroundAt=0;
-  biometricToggleGate(false);
-  toast('Blocco biometrico disattivato su questo dispositivo.');
-  if(state.page==='settings')render();
- }catch(error){toast('Disattivazione non riuscita: '+biometricFailure(error))}
- finally{biometricBusy=false}
-}
-function biometricSettingsSection(){
- const enabled=!!biometricAccess;
- const support=biometricSupported();
- return '<section class="content-card panel settings-preferences vertex-biometric-settings" aria-label="Accesso con biometria">'+
-  '<div class="vertex-biometric-heading"><div class="vertex-biometric-symbol" aria-hidden="true">◆</div>'+
-  '<div><h3>Accesso con impronta o Face ID</h3><p class="subnote">'+
-  (enabled?'Attivo su questo browser: Vertex chiede lo sblocco alla riapertura e dopo un’assenza prolungata.':
-   'Attiva la passkey del tuo dispositivo per sbloccare Vertex con impronta, volto o PIN di sistema.')+
-  '</p></div><span class="vertex-biometric-state'+(enabled?' active':'')+'">'+(enabled?'Attivo':'Non attivo')+'</span></div>'+
-  '<div class="vertex-biometric-actions">'+
-  (enabled?
-   '<button type="button" class="btn btn-primary" data-biometric-lock="1">Blocca ora</button>'+
-   '<button type="button" class="outline-button" data-biometric-disable="1">Disattiva · verifica richiesta</button>':
-   '<button type="button" class="btn btn-primary" data-biometric-enable="1"'+(!support?' disabled':'')+
-   '>Attiva impronta / Face ID</button>')+
-  '</div><p class="subnote vertex-biometric-note">'+
-  (support?'La prima attivazione richiede una conferma sul dispositivo.':
-   'Serve una connessione HTTPS, un browser compatibile e un metodo di sblocco configurato.')+
-  ' È un blocco locale di questa app, non un account online: non protegge i dati da chi ha accesso ai file del browser. Nessuna impronta o immagine del volto viene registrata dal sito.'+
-  '</p></section>';
-}
-function initBiometricGate(){
- $('#vertexAccessUnlock')?.addEventListener('click',()=>{void biometricUnlock()});
- biometricToggleGate(!!biometricAccess&&!biometricSessionUnlocked);
-}
+// Remove obsolete browser-only passkey settings.
+try{localStorage.removeItem(STORE+'biometricAccess')}catch(_e){}
+let vertexAppStarted=false;
 
 const VERTEX_APP_ICONS=Object.freeze({
  original:{label:'Vertex',description:'Logo ufficiale'},
@@ -3013,7 +2768,6 @@ function evaluateCryptoAlerts(){
 function settingsPage(){
  const choices=[['light','☀','Chiaro','Bianco e azzurro'],['dark','☾','Scuro','Blu notte'],['ocean','◈','Oceano','Blu e turchese'],['emerald','❖','Smeraldo','Verde elegante'],['violet','✦','Viola','Viola moderno']];
  return secHeader('Impostazioni','Personalizza aspetto, icona e suoni della dashboard')+
-  biometricSettingsSection()+
  '<section class="content-card panel settings-preferences"><h3>Temi della dashboard</h3><p class="subnote">Scegli fra cinque stili. Il tema cambia subito in tutte le sezioni e la tua preferenza rimane salvata.</p>'+
  '<div class="settings-theme-options" role="group" aria-label="Scegli uno dei cinque temi">'+
  choices.map(([mode,icon,label,description])=>'<button type="button" data-theme-mode="'+mode+'" class="settings-theme-option'+(state.themeMode===mode?' is-selected':'')+'" aria-label="'+label+': '+description+'" aria-pressed="'+(state.themeMode===mode)+'"><span class="settings-theme-swatch theme-swatch-'+mode+'" aria-hidden="true"><span>'+icon+'</span></span><span class="settings-theme-caption"><strong>'+label+'</strong><small>'+description+'</small></span></button>').join('')+
@@ -4741,9 +4495,6 @@ function setupEvents(){
   }
   const btn=e.target.closest('button,a,tr[data-asset]');
   if(!btn)return;
-  if(btn.dataset.biometricEnable!==undefined){void biometricEnable();return;}
-   if(btn.dataset.biometricDisable!==undefined){void biometricDisable();return;}
-   if(btn.dataset.biometricLock!==undefined){biometricLock();return;}
    if(btn.dataset.secCategory){secNewsState.selected=btn.dataset.secCategory;secNewsState.visible=20;render();return;}
   if(btn.dataset.secMore){secNewsState.visible+=20;render();return;}
   if(btn.dataset.secRefresh){loadSecNews(true);return;}
@@ -4984,13 +4735,6 @@ function startVertexApp(){
  setInterval(keepStreamAlive,15000);
  setInterval(()=>{if(!document.hidden)connectForexStream();updateLiveBadges()},15000);
  document.addEventListener('visibilitychange',()=>{
-  if(document.hidden&&biometricAccess&&biometricSessionUnlocked)
-   biometricBackgroundAt=Date.now();
-  if(!document.hidden&&biometricAccess&&biometricSessionUnlocked&&
-    biometricBackgroundAt&&Date.now()-biometricBackgroundAt>=60000){
-   biometricLock();return;
-  }
-  if(!biometricSessionUnlocked)return;
   if(!document.hidden&&navigator.serviceWorker?.controller)
    navigator.serviceWorker.controller.postMessage({type:'VERTEX_WIDGETS_REFRESH'});
   if(document.hidden){closeStream();disconnectForexStream();stopOrderBookLive()}
@@ -5010,9 +4754,7 @@ function startVertexApp(){
  });
 }
 function init(){
- initBiometricGate();
- if(biometricSessionUnlocked)startVertexApp();
- else dismissVertexBoot();
+ startVertexApp();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
