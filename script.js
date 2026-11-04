@@ -346,13 +346,17 @@ function solarTerminatorPath(sun,side='night',overshoot=0){
  }
  return 'M0 '+(includeBottom?580:0)+' '+curve.join(' ')+' L1000 '+(includeBottom?580:0)+' Z';
 }
+const SOLAR_CLOCK_FORMATTER=new Intl.DateTimeFormat('it-IT',{
+ timeZone:'UTC',day:'2-digit',month:'2-digit',hour:'2-digit',
+ minute:'2-digit',second:'2-digit',hourCycle:'h23'
+});
 function updateWorldSunlight(force=false){
  if(state.page!=='global'||document.hidden)return;
  const root=$('#worldMap');if(!root)return;
  const now=Date.now();
  const same=state.solarLastRoot===root;
  // Compute solar geometry every 10 seconds; show actual UTC time every second.
- if(force||!same||now-state.solarLastUpdate>=10000){
+ if(force||!same||now-state.solarLastUpdate>=45000){
   const night=root.querySelector('#worldNightPath'),day=root.querySelector('#worldDayPath');
   const twilight=root.querySelector('#worldTwilightPath'),nightClip=root.querySelector('#worldNightClipPath');
   if(!night||!day||!twilight||!nightClip)return;
@@ -374,9 +378,7 @@ function updateWorldSunlight(force=false){
   state.solarLastUpdate=now;
  }
  if(force||!same||now-state.solarLastStatus>=950){
-  const displayTime=new Intl.DateTimeFormat('it-IT',{
-   timeZone:'UTC',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'
-  }).format(new Date(now));
+  const displayTime=SOLAR_CLOCK_FORMATTER.format(new Date(now));
   const label=root.querySelector('#worldSolarStatus');
   if(label)label.textContent='● LIVE · Sole reale · '+displayTime+' UTC';
   const help=root.querySelector('#worldSolarHelp');
@@ -1197,6 +1199,7 @@ function marketsCards(items){
    '<div class="market-chart-grid">'+assets.map(marketChartCard).join('')+'</div></section>';
  }).join('');
 }
+const marketMiniDirty=new Set();
 let miniCandlePointer=null,miniCandleHover=null,miniCandleSuppressClickUntil=0;
 function inspectMiniCandle(card,clientX){
  if(!card||!card.isConnected)return;
@@ -1285,14 +1288,22 @@ function setupMiniCandleInteractions(){
  },true);
 }
 function updateMarketsSnapshotCharts(){
- if(state.page!=='markets')return;
+ if(state.page!=='markets'||!marketMiniDirty.size)return;
+ const bottom=window.innerHeight+180;
  document.querySelectorAll('#marketRows .market-chart-card[data-asset]').forEach(card=>{
-  const node=card.querySelector('.market-mini-chart');if(!node)return;
-  const next=marketChartPlot(card.dataset.asset);
+  const id=card.dataset.asset;
+  if(!marketMiniDirty.has(id))return;
+  // Don't generate hundreds of SVG paths for offscreen market cards.
+  const bounds=card.getBoundingClientRect();
+  if(bounds.bottom< -180||bounds.top>bottom)return;
+  const node=card.querySelector('.market-mini-chart');
+  if(!node){marketMiniDirty.delete(id);return;}
+  const next=marketChartPlot(id);
   if(node.innerHTML!==next){
    node.innerHTML=next;
    if(miniCandleHover?.card===card)inspectMiniCandle(card,miniCandleHover.clientX);
   }
+  marketMiniDirty.delete(id);
  });
 }
 function marketsPage(){
@@ -2947,7 +2958,11 @@ async function fetchQuotes(isManual=false){
   }
   state.quotes=next;
   for(const id of changed)if(next[id])observeChartQuote(id,next[id]);
-  if(changed.length)scheduleMarketMiniPaint();
+  if(state.page==='markets'){
+    if(full)for(const x of all)if(x?.id)marketMiniDirty.add(x.id);
+    for(const id of changed)marketMiniDirty.add(id);
+    if(marketMiniDirty.size)scheduleMarketMiniPaint();
+   }
   evaluateCryptoAlerts();
   const incomingFeedTime=Date.parse(data.generatedAt||'');
   const oldFeedTime=Date.parse(state.feedTime||'');
@@ -3088,6 +3103,7 @@ function observeChartQuote(id,q){
  values.push({ts,price,venue});
  if(values.length>850)values.splice(0,values.length-850);
  chartObservedVersions.set(id,(chartObservedVersions.get(id)||0)+1);
+ if(state.page==='markets'){marketMiniDirty.add(id);scheduleMarketMiniPaint()}
  if(state.dialogId===id)scheduleChartLivePaint();
 }
 function scheduleChartLivePaint(){
@@ -3174,11 +3190,12 @@ function updateChartLiveQuoteStatus(){
  el.classList.toggle('live-online',label.startsWith('● LIVE'));
 }
 function scheduleMarketMiniPaint(){
- if(marketMiniPaintTimer!==null||state.page!=='markets'||document.hidden)return;
+ if(marketMiniPaintTimer!==null||state.page!=='markets'||document.hidden||
+    !marketMiniDirty.size)return;
  marketMiniPaintTimer=setTimeout(()=>{
   marketMiniPaintTimer=null;
   if(state.page==='markets'&&!document.hidden)updateMarketsSnapshotCharts();
- },1600);
+ },1100);
 }
 const chartFetchState={sequence:0,abort:null,cache:new Map()};
 function chartStartTime(period,now){
@@ -4595,6 +4612,7 @@ function setupEvents(){
  });
  $('#dialogWatch').addEventListener('click',()=>state.dialogId&&toggleWatch(state.dialogId));
  setupCanvasInteractions();setupMiniCandleInteractions();
+ window.addEventListener('scroll',()=>scheduleMarketMiniPaint(),{passive:true});
  window.addEventListener('resize',()=>{if(state.dialogId)scheduleDetailChartDraw()});
  window.addEventListener('hashchange',()=>navigate(location.hash.slice(1)));
 }
@@ -4608,7 +4626,7 @@ function dismissVertexBoot(){
   window.setTimeout(()=>{if(screen.isConnected)screen.remove()},550);
  };
  const started=Number(window.__vertexBootStartedAt)||Date.now();
- const minimumVisibleMs=5000; // Keep Vertex splash visible for 5 seconds.
+ const minimumVisibleMs=600; // Prefer immediate responsiveness over a long splash.
  const wait=Math.max(0,minimumVisibleMs-(Date.now()-started));
  // First paint the functional dashboard, then fade the loading logo out.
  const afterPaint=()=>window.setTimeout(finish,wait);
