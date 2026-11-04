@@ -10,6 +10,14 @@
 <link rel="apple-touch-icon" href="icons/vertex-original-192.png">
 <link rel="manifest" href="manifest-vertex-original.webmanifest?v=20261103-device-widgets">
 <link rel="stylesheet" href="style.css?v=20261104-global-header-v103">
+<script>
+/* Early local screen lock: prevent a flash of the dashboard on reload. */
+try{
+  var storedGate=JSON.parse(localStorage.getItem('vertex-global-v2-biometricAccess')||'null');
+  if(storedGate&&storedGate.id&&storedGate.publicKey)
+    document.documentElement.classList.add('vertex-biometric-locked');
+}catch(_e){}
+</script>
 <script id="fxSignalrLibrary" src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js" async crossorigin="anonymous"></script>
 <script src="crypto-orderbooks-data.js?v=20261101-all42-crypto-v35" defer></script>
 <script src="ore-orderbook-data.js?v=20261101-ore-backup-v34" defer></script>
@@ -119,6 +127,17 @@
     <div id="dialogBody"></div>
   </div>
 </dialog>
+<section class="vertex-access-gate" id="vertexAccessGate" aria-labelledby="vertexAccessTitle" aria-modal="true" role="dialog" hidden>
+  <div class="vertex-access-card">
+    <div class="vertex-access-mark" aria-hidden="true">◆</div>
+    <p class="vertex-access-eyebrow">VERTEX · ACCESSO PROTETTO</p>
+    <h1 id="vertexAccessTitle">Sblocca Vertex</h1>
+    <p class="vertex-access-description">Conferma la tua identità con impronta digitale, Face ID o il metodo di sblocco del dispositivo.</p>
+    <button type="button" class="btn btn-primary vertex-access-action" id="vertexAccessUnlock">Sblocca con biometria</button>
+    <p class="vertex-access-feedback" id="vertexAccessFeedback" role="status" aria-live="polite"></p>
+    <small>La verifica avviene sul tuo dispositivo. Nessun dato biometrico viene trasmesso a Vertex.</small>
+  </div>
+</section>
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 </body>
 </html>
