@@ -3740,7 +3740,7 @@ function openAsset(id){
  const a=ASSET_BY_ID[id];if(!a)return;
  chartFetchState.sequence++;
  if(chartFetchState.abort)chartFetchState.abort.abort();
- chartRange='1D';
+ chartRange='1D';chartHoverForex=false;
  chartSeries={id:null,range:null,candles:[],source:'',loading:false,error:'',partial:false};
  state.dialogId=id;state.chartShift=0;state.chartHover=null;
  const dlg=$('#assetDialog');
@@ -3770,7 +3770,7 @@ function closeAsset(){
   try{const request=document.exitFullscreen();if(request&&request.catch)request.catch(()=>{});}catch(_error){}
  }
  dlg.classList.remove('market-fullscreen');
- state.dialogId=null;state.chartHover=null;
+ state.dialogId=null;state.chartHover=null;chartHoverForex=false;
 }
 function refreshDialog(){
  const a=ASSET_BY_ID[state.dialogId];if(!a)return;
@@ -3788,7 +3788,8 @@ function refreshDialog(){
  '<div class="chart-toolbar"><div class="chart-legend"><span><i style="background:#74b2ff"></i>EMA 12</span><span><i style="background:#f1ba55"></i>EMA 26</span><span><i style="background:#b382ee"></i>EMA 50</span><span><i style="background:#ef7192"></i>EMA 200</span></div><span class="badge"'+(isCrypto?' id="chartHistoryBadge" role="status"':'')+'>'+(isCrypto?'Periodo '+chartRange:(candleAvailable?'Candele OHLC · storico':'Candele OHLC non disponibili'))+'</span></div>'+
  '<div class="chart-coverage" id="chartHistoryDates" role="status" aria-live="polite" hidden></div>'+ 
   '<div class="chart-live-quote-status" id="chartLiveQuoteStatus" role="status" aria-live="off"></div>'+
- '<div class="chart-frame"><canvas id="detailChart" width="900" height="470" role="img" aria-label="Grafico di '+esc(a.name)+', medie mobili e indicatori" tabindex="0"></canvas></div>'+
+ '<div class="chart-frame"><canvas id="detailChart" width="900" height="470" role="img" aria-label="Grafico di '+esc(a.name)+', medie mobili e indicatori" tabindex="0"></canvas>'+ 
+  '<div class="chart-candle-tooltip" id="chartCandleTooltip" role="status" aria-live="off" hidden></div></div>'+
  '<div class="chart-toolbar chart-time-toolbar"><div class="chart-legend"><span>RSI (14)</span><span>Stochastic RSI (14/14/3/3)</span><span>MACD (12/26/9)</span></div>'+
  (isCrypto?'<div class="chart-periods" role="group" aria-label="Periodo storico del grafico">'+
   CHART_PERIODS.map(period=>'<button class="chart-period'+(period.id===chartRange?' active':'')+
@@ -3798,7 +3799,7 @@ function refreshDialog(){
   '<div><button class="btn btn-small" type="button" data-pan="-20">◀ Storico</button> <button class="btn btn-small" type="button" data-pan="20">Recenti ▶</button> <button class="btn btn-small" type="button" data-pan="reset">Oggi</button></div>')+'</div>'+
  '<div class="chart-help">'+(isCrypto?(a.id==='ore'?
  'ORE/USDT: candele al secondo ricavate dai trade LBank quando disponibili; altrimenti vengono mostrate candele reali a 1m e la risoluzione è dichiarata. ':
- 'I timeframe 1s, 5s, 15s e 30s mostrano trade aggregati reali se disponibili; altrimenti mantengono le candele originali a 1m/5m, con risoluzione effettiva indicata sotto il grafico. Fuori orario di mercato appare l’ultima sessione disponibile. '):'')+'Trascina il grafico in orizzontale per scorrere lo storico. Nessuno zoom. Le medie e gli indicatori sono mostrati solo quando le serie contengono dati sufficienti. La candela più recente può essere parziale: usa soltanto prezzi effettivamente osservati, senza inventare movimenti mancanti.</div>'+
+ 'I timeframe 1s, 5s, 15s e 30s mostrano trade aggregati reali se disponibili; altrimenti mantengono le candele originali a 1m/5m, con risoluzione effettiva indicata sotto il grafico. Fuori orario di mercato appare l’ultima sessione disponibile. '):'')+'Passa il mouse o trascina il dito sulle candele per vedere HIGH, LOW, giorno e ora nella fascia trasparente. Trascina in orizzontale per scorrere lo storico. Nessuno zoom. Le medie e gli indicatori sono mostrati solo quando le serie contengono dati sufficienti. La candela più recente può essere parziale: usa soltanto prezzi effettivamente osservati, senza inventare movimenti mancanti.</div>'+
  '<div class="chart-source"><span'+(isCrypto?' id="chartHistorySource" role="status" aria-live="polite"':'')+'>'+(isCrypto?'Caricamento delle candele del periodo '+chartRange+'…':
   'Prezzi: Yahoo Finance. Candele OHLC: '+esc(q&&q.candleSource||'Yahoo Finance, se disponibile')+'. Storico non necessariamente in tempo reale.')+'</span>'+
  '<a href="'+esc(externalUrl(a))+'" target="_blank" rel="noopener noreferrer">Apri fonte '+sym('external')+'</a></div>';
@@ -3877,6 +3878,36 @@ function macd(values){
  return {line,signal,hist:line.map((v,i)=>num(v)&&num(signal[i])?v-signal[i]:null)};
 }
 const round=(x,n=2)=>x.toFixed(n);
+const candleDateFormatter=new Intl.DateTimeFormat('it-IT',{
+ timeZone:'Europe/Rome',day:'2-digit',month:'2-digit',year:'numeric',
+ hour:'2-digit',minute:'2-digit',hourCycle:'h23'
+});
+let chartHoverForex=false;
+function candleTooltipMarkup(c){
+ const timestamp=Number(c&&c.t)*1000;
+ const date=Number.isFinite(timestamp)?
+  candleDateFormatter.format(new Date(timestamp)):'Data non disponibile';
+ const formatPrice=value=>{
+  const x=Number(value);
+  if(!Number.isFinite(x))return '—';
+  const n=Math.abs(x),digits=n<0.00001?10:n<0.001?8:n<0.1?6:n<1?5:n<10?4:2;
+  return x.toLocaleString('it-IT',{maximumFractionDigits:digits});
+ };
+ return '<span class="candle-tooltip-date">'+esc(date)+' <small>ora italiana</small></span>'+
+  '<span class="candle-tooltip-high">HIGH <strong>'+formatPrice(c.h)+'</strong></span>'+
+  '<span class="candle-tooltip-low">LOW <strong>'+formatPrice(c.l)+'</strong></span>'+
+  (c.observed?'<span class="candle-tooltip-partial">Candela parziale</span>':'');
+}
+function updateDetailCandleTooltip(candles,start,end,fxCandle){
+ const el=$('#chartCandleTooltip');
+ if(!el)return;
+ const selected=chartHoverForex&&fxCandle?fxCandle:
+  Number.isInteger(state.chartHover)&&state.chartHover>=start&&state.chartHover<end?
+   candles[state.chartHover]:null;
+ if(!selected){el.hidden=true;return;}
+ el.innerHTML=candleTooltipMarkup(selected);
+ el.hidden=false;
+}
 function chartVisibleCandleCount(candles,width){
  const same=chartSeries.id===state.dialogId&&chartSeries.range===chartRange;
  const count=same?Number(chartSeries.visibleCount):NaN;
@@ -3916,7 +3947,9 @@ function drawChart(){
  if(!sample.length){
   const message=chartSeries.loading&&chartSeries.id===state.dialogId?
    'Caricamento storico '+chartRange+'…':'Candele OHLC non disponibili per il periodo selezionato.';
-  text(message,width/2,Math.min(130,height/3),'center',13);return;
+  text(message,width/2,Math.min(130,height/3),'center',13);
+  const tooltip=$('#chartCandleTooltip');if(tooltip)tooltip.hidden=true;
+  return;
  }
  const ix=i=>left+(i-start+.5)*chartW/sample.length;
  const closes=candles.map(x=>x.c);
@@ -4006,14 +4039,17 @@ function drawChart(){
   text(d,chartRange==='MAX'&&i===0?left+4:chartRange==='MAX'&&i===4?width-right-4:ix(idx),
    height-5,chartRange==='MAX'&&i===0?'left':chartRange==='MAX'&&i===4?'right':'center',9);
  }
- if(num(state.chartHover)&&state.chartHover>=start&&state.chartHover<end){
-  const c=candles[state.chartHover],x=ix(state.chartHover);line(x,regions[0].top,x,regions[3].bottom,'#a0c7d2',.8);
-  const tooltip=([c.o,c.h,c.l,c.c].map(v=>v.toLocaleString('it-IT',{maximumFractionDigits:3})));
-  const tx=Math.max(35,Math.min(width-250,x-100));
-  ctx.fillStyle=dark?'#183046':'#e2eef7';ctx.fillRect(tx,14,228,37);
-  text('O '+tooltip[0]+'  H '+tooltip[1],tx+8,28,'left',10);
-  text('L '+tooltip[2]+'  C '+tooltip[3],tx+8,43,'left',10);
+ if(Number.isInteger(state.chartHover)&&state.chartHover>=start&&state.chartHover<end&&!chartHoverForex){
+  const x=ix(state.chartHover);
+  ctx.fillStyle=dark?'rgba(96,169,216,.14)':'rgba(32,113,179,.11)';
+  ctx.fillRect(x-step/2,regions[0].top,step,regions[0].bottom-regions[0].top);
+  line(x,regions[0].top,x,regions[3].bottom,'#a0c7d2',.9);
  }
+ if(chartHoverForex&&fxCandle){
+  const x=width-right+14;
+  line(x,regions[0].top,x,regions[3].bottom,'#a0c7d2',.9);
+ }
+ updateDetailCandleTooltip(candles,start,end,fxCandle);
  if(closes.length<205){text('EMA 200: storico insufficiente',width-right-9,26,'right',9)}
 }
 function setupCanvasInteractions(){
