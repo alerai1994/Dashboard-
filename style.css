@@ -1552,10 +1552,12 @@ body.theme-light :is(.btn,.outline-button,.sidebar-theme-button,
 .chart-candle-tooltip{left:6px;top:6px}
 .candle-tooltip-date{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px;font-size:10px}
 .candle-tooltip-date small{font-size:9px;opacity:.72;font-weight:500}
-.candle-tooltip-high,.candle-tooltip-low{font-size:10px;letter-spacing:.01em}
+.candle-tooltip-price,.candle-tooltip-high,.candle-tooltip-low{font-size:10px;letter-spacing:.01em}
+.candle-tooltip-price{color:#b8e3ff}
+.candle-tooltip-price small{font-size:9px;opacity:.8;font-weight:500}
 .candle-tooltip-high{color:#75efbb}
 .candle-tooltip-low{color:#ff9caa}
-.candle-tooltip-high strong,.candle-tooltip-low strong{
+.candle-tooltip-price strong,.candle-tooltip-high strong,.candle-tooltip-low strong{
  margin-left:4px;font-size:11px;font-weight:750;letter-spacing:0;
  overflow-wrap:anywhere;
 }
@@ -1571,12 +1573,14 @@ body.theme-light :is(.btn,.outline-button,.sidebar-theme-button,
  color:#143146;background:rgba(239,248,255,.50);
  border-color:rgba(62,129,168,.4);
 }
+.theme-light .candle-tooltip-price{color:#12618f}
 .theme-light .candle-tooltip-high{color:#007a51}
 .theme-light .candle-tooltip-low{color:#b02f46}
 .theme-light .candle-tooltip-partial{color:#45677f}
 @media(max-width:760px){
  .chart-candle-tooltip{max-width:min(184px,calc(100% - 12px));padding:5px 7px}
  .chart-candle-tooltip .candle-tooltip-date{font-size:9px}
+ .chart-candle-tooltip .candle-tooltip-price strong,
  .chart-candle-tooltip .candle-tooltip-high strong,
  .chart-candle-tooltip .candle-tooltip-low strong{font-size:10px}
 }
@@ -1889,9 +1893,10 @@ body:is(.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) .btn-p
 }
 body:is(.theme-sand,.theme-ice) .btn-primary{color:#fff}
 body:is(.theme-sand,.theme-ice) :is(.chart-candle-tooltip,.mini-candle-tooltip){
- color:var(--text);background:color-mix(in srgb,var(--panel) 83%,transparent);
+ color:var(--text);background:color-mix(in srgb,var(--panel) 50%,transparent);
  border-color:var(--line)
 }
+body:is(.theme-sand,.theme-ice) .candle-tooltip-price{color:var(--brand)}
 body:is(.theme-sand,.theme-ice) .candle-tooltip-high{color:var(--green)}
 body:is(.theme-sand,.theme-ice) .candle-tooltip-low{color:var(--red)}
 body:is(.theme-sand,.theme-ice) .candle-tooltip-partial{color:var(--muted)}
