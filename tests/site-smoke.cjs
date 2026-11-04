@@ -63,7 +63,18 @@ const app=new Function('window','document','location','localStorage','sessionSto
 app.state.quotes=Object.fromEntries(rows.map(row=>[row.id,row]));
 app.state.feedTime=quotes.generatedAt;
 app.state.loading=false;
-assert.equal(Object.keys(app.PAGE_RENDERERS).length,10);
+assert.equal(Object.keys(app.PAGE_RENDERERS).length,11);
+assert.equal(typeof app.PAGE_RENDERERS.workspace,'function','Workspace route missing');
+const workspace=app.PAGE_RENDERERS.workspace();
+for(const id of ['summary','global','markets','crypto','tech','bigtech','forex','commodities',
+ 'charts','watchlist','portfolio','analytics','orderbook','etf','news','settings']){
+ assert(workspace.includes('data-workspace-widget="'+id+'"'),'Workspace missing '+id);
+}
+assert(workspace.includes('data-ws-action="edit"'),'Workspace customization controls missing');
+assert(workspace.includes('data-ws-action="reset"'),'Workspace reset control missing');
+assert(workspace.includes('data-ws-action="size"')===false,
+ 'Size controls should be hidden until edit mode');
+assert(source.includes("save('workspaceLayout',workspaceLayout)"),'Workspace layout persistence absent');
 for(const [name,fn] of Object.entries(app.PAGE_RENDERERS)){
  const page=fn();
  assert.equal(typeof page,'string');
@@ -110,3 +121,4 @@ app.unlockVertexAudio(true);
 assert.equal(audioEvents.resumes,2,'Audio must recover after iOS interruption');
 assert.equal(audioEvents.created,1,'Click and alert sounds must share one context');
 console.log('PASS gesture-unlocked audio, UPPER/LOWER tones, sound previews, silent mode and recovery');
+console.log('PASS Workspace route with 16 modules, customization, and saved layout');
