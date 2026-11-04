@@ -3060,8 +3060,10 @@ function updateChartLiveQuoteStatus(){
  if(!el||!state.dialogId)return;
  const id=state.dialogId,q=quote(id),label=instrumentQuoteStatus(id);
  const venue=chartQuoteVenue(q),compatible=chartQuoteCompatible(id,venue,chartSeries.source);
- el.textContent=label+(q&&q.live&&venue==='mt5'?' · candela MT5 MID indicativa a destra, separata dallo storico Yahoo':
-  compatible?' · candela recente parziale aggiornata da prezzi osservati':'');
+ const visible=getCandles(id),updated=compatible&&visible.length>=2&&visible[visible.length-1].observed===true;
+ const brokerBar=venue==='mt5'?forexBrokerObservedCandle(id):null;
+ el.textContent=label+(brokerBar?' · candela MT5 MID indicativa a destra, separata dallo storico Yahoo':
+  updated?' · candela recente parziale aggiornata da prezzi osservati':'');
  el.classList.toggle('live-online',label.startsWith('● LIVE'));
 }
 function scheduleMarketMiniPaint(){
@@ -3796,7 +3798,7 @@ function refreshDialog(){
   '<div><button class="btn btn-small" type="button" data-pan="-20">◀ Storico</button> <button class="btn btn-small" type="button" data-pan="20">Recenti ▶</button> <button class="btn btn-small" type="button" data-pan="reset">Oggi</button></div>')+'</div>'+
  '<div class="chart-help">'+(isCrypto?(a.id==='ore'?
  'ORE/USDT: candele al secondo ricavate dai trade LBank quando disponibili; altrimenti vengono mostrate candele reali a 1m e la risoluzione è dichiarata. ':
- 'I timeframe 1s, 5s, 15s e 30s mostrano trade aggregati reali se disponibili; altrimenti mantengono le candele originali a 1m/5m, con risoluzione effettiva indicata sotto il grafico. Fuori orario di mercato appare l’ultima sessione disponibile. '):'')+'Trascina il grafico in orizzontale per scorrere lo storico. Nessuno zoom. Le medie e gli indicatori sono mostrati solo quando le serie contengono dati sufficienti.</div>'+
+ 'I timeframe 1s, 5s, 15s e 30s mostrano trade aggregati reali se disponibili; altrimenti mantengono le candele originali a 1m/5m, con risoluzione effettiva indicata sotto il grafico. Fuori orario di mercato appare l’ultima sessione disponibile. '):'')+'Trascina il grafico in orizzontale per scorrere lo storico. Nessuno zoom. Le medie e gli indicatori sono mostrati solo quando le serie contengono dati sufficienti. La candela più recente può essere parziale: usa soltanto prezzi effettivamente osservati, senza inventare movimenti mancanti.</div>'+
  '<div class="chart-source"><span'+(isCrypto?' id="chartHistorySource" role="status" aria-live="polite"':'')+'>'+(isCrypto?'Caricamento delle candele del periodo '+chartRange+'…':
   'Prezzi: Yahoo Finance. Candele OHLC: '+esc(q&&q.candleSource||'Yahoo Finance, se disponibile')+'. Storico non necessariamente in tempo reale.')+'</span>'+
  '<a href="'+esc(externalUrl(a))+'" target="_blank" rel="noopener noreferrer">Apri fonte '+sym('external')+'</a></div>';
