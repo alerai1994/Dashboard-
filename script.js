@@ -4475,7 +4475,7 @@ function chartVisibleCandleCount(candles,width){
 
 /* Right-edge current-price marker for full charts (crypto and all markets).
    Uses the last shown genuine candle; newer quotes only from compatible venues. */
-function detailChartRightMargin(broker){return broker?156:133;}
+function detailChartRightMargin(broker){return broker?110:67;}
 function detailChartPriceMarker(id,candles,end,broker){
  const last=candles[end-1],previous=candles[end-2],asset=ASSET_BY_ID[id];
  if(!last||!asset)return null;
@@ -4504,22 +4504,26 @@ function detailChartPriceMarker(id,candles,end,broker){
 }
 function drawDetailRightPriceMarker(ctx,marker,layout){
  if(!marker||!Number.isFinite(marker.price))return;
- const {width,left,right,top,bottom,y}=layout;
- const up=marker.direction>=0,color=up?'#119d68':'#d4475a';
- const guide=up?'rgba(17,157,104,.52)':'rgba(212,71,90,.52)';
- const tagHeight=23,centerY=Math.max(top+tagHeight/2+2,
-  Math.min(bottom-tagHeight/2-2,y));
- const label=(up?'▲ ':'▼ ')+marker.label;
+ const {width,left,right,top,bottom,y,broker}=layout;
+ const up=marker.direction>=0,fill=up?'#119d68':'#d4475a';
+ const guide=up?'rgba(17,157,104,.46)':'rgba(212,71,90,.46)';
+ const tagHeight=19;
+ const centerY=Math.max(top+tagHeight/2+2,Math.min(bottom-tagHeight/2-2,y));
+ const label=marker.label; // Compact: price only, no arrows or redundant labels.
  ctx.save();
- ctx.font='700 11px Inter, sans-serif';
- const tagWidth=Math.min(right-10,Math.max(66,Math.ceil(ctx.measureText(label).width)+16));
- const rightEdge=width-5,x=rightEdge-tagWidth;
- ctx.setLineDash([4,4]);ctx.lineWidth=1;ctx.strokeStyle=guide;
- ctx.beginPath();ctx.moveTo(left,centerY);ctx.lineTo(x-3,centerY);ctx.stroke();
+ ctx.font='700 10px Inter, sans-serif';
+ const measured=Math.ceil(ctx.measureText(label).width);
+ const tagWidth=Math.max(43,measured+10);
+ // Place the badge over the axis's existing price text, not in an extra gutter.
+ // Long decimals may extend left into the price plot rather than shrink candles.
+ const axisX=width-right+(broker?32:7);
+ const x=Math.max(2,Math.min(width-tagWidth-3,axisX-4));
+ ctx.setLineDash([3,4]);ctx.lineWidth=.85;ctx.strokeStyle=guide;
+ ctx.beginPath();ctx.moveTo(left,centerY);ctx.lineTo(x,centerY);ctx.stroke();
  ctx.setLineDash([]);
- ctx.fillStyle=color;ctx.beginPath();ctx.roundRect(x,centerY-tagHeight/2,tagWidth,tagHeight,6);ctx.fill();
+ ctx.fillStyle=fill;ctx.beginPath();ctx.roundRect(x,centerY-tagHeight/2,tagWidth,tagHeight,4);ctx.fill();
  ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='middle';
- ctx.fillText(label,x+tagWidth/2,centerY+.5,tagWidth-8);
+ ctx.fillText(label,x+tagWidth/2,centerY+.25,tagWidth-6);
  ctx.restore();
 }
 function drawChart(){
@@ -4677,7 +4681,7 @@ function drawChart(){
  }
  updateDetailCandleTooltip(candles,start,end,fxCandle,lowAnchor);
  if(priceMarker)drawDetailRightPriceMarker(ctx,priceMarker,{
-  width,left,right,top:regions[0].top,bottom:regions[0].bottom,y:yPrice(priceMarker.price)
+  width,left,right,broker:!!fxCandle,top:regions[0].top,bottom:regions[0].bottom,y:yPrice(priceMarker.price)
  });
  if(closes.length<205){text('EMA 200: storico insufficiente',width-right-9,26,'right',9)}
 }
