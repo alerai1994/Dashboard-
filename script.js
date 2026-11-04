@@ -2810,6 +2810,16 @@ function updateNav(){
  updateCryptoAlertIndicator();
 }
 function render(){
+ // Global: place AR immediately to the left of the notification bell.
+ // Other sections keep their original header order.
+ const bell=$('#notificationsButton'),profile=$('#profileButton'),actions=$('.top-actions');
+ if(actions&&bell&&profile){
+  if(state.page==='global'){
+   if(profile.nextElementSibling!==bell)actions.insertBefore(profile,bell);
+  }else if(bell.nextElementSibling!==profile){
+   actions.insertBefore(bell,profile);
+  }
+ }
  const page=SECTIONS[state.page]||SECTIONS.global;
  $('#pageTitle').textContent=page[0];$('#pageSubtitle').textContent=page[1];
  const hideSearch=['global','portfolio','settings','analytics','orderbook','etf','news'].includes(state.page);
