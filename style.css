@@ -1576,3 +1576,202 @@ body.theme-light :is(.btn,.outline-button,.sidebar-theme-button,
   contain-intrinsic-block-size:auto 254px;
  }
 }
+
+
+/* Vertex minimal visual system · all pages and all five palettes */
+/* Flat surfaces, subdued color and a consistent rhythm. All controls,
+   data feeds and chart interactions retain their existing behavior. */
+:root{--minimal-radius:10px;--shadow:none}
+body.theme-light{
+ --bg:#f5f7fa;--shell:#ffffff;--panel:#ffffff;--panel-2:#f8fafc;
+ --surface:#f1f4f8;--line:#d7e0e9;--line-soft:#e5ebf1;
+ --text:#172637;--muted:#617285;--subtle:#8593a1;--brand:#2b72b7;
+ --shadow:none
+}
+body.theme-dark{
+ --bg:#080f18;--shell:#0b1420;--panel:#101c29;--panel-2:#122131;
+ --surface:#192b3d;--line:#294052;--line-soft:#223647;
+ --text:#edf3f9;--muted:#9aafc0;--subtle:#788fa4;--brand:#69aeec;
+ --shadow:none
+}
+body.theme-ocean{
+ --bg:#071923;--shell:#0a202c;--panel:#0d2a38;--panel-2:#103442;
+ --surface:#173e4e;--line:#2d5a6d;--line-soft:#234959;--shadow:none
+}
+body.theme-emerald{
+ --bg:#091813;--shell:#0c201a;--panel:#10291f;--panel-2:#133327;
+ --surface:#1a4232;--line:#315a48;--line-soft:#254c3b;--shadow:none
+}
+body.theme-violet{
+ --bg:#130f1c;--shell:#191526;--panel:#211b30;--panel-2:#29203a;
+ --surface:#352a47;--line:#544368;--line-soft:#403651;--shadow:none
+}
+html{scroll-behavior:auto}
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet){
+ background:var(--bg);color:var(--text)
+}
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) .sidebar{
+ background:var(--shell);border-right:1px solid var(--line-soft);box-shadow:none
+}
+.brand{font-weight:750;letter-spacing:-.035em;font-size:18px}
+.brand-logo{width:25px;height:25px}
+.sidebar-nav,.sidebar-bottom{gap:3px}
+body .side-link{
+ min-height:44px;padding:10px 12px;border-radius:8px;
+ background-image:none;box-shadow:none;font-weight:540;gap:12px
+}
+body .side-link:not(.active){background:transparent;border-color:transparent;box-shadow:none}
+body .side-link:hover:not(.active){background:var(--surface);color:var(--text)}
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) .side-link.active{
+ background:color-mix(in srgb,var(--brand) 9%,var(--shell));
+ border-color:transparent;border-left-color:var(--brand);
+ border-radius:7px;box-shadow:inset 2px 0 0 var(--brand);
+ color:var(--text);font-weight:680
+}
+body .side-link.active .icon{color:var(--brand)}
+body .main-content{padding-top:22px}
+body .topbar{align-items:center;min-height:76px;gap:16px}
+body .page-heading h1{
+ font-size:clamp(26px,2.4vw,32px);font-weight:735;
+ letter-spacing:-.04em;line-height:1.12;margin:0 0 5px
+}
+body .page-heading p{font-size:12px;line-height:1.5}
+body .top-actions{gap:10px}
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) .search-wrap{
+ background:var(--panel);border:1px solid var(--line);border-radius:9px;
+ box-shadow:none;height:41px;color:var(--muted)
+}
+body .search-wrap:focus-within{box-shadow:0 0 0 2px color-mix(in srgb,var(--brand) 16%,transparent)}
+body .avatar-button{border-radius:9px;background:var(--surface);color:var(--text)}
+body .icon-button{border:1px solid transparent;background:transparent}
+body .icon-button:hover{background:var(--surface)}
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet) .panel{
+ background:var(--panel);border:1px solid var(--line-soft);
+ border-radius:var(--minimal-radius);box-shadow:none
+}
+body .content-heading{margin:8px 0 17px}
+body .content-heading h2{font-size:19px;font-weight:715;letter-spacing:-.025em}
+body .section-topline h2,body .section-topline h3{font-size:12px;font-weight:720}
+body .summary-grid,body .content-two-col,body .quick-grid,body .market-chart-grid{gap:12px}
+body .summary-card{padding:16px;min-height:102px}
+body .summary-card strong{font-size:clamp(20px,2vw,25px);font-weight:740;letter-spacing:-.025em;margin-top:10px}
+body .content-card{padding:17px}
+body .content-card h3{font-size:14px;font-weight:720}
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet)
+ :is(.market-chart-card,.market-data-pill,.photo-card){
+ background:var(--panel);border:1px solid var(--line-soft);
+ border-radius:var(--minimal-radius);box-shadow:none;color:var(--text)
+}
+body .market-chart-card{min-height:242px;padding:14px}
+body .market-chart-card:hover,body .market-chart-card:focus-visible,
+body .index-mini:hover,body .photo-card:hover{
+ border-color:var(--brand);box-shadow:none;transform:none
+}
+body .market-chart-card .market-chart-values{margin:12px 0 6px}
+body .market-chart-card .market-chart-values .asset-price{font-size:18px;font-weight:740}
+body .market-chart-card .market-chart-title strong{font-weight:710;font-size:12px}
+body .market-chart-note,body .market-chart-open{color:var(--muted);font-weight:520}
+body .market-chart-open{border-top:1px solid var(--line-soft)}
+body .market-data-pill{padding:10px 11px;gap:4px}
+body .market-data-pill strong{font-weight:700}
+body .market-data-pill small{color:var(--muted);font-weight:530}
+body .market-data-pill.live{
+ background:var(--panel);border-color:color-mix(in srgb,var(--green) 43%,var(--line))
+}
+body .market-data-pill.live small{color:var(--green)}
+body .market-feed-pill{background:var(--surface);border-color:var(--line)}
+body .market-feed-pill.live{
+ background:var(--surface);border-color:color-mix(in srgb,var(--green) 40%,var(--line));color:var(--green)
+}
+body .index-mini{border-radius:var(--minimal-radius);box-shadow:none;transition:border-color .13s ease}
+body .index-mini .mini-price{font-weight:715}
+body .market-chart-section-head{border-color:var(--line-soft);margin-bottom:10px}
+body .market-chart-section-head h3{font-size:14px;font-weight:725}
+body .market-chart-grid{row-gap:12px}
+body .region-photo-grid{gap:10px}
+body .photo-card{min-height:189px}
+body .photo-card:hover{transform:none}
+body .photo-cover{height:86px;filter:saturate(.66)}
+body .photo-cover:after{background:linear-gradient(0deg,rgba(0,0,0,.12),transparent)}
+body .photo-card-body{padding:10px}
+body .photo-card-title{font-weight:690}
+body .region-list-item{border-radius:6px}
+body .region-list-item:hover,body .region-list-item.selected{background:var(--surface)}
+body .world-map-panel{box-shadow:none;border-radius:var(--minimal-radius)}
+body .map-pin:before,body .map-pin:after{box-shadow:none}
+body .map-callout,body .map-callout:hover{box-shadow:none;border-radius:7px}
+body .map-pin.selected{filter:none}
+body .data-status i{box-shadow:none}
+body :is(
+ .btn,.outline-button,.side-link,.sidebar-theme-button,
+ .tab-filters button,.settings-theme-option,.settings-auto-theme,
+ .settings-sound-toggle,.settings-app-icon-option,.settings-app-icon-copy,
+ .crypto-expand-btn,.ob-coin,.icon-button,.avatar-button,.crypto-etf-link
+){
+ background-image:none;box-shadow:none;transform:none;
+ border-radius:8px;transition:background-color .12s ease,border-color .12s ease,color .12s ease
+}
+body :is(
+ .btn,.outline-button,.sidebar-theme-button,.tab-filters button,
+ .settings-theme-option,.settings-auto-theme,.settings-sound-toggle,
+ .settings-app-icon-option,.settings-app-icon-copy,.crypto-expand-btn,
+ .icon-button,.avatar-button,.side-link,.ob-coin,.instrument-row,
+ .market-chart-card,.index-mini,.crypto-etf-link
+):is(:hover,:active):not(:disabled){
+ transform:none;box-shadow:none
+}
+body :is(.btn,.outline-button,.sidebar-theme-button,.settings-auto-theme,.settings-theme-option,.ob-coin){
+ border-color:var(--line)
+}
+body :is(.btn,.outline-button):not(.btn-primary){background:var(--surface)}
+body :is(.btn,.outline-button):not(.btn-primary):hover{background:var(--panel-2);border-color:var(--brand)}
+body .btn-primary{background:var(--brand);color:var(--bg);border-color:var(--brand);box-shadow:none}
+body.theme-light .btn-primary{color:white}
+body .btn-primary:hover{filter:brightness(1.06);box-shadow:none}
+body :is(
+ .tab-filters button.active,.settings-theme-option.is-selected,
+ .sidebar-theme-button.is-selected,.settings-sound-toggle.is-on,.ob-coin.is-selected
+){
+ box-shadow:none;border-color:var(--brand);
+ background:color-mix(in srgb,var(--brand) 9%,var(--panel));
+ color:var(--text)
+}
+body .settings-theme-swatch{box-shadow:none}
+body .settings-theme-option{min-height:98px}
+body :is(.quick-card,.news-link,.sec-news-card,.crypto-etf-card,.ob-side,.crypto-cap-section){
+ background:var(--panel);box-shadow:none;border-color:var(--line-soft);border-radius:var(--minimal-radius)
+}
+body :is(.quick-card,.news-link,.sec-news-card,.crypto-etf-card,.ob-side):hover{box-shadow:none}
+body .ob-side-title,body .ob-side-footer{background:var(--panel-2)}
+body .ob-book-table th,body .data-table th{font-weight:660;letter-spacing:.045em}
+body .ob-trade-price:before{display:none}
+body .ob-trade-price{box-shadow:none}
+body .asset-dialog{box-shadow:none;border-color:var(--line);border-radius:12px}
+body .asset-dialog::backdrop{background:rgba(3,9,17,.75);backdrop-filter:none}
+body .chart-frame{border-color:var(--line);border-radius:9px;box-shadow:none}
+body .market-fullscreen .chart-period{border-radius:7px;box-shadow:none}
+body .market-fullscreen .chart-period:is(.active,[aria-pressed="true"]){
+ box-shadow:none;background:var(--brand);border-color:var(--brand)
+}
+body .chart-candle-tooltip,body .mini-candle-tooltip{box-shadow:none}
+/* Make the busy first-load display consistent with the new quiet UI. */
+body .vertex-boot-screen{background:var(--bg)}
+body .vertex-boot-icon-wrap{box-shadow:none;border:1px solid var(--line)}
+body .vertex-boot-track{background:var(--line);box-shadow:none}
+body .vertex-boot-progress{box-shadow:none}
+/* Keep the full touch hit area, while making narrow screens less cluttered. */
+@media(max-width:600px){
+ body .main-content{padding:14px 12px 27px}
+ body .topbar{min-height:94px;align-items:flex-end}
+ body .page-heading h1{font-size:26px}
+ body .content-card{padding:13px}
+ body .summary-card{padding:13px;min-height:94px}
+ body .market-chart-card{padding:12px;min-height:234px}
+ body .photo-card{min-height:180px}
+ body .photo-cover{height:76px}
+ body .top-actions{gap:6px}
+ body .search-wrap{min-width:0}
+}
+@media(prefers-reduced-motion:reduce){
+ body *{transition-duration:0ms!important}
+}
