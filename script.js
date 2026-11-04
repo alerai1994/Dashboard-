@@ -1095,6 +1095,35 @@ const MARKET_CHART_GROUPS=[
 ];
 function marketCategory(a){return a.sector==='tech'?'tech':a.group;}
 function marketFilterMatch(a){return state.marketFilter==='all'||marketCategory(a)===state.marketFilter;}
+/* Preview cards use only observed prices on the same original OHLC venue.
+   The active day's sampled high/low may be incomplete; never draw phantom bars. */
+function marketPreviewCandles(id,base){
+ if(base.length<2)return base;
+ const asset=ASSET_BY_ID[id],q=quote(id),ticks=chartObservedQuotes.get(id);
+ if(!asset||!q||!ticks?.length)return base;
+ const source=String(q.candleSource||'').toLowerCase();
+ const compatible=venue=>venue==='yahoo'&&asset.group!=='crypto'||
+  venue==='binance'&&asset.group==='crypto'&&source.includes('binance')||
+  venue==='lbank'&&asset.group==='crypto'&&source.includes('lbank');
+ const out=base.slice(),now=Date.now();
+ let bucket=chartBucket(Number(base[base.length-1].t)*1000,86400000);
+ const minimum=Number(base[base.length-1].t)*1000;
+ for(const tick of ticks){
+  if(!compatible(tick.venue)||tick.ts<minimum||tick.ts>now+60000||
+     tick.ts<now-4*3600000)continue;
+  const next=chartBucket(tick.ts,86400000);
+  if(next<bucket)continue;
+  if(next>bucket){
+   out.push({t:next/1000,o:tick.price,h:tick.price,l:tick.price,c:tick.price,observed:true});
+   bucket=next;
+  }else{
+   const i=out.length-1,p=out[i];
+   out[i]={...p,h:Math.max(Number(p.h),tick.price),
+    l:Math.min(Number(p.l),tick.price),c:tick.price,observed:true};
+  }
+ }
+ return out.slice(-48);
+}
 function marketChartPlot(id){
  const q=quote(id),W=320,H=142,L=10,R=10,T=10,B=14,chartW=W-L-R,chartH=H-T-B;
  const grid='<path d="M10 42H310 M10 82H310 M10 122H310" stroke="currentColor" stroke-opacity=".13" stroke-width=".7" fill="none"/>';
@@ -1104,7 +1133,7 @@ function marketChartPlot(id){
   const o=Number(c.o),h=Number(c.h),l=Number(c.l),cl=Number(c.c);
   return [o,h,l,cl].every(num)&&o>0&&h>0&&l>0&&cl>0&&h>=Math.max(o,cl)&&l<=Math.min(o,cl);
  };
- const candles=q&&Array.isArray(q.candles)?q.candles.filter(valid).slice(-48):[];
+ const candles=q&&Array.isArray(q.candles)?marketPreviewCandles(id,q.candles.filter(valid).slice(-48)):[];
  if(candles.length>=2){
   const low=Math.min(...candles.map(c=>Number(c.l))),high=Math.max(...candles.map(c=>Number(c.h)));
   const pad=Math.max((high-low)*.09,high*.0002),min=low-pad,max=high+pad;
@@ -1115,7 +1144,7 @@ function marketChartPlot(id){
    return '<path d="M'+x.toFixed(2)+' '+y(Number(c.h)).toFixed(2)+'V'+y(Number(c.l)).toFixed(2)+'" stroke="'+co+'" stroke-width="1.15"/>'+
     '<rect x="'+(x-cw/2).toFixed(2)+'" y="'+Math.min(yo,yc).toFixed(2)+'" width="'+cw.toFixed(2)+'" height="'+Math.max(1,Math.abs(yo-yc)).toFixed(2)+'" rx=".5" fill="'+co+'"/>';
   }).join('');
-  return plot(paths,'Candele OHLC · '+candles.length+' barre'+(q&&q.candleSource?' · '+esc(q.candleSource):''));
+  return plot(paths,'Candele OHLC · '+candles.length+' barre'+(candles[candles.length-1]?.observed?' · ultima candela parziale':'')+(q&&q.candleSource?' · '+esc(q.candleSource):''));
  }
  return '<span class="market-chart-unavailable">Candele OHLC non disponibili per questo strumento</span>'+
   '<span class="market-chart-note">Nessun grafico a linee o candele simulate</span>';
