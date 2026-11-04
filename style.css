@@ -1897,4 +1897,8 @@ body:is(.theme-sand,.theme-ice) .candle-tooltip-low{color:var(--red)}
 body:is(.theme-sand,.theme-ice) .candle-tooltip-partial{color:var(--muted)}
 body:is(.theme-sand,.theme-ice) .market-chart-unavailable{color:var(--muted);border-color:var(--line)}
 body:is(.theme-sand,.theme-ice) .settings-theme-swatch{border-color:var(--line)}
-
+/* Accessible, touch-friendly sound checks. Test buttons do not fire market alerts. */
+.settings-audio-tests{display:flex;flex-wrap:wrap;gap:9px;margin-top:15px}
+.settings-audio-tests .outline-button{display:inline-flex;align-items:center;justify-content:center;min-height:43px;min-width:142px;padding:10px 14px}
+.settings-audio-help{margin-top:12px!important;margin-bottom:14px!important;max-width:670px}
+@media(max-width:520px){.settings-audio-tests .outline-button{flex:1 1 140px}}
