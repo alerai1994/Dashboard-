@@ -3037,12 +3037,30 @@ function chartWithObservedQuotes(id,base){
  }
  return changed?out:base;
 }
+/* Independent indicative broker mid-price candle. The Yahoo OHLC history
+   and all technical indicators stay untouched by the broker source. */
+function forexBrokerObservedCandle(id){
+ if(ASSET_BY_ID[id]?.group!=='forex'||!fxConnected())return null;
+ const current=quote(id),ticks=chartObservedQuotes.get(id),now=Date.now();
+ if(!current?.live||!ticks?.length||!Number.isFinite(current.received)||
+    now-current.received>45000)return null;
+ const recent=ticks.filter(x=>x.venue==='mt5'&&now-x.ts>=0&&now-x.ts<60000);
+ if(!recent.length)return null;
+ const step=chartCandleStepMs(id)||60000,last=recent[recent.length-1];
+ const bucket=chartBucket(last.ts,step);
+ const selected=recent.filter(x=>chartBucket(x.ts,step)===bucket);
+ if(!selected.length)return null;
+ return {t:bucket/1000,o:selected[0].price,
+  h:Math.max(...selected.map(x=>x.price)),
+  l:Math.min(...selected.map(x=>x.price)),c:last.price,
+  observed:true,venue:'mt5'};
+}
 function updateChartLiveQuoteStatus(){
  const el=$('#chartLiveQuoteStatus');
  if(!el||!state.dialogId)return;
  const id=state.dialogId,q=quote(id),label=instrumentQuoteStatus(id);
  const venue=chartQuoteVenue(q),compatible=chartQuoteCompatible(id,venue,chartSeries.source);
- el.textContent=label+(q&&q.live&&venue==='mt5'?' · prezzo broker indicativo separato dallo storico Yahoo':
+ el.textContent=label+(q&&q.live&&venue==='mt5'?' · candela MT5 MID indicativa a destra, separata dallo storico Yahoo':
   compatible?' · candela recente parziale aggiornata da prezzi osservati':'');
  el.classList.toggle('live-online',label.startsWith('● LIVE'));
 }
@@ -3869,13 +3887,14 @@ function drawChart(){
  if(!state.dialogId)return;
  const canvas=$('#detailChart');if(!canvas||!canvas.isConnected)return;
  const candles=getCandles(state.dialogId),ctx=canvas.getContext('2d');if(!ctx)return;
+ const fxCandle=forexBrokerObservedCandle(state.dialogId);
  const rect=canvas.getBoundingClientRect();
  const width=Math.max(360,Math.floor(rect.width)),height=Math.max(470,Math.floor(rect.height||470)),dpr=Math.min(2,window.devicePixelRatio||1);
  canvas.width=Math.floor(width*dpr);canvas.height=Math.floor(height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);
  ctx.clearRect(0,0,width,height);
  const dark=state.theme==='dark',color=dark?'#9db4c8':'#536c82',grid=dark?'#173149':'#dbe3e8';
  ctx.fillStyle=dark?'#071523':'#f5f9fd';ctx.fillRect(0,0,width,height);
- const left=19,right=67,chartW=width-left-right,visible=chartVisibleCandleCount(candles,width);
+ const left=19,right=fxCandle?110:67,chartW=width-left-right,visible=chartVisibleCandleCount(candles,width);
  const maxShift=Math.max(0,candles.length-visible);
  state.chartShift=Math.max(0,Math.min(maxShift,state.chartShift));
  const start=Math.max(0,candles.length-visible-state.chartShift),end=Math.min(candles.length,start+visible),sample=candles.slice(start,end);
@@ -3901,6 +3920,7 @@ function drawChart(){
  const closes=candles.map(x=>x.c);
  const emaSets=[{values:ema(closes,12),color:'#6fb2ff'},{values:ema(closes,26),color:'#f1b954'},{values:ema(closes,50),color:'#b18aff'},{values:ema(closes,200),color:'#e96798'}];
  const lows=sample.map(x=>x.l),highs=sample.map(x=>x.h);
+ if(fxCandle){lows.push(fxCandle.l);highs.push(fxCandle.h)}
  emaSets.forEach(a=>a.values.slice(start,end).forEach(v=>{if(num(v)){lows.push(v);highs.push(v)}}));
  const lo=Math.min(...lows),hi=Math.max(...highs),pad=(hi-lo||Math.max(hi*.03,1))*.07;
  const min=lo-pad,max=hi+pad;
@@ -3915,6 +3935,19 @@ function drawChart(){
    const radius=Math.min(2.2,cw*.22,bodyHeight*.45);
    ctx.beginPath();ctx.roundRect(x-cw/2,top,cw,bodyHeight,radius);ctx.fill();
   });
+ if(fxCandle){
+  // Broker candle is isolated on the right. No artificial Yahoo OHLC merging.
+  const x=width-right+14,colorC=fxCandle.c>=fxCandle.o?'#18df9d':'#f75d72';
+  ctx.save();ctx.setLineDash([2,4]);
+  line(width-right+1,regions[0].top,width-right+1,regions[0].bottom,'#7c9faf',.9);
+  ctx.restore();
+  line(x,yPrice(fxCandle.h),x,yPrice(fxCandle.l),colorC,1.5);
+  const top=yPrice(Math.max(fxCandle.o,fxCandle.c));
+  const bottom=yPrice(Math.min(fxCandle.o,fxCandle.c));
+  ctx.fillStyle=colorC;
+  ctx.fillRect(x-4,top,8,Math.max(2,bottom-top));
+  text('MT5 MID',x,regions[0].top+12,'center',8);
+ }
  emaSets.forEach(a=>{
   ctx.beginPath();let started=false;
   for(let i=start;i<end;i++){
@@ -3924,7 +3957,7 @@ function drawChart(){
   }
   ctx.strokeStyle=a.color;ctx.lineWidth=1.6;ctx.stroke();
  });
- for(let i=0;i<=4;i++){const v=min+(max-min)*i/4;text(v.toLocaleString('it-IT',{maximumFractionDigits:Math.abs(v)>=10?1:3}),width-right+7,yPrice(v)+4,'left',10)}
+ for(let i=0;i<=4;i++){const v=min+(max-min)*i/4;text(v.toLocaleString('it-IT',{maximumFractionDigits:Math.abs(v)>=10?1:3}),width-right+(fxCandle?32:7),yPrice(v)+4,'left',10)}
  const rsiValues=rsi(closes,14),st=stochRsi(rsiValues),m=macd(closes);
  const drawIndicator=(values,yMap,stroke,widthLine=1.35)=>{
   ctx.beginPath();let started=false;
