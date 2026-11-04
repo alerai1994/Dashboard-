@@ -620,7 +620,8 @@ const STREAM_PAIRS={
 };
 const STREAM_IDS=Object.fromEntries(Object.entries(STREAM_PAIRS).map(([id,pair])=>[pair.toUpperCase(),id]));
 const STREAM_OVERLAY=new Map();
-const streamStatus={socket:null,connected:false,seen:new Set(),last:0,attempt:0,retryTimer:null,flushTimer:null,dirty:new Set(),endpointIndex:0};
+const streamStatus={socket:null,connected:false,seen:new Set(),last:0,openedAt:0,attempt:0,retryTimer:null,flushTimer:null,dirty:new Set(),endpointIndex:0};
+const cryptoRestStatus={last:0,busy:false,retryAt:0,failures:0};
 function liveConnected(){return streamStatus.connected&&Date.now()-streamStatus.last<25000;}
 function liveLabel(){
  const active=liveConnected(),count=[...streamStatus.seen].filter(id=>STREAM_OVERLAY.has(id)&&Date.now()-STREAM_OVERLAY.get(id).received<90000).length;
@@ -638,24 +639,28 @@ function marketGroupFacts(group){
  const latest=times.length?Math.max(...times):null;
  const connected=group==='crypto'?liveConnected():group==='forex'?fxConnected():false;
  const live=connected?rows.filter(q=>q.live===true&&Number.isFinite(q.received)&&
-  now-q.received>=0&&now-q.received<90000).length:0;
- return {total:all.length,available:rows.length,live,latest,
+  now-q.received>=0&&now-q.received<(group==='crypto'?25000:45000)).length:0;
+ const polled=rows.filter(q=>q.polled===true&&Number.isFinite(q.received)&&
+  now-q.received>=0&&now-q.received<45000).length;
+ const recent=rows.filter(q=>{const t=Date.parse(q.time||'');return Number.isFinite(t)&&now-t>=0&&now-t<=20*60000}).length;
+ return {total:all.length,available:rows.length,live,polled,recent,latest,
   age:latest===null?null:Math.max(0,Math.round((now-latest)/60000))};
 }
 function marketGroupStatus(group){
  const f=marketGroupFacts(group),age=snapshotAgeMinutes();
  if(f.live>0){
   const venue=group==='crypto'?'Binance Spot':'Forex MT5';
-  return '● LIVE '+venue+' '+f.live+'/'+f.total+(f.available>f.live?' · resto snapshot':'');
+  return '● LIVE '+venue+' '+f.live+'/'+f.total+(f.available>f.live?' · altre quotazioni differite':'');
  }
+ if(group==='crypto'&&f.polled>0)
+  return '↻ Binance REST ~15 s · '+f.polled+'/'+f.total+' · non streaming';
  if(!f.available)return '◌ Dati non disponibili · 0/'+f.total;
- if(state.feedError||age===null||age>18)
-  return '◌ Feed non recente · '+f.available+'/'+f.total+
-   (f.latest?' · '+localeDate(new Date(f.latest).toISOString(),{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'');
  if(f.age!==null&&f.age>20)
   return '◌ Ultima quotazione '+localeDate(new Date(f.latest).toISOString(),{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+
    ' · '+f.available+'/'+f.total;
- return '↻ Auto ~5 min · '+f.available+'/'+f.total+' · possibili ritardi';
+ if(state.feedError||age===null||age>18)
+  return '⚠ Feed non recente · '+f.recent+'/'+f.total+' quotazioni recenti';
+ return '↻ Feed ~5 min · '+f.recent+'/'+f.total+' quotazioni recenti · possibili ritardi';
 }
 function marketGroupLive(group){return marketGroupFacts(group).live>0}
 function marketStatusStrip(){
@@ -862,7 +867,7 @@ function connectCryptoStream(){
  let ws;
  try{ws=new WebSocket(host+'/stream?streams='+streams)}catch(e){scheduleReconnect();return}
  streamStatus.socket=ws;streamStatus.connected=false;
- ws.onopen=()=>{if(streamStatus.socket!==ws)return;streamStatus.connected=true;streamStatus.attempt=0;updateLiveBadges()};
+ ws.onopen=()=>{if(streamStatus.socket!==ws)return;streamStatus.connected=true;streamStatus.openedAt=Date.now();streamStatus.attempt=0;updateLiveBadges()};
  ws.onmessage=e=>{
   if(streamStatus.socket!==ws)return;
   try{
@@ -886,7 +891,8 @@ function scheduleReconnect(){
 function keepStreamAlive(){
  if(document.hidden||!navigator.onLine){closeStream();updateLiveBadges();return}
  const silence=Date.now()-streamStatus.last;
- if(streamStatus.connected&&streamStatus.last&&silence>90000){
+ if(streamStatus.connected&&((streamStatus.last&&silence>45000)||
+  (!streamStatus.last&&streamStatus.openedAt&&Date.now()-streamStatus.openedAt>30000))){
   closeStream();scheduleReconnect();
  }else if(!streamStatus.socket)connectCryptoStream();
  updateLiveBadges();
@@ -1067,10 +1073,16 @@ function instrumentQuoteStatus(id){
  const connected=asset&&asset.group==='crypto'?liveConnected():
   asset&&asset.group==='forex'?fxConnected():false;
  const isLive=connected&&q.live===true&&Number.isFinite(q.received)&&
-  Date.now()-q.received>=0&&Date.now()-q.received<90000;
+  Date.now()-q.received>=0&&Date.now()-q.received<(asset.group==='crypto'?25000:45000);
  if(isLive)return '● LIVE · '+(q.source||'streaming')+' · '+refTime(id);
- return 'Ultima quotazione · '+refTime(id)+(Number.isFinite(q.delayMinutes)&&q.delayMinutes>0?
-  ' · ritardo fonte '+q.delayMinutes+' min':' · possibile ritardo');
+ if(asset&&asset.group==='crypto'&&q.polled===true&&Number.isFinite(q.received)&&
+   Date.now()-q.received<45000)
+  return '↻ Binance Spot REST ~15 s · '+refTime(id)+' · non WebSocket';
+ const t=Date.parse(q.time||'');
+ const old=Number.isFinite(t)&&Date.now()-t>20*60000;
+ return (old?'◌ Ultima quotazione · ':'↻ Quotazione aggiornata · ')+refTime(id)+
+  (Number.isFinite(q.delayMinutes)&&q.delayMinutes>0?' · ritardo fonte '+q.delayMinutes+' min':
+   ' · fonte anche differita');
 }
 function marketChartCard(a){
  const q=quote(a.id),cat=marketCategory(a);
