@@ -1213,8 +1213,17 @@ function inspectMiniCandle(card,clientX){
  const candle=candles[index];
  tooltip.innerHTML=candleTooltipMarkup(candle);
  tooltip.hidden=false;
+ // Position this compact label so its lower edge reaches the candle LOW,
+ // using the same real OHLC scale as the miniature SVG.
  const cardBox=card.getBoundingClientRect();
- tooltip.style.top=Math.max(8,box.top-cardBox.top+6)+'px';
+ const low=Math.min(...candles.map(c=>Number(c.l)));
+ const high=Math.max(...candles.map(c=>Number(c.h)));
+ const pad=Math.max((high-low)*.09,high*.0002),min=low-pad,max=high+pad;
+ const candleY=10+(max-Number(candle.l))/(max-min)*(142-10-14);
+ const xInSvg=10+(index+.5)*300/candles.length;
+ const localX=box.left-cardBox.left+(xInSvg/320)*box.width;
+ const localLowY=box.top-cardBox.top+(candleY/142)*box.height;
+ positionCandleTooltip(tooltip,card,localX,localLowY);
  let guide=svg.querySelector('[data-mini-candle-guide]');
  if(!guide){
   guide=document.createElementNS('http://www.w3.org/2000/svg','rect');
@@ -3984,7 +3993,22 @@ function candleTooltipMarkup(c){
   '<span class="candle-tooltip-low">LOW <strong>'+formatPrice(c.l)+'</strong></span>'+
   (c.observed?'<span class="candle-tooltip-partial">Candela parziale</span>':'');
 }
-function updateDetailCandleTooltip(candles,start,end,fxCandle){
+// Anchor a small transparent price card precisely at the selected wick's LOW.
+// Coordinates are chart-local; clamping keeps the card on screen on mobile.
+function positionCandleTooltip(el,container,x,lowY){
+ if(!el||!container||!Number.isFinite(x)||!Number.isFinite(lowY))return;
+ const width=container.clientWidth,height=container.clientHeight;
+ const cardWidth=el.offsetWidth,cardHeight=el.offsetHeight;
+ const clamp=(value,lower,upper)=>Math.min(Math.max(lower,upper),Math.max(lower,value));
+ const left=clamp(x-cardWidth/2,6,width-cardWidth-6);
+ // The bottom of the compact rectangle meets the LOW wick when space permits.
+ const above=lowY-cardHeight;
+ const top=above>=6?above:clamp(lowY+5,6,height-cardHeight-6);
+ el.style.left=Math.round(left)+'px';
+ el.style.top=Math.round(top)+'px';
+ el.dataset.lowAnchor=above>=6?'above':'below';
+}
+function updateDetailCandleTooltip(candles,start,end,fxCandle,anchor){
  const el=$('#chartCandleTooltip');
  if(!el)return;
  const selected=chartHoverForex&&fxCandle?fxCandle:
@@ -3993,6 +4017,15 @@ function updateDetailCandleTooltip(candles,start,end,fxCandle){
  if(!selected){el.hidden=true;return;}
  el.innerHTML=candleTooltipMarkup(selected);
  el.hidden=false;
+ if(anchor){
+  const container=el.closest('.chart-frame');
+  if(container){
+   const width=container.clientWidth,height=container.clientHeight;
+   const localX=anchor.x*width/anchor.canvasWidth;
+   const localY=anchor.lowY*height/anchor.canvasHeight;
+   positionCandleTooltip(el,container,localX,localY);
+  }
+ }
 }
 function chartVisibleCandleCount(candles,width){
  const same=chartSeries.id===state.dialogId&&chartSeries.range===chartRange;
@@ -4135,7 +4168,19 @@ function drawChart(){
   const x=width-right+14;
   line(x,regions[0].top,x,regions[3].bottom,'#a0c7d2',.9);
  }
- updateDetailCandleTooltip(candles,start,end,fxCandle);
+ const selectedIndex=Number.isInteger(state.chartHover)&&state.chartHover>=start&&state.chartHover<end?
+  state.chartHover:null;
+ const selectedCandle=chartHoverForex&&fxCandle?fxCandle:
+  selectedIndex!==null?candles[selectedIndex]:null;
+ const lowAnchor=selectedCandle?{
+  x:chartHoverForex&&fxCandle?width-right+14:ix(selectedIndex),
+  lowY:yPrice(selectedCandle.l),canvasWidth:width,canvasHeight:height
+ }:null;
+ if(lowAnchor){
+  ctx.beginPath();ctx.arc(lowAnchor.x,lowAnchor.lowY,3.2,0,Math.PI*2);
+  ctx.fillStyle=dark?'#a7eecf':'#007b56';ctx.fill();
+ }
+ updateDetailCandleTooltip(candles,start,end,fxCandle,lowAnchor);
  if(closes.length<205){text('EMA 200: storico insufficiente',width-right-9,26,'right',9)}
 }
 function setupCanvasInteractions(){
