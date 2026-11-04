@@ -1528,10 +1528,10 @@ body.theme-light :is(.btn,.outline-button,.sidebar-theme-button,
  align-items:flex-start;justify-content:center;gap:2px;
  width:max-content;max-width:min(194px,calc(100% - 12px));
  padding:6px 9px;box-sizing:border-box;
- color:#e9f5fc;background:rgba(8,24,40,.76);
+ color:#e9f5fc;background:rgba(8,24,40,.50);
  border:1px solid rgba(122,183,221,.48);
  border-radius:7px;box-shadow:0 3px 12px rgba(0,0,0,.14);
- backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+ backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
  font-size:10px;font-weight:600;line-height:1.18;
  font-variant-numeric:tabular-nums;pointer-events:none;
 }
@@ -1555,7 +1555,7 @@ body.theme-light :is(.btn,.outline-button,.sidebar-theme-button,
 .mini-candle-tooltip .candle-tooltip-high strong,
 .mini-candle-tooltip .candle-tooltip-low strong{font-size:10px}
 .theme-light .chart-candle-tooltip,.theme-light .mini-candle-tooltip{
- color:#143146;background:rgba(239,248,255,.86);
+ color:#143146;background:rgba(239,248,255,.50);
  border-color:rgba(62,129,168,.4);
 }
 .theme-light .candle-tooltip-high{color:#007a51}
