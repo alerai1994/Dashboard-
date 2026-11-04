@@ -210,7 +210,8 @@ const VERTEX_FONTS=Object.freeze({
  roboto:{name:'Roboto',description:'Essenziale e leggibile'},
  poppins:{name:'Poppins',description:'Morbido e contemporaneo'},
  montserrat:{name:'Montserrat',description:'Deciso ed elegante'},
- lora:{name:'Lora',description:'Raffinato, con grazie'}
+ lora:{name:'Lora',description:'Raffinato, con grazie'},
+ nunito:{name:'Nunito Sans',description:'Arrotondato e facile da leggere'}
 });
 const state={
  page:(location.hash||'#global').slice(1).toLowerCase(),quotes:{},feedTime:null,feedError:false,loading:true,
@@ -2790,7 +2791,7 @@ function settingsPage(){
  '<p class="subnote">'+(state.adaptiveBrightness?'Luminosità adattiva attiva: la pagina cambia automaticamente tra giorno, sera e notte. Disattivala per riprendere il controllo manuale.':'Regola la luminosità della pagina, non quella fisica dello schermo. Al minimo resta leggibile per poterla aumentare di nuovo.')+'</p></div></section>'+
 
  '<section class="content-card panel settings-preferences settings-font-section" aria-label="Carattere della dashboard">'+
- '<h3>Caratteri dei testi</h3><p class="subnote">Scegli uno dei cinque font: viene applicato subito a tutta la dashboard e resta salvato su questo dispositivo.</p>'+
+ '<h3>Caratteri dei testi</h3><p class="subnote">Scegli uno dei sei font: viene applicato subito a tutta la dashboard e resta salvato su questo dispositivo.</p>'+
  '<div class="settings-font-grid" role="group" aria-label="Scegli il font dei testi">'+
  Object.entries(VERTEX_FONTS).map(([id,info])=>
   '<button type="button" data-font-style="'+id+'" class="settings-font-option font-preview-'+id+(state.fontStyle===id?' is-selected':'')+'" aria-pressed="'+(state.fontStyle===id)+'" aria-label="'+info.name+': '+info.description+'">'+
