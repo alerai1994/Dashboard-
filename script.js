@@ -4702,6 +4702,10 @@ function init(){
  dismissVertexBoot();
  fetchQuotes();
  connectCryptoStream();
+ const fxLibrary=$('#fxSignalrLibrary');
+ if(fxLibrary)fxLibrary.addEventListener('load',()=>{
+  if(!document.hidden)connectForexStream();
+ },{once:true});
  connectForexStream();
  setInterval(()=>{if(!document.hidden)fetchQuotes()},30000);
  setInterval(pollCryptoPrices,15000);
@@ -4714,6 +4718,7 @@ function init(){
   else {
    connectCryptoStream();connectForexStream();fetchQuotes();pollCryptoPrices();updateWorldSunlight(true);applyBrightness();
    if(state.page==='orderbook'){startOrderBookLive();refreshOrderBook()}
+    if(state.dialogId){scheduleDetailChartDraw();scheduleChartLiveRefresh()}
   }
  });
  window.addEventListener('online',()=>{
