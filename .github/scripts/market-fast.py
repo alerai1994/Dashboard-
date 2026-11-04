@@ -57,44 +57,54 @@ def iso(stamp):
 
 
 def yahoo_fast(pair):
+    """Use the most recent source-timestamped 1-minute Yahoo bar where possible.
+
+    This improves 5-minute snapshots but never labels delayed exchange data LIVE.
+    When intraday bars are unavailable, use the latest verified daily quote.
+    """
     identity, symbol = pair
     row = {"id": identity, "symbol": symbol, "value": None, "change": None,
            "currency": None, "time": None, "source": "Yahoo Finance"}
-    for host in ("query1.finance.yahoo.com", "query2.finance.yahoo.com"):
-        try:
-            url = ("https://" + host + "/v8/finance/chart/" + quote(symbol, safe="") +
-                   "?" + urlencode({"range": "5d", "interval": "1d"}))
-            data = request_json(url)
-            result = (data.get("chart", {}).get("result") or [None])[0]
-            if not isinstance(result, dict):
+    for interval, span in (("1m", "1d"), ("1d", "5d")):
+        for host in ("query1.finance.yahoo.com", "query2.finance.yahoo.com"):
+            try:
+                url = ("https://" + host + "/v8/finance/chart/" + quote(symbol, safe="") +
+                       "?" + urlencode({"range": span, "interval": interval}))
+                data = request_json(url)
+                result = (data.get("chart", {}).get("result") or [None])[0]
+                if not isinstance(result, dict):
+                    continue
+                meta = result.get("meta") or {}
+                raw_prices = (result.get("indicators", {}).get("quote") or [{}])[0].get("close") or []
+                stamps = result.get("timestamp") or []
+                samples = [(int(ts), p) for ts, raw in zip(stamps, raw_prices)
+                           if (p := positive(raw)) is not None and number(ts) is not None]
+                market_ts = number(meta.get("regularMarketTime"))
+                price = positive(meta.get("regularMarketPrice"))
+                observed_ts = market_ts
+                if samples and (price is None or observed_ts is None or samples[-1][0] > observed_ts):
+                    observed_ts, price = samples[-1]
+                if price is None:
+                    continue
+                previous = (positive(meta.get("previousClose")) or
+                            positive(meta.get("regularMarketPreviousClose")) or
+                            positive(meta.get("chartPreviousClose")))
+                if previous is None and interval == "1d" and len(samples) >= 2:
+                    previous = samples[-2][1]
+                row.update({"value": price, "currency": meta.get("currency") or "USD",
+                            "time": iso(observed_ts), "source": "Yahoo Finance · " + interval})
+                if previous is not None:
+                    row["change"] = round((price / previous - 1) * 100, 4)
+                delay = number(meta.get("exchangeDataDelayedBy"))
+                if delay is not None and 0 <= delay <= 120:
+                    row["delayMinutes"] = int(delay)
+                market_state = meta.get("marketState")
+                if isinstance(market_state, str) and market_state:
+                    row["marketState"] = market_state
+                return row
+            except (HTTPError, URLError, TimeoutError, ValueError, KeyError,
+                    IndexError, TypeError, OverflowError):
                 continue
-            meta = result.get("meta") or {}
-            prices = (result.get("indicators", {}).get("quote") or [{}])[0].get("close") or []
-            closes = [value for value in (positive(p) for p in prices) if value is not None]
-            price = positive(meta.get("regularMarketPrice"))
-            if price is None and closes:
-                price = closes[-1]
-            if price is None:
-                continue
-            previous = (positive(meta.get("previousClose")) or
-                        positive(meta.get("regularMarketPreviousClose")) or
-                        positive(meta.get("chartPreviousClose")))
-            if previous is None and len(closes) >= 2:
-                previous = closes[-2]
-            row.update({"value": price, "currency": meta.get("currency") or "USD",
-                        "time": iso(meta.get("regularMarketTime") or
-                                    (result.get("timestamp") or [None])[-1])})
-            if previous is not None:
-                row["change"] = round((price / previous - 1) * 100, 4)
-            delay = number(meta.get("exchangeDataDelayedBy"))
-            if delay is not None and 0 <= delay <= 120:
-                row["delayMinutes"] = int(delay)
-            market_state = meta.get("marketState")
-            if isinstance(market_state, str) and market_state:
-                row["marketState"] = market_state
-            return row
-        except (HTTPError, URLError, TimeoutError, ValueError, KeyError, IndexError, TypeError):
-            continue
     return row
 
 
