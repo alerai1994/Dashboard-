@@ -154,6 +154,7 @@ portfolio:['Portfolio','Tieni traccia delle posizioni inserite manualmente.'],
 news:['News','Accesso rapido a fonti finanziarie verificabili.'],
 analytics:['Analytics','Indicatori e andamento dei principali mercati mondiali.'],
 orderbook:['Order Book','Ordini Spot di acquisto e vendita delle criptovalute.'],
+workspace:['Workspace','Tutti i moduli Vertex in uno spazio personalizzabile.'],
 etf:['ETF','ETF ed ETP su Bitcoin, Ethereum, Solana e Injective.'],
 settings:['Settings','Aspetto, origini dei dati e accesso al terminale originale.']
 };
@@ -366,7 +367,7 @@ const SOLAR_CLOCK_FORMATTER=new Intl.DateTimeFormat('it-IT',{
  minute:'2-digit',second:'2-digit',hourCycle:'h23'
 });
 function updateWorldSunlight(force=false){
- if(state.page!=='global'||document.hidden)return;
+ if((state.page!=='global'&&(state.page!=='workspace'||!workspaceShown('global')))||document.hidden)return;
  const root=$('#worldMap');if(!root)return;
  const now=Date.now();
  const same=state.solarLastRoot===root;
@@ -730,7 +731,7 @@ function setMovementClass(element,value){
  element.classList.add(target);
 }
 function patchRegions(){
- if(state.page!=='global')return;
+ if(state.page!=='global'&&(state.page!=='workspace'||!workspaceShown('global')))return;
  for(const r of REGIONS){
   const avg=meanRegion(r),lead=ASSET_BY_ID[r.lead],leadQuote=quote(r.lead);
   const hint=regionLastQuoteLabel(r);
@@ -865,6 +866,13 @@ function updatePriceDom(){
   }
  }
  if(ids.length){
+  if(state.page==='workspace'){
+   for(const name of ['summary','portfolio','analytics']){
+    if(!workspaceShown(name))continue;
+    const slot=document.querySelector('[data-ws-content="'+name+'"]');
+    if(slot)slot.innerHTML=workspaceWidgetBody(name);
+   }
+  }
   if(ids.some(id=>REGIONAL_ASSET_IDS.has(id)))patchRegions();
   patchPortfolio();
   patchSummary();
@@ -1308,7 +1316,7 @@ function hideMiniCandle(card){
 function setupMiniCandleInteractions(){
  const page=$('#pageContainer');
  page.addEventListener('pointerdown',e=>{
-  if(state.page!=='markets')return;
+  if(!['markets','workspace'].includes(state.page))return;
   const chart=e.target.closest('.market-mini-chart');
   if(!chart)return;
   miniCandlePointer={chart,id:e.pointerId,x:e.clientX,y:e.clientY,dragged:false};
@@ -1317,7 +1325,7 @@ function setupMiniCandleInteractions(){
   inspectMiniCandle(chart.closest('.market-chart-card'),e.clientX);
  });
  page.addEventListener('pointermove',e=>{
-  if(state.page!=='markets')return;
+  if(!['markets','workspace'].includes(state.page))return;
   const chart=e.target.closest('.market-mini-chart')||
    (miniCandlePointer?.id===e.pointerId?miniCandlePointer.chart:null);
   if(!chart)return;
@@ -1343,9 +1351,9 @@ function setupMiniCandleInteractions(){
  },true);
 }
 function updateMarketsSnapshotCharts(){
- if(state.page!=='markets'||!marketMiniDirty.size)return;
+ if(!['markets','workspace'].includes(state.page)||!marketMiniDirty.size)return;
  const bottom=window.innerHeight+180;
- document.querySelectorAll('#marketRows .market-chart-card[data-asset]').forEach(card=>{
+ document.querySelectorAll((state.page==='workspace'?'#workspaceGrid':'#marketRows')+' .market-chart-card[data-asset]').forEach(card=>{
   const id=card.dataset.asset;
   if(!marketMiniDirty.has(id))return;
   // Don't generate hundreds of SVG paths for offscreen market cards.
@@ -1664,6 +1672,10 @@ async function loadSecNews(force=false){
  }finally{
   secNewsState.loading=false;
   if(state.page==='news')render();
+  else if(state.page==='workspace'&&workspaceShown('news')){
+   const slot=document.querySelector('[data-ws-content="news"]');
+   if(slot)slot.innerHTML=workspaceWidgetBody('news');
+  }
  }
 }
 
@@ -2855,7 +2867,194 @@ function settingsPage(){
  '<input type="range" id="clickVolumeSlider" min="0" max="100" step="1" value="'+state.clickVolume+'" style="--volume-progress:'+state.clickVolume+'%" aria-label="Volume del suono al clic">'+
  '<div class="settings-volume-scale"><span>0%</span><span>100%</span></div></div></section>';
 }
-const PAGE_RENDERERS={home:homePage,global:globalPage,markets:marketsPage,watchlist:watchlistPage,portfolio:portfolioPage,news:newsPage,analytics:analyticsPage,orderbook:orderBookPage,etf:etfPage,settings:settingsPage};
+
+/* Workspace: all main Vertex modules in one customizable, locally saved canvas.
+   Keeps sources honest: opening a widget's full view uses the original feature. */
+const WORKSPACE_WIDGETS=[
+ {id:'summary',label:'Panoramica',about:'Copertura e sentiment dei mercati',page:'home',wide:false},
+ {id:'global',label:'Mappa mondiale',about:'Regioni, orari e mercati geografici',page:'global',wide:true},
+ {id:'markets',label:'Indici mondiali',about:'Quotazioni e variazioni',page:'markets',wide:true},
+ {id:'crypto',label:'Criptovalute',about:'Prezzi crypto e feed verificati',page:'markets',wide:true},
+ {id:'tech',label:'Settore Tech',about:'Indici ed ETF tecnologici',page:'markets',wide:false},
+ {id:'bigtech',label:'Big Tech',about:'Principali società tecnologiche',page:'markets',wide:false},
+ {id:'forex',label:'Forex',about:'Cambi valutari',page:'markets',wide:false},
+ {id:'commodities',label:'Materie prime',about:'Oro, petrolio e altri mercati',page:'markets',wide:false},
+ {id:'charts',label:'Grafici a candele',about:'Apri EMA, RSI, Stoch RSI e MACD',page:'markets',wide:true},
+ {id:'watchlist',label:'Watchlist',about:'Strumenti preferiti',page:'watchlist',wide:false},
+ {id:'portfolio',label:'Portfolio',about:'Posizioni e risultato stimato',page:'portfolio',wide:false},
+ {id:'analytics',label:'Analytics',about:'Andamento e ampiezza dei mercati',page:'analytics',wide:false},
+ {id:'orderbook',label:'Order Book',about:'Livelli BID e ASK reali',page:'orderbook',wide:true},
+ {id:'etf',label:'ETF / ETP',about:'Strumenti quotati sulle criptovalute',page:'etf',wide:false},
+ {id:'news',label:'News SEC',about:'Ultimi aggiornamenti ufficiali',page:'news',wide:false},
+ {id:'settings',label:'Impostazioni rapide',about:'Temi, font e personalizzazione',page:'settings',wide:false}
+];
+const WORKSPACE_BY_ID=Object.fromEntries(WORKSPACE_WIDGETS.map(w=>[w.id,w]));
+const WORKSPACE_DEFAULT_ORDER=WORKSPACE_WIDGETS.map(w=>w.id);
+function workspaceReadLayout(){
+ const raw=load('workspaceLayout',null),valid=items=>Array.isArray(items)?
+  [...new Set(items.filter(id=>typeof id==='string'&&Object.hasOwn(WORKSPACE_BY_ID,id)))]:[];
+ const order=[...valid(raw?.order),...WORKSPACE_DEFAULT_ORDER.filter(id=>!valid(raw?.order).includes(id))];
+ return {order,hidden:valid(raw?.hidden),wide:raw&&Array.isArray(raw.wide)?
+   valid(raw.wide):WORKSPACE_WIDGETS.filter(w=>w.wide).map(w=>w.id)};
+}
+let workspaceLayout=workspaceReadLayout();
+let workspaceEditMode=false;
+let workspaceBookCoin='btc';
+function workspaceShown(id){return !workspaceLayout.hidden.includes(id)}
+function workspaceSave(){save('workspaceLayout',workspaceLayout)}
+function workspaceChange(action,id){
+ if(action==='edit'){workspaceEditMode=!workspaceEditMode;render();return}
+ if(action==='reset'){
+  workspaceLayout={order:[...WORKSPACE_DEFAULT_ORDER],hidden:[],
+   wide:WORKSPACE_WIDGETS.filter(w=>w.wide).map(w=>w.id)};
+  workspaceEditMode=false;workspaceSave();render();toast('Workspace ripristinato.');return;
+ }
+ if(!Object.hasOwn(WORKSPACE_BY_ID,id))return;
+ const order=workspaceLayout.order;
+ if(action==='toggle'){
+  workspaceLayout.hidden=workspaceShown(id)?[...workspaceLayout.hidden,id]:
+   workspaceLayout.hidden.filter(x=>x!==id);
+ }else if(action==='size'){
+  workspaceLayout.wide=workspaceLayout.wide.includes(id)?
+   workspaceLayout.wide.filter(x=>x!==id):[...workspaceLayout.wide,id];
+ }else if(action==='up'||action==='down'){
+  const visible=order.filter(workspaceShown),at=visible.indexOf(id),next=at+(action==='up'?-1:1);
+  if(at<0||next<0||next>=visible.length)return;
+  const i=order.indexOf(id),j=order.indexOf(visible[next]);
+  [order[i],order[j]]=[order[j],order[i]];
+ }else return;
+ workspaceSave();render();
+}
+function workspaceAssets(ids){return '<div class="ws-asset-grid">'+ids.filter(id=>ASSET_BY_ID[id]).map(indexCard).join('')+'</div>'}
+function workspaceWidgetBody(id){
+ if(id==='summary'){
+  const s=countMarketMood();
+  return '<div class="ws-kpis">'+
+   overviewCard('Prezzi disponibili',dataCount()+'/'+ASSETS.length,'Fonti verificate')+
+   overviewCard('In rialzo',String(s.up),'Variazioni disponibili','color-up')+
+   overviewCard('In ribasso',String(s.down),'Ultimo periodo','color-down')+
+   overviewCard('Preferiti',String(state.watch.length),'Nella watchlist')+'</div>'+
+   marketStatusStrip();
+ }
+ if(id==='global')return '<div class="ws-map-layout">'+mapPanel()+regionList()+'</div>';
+ if(id==='markets')return workspaceAssets(ASSETS.filter(a=>a.group==='markets').map(a=>a.id));
+ if(id==='crypto')return '<p class="ws-subnote">42 criptovalute nel terminale · prezzi da feed verificati; apertura del grafico completo con un tocco.</p>'+
+  workspaceAssets(ASSETS.filter(a=>a.group==='crypto').map(a=>a.id));
+ if(id==='tech')return workspaceAssets(TECH_IDS);
+ if(id==='bigtech')return workspaceAssets(BIGTECH_IDS);
+ if(id==='forex')return workspaceAssets(ASSETS.filter(a=>a.group==='forex').map(a=>a.id));
+ if(id==='commodities')return workspaceAssets(ASSETS.filter(a=>a.group==='commodities').map(a=>a.id));
+ if(id==='charts'){
+  const picks=['btc','eth','sol','sp500','nvda','eurusd'].map(id=>ASSET_BY_ID[id]).filter(Boolean);
+  return '<p class="ws-subnote">Anteprime solo da candele OHLC verificabili. Tocca un grafico per indicatori e storico.</p>'+
+   '<div class="ws-chart-grid">'+picks.map(marketChartCard).join('')+'</div>';
+ }
+ if(id==='watchlist'){
+  const rows=state.watch.map(id=>ASSET_BY_ID[id]).filter(Boolean);
+  return '<p class="ws-subnote">'+rows.length+' strumenti salvati su questo dispositivo.</p>'+
+   (rows.length?tableForAssets(rows,'Nessun preferito'):'<p class="ws-empty">Nessun preferito: apri un grafico e aggiungilo alla Watchlist.</p>');
+ }
+ if(id==='portfolio'){
+  const p=portfolioTotals();
+  const holdings=state.holdings.map(portfolioRow).filter(r=>r.valid).slice(0,8);
+  return '<div class="ws-kpis">'+
+   overviewCard('Valore',p.priced?portfolioUsd(p.value):'—',p.priced+' valutate')+
+   overviewCard('Investito',p.costed?portfolioUsd(p.invested):'—',p.costed+' con costo')+
+   overviewCard('P/L stimato',p.pnlCount?portfolioUsd(p.pnl):'—',p.pnlCount+' posizioni',p.pnlCount?trendClass(p.pnl):'')+
+   overviewCard('Posizioni',String(p.count),'Memorizzate nel browser')+'</div>'+
+   (holdings.length?'<div class="ws-holding-list">'+holdings.map(r=>'<div class="ws-holding">'+
+    '<span>'+esc(r.a?.short||r.h.id)+' · '+portfolioQuantity(r.qty)+'</span>'+
+    '<strong class="'+(r.pnl!==null?trendClass(r.pnl):'')+'">'+portfolioUsd(r.value)+'</strong></div>').join('')+'</div>':
+    '<p class="ws-empty">Non hai ancora aggiunto posizioni. Apri Portfolio per inserirle.</p>');
+ }
+ if(id==='analytics'){
+  const s=countMarketMood(),n=s.up+s.down;
+  return '<div class="ws-kpis">'+overviewCard('Rialzi',String(s.up),'Variazioni positive','color-up')+
+   overviewCard('Ribassi',String(s.down),'Variazioni negative','color-down')+
+   overviewCard('Invariati',String(s.flat),'Variazione 0%')+
+   overviewCard('Copertura',s.total+'/'+ASSETS.length,'Strumenti disponibili')+'</div>'+
+   '<div class="ws-region-bars">'+REGIONS.map(r=>'<div class="ws-region-row"><span>'+esc(r.italian)+'</span>'+
+    '<div class="bar-track"><div class="bar-fill'+(meanRegion(r)<0?' down':'')+
+    '" style="width:'+(num(meanRegion(r))?Math.min(100,Math.abs(meanRegion(r))*20+3):0)+'%"></div></div>'+
+    '<strong class="'+trendClass(meanRegion(r))+'">'+pct(meanRegion(r))+'</strong></div>').join('')+'</div>';
+ }
+ if(id==='orderbook'){
+  const ids=['btc','eth','sol','ore'];
+  const coin=ASSET_BY_ID[workspaceBookCoin]||ASSET_BY_ID.btc;
+  const book=cryptoBookEntry(coin.id);
+  const lineSide=(rows,isBid)=>'<div class="ws-book-side '+(isBid?'ws-book-bid':'ws-book-ask')+'">'+
+   '<strong>'+(isBid?'BID · Acquisti':'ASK · Vendite')+'</strong>'+
+   '<div class="ws-book-headers"><span>Prezzo</span><span>Quantità</span><span>Totale</span></div>'+
+   rows.slice(0,10).map(([price,qty])=>'<div class="ws-book-row"><span>'+orderBookNumber(price,true)+'</span>'+
+    '<span>'+orderBookNumber(qty)+'</span><span>'+orderBookNumber(price*qty)+'</span></div>').join('')+'</div>';
+  return '<div class="ws-book-choices" role="group" aria-label="Scegli la crypto nel Workspace">'+
+   ids.map(id=>'<button type="button" data-ws-book="'+id+'" class="ws-chip'+(coin.id===id?' is-selected':'')+
+    '" aria-pressed="'+(coin.id===id)+'">'+esc(ASSET_BY_ID[id]?.short||id.toUpperCase())+'</button>').join('')+'</div>'+
+   (book?'<p class="ws-subnote">'+esc(book.venue+' · '+book.pair)+
+    ' · snapshot del '+esc(localeDate(book.time,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+
+    ' · non streaming nel Workspace</p><div class="ws-book-grid">'+lineSide(book.asks,false)+lineSide(book.bids,true)+'</div>':
+    '<p class="ws-empty">Order Book verificato non disponibile: apri la sezione completa per controllare lo streaming.</p>');
+ }
+ if(id==='etf')return '<div class="ws-etf-grid">'+CRYPTO_ETF_PRODUCTS.map(product=>{
+  const a=ASSET_BY_ID[product.crypto];
+  return '<article class="ws-etf-item"><strong>'+esc(product.ticker)+'</strong>'+
+   '<span>'+esc(product.name)+'</span><small>'+esc(product.kind+' · '+product.issuer)+'</small>'+
+   '<p>Spot sottostante: '+(a?assetValue(a):'—')+' (non prezzo della quota)</p>'+
+   '<a href="'+esc(product.url)+'" target="_blank" rel="noopener noreferrer">Scheda ufficiale ↗</a></article>';
+ }).join('')+'</div>';
+ if(id==='news'){
+  const items=secNewsState.items.filter(x=>secNewsSafeLink(x.url)).slice(0,4);
+  return (secNewsState.error?'<p class="ws-subnote">'+esc(secNewsState.error)+'</p>':'')+
+   (items?items.length?'<div class="ws-news-list">'+secNewsCards(items)+'</div>':
+     '<p class="ws-empty">Caricamento notizie ufficiali SEC…</p>':'');
+ }
+ if(id==='settings')return '<div class="ws-settings"><p class="ws-subnote">Tema: <strong>'+
+   esc(THEME_NAMES[state.theme]||state.theme)+'</strong> · Font: <strong>'+
+   esc(VERTEX_FONTS[state.fontStyle]?.name||'Inter')+'</strong></p>'+
+   '<div class="ws-quick-options" role="group" aria-label="Seleziona tema">'+
+   Object.entries(THEME_NAMES).map(([key,name])=>'<button type="button" class="ws-chip'+
+    (state.themeMode===key?' is-selected':'')+'" data-theme-mode="'+key+'" aria-pressed="'+
+    (state.themeMode===key)+'">'+esc(name)+'</button>').join('')+'</div>'+
+   '<div class="ws-quick-options" role="group" aria-label="Seleziona font">'+
+   Object.entries(VERTEX_FONTS).map(([key,item])=>'<button type="button" class="ws-chip'+
+    (state.fontStyle===key?' is-selected':'')+'" data-font-style="'+key+'" aria-pressed="'+
+    (state.fontStyle===key)+'">'+esc(item.name)+'</button>').join('')+'</div></div>';
+ return '<p class="ws-empty">Modulo non disponibile.</p>';
+}
+function workspacePage(){
+ const visible=workspaceLayout.order.filter(workspaceShown);
+ const renderWidget=id=>{
+  const w=WORKSPACE_BY_ID[id],wide=workspaceLayout.wide.includes(id),position=visible.indexOf(id);
+  return '<section class="ws-widget panel'+(wide?' ws-wide':'')+'" data-workspace-widget="'+id+'" aria-label="'+esc(w.label)+'">'+
+   '<div class="ws-widget-header"><div><h3>'+esc(w.label)+'</h3><p>'+esc(w.about)+'</p></div>'+
+   '<div class="ws-widget-actions">'+(workspaceEditMode?
+    '<button type="button" data-ws-action="up" data-ws-id="'+id+'" aria-label="Sposta '+esc(w.label)+' sopra"'+
+    (position===0?' disabled':'')+' title="Sposta sopra">↑</button>'+
+    '<button type="button" data-ws-action="down" data-ws-id="'+id+'" aria-label="Sposta '+esc(w.label)+' sotto"'+
+    (position===visible.length-1?' disabled':'')+' title="Sposta sotto">↓</button>'+
+    '<button type="button" data-ws-action="size" data-ws-id="'+id+'" aria-label="'+(wide?'Riduci':'Allarga')+' '+esc(w.label)+'" title="'+(wide?'Riduci':'Allarga')+'">'+(wide?'↘':'⤢')+'</button>'+
+    '<button type="button" data-ws-action="toggle" data-ws-id="'+id+'" aria-label="Nascondi '+esc(w.label)+'" title="Nascondi">×</button>':'')+
+   '<button type="button" class="ws-open" data-page="'+w.page+'" aria-label="Apri la sezione '+esc(w.label)+'">Apri ↗</button></div></div>'+
+   '<div class="ws-widget-content" data-ws-content="'+id+'">'+workspaceWidgetBody(id)+'</div></section>';
+ };
+ return secHeader('Workspace','La tua postazione modulare, con tutte le aree di Vertex in un unico posto')+
+ '<section class="ws-shell"><div class="ws-toolbar"><div class="ws-toolbar-copy"><strong>'+visible.length+
+ '/'+WORKSPACE_WIDGETS.length+' moduli visibili</strong><span>Trascorri e consulta i dati. Personalizza ordine, dimensione e visibilità.</span></div>'+
+ '<div class="ws-toolbar-buttons"><button type="button" class="btn btn-small" data-ws-action="edit" aria-expanded="'+
+  workspaceEditMode+'">'+(workspaceEditMode?'✓ Fine modifica':'⚙ Personalizza')+'</button>'+
+ '<button type="button" class="outline-button" data-ws-action="reset">Ripristina layout</button></div></div>'+
+ (workspaceEditMode?'<div class="ws-catalog panel"><h3>Mostra o nascondi moduli</h3>'+
+  '<div class="ws-catalog-list">'+WORKSPACE_WIDGETS.map(w=>'<button type="button" data-ws-action="toggle" data-ws-id="'+w.id+
+   '" class="ws-chip'+(workspaceShown(w.id)?' is-selected':'')+'" aria-pressed="'+workspaceShown(w.id)+'">'+
+   (workspaceShown(w.id)?'✓ ':'+ ')+esc(w.label)+'</button>').join('')+'</div>'+
+  '<p>Usa ↑ e ↓ per cambiare l’ordine; ⤢ per allargare; × per nascondere. Le modifiche si salvano automaticamente su questo dispositivo.</p></div>':'')+
+ (visible.length?'<div class="ws-grid" id="workspaceGrid">'+visible.map(renderWidget).join('')+'</div>':
+  '<div class="ws-empty-workspace panel"><p>Nessun modulo visibile.</p>'+
+  '<button type="button" class="btn btn-primary" data-ws-action="reset">Ripristina tutti i moduli</button></div>')+
+ feedStatus()+'</section>';
+}
+
+const PAGE_RENDERERS={home:homePage,global:globalPage,markets:marketsPage,watchlist:watchlistPage,portfolio:portfolioPage,news:newsPage,analytics:analyticsPage,orderbook:orderBookPage,workspace:workspacePage,etf:etfPage,settings:settingsPage};
 function updateNav(){
  $$('.side-link[data-page]').forEach(b=>{const sel=b.dataset.page===state.page;b.classList.toggle('active',sel);if(sel)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
  updateCryptoAlertIndicator();
@@ -2879,7 +3078,7 @@ function render(){
  }
  const page=SECTIONS[state.page]||SECTIONS.global;
  $('#pageTitle').textContent=page[0];$('#pageSubtitle').textContent=page[1];
- const hideSearch=['global','portfolio','settings','analytics','orderbook','etf','news'].includes(state.page);
+ const hideSearch=['global','portfolio','settings','analytics','orderbook','workspace','etf','news'].includes(state.page);
  const searchWrap=$('.search-wrap');
  if(searchWrap)searchWrap.hidden=hideSearch;
  if(hideSearch){
@@ -2894,10 +3093,11 @@ function render(){
  paintCryptoPriceHighlights();
  if(state.page==='etf')loadCryptoCapData();
  if(state.page==='news'&&!secNewsState.loaded&&!secNewsState.loading)loadSecNews();
- if(state.page==='global'){
+ if(state.page==='global'||(state.page==='workspace'&&workspaceShown('global'))){
   if(!state.land)loadWorldShape();
   updateWorldSunlight(true);
  }
+ if(state.page==='workspace'&&workspaceShown('news')&&!secNewsState.loaded&&!secNewsState.loading)loadSecNews();
  if(state.page==='orderbook'){
   refreshOrderBook();
   startOrderBookLive();
@@ -2966,7 +3166,7 @@ function setFontStyle(id){
  applyFontStyle();
  save('fontStyle',id);
  if(state.dialogId)scheduleDetailChartDraw();
- if(state.page==='settings')render();
+ if(state.page==='settings'||(state.page==='workspace'&&workspaceShown('settings')))render();
 }
 function setTheme(mode){
  state.themeMode=(mode==='auto'||Object.hasOwn(THEME_NAMES,mode))?mode:'dark';
@@ -2974,7 +3174,7 @@ function setTheme(mode){
  save('themeMode',state.themeMode);
  save('theme',state.theme);
  if(state.dialogId)scheduleDetailChartDraw();
- if(state.page==='settings')render();
+ if(state.page==='settings'||(state.page==='workspace'&&workspaceShown('settings')))render();
 }
 function playClickSound(preview=false){
  if((!state.clickSound&&!preview)||state.clickVolume===0)return false;
@@ -3075,7 +3275,7 @@ async function fetchQuotes(isManual=false){
   }
   state.quotes=next;
   for(const id of changed)if(next[id])observeChartQuote(id,next[id]);
-  if(state.page==='markets'){
+  if(state.page==='markets'||state.page==='workspace'){
     if(full)for(const x of all)if(x?.id)marketMiniDirty.add(x.id);
     for(const id of changed)marketMiniDirty.add(id);
     if(marketMiniDirty.size)scheduleMarketMiniPaint();
@@ -3098,7 +3298,7 @@ async function fetchQuotes(isManual=false){
    else updateLiveBadges();
    // Also refresh the Middle East mini-chart when history changes but
    // price/percentage stays the same between market-data snapshots.
-   if(state.page==='global')patchRegions();
+   if(state.page==='global'||state.page==='workspace')patchRegions();
    updateMarketsSnapshotCharts();
   }
   if(isManual)toast(changed.length?'Ultime quotazioni verificate caricate. LIVE solo dai feed streaming attivi.':'Feed verificato: la fonte non ha ancora pubblicato nuovi prezzi.');
@@ -3307,11 +3507,11 @@ function updateChartLiveQuoteStatus(){
  el.classList.toggle('live-online',label.startsWith('● LIVE'));
 }
 function scheduleMarketMiniPaint(){
- if(marketMiniPaintTimer!==null||state.page!=='markets'||document.hidden||
+ if(marketMiniPaintTimer!==null||!['markets','workspace'].includes(state.page)||document.hidden||
     !marketMiniDirty.size)return;
  marketMiniPaintTimer=setTimeout(()=>{
   marketMiniPaintTimer=null;
-  if(state.page==='markets'&&!document.hidden)updateMarketsSnapshotCharts();
+  if(['markets','workspace'].includes(state.page)&&!document.hidden)updateMarketsSnapshotCharts();
  },1100);
 }
 const chartFetchState={sequence:0,abort:null,cache:new Map()};
@@ -4603,6 +4803,17 @@ function setupEvents(){
   if(btn.dataset.testCryptoAlertSound!==undefined){
    if(!playCryptoAlertSound(btn.dataset.testCryptoAlertSound,0,true))
     toast('Audio non disponibile nel browser. Verifica volume e audio del dispositivo.');
+   return;
+  }
+  if(btn.dataset.wsAction){
+   workspaceChange(btn.dataset.wsAction,btn.dataset.wsId||'');
+   return;
+  }
+  if(btn.dataset.wsBook){
+   if(!['btc','eth','sol','ore'].includes(btn.dataset.wsBook))return;
+   workspaceBookCoin=btn.dataset.wsBook;
+   const slot=document.querySelector('[data-ws-content="orderbook"]');
+   if(slot)slot.innerHTML=workspaceWidgetBody('orderbook');
    return;
   }
   if(btn.dataset.themeMode){setTheme(btn.dataset.themeMode);return;}
