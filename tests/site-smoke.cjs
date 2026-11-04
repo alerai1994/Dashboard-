@@ -38,8 +38,10 @@ assert.equal(Object.keys(books.books).length,42);
 const ore=JSON.parse(read('ore-orderbook-data.js').replace(/^window\.__VERTEX_ORE_BOOK__\s*=\s*/,'').replace(/;\s*$/,''));
 assert(ore.bids?.length>0&&ore.asks?.length>0,'ORE orderbook missing bids or asks');
 
-const adapted=source.replace('(function () {','return (function () {')
- .replace(/\}\)\(\);\s*$/,'return {PAGE_RENDERERS,state,portfolioPage,edit:i=>portfolioEditIndex=i,unlockVertexAudio,playClickSound,playCryptoAlertSound};})();');
+const adapted=source.replace('function render(){','function render(){return;')
+ .replace('function toast(message){','function toast(message){return;')
+ .replace('(function () {','return (function () {')
+ .replace(/\}\)\(\);\s*$/,'return {PAGE_RENDERERS,state,portfolioPage,edit:i=>portfolioEditIndex=i,unlockVertexAudio,playClickSound,playCryptoAlertSound,workspaceChange,workspacePage,workspaceShown,getWorkspaceLayout:()=>workspaceLayout,getWorkspaceEdit:()=>workspaceEditMode};})();');
 assert(adapted.includes('edit:i=>'),'Cannot instrument app for smoke test');
 /* Simulated WebAudio: exercise sound scheduling without playing real audio in CI. */
 const audioEvents={created:0,resumes:0,notes:[]};
@@ -54,7 +56,8 @@ class MockAudioContext{
  }
  createGain(){return {gain:{setValueAtTime(){},exponentialRampToValueAtTime(){}},connect(){}}}
 }
-const emptyStorage={getItem:()=>null,setItem(){},removeItem(){}};
+const persisted={};
+const emptyStorage={getItem:key=>persisted[key]??null,setItem:(key,value)=>{persisted[key]=value},removeItem:key=>{delete persisted[key]}};
 const document={readyState:'loading',body:{className:''},querySelector:()=>null,querySelectorAll:()=>[],addEventListener(){}};
 const app=new Function('window','document','location','localStorage','sessionStorage','navigator','URLSearchParams',adapted)(
  {matchMedia:()=>({matches:true,addEventListener(){}}),AudioContext:MockAudioContext,__VERTEX_CRYPTO_BOOKS__:books,__VERTEX_ORE_BOOK__:ore},
@@ -121,4 +124,19 @@ app.unlockVertexAudio(true);
 assert.equal(audioEvents.resumes,2,'Audio must recover after iOS interruption');
 assert.equal(audioEvents.created,1,'Click and alert sounds must share one context');
 console.log('PASS gesture-unlocked audio, UPPER/LOWER tones, sound previews, silent mode and recovery');
-console.log('PASS Workspace route with 16 modules, customization, and saved layout');
+app.workspaceChange('edit');
+assert.equal(app.getWorkspaceEdit(),true,'Workspace edit mode did not activate');
+assert(app.workspacePage().includes('data-ws-action="size"'),'Workspace edit controls hidden');
+app.workspaceChange('size','summary');
+assert(app.getWorkspaceLayout().wide.includes('summary'),'Widget resize failed');
+app.workspaceChange('down','summary');
+assert.equal(app.getWorkspaceLayout().order[1],'summary','Widget reordering failed');
+app.workspaceChange('toggle','forex');
+assert.equal(app.workspaceShown('forex'),false,'Widget hiding failed');
+assert(!app.workspacePage().includes('data-workspace-widget="forex"'),'Hidden widget still rendered');
+assert(Object.keys(persisted).some(key=>key.endsWith('workspaceLayout')),'Workspace layout not saved');
+app.workspaceChange('reset');
+assert(app.workspaceShown('forex'),'Reset did not restore hidden widgets');
+assert(!app.getWorkspaceLayout().wide.includes('summary'),'Reset did not restore module sizes');
+assert.equal(app.getWorkspaceLayout().order[0],'summary','Reset did not restore order');
+console.log('PASS Workspace 16 modules, edit/resize/reorder/hide/reset and saved layout');
