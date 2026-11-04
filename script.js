@@ -3012,6 +3012,7 @@ function evaluateCryptoAlerts(){
 function settingsPage(){
  const choices=[['light','☀','Chiaro','Bianco e azzurro'],['dark','☾','Scuro','Blu notte'],['ocean','◈','Oceano','Blu e turchese'],['emerald','❖','Smeraldo','Verde elegante'],['violet','✦','Viola','Viola moderno']];
  return secHeader('Impostazioni','Personalizza aspetto, icona e suoni della dashboard')+
+  biometricSettingsSection()+
  '<section class="content-card panel settings-preferences"><h3>Temi della dashboard</h3><p class="subnote">Scegli fra cinque stili. Il tema cambia subito in tutte le sezioni e la tua preferenza rimane salvata.</p>'+
  '<div class="settings-theme-options" role="group" aria-label="Scegli uno dei cinque temi">'+
  choices.map(([mode,icon,label,description])=>'<button type="button" data-theme-mode="'+mode+'" class="settings-theme-option'+(state.themeMode===mode?' is-selected':'')+'" aria-label="'+label+': '+description+'" aria-pressed="'+(state.themeMode===mode)+'"><span class="settings-theme-swatch theme-swatch-'+mode+'" aria-hidden="true"><span>'+icon+'</span></span><span class="settings-theme-caption"><strong>'+label+'</strong><small>'+description+'</small></span></button>').join('')+
@@ -4739,7 +4740,10 @@ function setupEvents(){
   }
   const btn=e.target.closest('button,a,tr[data-asset]');
   if(!btn)return;
-  if(btn.dataset.secCategory){secNewsState.selected=btn.dataset.secCategory;secNewsState.visible=20;render();return;}
+  if(btn.dataset.biometricEnable!==undefined){void biometricEnable();return;}
+   if(btn.dataset.biometricDisable!==undefined){void biometricDisable();return;}
+   if(btn.dataset.biometricLock!==undefined){biometricLock();return;}
+   if(btn.dataset.secCategory){secNewsState.selected=btn.dataset.secCategory;secNewsState.visible=20;render();return;}
   if(btn.dataset.secMore){secNewsState.visible+=20;render();return;}
   if(btn.dataset.secRefresh){loadSecNews(true);return;}
   if(btn.dataset.adaptiveBrightness){
@@ -4947,7 +4951,9 @@ function dismissVertexBoot(){
   requestAnimationFrame(()=>requestAnimationFrame(afterPaint));
  }else afterPaint();
 }
-function init(){
+function startVertexApp(){
+ if(vertexAppStarted)return;
+ vertexAppStarted=true;
  if('serviceWorker' in navigator){
   navigator.serviceWorker.register('./vertex-widget-sw.js').then(reg=>{
    if(reg.active)reg.active.postMessage({type:'VERTEX_WIDGETS_REFRESH'});
@@ -4977,6 +4983,13 @@ function init(){
  setInterval(keepStreamAlive,15000);
  setInterval(()=>{if(!document.hidden)connectForexStream();updateLiveBadges()},15000);
  document.addEventListener('visibilitychange',()=>{
+  if(document.hidden&&biometricAccess&&biometricSessionUnlocked)
+   biometricBackgroundAt=Date.now();
+  if(!document.hidden&&biometricAccess&&biometricSessionUnlocked&&
+    biometricBackgroundAt&&Date.now()-biometricBackgroundAt>=60000){
+   biometricLock();return;
+  }
+  if(!biometricSessionUnlocked)return;
   if(!document.hidden&&navigator.serviceWorker?.controller)
    navigator.serviceWorker.controller.postMessage({type:'VERTEX_WIDGETS_REFRESH'});
   if(document.hidden){closeStream();disconnectForexStream();stopOrderBookLive()}
@@ -4994,6 +5007,11 @@ function init(){
   closeStream();disconnectForexStream();stopOrderBookLive();updateLiveBadges();
   if(state.page==='orderbook')paintOrderBook();
  });
+}
+function init(){
+ initBiometricGate();
+ if(biometricSessionUnlocked)startVertexApp();
+ else dismissVertexBoot();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
