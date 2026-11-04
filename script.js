@@ -843,7 +843,7 @@ function applyLiveTick(d){
  if(!id||!Number.isFinite(close)||close<=0)return;
  const eventMs=Number(d.E),timeMs=Number.isFinite(eventMs)&&eventMs>1000000000000?eventMs:Date.now();
  const change24h=Number.isFinite(open)&&open>0?(close/open-1)*100:null;
- const fresh={value:close,change:change24h,currency:'USDT',source:'Binance Spot (USDT)',time:new Date(timeMs).toISOString(),live:true,received:Date.now()};
+ const fresh={value:close,change:change24h,currency:'USDT',source:'Binance Spot (USDT)',time:new Date(timeMs).toISOString(),live:true,polled:false,received:Date.now()};
  STREAM_OVERLAY.set(id,fresh);
  state.quotes[id]={...(state.quotes[id]||{id,history:[],candles:[]}),...fresh};
  streamStatus.last=Date.now();streamStatus.seen.add(id);streamStatus.dirty.add(id);
@@ -918,8 +918,8 @@ async function pollCryptoPrices(){
    const id=STREAM_IDS[row.symbol],price=Number(row.lastPrice),open=Number(row.openPrice);
    if(!id||!Number.isFinite(price)||price<=0)continue;
    const exchangeMs=Number(row.closeTime);
-   const stamp=Number.isFinite(exchangeMs)&&exchangeMs>now-120000&&exchangeMs<=now+60000?
-    exchangeMs:now;
+   if(!Number.isFinite(exchangeMs)||exchangeMs<now-120000||exchangeMs>now+60000)continue;
+   const stamp=exchangeMs;
    const changePct=Number.isFinite(open)&&open>0?(price/open-1)*100:null;
    const fresh={value:price,change:changePct,currency:'USDT',
     source:'Binance Spot · REST',time:new Date(stamp).toISOString(),
