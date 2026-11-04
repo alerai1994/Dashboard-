@@ -1245,10 +1245,8 @@ function setupMiniCandleInteractions(){
   const chart=e.target.closest('.market-mini-chart');
   if(!chart)return;
   miniCandlePointer={chart,id:e.pointerId,x:e.clientX,y:e.clientY,dragged:false};
-  if(e.pointerType==='touch'){
-   e.preventDefault();
-   try{chart.setPointerCapture(e.pointerId)}catch(_error){}
-  }
+  if(e.pointerType==='touch')e.preventDefault();
+  try{chart.setPointerCapture(e.pointerId)}catch(_error){}
   inspectMiniCandle(chart.closest('.market-chart-card'),e.clientX);
  });
  page.addEventListener('pointermove',e=>{
@@ -4321,7 +4319,7 @@ function setupEvents(){
   if($('#sidebar').classList.contains('open'))$('#sidebar').classList.remove('open');
  });
  $('#pageContainer').addEventListener('click',e=>{
-  if(Date.now()<miniCandleSuppressClickUntil&&e.target.closest('.market-mini-chart')){
+  if(Date.now()<miniCandleSuppressClickUntil&&e.target.closest('.market-chart-card')){
    e.preventDefault();e.stopPropagation();return;
   }
   const btn=e.target.closest('button,a,tr[data-asset]');
