@@ -1533,7 +1533,7 @@ function portfolioPage(){
  const total=portfolioTotals(),editing=Number.isInteger(portfolioEditIndex)&&
   portfolioEditIndex>=0&&portfolioEditIndex<state.holdings.length;
  const edit=editing?state.holdings[portfolioEditIndex]:null;
- const chosen=editing&&portfolioEligible(edit.id)?edit.id:
+ const chosen=editing&&portfolioEligible(edit?.id)?edit.id:
   (ASSETS.find(a=>a.group==='crypto')||ASSETS[0]).id;
  const opts=ASSETS.filter(a=>portfolioEligible(a.id)).map(a=>
   '<option value="'+esc(a.id)+'"'+(a.id===chosen?' selected':'')+'>'+esc(a.name)+'</option>').join('');
@@ -2981,7 +2981,7 @@ function updateClock(){
 }
 /* GitHub Pages serves static snapshots. A cheap HEAD check avoids downloading
    the 2MB historic-data file every minute when the snapshot has not changed. */
-const snapshotFetch={busy:false,etag:null,age:null,fullAt:0,lightAt:0,fastRetryAfter:0};
+const snapshotFetch={busy:false,etag:null,age:null,fullAt:0,lightAt:0,fastRetryAfter:0,fullRetryAfter:0};
 // GitHub Actions creates a new verified market snapshot every ~5 minutes.
 // The compact feed is polled frequently; long OHLC history is refreshed less often.
 const FULL_FEED_INTERVAL=30*60*1000;
@@ -2990,7 +2990,8 @@ async function fetchQuotes(isManual=false){
  snapshotFetch.busy=true;
  const wasLoading=state.loading,wasError=state.feedError;
  try{
-  let full=isManual||!state.feedTime||Date.now()-snapshotFetch.fullAt>=FULL_FEED_INTERVAL;
+  let full=(isManual||!state.feedTime||Date.now()-snapshotFetch.fullAt>=FULL_FEED_INTERVAL)&&
+   (isManual||Date.now()>=snapshotFetch.fullRetryAfter);
   if(!full&&Date.now()<snapshotFetch.fastRetryAfter){
    updateLiveBadges();return;
   }
@@ -3008,6 +3009,8 @@ async function fetchQuotes(isManual=false){
   try{answer=await requestFeed(full)}
   catch(error){
    if(full){
+    // Avoid retrying a failing multi-megabyte history download on every 30s poll.
+    snapshotFetch.fullRetryAfter=Date.now()+5*60*1000;
     // Load compact prices even when the large historical feed is unavailable.
     full=false;answer=await requestFeed(false);
    }else{
@@ -3018,7 +3021,7 @@ async function fetchQuotes(isManual=false){
     full=true;answer=await requestFeed(true);
    }
   }
-  if(!full)snapshotFetch.fastRetryAfter=0;
+  snapshotFetch.fastRetryAfter=0;
   const {payload:data,response}=answer;
   const all=[...(data.markets||[]),...(data.bigtech||[]),...(data.commodities||[]),
    ...(data.forex||[]),...(data.crypto||[])];
@@ -3064,7 +3067,7 @@ async function fetchQuotes(isManual=false){
   state.feedError=false;state.loading=false;
   snapshotFetch.etag=response.headers.get('etag')||response.headers.get('last-modified')||null;
   snapshotFetch.age=Date.now();
-  if(full)snapshotFetch.fullAt=Date.now();
+  if(full){snapshotFetch.fullAt=Date.now();snapshotFetch.fullRetryAfter=0;}
   else snapshotFetch.lightAt=Date.now();
   if(wasLoading&&state.page!=='portfolio')render();
   else{
@@ -3103,7 +3106,7 @@ function updateSearch(){
 function loadWorldShape(){
  if(loadWorldShape.started)return;loadWorldShape.started=true;
  fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/land-110m.json',{cache:'force-cache'}).then(r=>{if(!r.ok)throw Error('topo');return r.json()}).then(data=>{
-  if(!data.arcs||!data.objects||!data.objects.land||!data.transform)return;
+  if(!data.arcs||!data.objects||!data.objects.land||!data.transform){loadWorldShape.started=false;return;}
   const tr=data.transform;
   const resolveArc=n=>{
    let x=0,y=0;
@@ -3121,7 +3124,7 @@ function loadWorldShape(){
   const geom=g=>{if(g.type==='Polygon')out.push(poly(g.arcs));else if(g.type==='MultiPolygon')g.arcs.forEach(p=>out.push(poly(p)));else if(g.type==='GeometryCollection')g.geometries.forEach(geom)};
   geom(data.objects.land);
   if(out.length){state.land=out.map(d=>'<path class="land" d="'+d+'"/>').join('');const land=$('#landGroup');if(land)land.innerHTML=state.land;}
- }).catch(()=>{});
+ }).catch(()=>{loadWorldShape.started=false;});
 }
 function externalUrl(a){
  if(a.group==='crypto' && a.coingeckoId)return 'https://www.coingecko.com/en/coins/'+encodeURIComponent(a.coingeckoId);
