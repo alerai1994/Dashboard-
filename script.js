@@ -1869,23 +1869,78 @@ function orderBookAssetList(){
 // Verified exchange-traded products shown in the dedicated ETF page below Order Book in the sidebar.
 // A fund share price is different from the underlying crypto spot price.
 const CRYPTO_ETF_PRODUCTS=[
- {crypto:'btc',ticker:'IBIT',name:'iShares Bitcoin Trust ETF',
+ {crypto:'btc',ticker:'IBIT',quoteId:'etf-ibit',name:'iShares Bitcoin Trust ETF',
   issuer:'BlackRock · iShares',market:'Nasdaq · USA',kind:'ETF / ETP spot',
   url:'https://www.ishares.com/us/products/333011/ishares-bitcoin-trust-etf',
   description:'Esposizione al prezzo di Bitcoin tramite un prodotto quotato.'},
- {crypto:'eth',ticker:'ETHA',name:'iShares Ethereum Trust ETF',
+ {crypto:'eth',ticker:'ETHA',quoteId:'etf-etha',name:'iShares Ethereum Trust ETF',
   issuer:'BlackRock · iShares',market:'Nasdaq · USA',kind:'ETF / ETP spot',
   url:'https://www.ishares.com/us/products/337614/',
   description:'Esposizione a Ether senza detenere direttamente ETH.'},
- {crypto:'sol',ticker:'BSOL',name:'Bitwise Solana Staking ETF',
+ {crypto:'sol',ticker:'BSOL',quoteId:'etf-bsol',name:'Bitwise Solana Staking ETF',
   issuer:'Bitwise',market:'NYSE Arca · USA',kind:'ETF / ETP con staking',
   url:'https://bsoletf.com/',
   description:'Esposizione a Solana con rendimento staking variabile, non garantito.'},
- {crypto:'inj',ticker:'AINJ',name:'21Shares Injective Staking ETP',
+ {crypto:'inj',ticker:'AINJ',quoteId:'etf-ainj',name:'21Shares Injective Staking ETP',
   issuer:'21Shares',market:'Amsterdam · Europa',kind:'ETP / ETN · non ETF USA',
   url:'https://www.21shares.com/it-eu/product/ainj',
-  description:'ETP/ETN su Injective con staking. ETF spot INJ USA ancora in registrazione.'}
+  description:'ETP su Injective con staking, quotato in Europa; non è un ETF statunitense.'}
 ];
+// ETF/ETP share quotes are separate from the underlying crypto quotes.
+// Never infer a product price from its underlying coin.
+const cryptoEtfQuoteState=Object.create(null);
+const cryptoEtfDateFormat=new Intl.DateTimeFormat('it-IT',{
+ day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Rome'
+});
+const cryptoEtfNumberFormat=new Intl.NumberFormat('it-IT',{
+ minimumFractionDigits:2,maximumFractionDigits:4
+});
+const cryptoEtfChangeFormat=new Intl.NumberFormat('it-IT',{
+ minimumFractionDigits:2,maximumFractionDigits:2,signDisplay:'always'
+});
+function cryptoEtfQuote(product){
+ const row=cryptoEtfQuoteState[product.quoteId];
+ return row&&Number.isFinite(Number(row.value))&&Number(row.value)>0?row:null;
+}
+function cryptoEtfQuoteMarkup(product){
+ const row=cryptoEtfQuote(product);
+ if(!row)return '<small>Prezzo quota '+esc(product.ticker)+'</small>'+
+  '<strong class="crypto-etf-quote-unavailable">Non disponibile</strong>'+
+  '<small class="crypto-etf-quote-meta">In attesa della quotazione di borsa verificata. Non viene usato il prezzo spot della crypto.</small>';
+ const price=cryptoEtfNumberFormat.format(Number(row.value));
+ const currency=typeof row.currency==='string'&&/^[A-Z]{3}$/.test(row.currency)?row.currency:'Valuta n.d.';
+ const change=Number(row.change);
+ const delta=Number.isFinite(change)?cryptoEtfChangeFormat.format(change)+'%':'—';
+ const cls=change>0?'color-up':change<0?'color-down':'color-flat';
+ const stamp=Date.parse(row.time||'');
+ const date=Number.isFinite(stamp)?cryptoEtfDateFormat.format(new Date(stamp)):'data non fornita';
+ const delayed=Number.isFinite(Number(row.delayMinutes))&&row.delayMinutes!==null?
+  ' · ritardo indicato '+Number(row.delayMinutes)+' min':' · possibile ritardo';
+ const source=typeof row.source==='string'?row.source:'Yahoo Finance';
+ const venue=product.crypto==='inj'?(row.symbol==='AINJ.PA'?' · Euronext Paris':' · Euronext Amsterdam'):'';
+ return '<small>Ultima quotazione quota '+esc(product.ticker)+'</small>'+
+  '<div class="crypto-etf-quote-line"><strong class="crypto-etf-share-price">'+esc(price)+' <span>'+esc(currency)+'</span></strong>'+
+  '<span class="crypto-etf-share-change '+cls+'">'+esc(delta)+'</span></div>'+
+  '<small class="crypto-etf-quote-meta">'+esc('Rilevata '+date+' · '+source+venue+delayed)+'</small>';
+}
+function ingestCryptoEtfQuotes(rows){
+ if(!Array.isArray(rows))return;
+ const ids=new Set(CRYPTO_ETF_PRODUCTS.map(p=>p.quoteId));
+ for(const row of rows){
+  if(!row||!ids.has(row.id)||!Number.isFinite(Number(row.value))||Number(row.value)<=0)continue;
+  const prior=cryptoEtfQuoteState[row.id];
+  const priorTime=Date.parse(prior?.time||''),nextTime=Date.parse(row.time||'');
+  if(prior&&Number.isFinite(priorTime)&&(!Number.isFinite(nextTime)||nextTime<priorTime))continue;
+  cryptoEtfQuoteState[row.id]=row;
+ }
+}
+function updateCryptoEtfQuoteDom(){
+ for(const product of CRYPTO_ETF_PRODUCTS){
+  for(const node of $('[data-etf-quote-id="'+product.quoteId+'"]')){
+   node.innerHTML=cryptoEtfQuoteMarkup(product);
+  }
+ }
+}
 function cryptoEtfSection(){
  const cards=CRYPTO_ETF_PRODUCTS.map(product=>{
   const asset=ASSET_BY_ID[product.crypto],q=quote(product.crypto);
@@ -1902,8 +1957,8 @@ function cryptoEtfSection(){
    '<h3>'+esc(product.name)+'</h3>'+
    '<div class="crypto-etf-issuer">'+esc(product.issuer)+' · '+esc(product.market)+'</div>'+
    '<p class="crypto-etf-description">'+esc(product.description)+'</p>'+
-   '<div class="crypto-etf-market-note"><small>Prezzo quota '+esc(product.ticker)+'</small>'+
-    '<strong>Consulta quotazione ufficiale</strong></div>'+
+   '<div class="crypto-etf-market-note" data-etf-quote-id="'+esc(product.quoteId)+'">'+
+    cryptoEtfQuoteMarkup(product)+'</div>'+
    '<div class="crypto-etf-spot"><small>Crypto sottostante · prezzo spot (NON quota ETF)</small>'+
     '<div><strong class="asset-price">'+esc(spot)+'</strong>'+
     '<span class="asset-change '+(Number(q?.change)>0?'color-up':Number(q?.change)<0?'color-down':'')+'">'+esc(delta)+'</span></div>'+
@@ -1917,9 +1972,9 @@ function cryptoEtfSection(){
   '<p>Bitcoin, Ethereum, Solana e Injective · ETF ed ETP negoziati</p></div>'+
   '<span class="crypto-etf-total">4 prodotti</span></div>'+
   '<div class="crypto-etf-grid">'+cards+'</div>'+
-  '<p class="crypto-etf-disclaimer">Attenzione: i valori spot mostrati sono prezzi delle criptovalute, '+
-  'non prezzi delle quote ETF/ETP. Per il valore negoziato e gli orari della borsa apri la scheda del prodotto. '+
-  'AINJ è un ETP europeo, non un ETF USA. I prodotti possono comportare perdita del capitale.</p>'+
+  '<p class="crypto-etf-disclaimer">Le quotazioni delle quote ETF/ETP provengono dal feed di mercato Yahoo Finance e possono avere ritardo; '+
+  'la data dell’ultimo scambio è indicata su ogni scheda. Il prezzo spot della crypto è separato e non sostituisce la quota del prodotto. '+
+  'AINJ è un ETP europeo e non un ETF USA. I prezzi possono mancare nei feed o a mercato chiuso; il capitale è a rischio.</p>'+
   '</section>';
 }
 
@@ -3083,7 +3138,8 @@ function workspaceWidgetBody(id){
   const a=ASSET_BY_ID[product.crypto];
   return '<article class="ws-etf-item"><strong>'+esc(product.ticker)+'</strong>'+
    '<span>'+esc(product.name)+'</span><small>'+esc(product.kind+' · '+product.issuer)+'</small>'+
-   '<p>Spot sottostante: '+(a?assetValue(a):'—')+' (non prezzo della quota)</p>'+
+   '<div class="ws-etf-share" data-etf-quote-id="'+esc(product.quoteId)+'">'+cryptoEtfQuoteMarkup(product)+'</div>'+
+   '<p>Crypto sottostante: '+(a?assetValue(a):'—')+' (non prezzo della quota)</p>'+
    '<a href="'+esc(product.url)+'" target="_blank" rel="noopener noreferrer">Scheda ufficiale ↗</a></article>';
  }).join('')+'</div>';
  if(id==='news'){
@@ -3334,6 +3390,7 @@ async function fetchQuotes(isManual=false){
   }
   snapshotFetch.fastRetryAfter=0;
   const {payload:data,response}=answer;
+  ingestCryptoEtfQuotes(data.etfs);
   const all=[...(data.markets||[]),...(data.bigtech||[]),...(data.commodities||[]),
    ...(data.forex||[]),...(data.crypto||[])];
   if(!all.some(x=>x&&x.id&&Number.isFinite(Number(x.value))&&Number(x.value)>0))
@@ -3390,6 +3447,7 @@ async function fetchQuotes(isManual=false){
    if(state.page==='global'||state.page==='workspace')patchRegions();
    updateMarketsSnapshotCharts();
   }
+  updateCryptoEtfQuoteDom();
   if(isManual)toast(changed.length?'Ultime quotazioni verificate caricate. LIVE solo dai feed streaming attivi.':'Feed verificato: la fonte non ha ancora pubblicato nuovi prezzi.');
  }catch(e){
   state.feedError=true;state.loading=false;
