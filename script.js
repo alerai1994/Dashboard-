@@ -1102,8 +1102,91 @@ function techBigTechOverview(){
  '<p class="sector-footnote">Nasdaq-100 e PHLX SOX sono indici; XLK, QQQ e SMH sono ETF. Le Big Tech sono azioni. Prezzi da Yahoo Finance, anche ritardati.</p></section>';
 }
 
+
+const GLOBAL_CAP_INDICES=Object.freeze([
+ {id:'TOTAL',symbol:'CRYPTOCAP:TOTAL',description:'Capitalizzazione complessiva delle principali criptovalute',url:'https://www.tradingview.com/symbols/TOTAL/'},
+ {id:'TOTAL2',symbol:'CRYPTOCAP:TOTAL2',description:'Capitalizzazione senza Bitcoin',url:'https://www.tradingview.com/symbols/TOTAL2/'},
+ {id:'TOTAL3',symbol:'CRYPTOCAP:TOTAL3',description:'Capitalizzazione senza Bitcoin ed Ethereum',url:'https://www.tradingview.com/symbols/TOTAL3/'},
+ {id:'TOTALDEFI',symbol:'CRYPTOCAP:TOTALDEFI',description:'Capitalizzazione del settore DeFi',url:'https://www.tradingview.com/symbols/TOTALDEFI/'}
+]);
+let globalCapActive=null;
+function globalCapModule(){
+ const current=GLOBAL_CAP_INDICES.find(item=>item.id===globalCapActive);
+ return '<section class="global-cap-module" aria-label="Grafici della capitalizzazione crypto">'+
+  '<div class="global-cap-pills" role="group" aria-label="Seleziona capitalizzazione">'+
+  GLOBAL_CAP_INDICES.map(item=>'<button type="button" class="global-cap-pill'+
+   (current?.id===item.id?' is-selected':'')+'" data-global-cap="'+item.id+
+   '" aria-pressed="'+(current?.id===item.id)+'" aria-expanded="'+(current?.id===item.id)+
+   '" aria-controls="globalCapChartPanel" title="'+esc(item.description)+'">'+item.id+'</button>').join('')+
+  '</div><section class="global-cap-chart-panel panel" id="globalCapChartPanel"'+
+  (current?'':' hidden')+' aria-label="Grafico capitalizzazione crypto">'+
+  '<div class="global-cap-chart-heading"><div><h3 id="globalCapChartTitle">'+esc(current?.id||'')+
+  '</h3><p id="globalCapChartDescription">'+esc(current?.description||'')+
+  '</p></div><button type="button" class="global-cap-close" data-global-cap-close="1" aria-label="Chiudi grafico">✕ Chiudi</button></div>'+
+  '<div class="global-cap-embed" id="globalCapWidget" aria-label="Grafico a candele TradingView"></div>'+
+  '<div class="global-cap-footer"><span id="globalCapChartStatus">Grafico TradingView · capitalizzazione in USD</span>'+
+  '<a id="globalCapExternal" target="_blank" rel="noopener noreferrer" href="'+
+  esc(current?.url||'https://www.tradingview.com/markets/cryptocurrencies/global-charts/')+
+  '">Apri su TradingView ↗</a></div></section></section>';
+}
+function mountGlobalCapChart(){
+ if(state.page!=='global'||!globalCapActive)return;
+ const item=GLOBAL_CAP_INDICES.find(row=>row.id===globalCapActive);
+ const panel=$('#globalCapChartPanel'),target=$('#globalCapWidget');
+ if(!item||!panel||!target)return;
+ panel.hidden=false;
+ const title=$('#globalCapChartTitle'),description=$('#globalCapChartDescription');
+ const link=$('#globalCapExternal'),status=$('#globalCapChartStatus');
+ if(title)title.textContent=item.id;
+ if(description)description.textContent=item.description;
+ if(link)link.href=item.url;
+ if(status)status.textContent='Grafico TradingView · capitalizzazione in USD';
+ target.replaceChildren();
+ const tv=document.createElement('div');
+ tv.className='tradingview-widget-container global-cap-tv';
+ const inner=document.createElement('div');
+ inner.className='tradingview-widget-container__widget';
+ tv.appendChild(inner);target.appendChild(tv);
+ // Lazy-load the official TradingView Advanced Chart only on a user click.
+ const script=document.createElement('script');
+ script.type='text/javascript';
+ script.async=true;
+ script.src='https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+ script.textContent=JSON.stringify({
+  autosize:true,symbol:item.symbol,interval:'D',timezone:'Europe/Rome',
+  theme:['light','sand','ice'].includes(state.theme)?'light':'dark',
+  style:'1',locale:'it',allow_symbol_change:false,hide_side_toolbar:true,
+  hide_top_toolbar:false,hide_legend:false,hide_volume:true,
+  withdateranges:true,save_image:false,calendar:false,details:false,
+  hotlist:false,watchlist:[],compareSymbols:[],studies:[]
+ });
+ script.onerror=()=>{
+  if(state.page==='global'&&globalCapActive===item.id&&status)
+   status.textContent='Grafico incorporato non disponibile: aprilo su TradingView.';
+ };
+ tv.appendChild(script);
+}
+function selectGlobalCapChart(id){
+ if(state.page!=='global')return;
+ if(id!==null&&!GLOBAL_CAP_INDICES.some(item=>item.id===id))return;
+ globalCapActive=id;
+ const panel=$('#globalCapChartPanel');if(!panel)return;
+ document.querySelectorAll('#pageContainer [data-global-cap]').forEach(btn=>{
+  const selected=btn.dataset.globalCap===id;
+  btn.classList.toggle('is-selected',selected);
+  btn.setAttribute('aria-pressed',String(selected));
+  btn.setAttribute('aria-expanded',String(selected));
+ });
+ if(!id){
+  panel.hidden=true;
+  const widget=$('#globalCapWidget');if(widget)widget.replaceChildren();
+  return;
+ }
+ mountGlobalCapChart();
+}
+
 function globalPage(){
- return '<section class="market-index-strip">'+TOP_IDS.map(indexCard).join('')+'</section>'+
+ return globalCapModule()+'<section class="market-index-strip">'+TOP_IDS.map(indexCard).join('')+'</section>'+
   '<div class="global-grid">'+regionList()+mapPanel()+
  '<aside class="aside-stack">'+QUOTE_GROUPS.map(sidePanel).join('')+'</aside>'+
  '<div class="region-photo-grid" aria-label="Panoramica fotografica delle regioni">'+REGIONS.map(photoCard).join('')+'</div></div>'+
@@ -3175,6 +3258,7 @@ function render(){
  }
  const main=$('#pageContainer');
  main.innerHTML=PAGE_RENDERERS[state.page]();
+ if(state.page==='global'&&globalCapActive)mountGlobalCapChart();
  updateNav();
  paintCryptoPriceHighlights();
  if(state.page==='etf')loadCryptoCapData();
@@ -4912,6 +4996,8 @@ function setupEvents(){
   }
   const btn=e.target.closest('button,a,tr[data-asset]');
   if(!btn)return;
+   if(btn.dataset.globalCap){selectGlobalCapChart(btn.dataset.globalCap);return;}
+   if(btn.dataset.globalCapClose!==undefined){selectGlobalCapChart(null);return;}
    if(btn.dataset.secCategory){secNewsState.selected=btn.dataset.secCategory;secNewsState.visible=20;render();return;}
   if(btn.dataset.secMore){secNewsState.visible+=20;render();return;}
   if(btn.dataset.secRefresh){loadSecNews(true);return;}
