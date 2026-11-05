@@ -1133,7 +1133,7 @@ const GLOBAL_CAP_PERIODS=[
  {id:'3M',label:'3M',ms:90*86400000,bucket:8*3600000,description:'ultimi 3 mesi'},
  {id:'Tutto',label:'Tutto',ms:0,bucket:86400000,description:'tutte le rilevazioni salvate'}
 ];
-let globalCapActive=null,globalCapPeriod='1D';
+let globalCapActive=null,globalCapPeriod='Tutto';
 const globalCapRawHistory=load('globalCapHistoryNative',{});
 const globalCapHistory=Object.fromEntries(GLOBAL_CAP_INDICES.map(item=>[
  item.id,(Array.isArray(globalCapRawHistory?.[item.id])?globalCapRawHistory[item.id]:[])
@@ -1333,18 +1333,29 @@ async function refreshGlobalCapData(force=false){
    globalOK?'Feed DeFi non disponibile.':'Dati globali non disponibili.';
  globalCapState.busy=false;paintGlobalCapChart();
 }
+// These buttons denote the CANDLE duration (not merely how far back the
+// chart pans). Use up to 240 genuine historical bars for each interval.
+const GLOBAL_CAP_CANDLE_MS=Object.freeze({
+ '1s':1000,'5s':5000,'15s':15000,'30s':30000,
+ '1H':3600000,'2h':2*3600000,'3h':3*3600000,
+ '4h':4*3600000,'5h':5*3600000,'12h':12*3600000,
+ '1D':86400000,'2D':2*86400000,'3D':3*86400000,
+ '1W':7*86400000,'2W':14*86400000,
+ '1M':30*86400000,'2M':60*86400000,'3M':90*86400000
+});
 function globalCapFrameData(id,now=Date.now()){
  const period=GLOBAL_CAP_PERIODS.find(p=>p.id===globalCapPeriod)||GLOBAL_CAP_PERIODS[10];
  const history=globalCapHistory[id]||[];
- const first=history[0]?.t??now-3600000;
- const from=period.ms?now-period.ms:Math.min(first,now-60000);
- const span=Math.max(1000,now-from);
- const step=period.ms?Math.max(period.bucket,Math.ceil(span/600)):
-  Math.max(1000,Math.ceil(span/600)); // Tutto scales to real recorded coverage.
+ const interval=GLOBAL_CAP_CANDLE_MS[period.id]||86400000;
+ const first=history[0]?.t??now-interval*5;
+ const wanted=period.id==='Tutto'?Math.max(1,now-first):
+  Math.max(period.ms||0,interval*240);
+ // No assumptions or fake points outside the available historical dataset.
+ const from=period.id==='Tutto'?Math.min(first,now-interval*2):now-wanted;
+ const span=Math.max(interval*2,now-from);
+ const step=period.id==='Tutto'?
+  Math.max(86400000,Math.ceil(span/400/86400000)*86400000):interval;
  const raw=history.filter(p=>p.t>=from&&p.t<=now+60000);
- // A bucket contains the most recent ACTUAL observation, not interpolation.
- // Missing seconds/minutes remain unrepresented; the displayed series cannot
- // claim the source updated more frequently than it did.
  const buckets=new Map();
  for(const point of raw)buckets.set(Math.floor(point.t/step),point);
  const points=[...buckets.values()].sort((a,b)=>a.t-b.t);
