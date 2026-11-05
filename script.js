@@ -1271,7 +1271,7 @@ function globalCapNativeSvg(id,frame=globalCapFrameData(id)){
   esc(globalCapMoney(v).replace(' USD',''))+'</text>').join('');
  // Do not connect observations separated by more than a few timeframe buckets.
  // This makes unobserved historical intervals visible as gaps.
- const maxGap=step*2.7,segments=[];
+ const maxGap=period.ms===0?Math.max(step*2.7,15*60000):step*2.7,segments=[];
  let current=[];
  for(const point of points){
   if(current.length&&point.t-current[current.length-1].t>maxGap){
