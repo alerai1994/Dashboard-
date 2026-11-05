@@ -21,6 +21,7 @@ GROUPS = {
     "bigtech": BACKEND["BIGTECH"],
     "commodities": BACKEND["COMMODITIES"],
     "forex": BACKEND["FOREX"],
+    "etfs": BACKEND["ETFS"],
 }
 COINS = BACKEND["CRYPTO"]
 OUTPUT = ROOT / "market-quotes.json"
@@ -105,6 +106,17 @@ def yahoo_fast(pair):
             except (HTTPError, URLError, TimeoutError, ValueError, KeyError,
                     IndexError, TypeError, OverflowError):
                 continue
+    return row
+
+
+def etf_fast(pair):
+    row = yahoo_fast(pair)
+    if pair[0] == "etf-ainj" and positive(row.get("value")) is None:
+        # Fall back to the Paris listing only when its price and EUR currency
+        # are actually returned by Yahoo.
+        alternate = yahoo_fast(("etf-ainj", "AINJ.PA"))
+        if positive(alternate.get("value")):
+            return alternate
     return row
 
 
@@ -195,7 +207,7 @@ def main():
                **{group: [] for group in (*GROUPS, "crypto")}}
     received = 0
     with ThreadPoolExecutor(max_workers=8) as executor:
-        futures = {executor.submit(yahoo_fast, pair): group
+        futures = {executor.submit(etf_fast if group == "etfs" else yahoo_fast, pair): group
                    for group, pairs in GROUPS.items() for pair in pairs}
         for future in as_completed(futures):
             group = futures[future]
