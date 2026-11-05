@@ -1254,61 +1254,184 @@ function globalCapFrameData(id,now=Date.now()){
  const points=[...buckets.values()].sort((a,b)=>a.t-b.t);
  return {period,from,to:now,span,step,raw,points};
 }
+// Convert genuine observed market-cap readings into OHLC within each period.
+// A single reading is a flat candle. Missing observations are never interpolated.
+function globalCapOHLC(frame){
+ const map=new Map();
+ for(const p of frame.raw){
+  const slot=Math.floor(p.t/frame.step);
+  let bar=map.get(slot);
+  if(!bar){
+   bar={t:slot*frame.step,o:p.v,h:p.v,l:p.v,c:p.v,
+    n:1,first:p.t,last:p.t,source:p.source};
+   map.set(slot,bar);
+  }else{
+   bar.h=Math.max(bar.h,p.v);
+   bar.l=Math.min(bar.l,p.v);
+   bar.c=p.v;
+   bar.n++;
+   bar.last=p.t;
+   bar.source=p.source;
+  }
+ }
+ return [...map.values()].sort((a,b)=>a.t-b.t);
+}
+function globalCapStudySeries(bars,step){
+ const result={
+  ema12:Array(bars.length).fill(null),
+  ema26:Array(bars.length).fill(null),
+  ema50:Array(bars.length).fill(null),
+  ema200:Array(bars.length).fill(null),
+  rsi:Array(bars.length).fill(null),
+  stK:Array(bars.length).fill(null),
+  stD:Array(bars.length).fill(null),
+  macd:Array(bars.length).fill(null),
+  signal:Array(bars.length).fill(null),
+  histogram:Array(bars.length).fill(null)
+ };
+ // Indicator values restart after missing buckets: standard intervals cannot
+ // be treated as continuous across large gaps in the observed data.
+ for(let from=0;from<bars.length;){
+  let to=from+1;
+  while(to<bars.length&&bars[to].t-bars[to-1].t<=step*2.5)to++;
+  const sample=bars.slice(from,to);
+  if(sample.length>1){
+   const close=sample.map(c=>c.c);
+   const e12=ema(close,12),e26=ema(close,26),
+    e50=ema(close,50),e200=ema(close,200);
+   const strength=rsi(close,14),st=stochRsi(strength,14,3,3),m=macd(close);
+   for(let i=0;i<sample.length;i++){
+    const index=from+i;
+    result.ema12[index]=e12[i];result.ema26[index]=e26[i];
+    result.ema50[index]=e50[i];result.ema200[index]=e200[i];
+    result.rsi[index]=strength[i];result.stK[index]=st.k[i];result.stD[index]=st.d[i];
+    result.macd[index]=m.line[i];result.signal[index]=m.signal[i];
+    result.histogram[index]=m.hist[i];
+   }
+  }
+  from=to;
+ }
+ return result;
+}
 function globalCapNativeSvg(id,frame=globalCapFrameData(id)){
- const {period,from,span,step,points}=frame;
- const w=860,h=290,left=90,right=20,top=20,bottom=47;
- const values=points.map(p=>p.v);
+ const {period,from,span,step}=frame;
+ const bars=globalCapOHLC(frame),studies=globalCapStudySeries(bars,step);
+ const w=1400,h=720,l=30,r=98,right=w-r;
+ const price={top:18,bottom:371,label:'PRICE'};
+ const rsiPane={top:394,bottom:480,label:'RSI (14)'};
+ const stPane={top:500,bottom:588,label:'STOCH RSI (14/14/3/3)'};
+ const macdPane={top:608,bottom:692,label:'MACD (12/26/9)'};
+ const panes=[price,rsiPane,stPane,macdPane],plotWidth=right-l;
+ const x=t=>l+Math.min(1,Math.max(0,(t-from)/span))*plotWidth;
+ const values=bars.flatMap(b=>[b.h,b.l]);
+ for(const key of ['ema12','ema26','ema50','ema200'])
+  values.push(...studies[key].filter(Number.isFinite));
  const low=values.length?Math.min(...values):0;
  const high=values.length?Math.max(...values):1;
- const pad=Math.max((high-low)*.15,high*.012,1);
- const min=Math.max(0,low-pad),max=high+pad;
- const x=p=>left+Math.max(0,Math.min(1,(p.t-from)/span))*(w-left-right);
- const y=v=>top+(max-v)/(max-min)*(h-top-bottom);
- const ticks=Array.from({length:5},(_,i)=>max-(max-min)*i/4);
- const grid=ticks.map(v=>'<line class="global-cap-gridline" x1="'+left+'" y1="'+y(v).toFixed(2)+
-  '" x2="'+(w-right)+'" y2="'+y(v).toFixed(2)+'"/>'+
-  '<text class="global-cap-axis" text-anchor="end" x="'+(left-11)+'" y="'+(y(v)+4).toFixed(2)+'">'+
-  esc(globalCapMoney(v).replace(' USD',''))+'</text>').join('');
- // Do not connect observations separated by more than a few timeframe buckets.
- // This makes unobserved historical intervals visible as gaps.
- const maxGap=period.ms===0?Math.max(step*2.7,15*60000):step*2.7,segments=[];
- let current=[];
- for(const point of points){
-  if(current.length&&point.t-current[current.length-1].t>maxGap){
-   segments.push(current);current=[];
-  }
-  current.push(point);
+ const padding=Math.max((high-low)*.08,high*.015,1);
+ const minimum=Math.max(0,low-padding),maximum=high+padding;
+ const priceY=v=>price.bottom-(v-minimum)/(maximum-minimum)*(price.bottom-price.top);
+ const oscY=(pane,value)=>pane.bottom-(Math.max(0,Math.min(100,value))/100)*(pane.bottom-pane.top);
+ const scaleMax=Math.max(0.00001,...[...studies.macd,...studies.signal,...studies.histogram]
+  .filter(Number.isFinite).map(Math.abs));
+ const macdY=v=>(macdPane.top+macdPane.bottom)/2-v/scaleMax*(macdPane.bottom-macdPane.top)*.42;
+ const makeLine=(x1,y1,x2,y2,stroke,width=1,cls='')=>
+  '<line'+(cls?' class="'+cls+'"':'')+' x1="'+x1.toFixed(2)+'" y1="'+y1.toFixed(2)+
+  '" x2="'+x2.toFixed(2)+'" y2="'+y2.toFixed(2)+
+  '" stroke="'+stroke+'" stroke-width="'+width+'"/>';
+ const strokes={up:'#10d49a',down:'#f45f77',neutral:'#98a8b8',
+  ema12:'#64b0ff',ema26:'#f5b854',ema50:'#b58bff',ema200:'#e46d9e',
+  rsi:'#c28af2',stK:'#62c5ff',stD:'#f3bb55',macd:'#69b6ff',signal:'#f3b955'};
+ const svg=[];
+ svg.push('<svg class="global-cap-svg global-cap-terminal-svg" viewBox="0 0 '+w+' '+h+
+  '" role="img" aria-label="'+esc('Vertex · '+id+' · '+bars.length+
+  ' candele da rilevazioni reali · '+period.label)+'">');
+ svg.push('<rect x="0" y="0" width="'+w+'" height="'+h+'" fill="#0d1d2b"/>');
+ for(const p of panes){
+  svg.push(makeLine(l,p.top,right,p.top,'#254457',.8));
+  svg.push(makeLine(l,p.bottom,right,p.bottom,'#254457',.8));
+  svg.push('<text class="global-cap-pane-title" x="'+(l+4)+'" y="'+(p.top+14)+'">'+p.label+'</text>');
  }
- if(current.length)segments.push(current);
- const shapes=segments.map((group,index)=>{
-  if(group.length<2)return '';
-  const line=group.map((p,i)=>(i?'L':'M')+x(p).toFixed(2)+' '+y(p.v).toFixed(2)).join(' ');
-  const area=line+' L'+x(group[group.length-1]).toFixed(2)+' '+(h-bottom)+
-   ' L'+x(group[0]).toFixed(2)+' '+(h-bottom)+' Z';
-  return '<path class="global-cap-area" d="'+area+'"/>'+
-   '<path class="global-cap-line" d="'+line+'"/>';
- }).join('');
- const displayDots=points.length>170?points.filter((_,i)=>i%Math.ceil(points.length/170)===0||
-  i===points.length-1):points;
- const dots=displayDots.map(p=>{
-  const date=localeDate(p.t,{day:'2-digit',month:'2-digit',year:'numeric',
-   hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  const last=points[points.length-1]===p;
-  return '<circle class="global-cap-dot" cx="'+x(p).toFixed(2)+'" cy="'+y(p.v).toFixed(2)+
-   '" r="'+(last?5:2.5)+'"><title>'+esc(date+' · '+globalCapMoney(p.v)+
-    ' · '+p.source)+'</title></circle>';
- }).join('');
- const fromLabel=period.ms?period.description:
-  (points.length?localeDate(points[0].t,{day:'2-digit',month:'short',year:'numeric'}):'Inizio');
- return '<svg class="global-cap-svg" viewBox="0 0 '+w+' '+h+
-  '" role="img" aria-label="'+esc(id+' · '+points.length+' rilevazioni reali · '+period.label)+'">'+
-  '<defs><linearGradient id="globalCapAreaGradient" x1="0" y1="0" x2="0" y2="1">'+
-  '<stop offset="0%" stop-color="var(--brand)" stop-opacity=".23"/>'+
-  '<stop offset="100%" stop-color="var(--brand)" stop-opacity="0"/></linearGradient></defs>'+
-  grid+'<text class="global-cap-axis" x="'+left+'" y="'+(h-13)+'">'+
-  esc(fromLabel)+'</text>'+
-  '<text class="global-cap-axis" text-anchor="end" x="'+(w-right)+'" y="'+(h-13)+'">Ora</text>'+
-  shapes+dots+'</svg>';
+ for(let i=0;i<=4;i++){
+  const value=minimum+(maximum-minimum)*i/4,y=priceY(value);
+  svg.push(makeLine(l,y,right,y,'#263b4b',.7));
+  svg.push('<text class="global-cap-price-axis" x="'+(right+7)+'" y="'+(y+4).toFixed(2)+
+   '">'+esc(globalCapMoney(value).replace(' USD',''))+'</text>');
+ }
+ for(const [p,upper,lower] of [[rsiPane,70,30],[stPane,80,20]]){
+  svg.push(makeLine(l,oscY(p,upper),right,oscY(p,upper),'#a96d7e',.7));
+  svg.push(makeLine(l,oscY(p,lower),right,oscY(p,lower),'#668a8c',.7));
+ }
+ svg.push(makeLine(l,macdY(0),right,macdY(0),'#3e6272',.8));
+ const candleWidth=Math.max(1.5,Math.min(9,plotWidth/Math.max(40,Math.min(280,span/step))*.6));
+ for(let i=0;i<bars.length;i++){
+  const bar=bars[i],cx=x(bar.t+step/2);
+  const rise=bar.c>bar.o,fall=bar.c<bar.o;
+  const stroke=rise?strokes.up:fall?strokes.down:strokes.neutral;
+  const lowY=priceY(bar.l),highY=priceY(bar.h);
+  const bodyTop=priceY(Math.max(bar.o,bar.c));
+  const bodyBottom=priceY(Math.min(bar.o,bar.c));
+  const bodyHeight=Math.max(1.6,bodyBottom-bodyTop);
+  const when=localeDate(bar.last,{day:'2-digit',month:'2-digit',
+   year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  svg.push('<g class="global-cap-candle" data-cap-candle="'+i+
+   '" data-cap-date="'+esc(when)+'" data-cap-open="'+bar.o+
+   '" data-cap-high="'+bar.h+'" data-cap-low="'+bar.l+
+   '" data-cap-close="'+bar.c+'" data-cap-count="'+bar.n+'">');
+  svg.push(makeLine(cx,highY,cx,lowY,stroke,1.2));
+  svg.push('<rect x="'+(cx-candleWidth/2).toFixed(2)+'" y="'+bodyTop.toFixed(2)+
+   '" width="'+candleWidth.toFixed(2)+'" height="'+bodyHeight.toFixed(2)+
+   '" fill="'+stroke+'" rx="1.3"/>');
+  // The transparent hit target is wider than thin candles on touchscreens.
+  svg.push('<rect x="'+(cx-Math.max(candleWidth/2,5)).toFixed(2)+
+   '" y="'+Math.min(highY,bodyTop).toFixed(2)+
+   '" width="'+Math.max(candleWidth,10).toFixed(2)+
+   '" height="'+Math.max(15,lowY-highY).toFixed(2)+'" fill="transparent" />');
+  svg.push('<title>'+esc(when+' · Apertura '+globalCapMoney(bar.o)+
+   ' · High '+globalCapMoney(bar.h)+' · Low '+globalCapMoney(bar.l)+
+   ' · Chiusura '+globalCapMoney(bar.c)+' · '+bar.n+' rilevazioni')+'</title></g>');
+ }
+ const drawSeries=(values,color,yMap,width=1.55)=>{
+  let path='',active=false,last=-1;
+  for(let i=0;i<bars.length;i++){
+   const v=values[i];
+   if(!Number.isFinite(v)){active=false;continue;}
+   const px=x(bars[i].t+step/2),py=yMap(v);
+   if(!active||last<0||bars[i].t-bars[last].t>step*2.5)
+    path+='M'+px.toFixed(2)+' '+py.toFixed(2)+' ';
+   else path+='L'+px.toFixed(2)+' '+py.toFixed(2)+' ';
+   active=true;last=i;
+  }
+  return path.trim()?'<path d="'+path+'" stroke="'+color+
+   '" fill="none" stroke-width="'+width+'" stroke-linejoin="round" stroke-linecap="round"/>':'';
+ };
+ svg.push(drawSeries(studies.ema12,strokes.ema12,priceY,2));
+ svg.push(drawSeries(studies.ema26,strokes.ema26,priceY,2));
+ svg.push(drawSeries(studies.ema50,strokes.ema50,priceY,2));
+ svg.push(drawSeries(studies.ema200,strokes.ema200,priceY,1.7));
+ svg.push(drawSeries(studies.rsi,strokes.rsi,v=>oscY(rsiPane,v),1.9));
+ svg.push(drawSeries(studies.stK,strokes.stK,v=>oscY(stPane,v),1.9));
+ svg.push(drawSeries(studies.stD,strokes.stD,v=>oscY(stPane,v),1.9));
+ const zero=macdY(0),histWidth=Math.max(2,Math.min(8,candleWidth*.9));
+ for(let i=0;i<bars.length;i++){
+  const v=studies.histogram[i];if(!Number.isFinite(v))continue;
+  const yy=macdY(v),xx=x(bars[i].t+step/2);
+  svg.push('<rect x="'+(xx-histWidth/2).toFixed(2)+'" y="'+Math.min(zero,yy).toFixed(2)+
+   '" width="'+histWidth.toFixed(2)+'" height="'+Math.max(1,Math.abs(zero-yy)).toFixed(2)+
+   '" fill="'+(v>=0?'#17896f':'#b74862')+'"/>');
+ }
+ svg.push(drawSeries(studies.macd,strokes.macd,macdY,1.7));
+ svg.push(drawSeries(studies.signal,strokes.signal,macdY,1.7));
+ for(let i=0;i<=4;i++){
+  const t=from+span*i/4;
+  const label=localeDate(t,period.ms<=86400000&&period.ms!==0?
+   {hour:'2-digit',minute:'2-digit'}:{month:'short',day:'2-digit',year:'2-digit'});
+  const xx=l+(right-l)*i/4;
+  svg.push('<text class="global-cap-time-axis" x="'+xx.toFixed(2)+'" y="'+(h-10)+
+   '" text-anchor="'+(i===0?'start':i===4?'end':'middle')+'">'+esc(label)+'</text>');
+ }
+ svg.push('</svg>');
+ return svg.join('');
 }
 function globalCapLiveLabel(){
  if(globalCapState.busy)return '● Verifica della fonte in corso…';
