@@ -1122,7 +1122,7 @@ const GLOBAL_CAP_PERIODS=Object.freeze([
  {id:'1H',tv:'60'},{id:'2h',tv:'120'},{id:'3h',tv:'180'},{id:'4h',tv:'240'},
  {id:'5h',tv:'300'},{id:'12h',tv:'720'},{id:'1D',tv:'D'},{id:'2D',tv:'2D'},
  {id:'3D',tv:'3D'},{id:'1W',tv:'W'},{id:'2W',tv:'2W'},{id:'1M',tv:'M'},
- {id:'2M',tv:'2M'},{id:'3M',tv:'3M'},{id:'Tutto',tv:'W'}
+ {id:'2M',tv:'2M'},{id:'3M',tv:'3M'},{id:'Tutto',tv:'D'}
 ]);
 let globalCapActive=null,globalCapPeriod='Tutto';
 function globalCapSelected(){return GLOBAL_CAP_INDICES.find(item=>item.id===globalCapActive)||null;}
@@ -1159,7 +1159,9 @@ function globalCapWidgetConfig(item){
    'StochasticRSI@tv-basicstudies',
    'MACD@tv-basicstudies'
   ],
-  ...(duration.id==='Tutto'?{range:'all'}:{})
+  // Daily and longer intervals can reveal the full available TradingView history.
+  // Intraday / seconds history remains provider-limited.
+  ...(['Tutto','1D','2D','3D','1W','2W','1M','2M','3M'].includes(duration.id)?{range:'all'}:{})
  };
 }
 function globalCapModule(){
@@ -1184,7 +1186,10 @@ function globalCapModule(){
    (period.id===globalCapPeriod?' active':'')+'" data-global-cap-period="'+period.id+
    '" aria-pressed="'+(period.id===globalCapPeriod)+'">'+period.id+'</button>').join('')+
   '</div></div>'+
-  '<div class="global-cap-indicator-note">Candele storiche · EMA 12/26/50/200 · RSI (14) · Stochastic RSI · MACD (12/26/9)</div>'+
+  '<div class="global-cap-indicator-note">Candele storiche · EMA 12/26/50/200 · RSI (14) · Stochastic RSI · MACD (12/26/9)</div>'+ 
+  '<div class="global-cap-history-guide" id="globalCapHistoryGuide">'+
+  (globalCapPeriod==='Tutto'?'<strong>Storico completo:</strong> candele giornaliere dall’inizio dei dati disponibili per questo indice.':'<strong>Timeframe '+esc(globalCapPeriod)+':</strong> visualizza lo storico consentito da TradingView per questa risoluzione.')+
+  ' Trascina il grafico verso sinistra e usa lo zoom per esplorare altre candele.</div>'+
   '<div class="global-cap-tradingview-embed" id="globalCapWidget" aria-label="Grafico TradingView"></div>'+
   '<p id="globalCapTvError" class="global-cap-error" role="status"></p>'+
   '<div class="global-cap-bottom"><span>Fonte TradingView · dati storici del simbolo CRYPTOCAP · intervalli in secondi soggetti alla disponibilità del provider.</span>'+
@@ -1253,6 +1258,9 @@ function selectGlobalCapPeriod(id){
  if(!GLOBAL_CAP_PERIODS.some(period=>period.id===id)||state.page!=='global')return;
  if(globalCapPeriod===id)return;
  globalCapPeriod=id;
+ const guide=$('#globalCapHistoryGuide');
+ if(guide)guide.innerHTML=id==='Tutto'?'<strong>Storico completo:</strong> candele giornaliere dall’inizio dei dati disponibili per questo indice. Trascina il grafico e usa lo zoom per esplorare le candele.':
+  '<strong>Timeframe '+esc(id)+':</strong> lo storico mostrato dipende dalla disponibilità TradingView. Trascina il grafico e usa lo zoom.';
  const list=$('.global-cap-period-scroll'),left=list?.scrollLeft||0;
  if(list){
   list.querySelectorAll('[data-global-cap-period]').forEach(button=>{
