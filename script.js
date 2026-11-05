@@ -1190,10 +1190,11 @@ function globalCapModule(){
   '</div></div>'+
   '<div class="global-cap-indicator-note">Candele aggiornate dal provider · EMA 12/26/50/200 · RSI (14) · Stochastic RSI · MACD (12/26/9)</div>'+ 
   '<div class="global-cap-history-guide" id="globalCapHistoryGuide">'+
-  (globalCapPeriod==='Tutto'?'<strong>Storico completo:</strong> candele giornaliere dall’inizio dei dati disponibili per questo indice.':'<strong>Timeframe '+esc(globalCapPeriod)+':</strong> visualizza lo storico consentito da TradingView per questa risoluzione.')+
-  ' Trascina il grafico verso sinistra e usa lo zoom per esplorare altre candele.</div>'+
+  (globalCapPeriod==='Tutto'?'<strong>Dall’inizio a oggi:</strong> mostra le candele giornaliere dal primo dato storico che TradingView rende disponibile fino alle più recenti.':'<strong>Timeframe '+esc(globalCapPeriod)+':</strong> visualizza lo storico consentito da TradingView per questa risoluzione.')+
+  ' Usa lo zoom per vedere meglio i periodi storici; i dati più vecchi dipendono dal provider.</div>'+
   '<div class="global-cap-live-bar">'+
   '<span class="global-cap-feed-status" id="globalCapStreamState" role="status">Attesa del feed TradingView…</span>'+
+  '<button type="button" class="global-cap-history-button" data-global-cap-history="1" title="Ripristina tutto lo storico disponibile fino a oggi">Dall’inizio a oggi</button>'+ 
   '<button type="button" class="global-cap-latest" data-global-cap-latest="1" title="Torna al grafico con le candele più recenti">Ultime candele</button>'+
   '<a class="global-cap-provider-link" href="https://www.tradingview.com/chart/?symbol='+encodeURIComponent(current?.symbol||'CRYPTOCAP:TOTAL')+'" target="_blank" rel="noopener noreferrer">Apri TradingView ↗</a>'+
   '</div>'+
@@ -1277,15 +1278,17 @@ function selectGlobalCapChart(id){
   const widget=$('#globalCapWidget');if(widget)widget.replaceChildren();
   return;
  }
- mountGlobalCapChart();
+ // Open each index on the entire available daily history by default.
+ // Manual timeframe selections remain possible after opening the index.
+ selectGlobalCapPeriod('Tutto',true);
 }
-function selectGlobalCapPeriod(id){
+function selectGlobalCapPeriod(id,force=false){
  if(!GLOBAL_CAP_PERIODS.some(period=>period.id===id)||state.page!=='global')return;
- if(globalCapPeriod===id)return;
+ if(globalCapPeriod===id&&!force)return;
  globalCapPeriod=id;
  save('globalCapPeriod',id);
  const guide=$('#globalCapHistoryGuide');
- if(guide)guide.innerHTML=id==='Tutto'?'<strong>Storico completo:</strong> candele giornaliere dall’inizio dei dati disponibili per questo indice. Trascina il grafico e usa lo zoom per esplorare le candele.':
+ if(guide)guide.innerHTML=id==='Tutto'?'<strong>Dall’inizio a oggi:</strong> candele giornaliere dal primo dato disponibile su TradingView fino a oggi. Usa lo zoom per esplorare la storia; i dati più vecchi dipendono dal provider.':
   '<strong>Timeframe '+esc(id)+':</strong> lo storico mostrato dipende dalla disponibilità TradingView. Trascina il grafico e usa lo zoom.';
  const list=$('.global-cap-period-scroll'),left=list?.scrollLeft||0;
  if(list){
@@ -5112,6 +5115,7 @@ function setupEvents(){
   if(!btn)return;
    if(btn.dataset.globalCap){selectGlobalCapChart(btn.dataset.globalCap);return;}
    if(btn.dataset.globalCapPeriod){selectGlobalCapPeriod(btn.dataset.globalCapPeriod);return;}
+   if(btn.dataset.globalCapHistory!==undefined){selectGlobalCapPeriod('Tutto',true);return;}
    if(btn.dataset.globalCapLatest!==undefined){mountGlobalCapChart();return;}
     if(btn.dataset.globalCapClose!==undefined){selectGlobalCapChart(null);return;}
    if(btn.dataset.secCategory){secNewsState.selected=btn.dataset.secCategory;secNewsState.visible=20;render();return;}
