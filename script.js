@@ -1186,6 +1186,7 @@ function globalCapModule(){
   '</div></div>'+
   '<div class="global-cap-indicator-note">Candele storiche · EMA 12/26/50/200 · RSI (14) · Stochastic RSI · MACD (12/26/9)</div>'+
   '<div class="global-cap-tradingview-embed" id="globalCapWidget" aria-label="Grafico TradingView"></div>'+
+  '<p id="globalCapTvError" class="global-cap-error" role="status"></p>'+
   '<div class="global-cap-bottom"><span>Fonte TradingView · dati storici del simbolo CRYPTOCAP · intervalli in secondi soggetti alla disponibilità del provider.</span>'+
   '<a id="globalCapExternal" href="'+esc(current?.url||'https://www.tradingview.com/markets/cryptocurrencies/global-charts/')+
    '" target="_blank" rel="noopener noreferrer">Apri il grafico completo su TradingView</a></div>'+
@@ -1201,6 +1202,7 @@ function mountGlobalCapChart(){
  if(name)name.textContent=item.id;
  if(description)description.textContent=item.description;
  if(link)link.href=item.url;
+ const errorNode=$('#globalCapTvError');if(errorNode)errorNode.textContent='';
  // Replacing the prior node disposes its iframe and avoids concurrent
  // TradingView graphs when the user changes asset or timeframe.
  target.replaceChildren();
