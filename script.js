@@ -1113,18 +1113,34 @@ const GLOBAL_CAP_INDICES=[
  {id:'TOTALDEFI',description:'Capitalizzazione del settore DeFi'}
 ];
 const GLOBAL_CAP_PERIODS=[
- {id:'24h',label:'24H',ms:86400000},
- {id:'7d',label:'7G',ms:7*86400000},
- {id:'30d',label:'30G',ms:30*86400000}
+ {id:'1s',label:'1s',ms:2*60000,bucket:1000,description:'ultimi 2 minuti'},
+ {id:'5s',label:'5s',ms:10*60000,bucket:5000,description:'ultimi 10 minuti'},
+ {id:'15s',label:'15s',ms:30*60000,bucket:15000,description:'ultimi 30 minuti'},
+ {id:'30s',label:'30s',ms:3600000,bucket:30000,description:'ultima ora'},
+ {id:'1H',label:'1H',ms:3600000,bucket:60000,description:'ultima ora'},
+ {id:'2h',label:'2h',ms:2*3600000,bucket:60000,description:'ultime 2 ore'},
+ {id:'3h',label:'3h',ms:3*3600000,bucket:60000,description:'ultime 3 ore'},
+ {id:'4h',label:'4h',ms:4*3600000,bucket:60000,description:'ultime 4 ore'},
+ {id:'5h',label:'5h',ms:5*3600000,bucket:60000,description:'ultime 5 ore'},
+ {id:'12h',label:'12h',ms:12*3600000,bucket:5*60000,description:'ultime 12 ore'},
+ {id:'1D',label:'1D',ms:86400000,bucket:5*60000,description:'ultime 24 ore'},
+ {id:'2D',label:'2D',ms:2*86400000,bucket:15*60000,description:'ultimi 2 giorni'},
+ {id:'3D',label:'3D',ms:3*86400000,bucket:15*60000,description:'ultimi 3 giorni'},
+ {id:'1W',label:'1W',ms:7*86400000,bucket:3600000,description:'ultima settimana'},
+ {id:'2W',label:'2W',ms:14*86400000,bucket:3600000,description:'ultime 2 settimane'},
+ {id:'1M',label:'1M',ms:30*86400000,bucket:4*3600000,description:'ultimo mese'},
+ {id:'2M',label:'2M',ms:60*86400000,bucket:4*3600000,description:'ultimi 2 mesi'},
+ {id:'3M',label:'3M',ms:90*86400000,bucket:8*3600000,description:'ultimi 3 mesi'},
+ {id:'Tutto',label:'Tutto',ms:0,bucket:86400000,description:'tutte le rilevazioni salvate'}
 ];
-let globalCapActive=null,globalCapPeriod='7d';
+let globalCapActive=null,globalCapPeriod='1D';
 const globalCapRawHistory=load('globalCapHistoryNative',{});
 const globalCapHistory=Object.fromEntries(GLOBAL_CAP_INDICES.map(item=>[
  item.id,(Array.isArray(globalCapRawHistory?.[item.id])?globalCapRawHistory[item.id]:[])
   .filter(p=>p&&Number.isFinite(+p.t)&&Number.isFinite(+p.v)&&+p.v>0&&
-   +p.t<=Date.now()+60000&&+p.t>=Date.now()-31*86400000)
+   +p.t<=Date.now()+60000&&+p.t>=Date.now()-400*86400000)
   .map(p=>({t:+p.t,v:+p.v,source:String(p.source||'Dati salvati')}))
-  .sort((a,b)=>a.t-b.t).slice(-500)
+  .sort((a,b)=>a.t-b.t).slice(-10000)
 ]));
 const globalCapState={latest:{},lastTry:0,busy:false,error:''};
 for(const item of GLOBAL_CAP_INDICES){
@@ -1145,13 +1161,25 @@ function globalCapPct(n){return n.toLocaleString('it-IT',{maximumFractionDigits:
 function globalCapObserve(id,value,at,source){
  const n=Number(value),t=Number(at);
  if(!GLOBAL_CAP_INDICES.some(a=>a.id===id)||!Number.isFinite(n)||n<=0||
-  !Number.isFinite(t)||t>Date.now()+60000||t<Date.now()-31*86400000)return;
+  !Number.isFinite(t)||t>Date.now()+60000||t<Date.now()-400*86400000)return;
  const points=globalCapHistory[id],last=points[points.length-1];
  if(last&&t<last.t)return;
  const row={t,v:n,source};
  if(last&&t-last.t<60000)points[points.length-1]=row;
  else points.push(row);
- globalCapHistory[id]=points.filter(p=>p.t>=Date.now()-30*86400000).slice(-500);
+ // Keep genuine short-term samples at full resolution and downsample older ones
+ // by choosing an existing observation; no synthetic midpoint values.
+ const now=Date.now(),keep=new Map();
+ for(const p of points){
+  if(p.t<now-400*86400000)continue;
+  const age=now-p.t;
+  const span=age<2*86400000?60000:
+   age<30*86400000?15*60000:
+   age<100*86400000?3600000:6*3600000;
+  const slot=Math.floor(p.t/span);
+  keep.set(span+':'+slot,p);
+ }
+ globalCapHistory[id]=[...keep.values()].sort((a,b)=>a.t-b.t).slice(-10000);
  globalCapState.latest[id]=row;
 }
 function globalCapReadMarket(total,btc,eth,ts,provider){
@@ -1173,7 +1201,9 @@ async function globalCapRequest(url){
  }finally{clearTimeout(timer)}
 }
 async function refreshGlobalCapData(force=false){
- if(globalCapState.busy||(!force&&Date.now()-globalCapState.lastTry<5*60000))return;
+ // Public aggregate feeds are cached by their provider; polling every 60 s
+ // checks for actual changes but never fabricates 1-second market-cap ticks.
+ if(globalCapState.busy||Date.now()-globalCapState.lastTry<60000)return;
  globalCapState.lastTry=Date.now();globalCapState.busy=true;globalCapState.error='';
  paintGlobalCapChart();
  const [market,defi]=await Promise.allSettled([
@@ -1310,7 +1340,7 @@ function mountGlobalCapChart(){
  if(state.page!=='global'||!globalCapActive)return;
  const panel=$('#globalCapChartPanel');if(!panel)return;
  panel.hidden=false;paintGlobalCapChart();
- if(!globalCapState.busy&&Date.now()-globalCapState.lastTry>=5*60000)refreshGlobalCapData();
+ if(!globalCapState.busy&&Date.now()-globalCapState.lastTry>=60000)refreshGlobalCapData();
 }
 function selectGlobalCapChart(id){
  if(state.page!=='global')return;
@@ -5404,7 +5434,8 @@ function startVertexApp(){
  setInterval(()=>{if(state.adaptiveBrightness&&!document.hidden)applyBrightness()},60000);
  setInterval(updateWorldSunlight,1000);
  // Save only measured market-cap snapshots while the native graph is in use.
- setInterval(()=>{if(state.page==='global'&&globalCapActive&&!document.hidden)refreshGlobalCapData()},300000);
+ setInterval(()=>{if(state.page==='global'&&globalCapActive&&!document.hidden)refreshGlobalCapData()},60000);
+ setInterval(()=>{if(state.page==='global'&&globalCapActive&&!document.hidden)updateGlobalCapLiveStatus()},1000);
  setInterval(()=>{
   if(orderBookViewActive()&&!document.hidden){
    keepOrderBookLive();
