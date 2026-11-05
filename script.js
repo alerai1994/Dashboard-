@@ -1191,6 +1191,83 @@ function globalCapReadMarket(total,btc,eth,ts,provider){
  globalCapObserve('TOTAL3',v*(100-b-e)/100,ts,provider+' · quota ex BTC/ETH');
  return true;
 }
+// Santiment publishes free daily global aggregate-cap series for TOTAL/TOTAL2/TOTAL3.
+// This is historical daily observation data (not genuine intraday OHLC).
+// Anonymous API access can be restricted; in that case the chart keeps only
+// verified live observations and reports that history could not be loaded.
+const globalCapBackfill={busy:false,attempted:false,error:''};
+function globalCapMergeSeries(id,rows){
+ if(!GLOBAL_CAP_INDICES.some(v=>v.id===id)||!Array.isArray(rows))return 0;
+ const points=globalCapHistory[id];
+ const known=new Set(points.map(row=>String(row.t)));
+ let added=0;
+ for(const entry of rows){
+  if(!entry)continue;
+  const t=Date.parse(entry.datetime||entry.time||'');
+  const v=Number(entry.value);
+  if(!Number.isFinite(t)||t>Date.now()+60000||t<Date.now()-400*86400000||
+     !Number.isFinite(v)||v<=0||known.has(String(t)))continue;
+  points.push({t,v,source:'Santiment · storico giornaliero'});
+  known.add(String(t));added++;
+ }
+ if(added){
+  points.sort((a,b)=>a.t-b.t);
+  globalCapHistory[id]=points.slice(-10000);
+  // A backfill must never replace a more recent verified live quote.
+  const last=points[points.length-1];
+  if(!globalCapState.latest[id]||last.t>globalCapState.latest[id].t)
+   globalCapState.latest[id]=last;
+ }
+ return added;
+}
+async function loadGlobalCapHistory(){
+ if(globalCapBackfill.busy||globalCapBackfill.attempted)return;
+ const ids=['TOTAL','TOTAL2','TOTAL3'];
+ if(ids.every(id=>(globalCapHistory[id]||[]).length>=180)){
+  globalCapBackfill.attempted=true;return;
+ }
+ globalCapBackfill.attempted=true;globalCapBackfill.busy=true;
+ globalCapBackfill.error='';
+ const metrics=[
+  ['total','total_market_marketcap_usd','TOTAL'],
+  ['total2','total_market_2_marketcap_usd','TOTAL2'],
+  ['total3','total_market_3_marketcap_usd','TOTAL3']
+ ];
+ const query='query {'+metrics.map(([key,metric])=>
+  key+':getMetric(metric:"'+metric+'"){timeseriesDataJson('+
+  'slug:"total_market",from:"utc_now-350d",to:"utc_now-35d",interval:"1d")}').join(' ')+'}';
+ const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),11000);
+ try{
+  const response=await fetch('https://api.santiment.net/graphql',{
+   method:'POST',signal:controller.signal,
+   headers:{'Content-Type':'application/json',Accept:'application/json'},
+   body:JSON.stringify({query})
+  });
+  if(!response.ok)throw Error('Santiment HTTP '+response.status);
+  const payload=await response.json();
+  if(payload.errors?.length&&!payload.data)
+   throw Error(String(payload.errors[0]?.message||'Storico non autorizzato').slice(0,180));
+  let count=0;
+  for(const [key,,id] of metrics){
+   let rows=payload.data?.[key]?.timeseriesDataJson;
+   if(typeof rows==='string'){
+    try{rows=JSON.parse(rows)}catch(_e){rows=[]}
+   }
+   if(!Array.isArray(rows))continue;
+   count+=globalCapMergeSeries(id,rows);
+  }
+  if(count>0){
+   save('globalCapHistoryNative',globalCapHistory);
+  }else{
+   globalCapBackfill.error='Storico giornaliero non ottenibile con accesso gratuito.';
+  }
+ }catch(e){
+  globalCapBackfill.error='Storico giornaliero non accessibile: '+String(e?.message||e).slice(0,90);
+ }finally{
+  clearTimeout(timeout);globalCapBackfill.busy=false;
+  if(state.page==='global'&&globalCapActive)paintGlobalCapChart();
+ }
+}
 async function globalCapRequest(url){
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
  try{
@@ -1587,6 +1664,7 @@ function mountGlobalCapChart(){
  if(state.page!=='global'||!globalCapActive)return;
  const panel=$('#globalCapChartPanel');if(!panel)return;
  panel.hidden=false;paintGlobalCapChart();
+ if(!globalCapBackfill.attempted)loadGlobalCapHistory();
  if(!globalCapState.busy&&Date.now()-globalCapState.lastTry>=60000)refreshGlobalCapData();
 }
 function selectGlobalCapChart(id){
