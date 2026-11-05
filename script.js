@@ -2013,10 +2013,9 @@ function cryptoEtfSection(){
   '<p class="crypto-etf-disclaimer">Il riquadro TradingView prova ad aggiornarsi automaticamente durante le negoziazioni ma i listini azionari/ETF dei widget pubblici possono essere ritardati. '+
   'Sotto resta il dato verificato Yahoo Finance, aggiornato a intervalli e con orario della fonte. '+
   'I mercati chiusi non producono nuovi scambi. La quotazione Euronext di AINJ nel widget è in EUR, mentre la quota Amsterdam Yahoo sotto è in USD. '+
-  'La fonte del feed e la valuta sono sempre indicate. '+
-  'La quotazione delle quote ETF/ETP proviene dal feed di mercato Yahoo Finance e può avere ritardo; '+
-  'la data dell’ultimo scambio è indicata su ogni scheda. Il prezzo spot della crypto è separato e non sostituisce la quota del prodotto. '+
-  'AINJ è un ETP europeo e non un ETF USA. I prezzi possono mancare nei feed o a mercato chiuso; il capitale è a rischio.</p>'+
+  'La fonte, la valuta e l’orario dell’ultima quotazione verificata sono riportati sulle schede. '+
+  'Il prezzo spot della criptovaluta è separato e non sostituisce il prezzo della quota ETF/ETP. '+
+  'AINJ è un ETP europeo e non un ETF USA. Il capitale investito è a rischio.</p>'+
   '</section>';
 }
 
