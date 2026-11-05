@@ -1213,6 +1213,8 @@ function mountGlobalCapChart(){
  const name=$('#globalCapTitle'),description=$('#globalCapDescription');
  if(name)name.textContent=item.id;
  if(description)description.textContent=item.description;
+ const providerLink=$('.global-cap-provider-link');
+ if(providerLink)providerLink.href='https://www.tradingview.com/chart/?symbol='+encodeURIComponent(item.symbol);
  const errorNode=$('#globalCapTvError');if(errorNode)errorNode.textContent='';
  const feedState=$('#globalCapStreamState');
  const selectedPeriod=globalCapPeriodSelected();
