@@ -1229,14 +1229,22 @@ function mountGlobalCapChart(){
   }
  };
  widget.appendChild(script);
- // The TradingView gear is inside a cross-origin iframe, which cannot be
- // controlled by the host page. Mask only its small bottom-right control,
- // leaving provider attribution, chart canvas and other UI untouched.
+ // Widget controls live in a cross-origin iframe. Keep visual masking
+ // scoped to the chart container rather than affecting the rest of Vertex.
+ const isLightCapTheme=['light','sand','ice'].includes(state.theme);
+ const chartMaskColor=isLightCapTheme?'#ffffff':'#0b1925';
  const settingsCover=document.createElement('div');
  settingsCover.className='global-cap-settings-cover';
  settingsCover.setAttribute('aria-hidden','true');
  settingsCover.style.backgroundColor=globalCapWidgetConfig(item).backgroundColor;
  widget.appendChild(settingsCover);
+ // The small emblem is anchored at the lower left of the embedded graph.
+ // Keep the source attribution text beneath the graph visible.
+ const logoCover=document.createElement('div');
+ logoCover.className='global-cap-logo-cover';
+ logoCover.setAttribute('aria-hidden','true');
+ logoCover.style.backgroundColor=chartMaskColor;
+ widget.appendChild(logoCover);
 }
 function selectGlobalCapChart(id){
  if(state.page!=='global'||id!==null&&!GLOBAL_CAP_INDICES.some(item=>item.id===id))return;
