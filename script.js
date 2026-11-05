@@ -1423,13 +1423,18 @@ function globalCapStudySeries(bars,step){
 function globalCapNativeSvg(id,frame=globalCapFrameData(id)){
  const {period,from,span,step}=frame;
  const bars=globalCapOHLC(frame),studies=globalCapStudySeries(bars,step);
+ // One or two verified quotes otherwise shrink to an invisible pixel on a
+ // large time axis. Zoom the X axis to the real sample timestamps only.
+ const focusSparse=bars.length>0&&bars.length<6;
+ const viewFrom=focusSparse?bars[0].t-2*step:from;
+ const viewSpan=focusSparse?Math.max(6*step,bars[bars.length-1].t-bars[0].t+5*step):span;
  const w=1400,h=720,l=30,r=98,right=w-r;
  const price={top:18,bottom:371,label:'PRICE'};
  const rsiPane={top:394,bottom:480,label:'RSI (14)'};
  const stPane={top:500,bottom:588,label:'STOCH RSI (14/14/3/3)'};
  const macdPane={top:608,bottom:692,label:'MACD (12/26/9)'};
  const panes=[price,rsiPane,stPane,macdPane],plotWidth=right-l;
- const x=t=>l+Math.min(1,Math.max(0,(t-from)/span))*plotWidth;
+ const x=t=>l+Math.min(1,Math.max(0,(t-viewFrom)/viewSpan))*plotWidth;
  const values=bars.flatMap(b=>[b.h,b.l]);
  for(const key of ['ema12','ema26','ema50','ema200'])
   values.push(...studies[key].filter(Number.isFinite));
@@ -1470,15 +1475,18 @@ function globalCapNativeSvg(id,frame=globalCapFrameData(id)){
   svg.push(makeLine(l,oscY(p,lower),right,oscY(p,lower),'#668a8c',.7));
  }
  svg.push(makeLine(l,macdY(0),right,macdY(0),'#3e6272',.8));
- const candleWidth=Math.max(1.5,Math.min(9,plotWidth/Math.max(40,Math.min(280,span/step))*.6));
+ const candleWidth=bars.length<6?16:Math.max(2.8,Math.min(10,plotWidth/Math.max(40,Math.min(280,viewSpan/step))*.6));
  for(let i=0;i<bars.length;i++){
-  const bar=bars[i],cx=x(bar.t+step/2);
-  const rise=bar.c>bar.o,fall=bar.c<bar.o;
+  const bar=bars[i],cx=x(bar.t+step/2),prior=i>0?bars[i-1]:null;
+  // Single-reading OHLC candles are flat; show the direction of change since
+  // the preceding verified sample without fabricating an intrabar high/low.
+  const rise=bar.c>bar.o||(bar.c===bar.o&&prior&&bar.c>prior.c);
+  const fall=bar.c<bar.o||(bar.c===bar.o&&prior&&bar.c<prior.c);
   const stroke=rise?strokes.up:fall?strokes.down:strokes.neutral;
   const lowY=priceY(bar.l),highY=priceY(bar.h);
   const bodyTop=priceY(Math.max(bar.o,bar.c));
   const bodyBottom=priceY(Math.min(bar.o,bar.c));
-  const bodyHeight=Math.max(1.6,bodyBottom-bodyTop);
+  const bodyHeight=Math.max(bars.length<6?5.5:1.7,bodyBottom-bodyTop);
   const when=localeDate(bar.last,{day:'2-digit',month:'2-digit',
    year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
   svg.push('<g class="global-cap-candle" data-cap-candle="'+i+
@@ -1530,12 +1538,19 @@ function globalCapNativeSvg(id,frame=globalCapFrameData(id)){
  svg.push(drawSeries(studies.macd,strokes.macd,macdY,1.7));
  svg.push(drawSeries(studies.signal,strokes.signal,macdY,1.7));
  for(let i=0;i<=4;i++){
-  const t=from+span*i/4;
-  const label=localeDate(t,period.ms<=86400000&&period.ms!==0?
+  const t=viewFrom+viewSpan*i/4;
+  const label=localeDate(t,viewSpan<=86400000?
    {hour:'2-digit',minute:'2-digit'}:{month:'short',day:'2-digit',year:'2-digit'});
   const xx=l+(right-l)*i/4;
   svg.push('<text class="global-cap-time-axis" x="'+xx.toFixed(2)+'" y="'+(h-10)+
    '" text-anchor="'+(i===0?'start':i===4?'end':'middle')+'">'+esc(label)+'</text>');
+ }
+ if(!bars.length){
+  svg.push('<text x="'+(l+plotWidth/2)+'" y="185" text-anchor="middle" fill="#bfd1de" font-size="18">'+
+   'Nessuna candela disponibile: verifica la connessione ai dati di capitalizzazione.</text>');
+ }else if(bars.length===1){
+  svg.push('<text x="'+(l+plotWidth/2)+'" y="335" text-anchor="middle" fill="#9fbacf" font-size="13">'+
+   '1 rilevazione verificata · le candele successive richiedono nuovi dati reali.</text>');
  }
  svg.push('</svg>');
  return svg.join('');
@@ -1603,8 +1618,8 @@ function globalCapContent(){
  const deltaText=delta===null?'Variazione non ancora calcolabile':
   (delta>=0?'+':'')+delta.toLocaleString('it-IT',{maximumFractionDigits:2})+
   '% nelle rilevazioni di '+period.label;
- const resolution=period.id==='Tutto'?'Tutto lo storico locale':
-  'Finestra '+period.description+' · risoluzione nominale '+period.label;
+ const resolution=period.id==='Tutto'?'Tutte le rilevazioni reali disponibili':
+  'Candele '+period.label+' · selezione degli ultimi intervalli verificati';
  const tiny=period.bucket<60000;
  const status=globalCapLiveLabel();
  return '<div class="global-cap-chart-heading"><div>'+
@@ -1646,7 +1661,7 @@ function globalCapContent(){
   (tiny?'I timeframe in secondi sono selezionabili, ma la fonte aggregata non produce dati verificati ogni secondo. ':'')+
   'Candele OHLC e indicatori calcolati esclusivamente dalle rilevazioni effettive salvate nel browser; gli intervalli senza dati rimangono vuoti. '+
   'Verifica automatica della fonte ogni ~60 secondi con il grafico aperto; l’aggiornamento effettivo dipende da CoinGecko/CoinLore. '+
-  'Il timeframe Tutto comprende solo lo storico salvato su questo dispositivo. '+
+  'Tutto comprende le osservazioni salvate sul dispositivo e l’eventuale storico pubblico disponibile. '+
   (globalCapState.error?esc(globalCapState.error):'')+'</p>';
 }
 function globalCapModule(){
