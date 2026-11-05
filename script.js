@@ -1206,9 +1206,12 @@ async function refreshGlobalCapData(force=false){
  if(globalCapState.busy||Date.now()-globalCapState.lastTry<60000)return;
  globalCapState.lastTry=Date.now();globalCapState.busy=true;globalCapState.error='';
  paintGlobalCapChart();
- const [market,defi]=await Promise.allSettled([
+ const [market,defi,cmc]=await Promise.allSettled([
   globalCapRequest('https://api.coingecko.com/api/v3/global'),
-  globalCapRequest('https://api.coingecko.com/api/v3/global/decentralized_finance_defi')
+  globalCapRequest('https://api.coingecko.com/api/v3/global/decentralized_finance_defi'),
+  // CoinMarketCap's documented keyless public endpoint independently supplies
+  // TOTAL, BTC/ETH dominance and the DeFi market cap for first-use fallbacks.
+  globalCapRequest('https://pro-api.coinmarketcap.com/public-api/v1/global-metrics/quotes/latest?convert=USD')
  ]);
  let globalOK=false,defiOK=false;
  if(market.status==='fulfilled'){
@@ -1216,6 +1219,22 @@ async function refreshGlobalCapData(force=false){
   const ts=Number.isFinite(epoch)&&epoch>0&&epoch<=Date.now()+60000?epoch:Date.now();
   globalOK=globalCapReadMarket(d?.total_market_cap?.usd,d?.market_cap_percentage?.btc,
    d?.market_cap_percentage?.eth,ts,'CoinGecko');
+ }
+ if(cmc.status==='fulfilled'){
+  const data=cmc.value?.data,usd=data?.quote?.USD;
+  const updated=Date.parse(usd?.last_updated||data?.last_updated||'');
+  const timestamp=Number.isFinite(updated)&&updated<=Date.now()+60000?updated:Date.now();
+  if(!globalOK){
+   globalOK=globalCapReadMarket(usd?.total_market_cap,
+    data?.btc_dominance,data?.eth_dominance,timestamp,'CoinMarketCap Public');
+  }
+  if(!defiOK){
+   const defiCap=Number(data?.defi_market_cap);
+   if(Number.isFinite(defiCap)&&defiCap>0){
+    globalCapObserve('TOTALDEFI',defiCap,timestamp,'CoinMarketCap DeFi');
+    defiOK=true;
+   }
+  }
  }
  if(!globalOK){
   try{
@@ -1227,7 +1246,7 @@ async function refreshGlobalCapData(force=false){
  }
  if(defi.status==='fulfilled'){
   const amount=Number(defi.value?.data?.defi_market_cap);
-  if(Number.isFinite(amount)&&amount>0){
+  if(Number.isFinite(amount)&&amount>0&&!defiOK){
    globalCapObserve('TOTALDEFI',amount,Date.now(),'CoinGecko DeFi');defiOK=true;
   }
  }
