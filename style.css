@@ -2278,3 +2278,20 @@ body:is(.theme-sand,.theme-ice) .settings-theme-swatch{border-color:var(--line)}
 @media(prefers-reduced-motion:reduce){
  .global-cap-pill,.global-cap-shares-track>span{transition:none}
 }
+
+
+/* Global · timeframe history scrollbar and live source status */
+.global-cap-controls{display:flex;flex-direction:column;align-items:stretch;gap:10px}
+.global-cap-feed{display:flex;align-items:center;justify-content:space-between;gap:6px 14px;flex-wrap:wrap;min-width:0;font-size:10px;line-height:1.5;color:var(--muted)}
+.global-cap-source{min-width:0;overflow-wrap:anywhere}
+.global-cap-live-status{display:inline-flex;align-items:center;min-height:22px;font-variant-numeric:tabular-nums;font-size:10px;font-weight:680;color:var(--green)}
+.global-cap-controls-buttons{display:flex;width:100%;max-width:100%;min-width:0;align-items:stretch;gap:8px;justify-content:space-between}
+.global-cap-period-scroll{display:flex;align-items:stretch;flex:1 1 auto;gap:5px;min-width:0;max-width:100%;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:var(--line) transparent;touch-action:pan-x;-webkit-overflow-scrolling:touch;padding:2px 2px 7px}
+.global-cap-period{flex:0 0 auto;white-space:nowrap;min-width:40px;padding:7px 10px;font-variant-numeric:tabular-nums}
+.global-cap-period[data-global-cap-period="Tutto"]{min-width:61px}
+.global-cap-refresh{flex:0 0 36px;align-self:flex-start;min-width:36px;margin-top:2px;min-height:33px}
+.global-cap-range-summary{display:flex;align-items:center;justify-content:space-between;gap:5px 15px;flex-wrap:wrap;margin:0 2px 9px;font-size:10px;line-height:1.4;color:var(--muted)}
+.global-cap-range-summary strong{font-size:10px;font-weight:760;color:var(--text)}
+.global-cap-range-summary span{font-variant-numeric:tabular-nums}
+.global-cap-plot{min-height:0}
+@media(max-width:600px){.global-cap-period-scroll{gap:4px}.global-cap-period{font-size:10px;padding:7px 8px;min-width:37px}.global-cap-range-summary{flex-direction:column;align-items:flex-start}.global-cap-live-status{font-size:10px}}
