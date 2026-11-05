@@ -2244,27 +2244,16 @@ body:is(.theme-sand,.theme-ice) .settings-theme-swatch{border-color:var(--line)}
  padding:0;margin:0;
 }
 .global-cap-tv>.tradingview-widget-container__widget{
- display:block;width:100%;height:calc(100% - 29px);min-height:0;
+ display:block;width:100%;height:100%;min-height:0;
 }
 .global-cap-tv>.tradingview-widget-container__widget iframe{
  display:block;width:100%!important;height:100%!important;border:0;
 }
-.global-cap-tv>.tradingview-widget-copyright{
- height:29px;box-sizing:border-box;display:flex;align-items:center;
- justify-content:center;gap:4px;padding:0 8px;
- background:#0d1d2b;color:#b7d1e3;font-size:10px;
-}
-.global-cap-tv>.tradingview-widget-copyright a{
- color:#80b8ef;text-decoration:none;
-}
-.global-cap-tv>.tradingview-widget-copyright a:hover{text-decoration:underline}
 .global-cap-bottom{
  display:flex;justify-content:space-between;align-items:center;
  flex-wrap:wrap;gap:7px 20px;margin:11px 2px 0;
  font-size:11px;line-height:1.55;color:var(--muted);
 }
-.global-cap-bottom a{color:var(--brand);text-decoration:underline;text-underline-offset:2px;font-weight:700}
-.global-cap-bottom a:hover{text-decoration:none}
 .global-cap-error{font-size:11px;margin:7px 3px 0;color:var(--red)}
 .global-cap-error:empty{display:none}
 @media(max-width:760px){
