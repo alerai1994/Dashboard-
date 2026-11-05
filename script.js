@@ -1106,611 +1106,161 @@ function techBigTechOverview(){
 // Vertex-native market-cap chart: no external chart renderer.
 // Only genuine public-market readings are graphed; historical points are saved
 // locally as the dashboard receives them, with no invented intermediate values.
-const GLOBAL_CAP_INDICES=[
- {id:'TOTAL',description:'Capitalizzazione globale delle criptovalute'},
- {id:'TOTAL2',description:'Capitalizzazione senza Bitcoin'},
- {id:'TOTAL3',description:'Capitalizzazione senza Bitcoin ed Ethereum'},
- {id:'TOTALDEFI',description:'Capitalizzazione del settore DeFi'}
-];
-const GLOBAL_CAP_PERIODS=[
- {id:'1s',label:'1s',ms:2*60000,bucket:1000,description:'ultimi 2 minuti'},
- {id:'5s',label:'5s',ms:10*60000,bucket:5000,description:'ultimi 10 minuti'},
- {id:'15s',label:'15s',ms:30*60000,bucket:15000,description:'ultimi 30 minuti'},
- {id:'30s',label:'30s',ms:3600000,bucket:30000,description:'ultima ora'},
- {id:'1H',label:'1H',ms:3600000,bucket:60000,description:'ultima ora'},
- {id:'2h',label:'2h',ms:2*3600000,bucket:60000,description:'ultime 2 ore'},
- {id:'3h',label:'3h',ms:3*3600000,bucket:60000,description:'ultime 3 ore'},
- {id:'4h',label:'4h',ms:4*3600000,bucket:60000,description:'ultime 4 ore'},
- {id:'5h',label:'5h',ms:5*3600000,bucket:60000,description:'ultime 5 ore'},
- {id:'12h',label:'12h',ms:12*3600000,bucket:5*60000,description:'ultime 12 ore'},
- {id:'1D',label:'1D',ms:86400000,bucket:5*60000,description:'ultime 24 ore'},
- {id:'2D',label:'2D',ms:2*86400000,bucket:15*60000,description:'ultimi 2 giorni'},
- {id:'3D',label:'3D',ms:3*86400000,bucket:15*60000,description:'ultimi 3 giorni'},
- {id:'1W',label:'1W',ms:7*86400000,bucket:3600000,description:'ultima settimana'},
- {id:'2W',label:'2W',ms:14*86400000,bucket:3600000,description:'ultime 2 settimane'},
- {id:'1M',label:'1M',ms:30*86400000,bucket:4*3600000,description:'ultimo mese'},
- {id:'2M',label:'2M',ms:60*86400000,bucket:4*3600000,description:'ultimi 2 mesi'},
- {id:'3M',label:'3M',ms:90*86400000,bucket:8*3600000,description:'ultimi 3 mesi'},
- {id:'Tutto',label:'Tutto',ms:0,bucket:86400000,description:'tutte le rilevazioni salvate'}
-];
+// Official TradingView Advanced Chart for the four CRYPTOCAP market indices.
+// Chart OHLC and historical indicator values come from TradingView, not
+// interpolated browser snapshots or pseudo-candles from sparse aggregate feeds.
+const GLOBAL_CAP_INDICES=Object.freeze([
+ {id:'TOTAL',symbol:'CRYPTOCAP:TOTAL',description:'Capitalizzazione delle principali criptovalute',url:'https://www.tradingview.com/symbols/TOTAL/'},
+ {id:'TOTAL2',symbol:'CRYPTOCAP:TOTAL2',description:'Capitalizzazione del mercato crypto, escluso Bitcoin',url:'https://www.tradingview.com/symbols/TOTAL2/'},
+ {id:'TOTAL3',symbol:'CRYPTOCAP:TOTAL3',description:'Capitalizzazione del mercato crypto, esclusi Bitcoin ed Ethereum',url:'https://www.tradingview.com/symbols/TOTAL3/'},
+ {id:'TOTALDEFI',symbol:'CRYPTOCAP:TOTALDEFI',description:'Capitalizzazione delle criptovalute DeFi',url:'https://www.tradingview.com/symbols/TOTALDEFI/'}
+]);
+// These match the controls previously requested by the user. Not every interval
+// is available for every symbol / account in TradingView's embedded chart.
+const GLOBAL_CAP_PERIODS=Object.freeze([
+ {id:'1s',tv:'1S'},{id:'5s',tv:'5S'},{id:'15s',tv:'15S'},{id:'30s',tv:'30S'},
+ {id:'1H',tv:'60'},{id:'2h',tv:'120'},{id:'3h',tv:'180'},{id:'4h',tv:'240'},
+ {id:'5h',tv:'300'},{id:'12h',tv:'720'},{id:'1D',tv:'D'},{id:'2D',tv:'2D'},
+ {id:'3D',tv:'3D'},{id:'1W',tv:'W'},{id:'2W',tv:'2W'},{id:'1M',tv:'M'},
+ {id:'2M',tv:'2M'},{id:'3M',tv:'3M'},{id:'Tutto',tv:'W'}
+]);
 let globalCapActive=null,globalCapPeriod='Tutto';
-const globalCapRawHistory=load('globalCapHistoryNative',{});
-const globalCapHistory=Object.fromEntries(GLOBAL_CAP_INDICES.map(item=>[
- item.id,(Array.isArray(globalCapRawHistory?.[item.id])?globalCapRawHistory[item.id]:[])
-  .filter(p=>p&&Number.isFinite(+p.t)&&Number.isFinite(+p.v)&&+p.v>0&&
-   +p.t<=Date.now()+60000&&+p.t>=Date.now()-400*86400000)
-  .map(p=>({t:+p.t,v:+p.v,source:String(p.source||'Dati salvati')}))
-  .sort((a,b)=>a.t-b.t).slice(-10000)
-]));
-const globalCapState={latest:{},lastTry:0,busy:false,error:''};
-for(const item of GLOBAL_CAP_INDICES){
- const series=globalCapHistory[item.id],last=series[series.length-1];
- if(last)globalCapState.latest[item.id]=last;
-}
-function globalCapMoney(value){
- const n=Number(value);
- if(!Number.isFinite(n)||n<=0)return '—';
- const formatted=(v,unit,d=2)=>v.toLocaleString('it-IT',{
-  minimumFractionDigits:d,maximumFractionDigits:d})+' '+unit+' USD';
- if(n>=1e12)return formatted(n/1e12,'T');
- if(n>=1e9)return formatted(n/1e9,'Mld');
- if(n>=1e6)return formatted(n/1e6,'Mln');
- return formatted(n,'',0).trim();
-}
-function globalCapPct(n){return n.toLocaleString('it-IT',{maximumFractionDigits:1})+'%'}
-function globalCapObserve(id,value,at,source){
- const n=Number(value),t=Number(at);
- if(!GLOBAL_CAP_INDICES.some(a=>a.id===id)||!Number.isFinite(n)||n<=0||
-  !Number.isFinite(t)||t>Date.now()+60000||t<Date.now()-400*86400000)return;
- const points=globalCapHistory[id],last=points[points.length-1];
- if(last&&t<last.t)return;
- const row={t,v:n,source};
- if(last&&t-last.t<60000)points[points.length-1]=row;
- else points.push(row);
- // Keep genuine short-term samples at full resolution and downsample older ones
- // by choosing an existing observation; no synthetic midpoint values.
- const now=Date.now(),keep=new Map();
- for(const p of points){
-  if(p.t<now-400*86400000)continue;
-  const age=now-p.t;
-  const span=age<2*86400000?60000:
-   age<30*86400000?15*60000:
-   age<100*86400000?3600000:6*3600000;
-  const slot=Math.floor(p.t/span);
-  keep.set(span+':'+slot,p);
- }
- globalCapHistory[id]=[...keep.values()].sort((a,b)=>a.t-b.t).slice(-10000);
- globalCapState.latest[id]=row;
-}
-function globalCapReadMarket(total,btc,eth,ts,provider){
- const v=Number(total),b=Number(btc),e=Number(eth);
- if(!Number.isFinite(v)||v<=0||!Number.isFinite(b)||!Number.isFinite(e)||
-    b<0||e<0||b+e>=100)return false;
- globalCapObserve('TOTAL',v,ts,provider);
- globalCapObserve('TOTAL2',v*(100-b)/100,ts,provider+' · quota ex BTC');
- globalCapObserve('TOTAL3',v*(100-b-e)/100,ts,provider+' · quota ex BTC/ETH');
- return true;
-}
-// Santiment publishes free daily global aggregate-cap series for TOTAL/TOTAL2/TOTAL3.
-// This is historical daily observation data (not genuine intraday OHLC).
-// Anonymous API access can be restricted; in that case the chart keeps only
-// verified live observations and reports that history could not be loaded.
-const globalCapBackfill={busy:false,attempted:false,error:''};
-function globalCapMergeSeries(id,rows){
- if(!GLOBAL_CAP_INDICES.some(v=>v.id===id)||!Array.isArray(rows))return 0;
- const points=globalCapHistory[id];
- const known=new Set(points.map(row=>String(row.t)));
- let added=0;
- for(const entry of rows){
-  if(!entry)continue;
-  const t=Date.parse(entry.datetime||entry.time||'');
-  const v=Number(entry.value);
-  if(!Number.isFinite(t)||t>Date.now()+60000||t<Date.now()-400*86400000||
-     !Number.isFinite(v)||v<=0||known.has(String(t)))continue;
-  points.push({t,v,source:'Santiment · storico giornaliero'});
-  known.add(String(t));added++;
- }
- if(added){
-  points.sort((a,b)=>a.t-b.t);
-  globalCapHistory[id]=points.slice(-10000);
-  // A backfill must never replace a more recent verified live quote.
-  const last=points[points.length-1];
-  if(!globalCapState.latest[id]||last.t>globalCapState.latest[id].t)
-   globalCapState.latest[id]=last;
- }
- return added;
-}
-async function loadGlobalCapHistory(){
- if(globalCapBackfill.busy||globalCapBackfill.attempted)return;
- const ids=['TOTAL','TOTAL2','TOTAL3'];
- if(ids.every(id=>(globalCapHistory[id]||[]).length>=180)){
-  globalCapBackfill.attempted=true;return;
- }
- globalCapBackfill.attempted=true;globalCapBackfill.busy=true;
- globalCapBackfill.error='';
- const metrics=[
-  ['total','total_market_marketcap_usd','TOTAL'],
-  ['total2','total_market_2_marketcap_usd','TOTAL2'],
-  ['total3','total_market_3_marketcap_usd','TOTAL3']
- ];
- const query='query {'+metrics.map(([key,metric])=>
-  key+':getMetric(metric:"'+metric+'"){timeseriesDataJson('+
-  'slug:"total_market",from:"utc_now-350d",to:"utc_now-35d",interval:"1d")}').join(' ')+'}';
- const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),11000);
- try{
-  const response=await fetch('https://api.santiment.net/graphql',{
-   method:'POST',signal:controller.signal,
-   headers:{'Content-Type':'application/json',Accept:'application/json'},
-   body:JSON.stringify({query})
-  });
-  if(!response.ok)throw Error('Santiment HTTP '+response.status);
-  const payload=await response.json();
-  if(payload.errors?.length&&!payload.data)
-   throw Error(String(payload.errors[0]?.message||'Storico non autorizzato').slice(0,180));
-  let count=0;
-  for(const [key,,id] of metrics){
-   let rows=payload.data?.[key]?.timeseriesDataJson;
-   if(typeof rows==='string'){
-    try{rows=JSON.parse(rows)}catch(_e){rows=[]}
-   }
-   if(!Array.isArray(rows))continue;
-   count+=globalCapMergeSeries(id,rows);
-  }
-  if(count>0){
-   save('globalCapHistoryNative',globalCapHistory);
-  }else{
-   globalCapBackfill.error='Storico giornaliero non ottenibile con accesso gratuito.';
-  }
- }catch(e){
-  globalCapBackfill.error='Storico giornaliero non accessibile: '+String(e?.message||e).slice(0,90);
- }finally{
-  clearTimeout(timeout);globalCapBackfill.busy=false;
-  if(state.page==='global'&&globalCapActive)paintGlobalCapChart();
- }
-}
-async function globalCapRequest(url){
- const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
- try{
-  const response=await fetch(url,{cache:'no-store',signal:controller.signal,
-   headers:{Accept:'application/json'}});
-  if(!response.ok)throw new Error('HTTP '+response.status);
-  return await response.json();
- }finally{clearTimeout(timer)}
-}
-async function refreshGlobalCapData(force=false){
- // Public aggregate feeds are cached by their provider; polling every 60 s
- // checks for actual changes but never fabricates 1-second market-cap ticks.
- if(globalCapState.busy||Date.now()-globalCapState.lastTry<60000)return;
- globalCapState.lastTry=Date.now();globalCapState.busy=true;globalCapState.error='';
- paintGlobalCapChart();
- const [market,defi,cmc]=await Promise.allSettled([
-  globalCapRequest('https://api.coingecko.com/api/v3/global'),
-  globalCapRequest('https://api.coingecko.com/api/v3/global/decentralized_finance_defi'),
-  // CoinMarketCap's documented keyless public endpoint independently supplies
-  // TOTAL, BTC/ETH dominance and the DeFi market cap for first-use fallbacks.
-  globalCapRequest('https://pro-api.coinmarketcap.com/public-api/v1/global-metrics/quotes/latest?convert=USD')
- ]);
- let globalOK=false,defiOK=false;
- if(market.status==='fulfilled'){
-  const d=market.value?.data,epoch=Number(d?.updated_at)*1000;
-  const ts=Number.isFinite(epoch)&&epoch>0&&epoch<=Date.now()+60000?epoch:Date.now();
-  globalOK=globalCapReadMarket(d?.total_market_cap?.usd,d?.market_cap_percentage?.btc,
-   d?.market_cap_percentage?.eth,ts,'CoinGecko');
- }
- if(cmc.status==='fulfilled'){
-  const data=cmc.value?.data,usd=data?.quote?.USD;
-  const updated=Date.parse(usd?.last_updated||data?.last_updated||'');
-  const timestamp=Number.isFinite(updated)&&updated<=Date.now()+60000?updated:Date.now();
-  if(!globalOK){
-   globalOK=globalCapReadMarket(usd?.total_market_cap,
-    data?.btc_dominance,data?.eth_dominance,timestamp,'CoinMarketCap Public');
-  }
-  if(!defiOK){
-   const defiCap=Number(data?.defi_market_cap);
-   if(Number.isFinite(defiCap)&&defiCap>0){
-    globalCapObserve('TOTALDEFI',defiCap,timestamp,'CoinMarketCap DeFi');
-    defiOK=true;
-   }
-  }
- }
- if(!globalOK){
-  try{
-   const data=await globalCapRequest('https://api.coinlore.net/api/global/');
-   const d=Array.isArray(data)?data[0]:null;
-   globalOK=globalCapReadMarket(d?.total_mcap,d?.btc_d,d?.eth_d,
-    Date.now(),'CoinLore');
-  }catch(_error){}
- }
- if(defi.status==='fulfilled'){
-  const amount=Number(defi.value?.data?.defi_market_cap);
-  if(Number.isFinite(amount)&&amount>0&&!defiOK){
-   globalCapObserve('TOTALDEFI',amount,Date.now(),'CoinGecko DeFi');defiOK=true;
-  }
- }
- if(globalOK||defiOK)save('globalCapHistoryNative',globalCapHistory);
- if(!globalOK||!defiOK)
-  globalCapState.error=!globalOK&&!defiOK?'Feed non raggiungibili. Nessun dato simulato.':
-   globalOK?'Feed DeFi non disponibile.':'Dati globali non disponibili.';
- globalCapState.busy=false;paintGlobalCapChart();
-}
-// These buttons denote the CANDLE duration (not merely how far back the
-// chart pans). Use up to 240 genuine historical bars for each interval.
-const GLOBAL_CAP_CANDLE_MS=Object.freeze({
- '1s':1000,'5s':5000,'15s':15000,'30s':30000,
- '1H':3600000,'2h':2*3600000,'3h':3*3600000,
- '4h':4*3600000,'5h':5*3600000,'12h':12*3600000,
- '1D':86400000,'2D':2*86400000,'3D':3*86400000,
- '1W':7*86400000,'2W':14*86400000,
- '1M':30*86400000,'2M':60*86400000,'3M':90*86400000
-});
-function globalCapFrameData(id,now=Date.now()){
- const period=GLOBAL_CAP_PERIODS.find(p=>p.id===globalCapPeriod)||GLOBAL_CAP_PERIODS[10];
- const history=globalCapHistory[id]||[];
- const interval=GLOBAL_CAP_CANDLE_MS[period.id]||86400000;
- const first=history[0]?.t??now-interval*5;
- const wanted=period.id==='Tutto'?Math.max(1,now-first):
-  Math.max(period.ms||0,interval*240);
- // No assumptions or fake points outside the available historical dataset.
- const from=period.id==='Tutto'?Math.min(first,now-interval*2):now-wanted;
- const span=Math.max(interval*2,now-from);
- const step=period.id==='Tutto'?
-  Math.max(86400000,Math.ceil(span/400/86400000)*86400000):interval;
- const raw=history.filter(p=>p.t>=from&&p.t<=now+60000);
- const buckets=new Map();
- for(const point of raw)buckets.set(Math.floor(point.t/step),point);
- const points=[...buckets.values()].sort((a,b)=>a.t-b.t);
- return {period,from,to:now,span,step,raw,points};
-}
-// Convert genuine observed market-cap readings into OHLC within each period.
-// A single reading is a flat candle. Missing observations are never interpolated.
-function globalCapOHLC(frame){
- const map=new Map();
- for(const p of frame.raw){
-  const slot=Math.floor(p.t/frame.step);
-  let bar=map.get(slot);
-  if(!bar){
-   bar={t:slot*frame.step,o:p.v,h:p.v,l:p.v,c:p.v,
-    n:1,first:p.t,last:p.t,source:p.source};
-   map.set(slot,bar);
-  }else{
-   bar.h=Math.max(bar.h,p.v);
-   bar.l=Math.min(bar.l,p.v);
-   bar.c=p.v;
-   bar.n++;
-   bar.last=p.t;
-   bar.source=p.source;
-  }
- }
- return [...map.values()].sort((a,b)=>a.t-b.t);
-}
-function globalCapStudySeries(bars,step){
- const result={
-  ema12:Array(bars.length).fill(null),
-  ema26:Array(bars.length).fill(null),
-  ema50:Array(bars.length).fill(null),
-  ema200:Array(bars.length).fill(null),
-  rsi:Array(bars.length).fill(null),
-  stK:Array(bars.length).fill(null),
-  stD:Array(bars.length).fill(null),
-  macd:Array(bars.length).fill(null),
-  signal:Array(bars.length).fill(null),
-  histogram:Array(bars.length).fill(null)
+function globalCapSelected(){return GLOBAL_CAP_INDICES.find(item=>item.id===globalCapActive)||null;}
+function globalCapPeriodSelected(){return GLOBAL_CAP_PERIODS.find(item=>item.id===globalCapPeriod)||GLOBAL_CAP_PERIODS[18];}
+function globalCapWidgetConfig(item){
+ const duration=globalCapPeriodSelected();
+ return {
+  autosize:true,
+  symbol:item.symbol,
+  interval:duration.tv,
+  timezone:'Europe/Rome',
+  theme:['light','sand','ice'].includes(state.theme)?'light':'dark',
+  backgroundColor:['light','sand','ice'].includes(state.theme)?'#ffffff':'#0d1d2b',
+  gridColor:['light','sand','ice'].includes(state.theme)?'rgba(65,90,112,0.08)':'rgba(135,163,188,0.09)',
+  style:'1', // Original exchange OHLC candlesticks
+  locale:'it',
+  allow_symbol_change:false,
+  hide_side_toolbar:true,
+  hide_top_toolbar:false, // Important: users can adjust indicators here
+  hide_legend:false,hide_volume:true,
+  withdateranges:true,
+  show_popup_button:true,popup_width:'1450',popup_height:'900',
+  save_image:false,calendar:false,hotlist:false,details:false,
+  watchlist:[],compareSymbols:[],
+  support_host:'https://www.tradingview.com',
+  // Request the four EMAs (with lengths) and the three oscillators.
+  // Study inputs/availability can vary in TradingView's free embedded widget.
+  studies:[
+   {id:'MAExp@tv-basicstudies',inputs:{length:12}},
+   {id:'MAExp@tv-basicstudies',inputs:{length:26}},
+   {id:'MAExp@tv-basicstudies',inputs:{length:50}},
+   {id:'MAExp@tv-basicstudies',inputs:{length:200}},
+   'RSI@tv-basicstudies',
+   'StochasticRSI@tv-basicstudies',
+   'MACD@tv-basicstudies'
+  ],
+  ...(duration.id==='Tutto'?{range:'all'}:{})
  };
- // Indicator values restart after missing buckets: standard intervals cannot
- // be treated as continuous across large gaps in the observed data.
- for(let from=0;from<bars.length;){
-  let to=from+1;
-  while(to<bars.length&&bars[to].t-bars[to-1].t<=step*2.5)to++;
-  const sample=bars.slice(from,to);
-  if(sample.length>1){
-   const close=sample.map(c=>c.c);
-   const e12=ema(close,12),e26=ema(close,26),
-    e50=ema(close,50),e200=ema(close,200);
-   const strength=rsi(close,14),st=stochRsi(strength,14,3,3),m=macd(close);
-   for(let i=0;i<sample.length;i++){
-    const index=from+i;
-    result.ema12[index]=e12[i];result.ema26[index]=e26[i];
-    result.ema50[index]=e50[i];result.ema200[index]=e200[i];
-    result.rsi[index]=strength[i];result.stK[index]=st.k[i];result.stD[index]=st.d[i];
-    result.macd[index]=m.line[i];result.signal[index]=m.signal[i];
-    result.histogram[index]=m.hist[i];
-   }
-  }
-  from=to;
- }
- return result;
-}
-function globalCapNativeSvg(id,frame=globalCapFrameData(id)){
- const {period,from,span,step}=frame;
- const bars=globalCapOHLC(frame),studies=globalCapStudySeries(bars,step);
- // One or two verified quotes otherwise shrink to an invisible pixel on a
- // large time axis. Zoom the X axis to the real sample timestamps only.
- const focusSparse=bars.length>0&&bars.length<6;
- const viewFrom=focusSparse?bars[0].t-2*step:from;
- const viewSpan=focusSparse?Math.max(6*step,bars[bars.length-1].t-bars[0].t+5*step):span;
- const w=1400,h=720,l=30,r=98,right=w-r;
- const price={top:18,bottom:371,label:'PRICE'};
- const rsiPane={top:394,bottom:480,label:'RSI (14)'};
- const stPane={top:500,bottom:588,label:'STOCH RSI (14/14/3/3)'};
- const macdPane={top:608,bottom:692,label:'MACD (12/26/9)'};
- const panes=[price,rsiPane,stPane,macdPane],plotWidth=right-l;
- const x=t=>l+Math.min(1,Math.max(0,(t-viewFrom)/viewSpan))*plotWidth;
- const values=bars.flatMap(b=>[b.h,b.l]);
- for(const key of ['ema12','ema26','ema50','ema200'])
-  values.push(...studies[key].filter(Number.isFinite));
- const low=values.length?Math.min(...values):0;
- const high=values.length?Math.max(...values):1;
- const padding=Math.max((high-low)*.08,high*.015,1);
- const minimum=Math.max(0,low-padding),maximum=high+padding;
- const priceY=v=>price.bottom-(v-minimum)/(maximum-minimum)*(price.bottom-price.top);
- const oscY=(pane,value)=>pane.bottom-(Math.max(0,Math.min(100,value))/100)*(pane.bottom-pane.top);
- const scaleMax=Math.max(0.00001,...[...studies.macd,...studies.signal,...studies.histogram]
-  .filter(Number.isFinite).map(Math.abs));
- const macdY=v=>(macdPane.top+macdPane.bottom)/2-v/scaleMax*(macdPane.bottom-macdPane.top)*.42;
- const makeLine=(x1,y1,x2,y2,stroke,width=1,cls='')=>
-  '<line'+(cls?' class="'+cls+'"':'')+' x1="'+x1.toFixed(2)+'" y1="'+y1.toFixed(2)+
-  '" x2="'+x2.toFixed(2)+'" y2="'+y2.toFixed(2)+
-  '" stroke="'+stroke+'" stroke-width="'+width+'"/>';
- const strokes={up:'#10d49a',down:'#f45f77',neutral:'#98a8b8',
-  ema12:'#64b0ff',ema26:'#f5b854',ema50:'#b58bff',ema200:'#e46d9e',
-  rsi:'#c28af2',stK:'#62c5ff',stD:'#f3bb55',macd:'#69b6ff',signal:'#f3b955'};
- const svg=[];
- svg.push('<svg class="global-cap-svg global-cap-terminal-svg" viewBox="0 0 '+w+' '+h+
-  '" role="img" aria-label="'+esc('Vertex · '+id+' · '+bars.length+
-  ' candele da rilevazioni reali · '+period.label)+'">');
- svg.push('<rect x="0" y="0" width="'+w+'" height="'+h+'" fill="#0d1d2b"/>');
- for(const p of panes){
-  svg.push(makeLine(l,p.top,right,p.top,'#254457',.8));
-  svg.push(makeLine(l,p.bottom,right,p.bottom,'#254457',.8));
-  svg.push('<text class="global-cap-pane-title" x="'+(l+4)+'" y="'+(p.top+14)+'">'+p.label+'</text>');
- }
- for(let i=0;i<=4;i++){
-  const value=minimum+(maximum-minimum)*i/4,y=priceY(value);
-  svg.push(makeLine(l,y,right,y,'#263b4b',.7));
-  svg.push('<text class="global-cap-price-axis" x="'+(right+7)+'" y="'+(y+4).toFixed(2)+
-   '">'+esc(globalCapMoney(value).replace(' USD',''))+'</text>');
- }
- for(const [p,upper,lower] of [[rsiPane,70,30],[stPane,80,20]]){
-  svg.push(makeLine(l,oscY(p,upper),right,oscY(p,upper),'#a96d7e',.7));
-  svg.push(makeLine(l,oscY(p,lower),right,oscY(p,lower),'#668a8c',.7));
- }
- svg.push(makeLine(l,macdY(0),right,macdY(0),'#3e6272',.8));
- const candleWidth=bars.length<6?16:Math.max(2.8,Math.min(10,plotWidth/Math.max(40,Math.min(280,viewSpan/step))*.6));
- for(let i=0;i<bars.length;i++){
-  const bar=bars[i],cx=x(bar.t+step/2),prior=i>0?bars[i-1]:null;
-  // Single-reading OHLC candles are flat; show the direction of change since
-  // the preceding verified sample without fabricating an intrabar high/low.
-  const rise=bar.c>bar.o||(bar.c===bar.o&&prior&&bar.c>prior.c);
-  const fall=bar.c<bar.o||(bar.c===bar.o&&prior&&bar.c<prior.c);
-  const stroke=rise?strokes.up:fall?strokes.down:strokes.neutral;
-  const lowY=priceY(bar.l),highY=priceY(bar.h);
-  const bodyTop=priceY(Math.max(bar.o,bar.c));
-  const bodyBottom=priceY(Math.min(bar.o,bar.c));
-  const bodyHeight=Math.max(bars.length<6?5.5:1.7,bodyBottom-bodyTop);
-  const when=localeDate(bar.last,{day:'2-digit',month:'2-digit',
-   year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  svg.push('<g class="global-cap-candle" data-cap-candle="'+i+
-   '" data-cap-date="'+esc(when)+'" data-cap-open="'+bar.o+
-   '" data-cap-high="'+bar.h+'" data-cap-low="'+bar.l+
-   '" data-cap-close="'+bar.c+'" data-cap-count="'+bar.n+'">');
-  svg.push(makeLine(cx,highY,cx,lowY,stroke,1.2));
-  svg.push('<rect x="'+(cx-candleWidth/2).toFixed(2)+'" y="'+bodyTop.toFixed(2)+
-   '" width="'+candleWidth.toFixed(2)+'" height="'+bodyHeight.toFixed(2)+
-   '" fill="'+stroke+'" rx="1.3"/>');
-  // The transparent hit target is wider than thin candles on touchscreens.
-  svg.push('<rect x="'+(cx-Math.max(candleWidth/2,5)).toFixed(2)+
-   '" y="'+Math.min(highY,bodyTop).toFixed(2)+
-   '" width="'+Math.max(candleWidth,10).toFixed(2)+
-   '" height="'+Math.max(15,lowY-highY).toFixed(2)+'" fill="transparent" />');
-  svg.push('<title>'+esc(when+' · Apertura '+globalCapMoney(bar.o)+
-   ' · High '+globalCapMoney(bar.h)+' · Low '+globalCapMoney(bar.l)+
-   ' · Chiusura '+globalCapMoney(bar.c)+' · '+bar.n+' rilevazioni')+'</title></g>');
- }
- const drawSeries=(values,color,yMap,width=1.55)=>{
-  let path='',active=false,last=-1;
-  for(let i=0;i<bars.length;i++){
-   const v=values[i];
-   if(!Number.isFinite(v)){active=false;continue;}
-   const px=x(bars[i].t+step/2),py=yMap(v);
-   if(!active||last<0||bars[i].t-bars[last].t>step*2.5)
-    path+='M'+px.toFixed(2)+' '+py.toFixed(2)+' ';
-   else path+='L'+px.toFixed(2)+' '+py.toFixed(2)+' ';
-   active=true;last=i;
-  }
-  return path.trim()?'<path d="'+path+'" stroke="'+color+
-   '" fill="none" stroke-width="'+width+'" stroke-linejoin="round" stroke-linecap="round"/>':'';
- };
- svg.push(drawSeries(studies.ema12,strokes.ema12,priceY,2));
- svg.push(drawSeries(studies.ema26,strokes.ema26,priceY,2));
- svg.push(drawSeries(studies.ema50,strokes.ema50,priceY,2));
- svg.push(drawSeries(studies.ema200,strokes.ema200,priceY,1.7));
- svg.push(drawSeries(studies.rsi,strokes.rsi,v=>oscY(rsiPane,v),1.9));
- svg.push(drawSeries(studies.stK,strokes.stK,v=>oscY(stPane,v),1.9));
- svg.push(drawSeries(studies.stD,strokes.stD,v=>oscY(stPane,v),1.9));
- const zero=macdY(0),histWidth=Math.max(2,Math.min(8,candleWidth*.9));
- for(let i=0;i<bars.length;i++){
-  const v=studies.histogram[i];if(!Number.isFinite(v))continue;
-  const yy=macdY(v),xx=x(bars[i].t+step/2);
-  svg.push('<rect x="'+(xx-histWidth/2).toFixed(2)+'" y="'+Math.min(zero,yy).toFixed(2)+
-   '" width="'+histWidth.toFixed(2)+'" height="'+Math.max(1,Math.abs(zero-yy)).toFixed(2)+
-   '" fill="'+(v>=0?'#17896f':'#b74862')+'"/>');
- }
- svg.push(drawSeries(studies.macd,strokes.macd,macdY,1.7));
- svg.push(drawSeries(studies.signal,strokes.signal,macdY,1.7));
- for(let i=0;i<=4;i++){
-  const t=viewFrom+viewSpan*i/4;
-  const label=localeDate(t,viewSpan<=86400000?
-   {hour:'2-digit',minute:'2-digit'}:{month:'short',day:'2-digit',year:'2-digit'});
-  const xx=l+(right-l)*i/4;
-  svg.push('<text class="global-cap-time-axis" x="'+xx.toFixed(2)+'" y="'+(h-10)+
-   '" text-anchor="'+(i===0?'start':i===4?'end':'middle')+'">'+esc(label)+'</text>');
- }
- if(!bars.length){
-  svg.push('<text x="'+(l+plotWidth/2)+'" y="185" text-anchor="middle" fill="#bfd1de" font-size="18">'+
-   'Nessuna candela disponibile: verifica la connessione ai dati di capitalizzazione.</text>');
- }else if(bars.length===1){
-  svg.push('<text x="'+(l+plotWidth/2)+'" y="335" text-anchor="middle" fill="#9fbacf" font-size="13">'+
-   '1 rilevazione verificata · le candele successive richiedono nuovi dati reali.</text>');
- }
- svg.push('</svg>');
- return svg.join('');
-}
-function showGlobalCapCandleTooltip(event){
- const tip=$('#globalCapCandleTooltip');
- if(!tip||state.page!=='global'||!globalCapActive)return;
- const group=event.target instanceof Element?event.target.closest('[data-cap-candle]'):null;
- if(!group){tip.hidden=true;return;}
- const plot=group.closest('.global-cap-chart');
- if(!plot){tip.hidden=true;return;}
- const fields=group.dataset,val=key=>globalCapMoney(Number(fields[key]));
- const count=Number(fields.capCount)||1;
- tip.innerHTML='<strong>'+esc(fields.capDate||'Data non disponibile')+'</strong>'+
-  '<span>APERTURA <b>'+val('capOpen')+'</b></span>'+
-  '<span>CHIUSURA <b>'+val('capClose')+'</b></span>'+
-  '<span class="cap-high">HIGH <b>'+val('capHigh')+'</b></span>'+
-  '<span class="cap-low">LOW <b>'+val('capLow')+'</b></span>'+
-  '<small>'+count+' rilevazion'+(count===1?'e':'i')+' effettiv'+(count===1?'a':'e')+'</small>';
- tip.hidden=false;
- const rect=plot.getBoundingClientRect();
- tip.style.left=Math.round(Math.max(7,Math.min(rect.width-tip.offsetWidth-7,event.clientX-rect.left+15)))+'px';
- tip.style.top=Math.round(Math.max(7,Math.min(rect.height-tip.offsetHeight-7,event.clientY-rect.top-23)))+'px';
-}
-function globalCapLiveLabel(){
- if(globalCapState.busy)return '● Verifica della fonte in corso…';
- if(!navigator.onLine)return '● Offline · ultimi dati salvati';
- const recent=globalCapState.latest[globalCapActive];
- const age=recent?Math.max(0,Date.now()-recent.t):NaN;
- const ageText=Number.isFinite(age)?
-  (age<60000?'meno di 1 min':Math.floor(age/60000)+' min'):'nessun dato';
- const next=Math.max(0,Math.ceil((60000-(Date.now()-globalCapState.lastTry))/1000));
- return '● Monitor attivo · nuova verifica ~'+next+'s · età fonte: '+ageText;
-}
-function updateGlobalCapLiveStatus(){
- const node=$('#globalCapLiveStatus');
- if(node&&state.page==='global'&&globalCapActive){
-  const label=globalCapLiveLabel();
-  if(node.textContent!==label)node.textContent=label;
- }
-}
-function globalCapShares(id){
- const total=globalCapState.latest.TOTAL?.v,value=globalCapState.latest[id]?.v;
- if(!Number.isFinite(total)||!Number.isFinite(value)||total<=0)return '';
- const part=id==='TOTAL'?
-  (total-(globalCapState.latest.TOTAL2?.v||total))/total*100:value/total*100;
- const ratio=Math.max(0,Math.min(100,part));
- const main=id==='TOTAL'?'Bitcoin':id,other=id==='TOTAL'?'Resto crypto':'Resto mercato';
- return '<div class="global-cap-shares"><div class="global-cap-shares-labels">'+
-  '<span>'+main+' · <strong>'+globalCapPct(ratio)+'</strong></span>'+
-  '<span>'+other+' · <strong>'+globalCapPct(100-ratio)+'</strong></span></div>'+
-  '<div class="global-cap-shares-track"><span style="width:'+ratio.toFixed(2)+'%"></span></div></div>';
-}
-function globalCapContent(){
- const item=GLOBAL_CAP_INDICES.find(i=>i.id===globalCapActive);
- if(!item)return '';
- const latest=globalCapState.latest[item.id];
- const frame=globalCapFrameData(item.id);
- const {period,raw,points}=frame;
- const capBars=globalCapOHLC(frame);
- const first=raw[0],last=raw[raw.length-1];
- const delta=first&&last&&first!==last?100*(last.v/first.v-1):null;
- const timestamp=latest?localeDate(latest.t,{
-  day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}):'';
- const deltaText=delta===null?'Variazione non ancora calcolabile':
-  (delta>=0?'+':'')+delta.toLocaleString('it-IT',{maximumFractionDigits:2})+
-  '% nelle rilevazioni di '+period.label;
- const resolution=period.id==='Tutto'?'Tutte le rilevazioni reali disponibili':
-  'Candele '+period.label+' · selezione degli ultimi intervalli verificati';
- const tiny=period.bucket<60000;
- const status=globalCapLiveLabel();
- return '<div class="global-cap-chart-heading"><div>'+
-  '<span class="global-cap-eyebrow">VERTEX · CRYPTO CAPITALIZATION</span>'+
-  '<h3>'+item.id+'</h3><p>'+esc(item.description)+'</p></div>'+
-  '<button type="button" class="global-cap-close" data-global-cap-close="1" aria-label="Chiudi grafico">✕</button></div>'+
-  '<div class="global-cap-summary"><strong>'+globalCapMoney(latest?.v)+'</strong>'+
-  '<span class="global-cap-change '+(delta===null?'is-neutral':delta<0?'is-negative':'is-positive')+'">'+
-  esc(deltaText)+'</span></div>'+
-  '<div class="global-cap-controls">'+
-  '<div class="global-cap-feed"><span class="global-cap-source">'+
-  esc(latest?.source||'In attesa di fonte')+(timestamp?' · '+timestamp:'')+'</span>'+
-  '<span class="global-cap-live-status" role="status" id="globalCapLiveStatus">'+
-  esc(status)+'</span></div>'+
-  '<div class="global-cap-controls-buttons">'+
-  '<div class="global-cap-period-scroll" role="group" aria-label="Seleziona timeframe del grafico">'+
-  GLOBAL_CAP_PERIODS.map(p=>'<button type="button" data-global-cap-period="'+p.id+
-  '" class="global-cap-period'+(globalCapPeriod===p.id?' active':'')+
-  '" aria-label="Timeframe '+p.label+', '+esc(p.description)+'" aria-pressed="'+
-  (globalCapPeriod===p.id)+'" title="'+esc(p.description)+'">'+p.label+'</button>').join('')+
-  '</div><button type="button" class="global-cap-refresh" data-global-cap-refresh="1"'+
-  (globalCapState.busy?' disabled':'')+' title="Verifica nuovi dati" aria-label="Aggiorna capitalizzazione">↻</button></div></div>'+
-  '<div class="global-cap-range-summary"><strong>'+esc(resolution)+'</strong>'+
-  '<span>'+raw.length+' rilevazioni reali · '+capBars.length+' candele OHLC</span></div>'+
-  '<div class="global-cap-terminal-legend" aria-label="Medie mobili">'+
-  '<span><i class="global-cap-ema-12"></i> EMA 12</span>'+
-  '<span><i class="global-cap-ema-26"></i> EMA 26</span>'+
-  '<span><i class="global-cap-ema-50"></i> EMA 50</span>'+
-  '<span><i class="global-cap-ema-200"></i> EMA 200</span></div>'+
-  '<div class="global-cap-chart global-cap-terminal-chart"><div class="global-cap-plot">'+globalCapNativeSvg(item.id,frame)+'</div>'+
-  '<div id="globalCapCandleTooltip" class="global-cap-candle-tooltip" role="status" hidden></div>'+
-  (capBars.length<200?'<span class="global-cap-history-warning">EMA 200: storico insufficiente</span>':'')+
-  (capBars.length<2?'<p class="global-cap-placeholder">'+
-   (globalCapState.busy||globalCapBackfill.busy?'Caricamento dei dati e dello storico verificato…':
-    !latest?'Nessuna capitalizzazione disponibile dalla fonte. Tocca ↻ per riprovare.':
-    'Storico insufficiente per questo timeframe: nessun valore intermedio simulato.')+'</p>':'')+
-  '</div>'+globalCapShares(item.id)+
-  '<p class="global-cap-explainer">'+
-  (tiny?'I timeframe in secondi sono selezionabili, ma la fonte aggregata non produce dati verificati ogni secondo. ':'')+
-  'Candele OHLC e indicatori calcolati esclusivamente dalle rilevazioni effettive salvate nel browser; gli intervalli senza dati rimangono vuoti. '+
-  'Verifica automatica dei prezzi aggregati circa ogni 60 secondi; aggiornamenti e frequenza effettiva dipendono dalle fonti. '+
-  'Tutto include le osservazioni locali ed eventuali dati giornalieri pubblici disponibili da Santiment. '+
-  (globalCapBackfill.busy?'Caricamento dello storico Santiment in corso… ':
-   globalCapBackfill.error&&item.id!=='TOTALDEFI'?esc(globalCapBackfill.error)+' ':'')+
-  (item.id==='TOTALDEFI'?'Per TOTALDEFI non è disponibile uno storico Santiment equivalente; vengono mostrate solo rilevazioni verificate. ':'')+
-  (globalCapState.error?esc(globalCapState.error):'')+'</p>';
 }
 function globalCapModule(){
- return '<section class="global-cap-module" aria-label="Capitalizzazione crypto in Vertex">'+
-  '<div class="global-cap-pills" role="group" aria-label="Seleziona capitalizzazione">'+
-  GLOBAL_CAP_INDICES.map(i=>'<button type="button" data-global-cap="'+i.id+
-   '" class="global-cap-pill'+(globalCapActive===i.id?' is-selected':'')+
-   '" aria-pressed="'+(globalCapActive===i.id)+'" aria-expanded="'+(globalCapActive===i.id)+
-   '" aria-controls="globalCapChartPanel">'+i.id+'</button>').join('')+'</div>'+
-  '<section class="global-cap-chart-panel panel" id="globalCapChartPanel"'+
-  (globalCapActive?'':' hidden')+' aria-label="Grafico Vertex della capitalizzazione">'+
-  '<div id="globalCapChartBody">'+(globalCapActive?globalCapContent():'')+'</div></section></section>';
-}
-function paintGlobalCapChart(){
- if(state.page!=='global'||!globalCapActive)return;
- const body=$('#globalCapChartBody');
- if(body){
-  const prior=body.querySelector('.global-cap-period-scroll');
-  const left=prior?.scrollLeft||0;
-  body.innerHTML=globalCapContent();
-  const next=body.querySelector('.global-cap-period-scroll');
-  if(next)next.scrollLeft=left;
- }
+ const current=globalCapSelected();
+ return '<section class="global-cap-module" aria-label="Capitalizzazione crypto con storico TradingView">'+
+  '<div class="global-cap-pills" role="group" aria-label="Seleziona l’indice di capitalizzazione">'+
+  GLOBAL_CAP_INDICES.map(item=>'<button type="button" class="global-cap-pill'+
+    (current?.id===item.id?' is-selected':'')+'" data-global-cap="'+item.id+
+    '" aria-pressed="'+(current?.id===item.id)+'" aria-controls="globalCapChartPanel"'+
+    ' aria-expanded="'+(current?.id===item.id)+'">'+item.id+'</button>').join('')+
+  '</div>'+
+  '<section class="global-cap-chart-panel panel" id="globalCapChartPanel"'+(current?'':' hidden')+
+  ' aria-label="Grafico storico a candele">'+
+  '<div class="global-cap-chart-heading"><div>'+
+  '<span class="global-cap-eyebrow">CRYPTOCAP · TRADINGVIEW</span>'+
+  '<h3 id="globalCapTitle">'+esc(current?.id||'')+'</h3>'+
+  '<p id="globalCapDescription">'+esc(current?.description||'')+'</p></div>'+
+  '<button type="button" class="global-cap-close" data-global-cap-close="1" aria-label="Chiudi grafico">✕</button></div>'+
+  '<div class="global-cap-interval-bar">'+
+  '<div class="global-cap-period-scroll" role="group" aria-label="Timeframe TradingView">'+
+  GLOBAL_CAP_PERIODS.map(period=>'<button type="button" class="global-cap-period'+
+   (period.id===globalCapPeriod?' active':'')+'" data-global-cap-period="'+period.id+
+   '" aria-pressed="'+(period.id===globalCapPeriod)+'">'+period.id+'</button>').join('')+
+  '</div></div>'+
+  '<div class="global-cap-indicator-note">Candele storiche · EMA 12/26/50/200 · RSI (14) · Stochastic RSI · MACD (12/26/9)</div>'+
+  '<div class="global-cap-tradingview-embed" id="globalCapWidget" aria-label="Grafico TradingView"></div>'+
+  '<div class="global-cap-bottom"><span>Fonte TradingView · dati storici del simbolo CRYPTOCAP · intervalli in secondi soggetti alla disponibilità del provider.</span>'+
+  '<a id="globalCapExternal" href="'+esc(current?.url||'https://www.tradingview.com/markets/cryptocurrencies/global-charts/')+
+   '" target="_blank" rel="noopener noreferrer">Apri il grafico completo su TradingView</a></div>'+
+  '</section></section>';
 }
 function mountGlobalCapChart(){
- if(state.page!=='global'||!globalCapActive)return;
- const panel=$('#globalCapChartPanel');if(!panel)return;
- panel.hidden=false;paintGlobalCapChart();
- if(!globalCapBackfill.attempted)loadGlobalCapHistory();
- if(!globalCapState.busy&&Date.now()-globalCapState.lastTry>=60000)refreshGlobalCapData();
+ const item=globalCapSelected();
+ if(state.page!=='global'||!item)return;
+ const panel=$('#globalCapChartPanel'),target=$('#globalCapWidget');
+ if(!panel||!target)return;
+ panel.hidden=false;
+ const name=$('#globalCapTitle'),description=$('#globalCapDescription'),link=$('#globalCapExternal');
+ if(name)name.textContent=item.id;
+ if(description)description.textContent=item.description;
+ if(link)link.href=item.url;
+ // Replacing the prior node disposes its iframe and avoids concurrent
+ // TradingView graphs when the user changes asset or timeframe.
+ target.replaceChildren();
+ const widget=document.createElement('div');
+ widget.className='tradingview-widget-container global-cap-tv';
+ const host=document.createElement('div');
+ host.className='tradingview-widget-container__widget';
+ widget.appendChild(host);
+ const footer=document.createElement('div');
+ footer.className='tradingview-widget-copyright';
+ const attribution=document.createElement('a');
+ attribution.href=item.url;attribution.target='_blank';attribution.rel='noopener nofollow noreferrer';
+ attribution.textContent=item.id+' chart by TradingView';
+ footer.appendChild(attribution);
+ widget.appendChild(footer);
+ target.appendChild(widget);
+ // Official TradingView embed script (lazy-loaded on pill selection).
+ const script=document.createElement('script');
+ script.type='text/javascript';script.async=true;
+ script.src='https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+ script.textContent=JSON.stringify(globalCapWidgetConfig(item));
+ script.onerror=()=>{
+  if(target.contains(widget)&&state.page==='global'&&globalCapActive===item.id){
+   const status=$('#globalCapTvError');
+   if(status)status.textContent='Il grafico incorporato non è disponibile. Aprilo direttamente su TradingView tramite il link qui sotto.';
+  }
+ };
+ widget.appendChild(script);
 }
 function selectGlobalCapChart(id){
- if(state.page!=='global')return;
- if(id!==null&&!GLOBAL_CAP_INDICES.some(i=>i.id===id))return;
+ if(state.page!=='global'||id!==null&&!GLOBAL_CAP_INDICES.some(item=>item.id===id))return;
  globalCapActive=id;
  const panel=$('#globalCapChartPanel');if(!panel)return;
  document.querySelectorAll('#pageContainer [data-global-cap]').forEach(button=>{
-  const active=button.dataset.globalCap===id;
-  button.classList.toggle('is-selected',active);
-  button.setAttribute('aria-pressed',String(active));
-  button.setAttribute('aria-expanded',String(active));
+  const selected=button.dataset.globalCap===id;
+  button.classList.toggle('is-selected',selected);
+  button.setAttribute('aria-pressed',String(selected));
+  button.setAttribute('aria-expanded',String(selected));
  });
  if(!id){
   panel.hidden=true;
-  const body=$('#globalCapChartBody');if(body)body.replaceChildren();
- }else mountGlobalCapChart();
+  const widget=$('#globalCapWidget');if(widget)widget.replaceChildren();
+  return;
+ }
+ mountGlobalCapChart();
+}
+function selectGlobalCapPeriod(id){
+ if(!GLOBAL_CAP_PERIODS.some(period=>period.id===id)||state.page!=='global')return;
+ if(globalCapPeriod===id)return;
+ globalCapPeriod=id;
+ const list=$('.global-cap-period-scroll'),left=list?.scrollLeft||0;
+ if(list){
+  list.querySelectorAll('[data-global-cap-period]').forEach(button=>{
+   const selected=button.dataset.globalCapPeriod===id;
+   button.classList.toggle('active',selected);
+   button.setAttribute('aria-pressed',String(selected));
+  });
+  list.scrollLeft=left;
+ }
+ mountGlobalCapChart();
 }
 
 function globalPage(){
@@ -5518,14 +5068,6 @@ function setupEvents(){
   if(e.target.closest('#sidebar')||e.target.closest('#menuToggle'))return;
   if($('#sidebar').classList.contains('open'))$('#sidebar').classList.remove('open');
  });
- $('#pageContainer').addEventListener('pointermove',showGlobalCapCandleTooltip);
- $('#pageContainer').addEventListener('pointerdown',e=>{
-  if(e.target instanceof Element&&e.target.closest('[data-cap-candle]'))
-   showGlobalCapCandleTooltip(e);
- });
- $('#pageContainer').addEventListener('pointerleave',()=>{
-  const tip=$('#globalCapCandleTooltip');if(tip)tip.hidden=true;
- });
  $('#pageContainer').addEventListener('click',e=>{
   if(Date.now()<miniCandleSuppressClickUntil&&e.target.closest('.market-chart-card')){
    e.preventDefault();e.stopPropagation();return;
@@ -5533,8 +5075,7 @@ function setupEvents(){
   const btn=e.target.closest('button,a,tr[data-asset]');
   if(!btn)return;
    if(btn.dataset.globalCap){selectGlobalCapChart(btn.dataset.globalCap);return;}
-   if(btn.dataset.globalCapPeriod){if(GLOBAL_CAP_PERIODS.some(p=>p.id===btn.dataset.globalCapPeriod)){globalCapPeriod=btn.dataset.globalCapPeriod;paintGlobalCapChart();}return;}
-   if(btn.dataset.globalCapRefresh!==undefined){refreshGlobalCapData(true);return;}
+   if(btn.dataset.globalCapPeriod){selectGlobalCapPeriod(btn.dataset.globalCapPeriod);return;}
    if(btn.dataset.globalCapClose!==undefined){selectGlobalCapChart(null);return;}
    if(btn.dataset.secCategory){secNewsState.selected=btn.dataset.secCategory;secNewsState.visible=20;render();return;}
   if(btn.dataset.secMore){secNewsState.visible+=20;render();return;}
@@ -5795,9 +5336,6 @@ function startVertexApp(){
  setInterval(updateClock,30000);
  setInterval(()=>{if(state.adaptiveBrightness&&!document.hidden)applyBrightness()},60000);
  setInterval(updateWorldSunlight,1000);
- // Save only measured market-cap snapshots while the native graph is in use.
- setInterval(()=>{if(state.page==='global'&&globalCapActive&&!document.hidden)refreshGlobalCapData()},60000);
- setInterval(()=>{if(state.page==='global'&&globalCapActive&&!document.hidden)updateGlobalCapLiveStatus()},1000);
  setInterval(()=>{
   if(orderBookViewActive()&&!document.hidden){
    keepOrderBookLive();
@@ -5824,14 +5362,12 @@ function startVertexApp(){
   else {
    connectCryptoStream();connectForexStream();fetchQuotes();pollCryptoPrices();updateWorldSunlight(true);applyBrightness();
    if(orderBookViewActive()){startOrderBookLive();refreshOrderBook()}
-   if(state.page==='global'&&globalCapActive)refreshGlobalCapData();
     if(state.dialogId){scheduleDetailChartDraw();scheduleChartLiveRefresh()}
   }
  });
  window.addEventListener('online',()=>{
   connectCryptoStream();connectForexStream();fetchQuotes();pollCryptoPrices();
   if(orderBookViewActive()){startOrderBookLive(true);refreshOrderBook(true)}
-  if(state.page==='global'&&globalCapActive)refreshGlobalCapData(true);
  });
  window.addEventListener('offline',()=>{
   closeStream();disconnectForexStream();stopOrderBookLive();updateLiveBadges();
