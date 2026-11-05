@@ -1653,15 +1653,18 @@ function globalCapContent(){
   '<div id="globalCapCandleTooltip" class="global-cap-candle-tooltip" role="status" hidden></div>'+
   (capBars.length<200?'<span class="global-cap-history-warning">EMA 200: storico insufficiente</span>':'')+
   (capBars.length<2?'<p class="global-cap-placeholder">'+
-   (globalCapState.busy?'Caricamento delle rilevazioni reali…':
-    !latest?'Dati assenti. Riprova quando la fonte è disponibile.':
+   (globalCapState.busy||globalCapBackfill.busy?'Caricamento dei dati e dello storico verificato…':
+    !latest?'Nessuna capitalizzazione disponibile dalla fonte. Tocca ↻ per riprovare.':
     'Storico insufficiente per questo timeframe: nessun valore intermedio simulato.')+'</p>':'')+
   '</div>'+globalCapShares(item.id)+
   '<p class="global-cap-explainer">'+
   (tiny?'I timeframe in secondi sono selezionabili, ma la fonte aggregata non produce dati verificati ogni secondo. ':'')+
   'Candele OHLC e indicatori calcolati esclusivamente dalle rilevazioni effettive salvate nel browser; gli intervalli senza dati rimangono vuoti. '+
-  'Verifica automatica della fonte ogni ~60 secondi con il grafico aperto; l’aggiornamento effettivo dipende da CoinGecko/CoinLore. '+
-  'Tutto comprende le osservazioni salvate sul dispositivo e l’eventuale storico pubblico disponibile. '+
+  'Verifica automatica dei prezzi aggregati circa ogni 60 secondi; aggiornamenti e frequenza effettiva dipendono dalle fonti. '+
+  'Tutto include le osservazioni locali ed eventuali dati giornalieri pubblici disponibili da Santiment. '+
+  (globalCapBackfill.busy?'Caricamento dello storico Santiment in corso… ':
+   globalCapBackfill.error&&item.id!=='TOTALDEFI'?esc(globalCapBackfill.error)+' ':'')+
+  (item.id==='TOTALDEFI'?'Per TOTALDEFI non è disponibile uno storico Santiment equivalente; vengono mostrate solo rilevazioni verificate. ':'')+
   (globalCapState.error?esc(globalCapState.error):'')+'</p>';
 }
 function globalCapModule(){
