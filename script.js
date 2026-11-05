@@ -1229,6 +1229,14 @@ function mountGlobalCapChart(){
   }
  };
  widget.appendChild(script);
+ // The TradingView gear is inside a cross-origin iframe, which cannot be
+ // controlled by the host page. Mask only its small bottom-right control,
+ // leaving provider attribution, chart canvas and other UI untouched.
+ const settingsCover=document.createElement('div');
+ settingsCover.className='global-cap-settings-cover';
+ settingsCover.setAttribute('aria-hidden','true');
+ settingsCover.style.backgroundColor=globalCapWidgetConfig(item).backgroundColor;
+ widget.appendChild(settingsCover);
 }
 function selectGlobalCapChart(id){
  if(state.page!=='global'||id!==null&&!GLOBAL_CAP_INDICES.some(item=>item.id===id))return;
