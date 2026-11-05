@@ -1243,7 +1243,8 @@ function globalCapFrameData(id,now=Date.now()){
  const first=history[0]?.t??now-3600000;
  const from=period.ms?now-period.ms:Math.min(first,now-60000);
  const span=Math.max(1000,now-from);
- const step=Math.max(period.bucket,Math.ceil(span/600));
+ const step=period.ms?Math.max(period.bucket,Math.ceil(span/600)):
+  Math.max(1000,Math.ceil(span/600)); // Tutto scales to real recorded coverage.
  const raw=history.filter(p=>p.t>=from&&p.t<=now+60000);
  // A bucket contains the most recent ACTUAL observation, not interpolation.
  // Missing seconds/minutes remain unrepresented; the displayed series cannot
