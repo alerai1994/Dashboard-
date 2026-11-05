@@ -1193,8 +1193,7 @@ function globalCapModule(){
   '<div class="global-cap-tradingview-embed" id="globalCapWidget" aria-label="Grafico TradingView"></div>'+
   '<p id="globalCapTvError" class="global-cap-error" role="status"></p>'+
   '<div class="global-cap-bottom"><span>Fonte TradingView · dati storici del simbolo CRYPTOCAP · intervalli in secondi soggetti alla disponibilità del provider.</span>'+
-  '<a id="globalCapExternal" href="'+esc(current?.url||'https://www.tradingview.com/markets/cryptocurrencies/global-charts/')+
-   '" target="_blank" rel="noopener noreferrer">Apri il grafico completo su TradingView</a></div>'+
+  '</div>'+
   '</section></section>';
 }
 function mountGlobalCapChart(){
@@ -1203,10 +1202,9 @@ function mountGlobalCapChart(){
  const panel=$('#globalCapChartPanel'),target=$('#globalCapWidget');
  if(!panel||!target)return;
  panel.hidden=false;
- const name=$('#globalCapTitle'),description=$('#globalCapDescription'),link=$('#globalCapExternal');
+ const name=$('#globalCapTitle'),description=$('#globalCapDescription');
  if(name)name.textContent=item.id;
  if(description)description.textContent=item.description;
- if(link)link.href=item.url;
  const errorNode=$('#globalCapTvError');if(errorNode)errorNode.textContent='';
  // Replacing the prior node disposes its iframe and avoids concurrent
  // TradingView graphs when the user changes asset or timeframe.
@@ -1216,13 +1214,8 @@ function mountGlobalCapChart(){
  const host=document.createElement('div');
  host.className='tradingview-widget-container__widget';
  widget.appendChild(host);
- const footer=document.createElement('div');
- footer.className='tradingview-widget-copyright';
- const attribution=document.createElement('a');
- attribution.href=item.url;attribution.target='_blank';attribution.rel='noopener nofollow noreferrer';
- attribution.textContent=item.id+' chart by TradingView';
- footer.appendChild(attribution);
- widget.appendChild(footer);
+ // The official embedded chart retains TradingView's own in-chart branding.
+ // No redundant custom attribution link is added outside the iframe.
  target.appendChild(widget);
  // Official TradingView embed script (lazy-loaded on pill selection).
  const script=document.createElement('script');
@@ -1232,7 +1225,7 @@ function mountGlobalCapChart(){
  script.onerror=()=>{
   if(target.contains(widget)&&state.page==='global'&&globalCapActive===item.id){
    const status=$('#globalCapTvError');
-   if(status)status.textContent='Il grafico incorporato non è disponibile. Aprilo direttamente su TradingView tramite il link qui sotto.';
+   if(status)status.textContent='Grafico temporaneamente non disponibile. Verifica la connessione o ricarica la pagina.';
   }
  };
  widget.appendChild(script);
