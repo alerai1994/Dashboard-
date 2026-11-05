@@ -1943,41 +1943,6 @@ function updateCryptoEtfQuoteDom(){
   }
  }
 }
-// TradingView single-quote embeds keep their own market connection while
-// Vertex is open. These are bourse share quotes, NOT the crypto spot feed.
-// Public embeds can display exchange-delayed quotes; never call them tick-live.
-const CRYPTO_ETF_TV_SYMBOLS=Object.freeze({
- btc:'NASDAQ:IBIT',
- eth:'NASDAQ:ETHA',
- sol:'AMEX:BSOL',
- // This verified TradingView Euronext venue is quoted in EUR; the verified
- // Yahoo Amsterdam AINJ quote below is in USD. Show the currencies separately.
- inj:'EURONEXT:AINJ-EUR'
-});
-function cryptoEtfStreamingMarkup(product){
- const tvSymbol=CRYPTO_ETF_TV_SYMBOLS[product.crypto];
- if(!tvSymbol)return '';
- const light=['light','sand','ice'].includes(state.theme);
- const config={
-  symbol:tvSymbol,
-  width:'100%',
-  locale:'it',
-  colorTheme:light?'light':'dark',
-  isTransparent:true
- };
- const url='https://s.tradingview.com/embed-widget/single-quote/?locale=it&symbol='+
-  encodeURIComponent(tvSymbol)+'#'+encodeURIComponent(JSON.stringify(config));
- const differentCurrency=product.crypto==='inj';
- return '<section class="crypto-etf-continuous" aria-label="Quotazione automatica del fondo '+esc(product.ticker)+'">'+
-  '<div class="crypto-etf-continuous-head"><span class="crypto-etf-auto-dot" aria-hidden="true"></span>'+
-   '<strong>Quotazione automatica · TradingView</strong></div>'+
-  '<iframe class="crypto-etf-continuous-iframe" title="Quotazione aggiornata automaticamente '+esc(tvSymbol)+'"'+
-   ' src="'+esc(url)+'" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>'+
-  '<small class="crypto-etf-continuous-note">'+
-   (differentCurrency?'TradingView: listino Euronext in EUR · quota Amsterdam in USD sotto. ':'')+
-   'I dati del widget possono essere ritardati. Aggiornamento automatico durante la sessione di mercato.</small>'+
- '</section>';
-}
 function cryptoEtfSection(){
  const cards=CRYPTO_ETF_PRODUCTS.map(product=>{
   const asset=ASSET_BY_ID[product.crypto],q=quote(product.crypto);
@@ -1994,7 +1959,6 @@ function cryptoEtfSection(){
    '<h3>'+esc(product.name)+'</h3>'+
    '<div class="crypto-etf-issuer">'+esc(product.issuer)+' · '+esc(product.market)+'</div>'+
    '<p class="crypto-etf-description">'+esc(product.description)+'</p>'+
-   cryptoEtfStreamingMarkup(product)+
    '<div class="crypto-etf-market-note" data-etf-quote-id="'+esc(product.quoteId)+'">'+
     cryptoEtfQuoteMarkup(product)+'</div>'+
    '<div class="crypto-etf-spot"><small>Crypto sottostante · prezzo spot (NON quota ETF)</small>'+
@@ -2010,9 +1974,8 @@ function cryptoEtfSection(){
   '<p>Bitcoin, Ethereum, Solana e Injective · ETF ed ETP negoziati</p></div>'+
   '<span class="crypto-etf-total">4 prodotti</span></div>'+
   '<div class="crypto-etf-grid">'+cards+'</div>'+
-  '<p class="crypto-etf-disclaimer">Il riquadro TradingView prova ad aggiornarsi automaticamente durante le negoziazioni ma i listini azionari/ETF dei widget pubblici possono essere ritardati. '+
-  'Sotto resta il dato verificato Yahoo Finance, aggiornato a intervalli e con orario della fonte. '+
-  'I mercati chiusi non producono nuovi scambi. La quotazione Euronext di AINJ nel widget è in EUR, mentre la quota Amsterdam Yahoo sotto è in USD. '+
+  '<p class="crypto-etf-disclaimer">Le quotazioni delle quote ETF/ETP provengono da Yahoo Finance, con aggiornamenti automatici periodici; possono essere ritardate. '+
+  'I mercati chiusi non producono nuovi scambi. Per AINJ viene utilizzata la quotazione di Amsterdam in USD, oppure quella di Parigi in EUR se Amsterdam non è disponibile. '+
   'La fonte, la valuta e l’orario dell’ultima quotazione verificata sono riportati sulle schede. '+
   'Il prezzo spot della criptovaluta è separato e non sostituisce il prezzo della quota ETF/ETP. '+
   'AINJ è un ETP europeo e non un ETF USA. Il capitale investito è a rischio.</p>'+
@@ -3179,7 +3142,6 @@ function workspaceWidgetBody(id){
   const a=ASSET_BY_ID[product.crypto];
   return '<article class="ws-etf-item"><strong>'+esc(product.ticker)+'</strong>'+
    '<span>'+esc(product.name)+'</span><small>'+esc(product.kind+' · '+product.issuer)+'</small>'+
-   cryptoEtfStreamingMarkup(product)+
    '<div class="ws-etf-share" data-etf-quote-id="'+esc(product.quoteId)+'">'+cryptoEtfQuoteMarkup(product)+'</div>'+
    '<p>Crypto sottostante: '+(a?assetValue(a):'—')+' (non prezzo della quota)</p>'+
    '<a href="'+esc(product.url)+'" target="_blank" rel="noopener noreferrer">Scheda ufficiale ↗</a></article>';
