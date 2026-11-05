@@ -2155,3 +2155,34 @@ body:is(.theme-sand,.theme-ice) .settings-theme-swatch{border-color:var(--line)}
  .ob-pressure-label strong{font-size:11px}
  .ob-pressure-track{height:11px;border-radius:5px}
 }
+
+
+/* Date and live Rome time: always visible at the upper-right, on every page. */
+body .topbar{position:relative}
+body .topbar .live-clock{
+ display:flex;flex:0 0 auto;flex-direction:column;
+ align-items:flex-end;justify-content:center;gap:3px;
+ margin-left:auto;min-width:max-content;
+ padding:2px 0;text-align:right;white-space:nowrap;
+}
+body .topbar .live-clock time{
+ font-size:12px;font-weight:650;line-height:1.3;
+ color:var(--muted);font-variant-numeric:tabular-nums;
+}
+body .topbar .live-clock strong{
+ font-size:16px;font-weight:760;line-height:1.25;
+ color:var(--text);font-variant-numeric:tabular-nums;
+}
+@media(max-width:850px){
+ body .topbar .live-clock{
+  display:flex!important;position:absolute;
+  top:0;right:0;margin:0;z-index:2;
+ }
+ body .topbar .page-heading h1{max-width:calc(100vw - 185px)}
+ body .topbar .page-heading{min-width:0}
+}
+@media(max-width:600px){
+ body .topbar .live-clock time{font-size:11px}
+ body .topbar .live-clock strong{font-size:14px}
+ body .topbar .live-clock{top:0;right:0}
+}
