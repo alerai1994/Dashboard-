@@ -1341,36 +1341,54 @@ function globalCapShares(id){
 function globalCapContent(){
  const item=GLOBAL_CAP_INDICES.find(i=>i.id===globalCapActive);
  if(!item)return '';
- const latest=globalCapState.latest[item.id],period=GLOBAL_CAP_PERIODS.find(p=>p.id===globalCapPeriod);
- const points=globalCapHistory[item.id].filter(p=>p.t>=Date.now()-(period?.ms||7*86400000));
- const prior=points.length>=2?points[points.length-2]:null;
- const delta=prior&&latest?(latest.v/prior.v-1)*100:null;
- const timestamp=latest?localeDate(latest.t,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
- const deltaText=delta===null?'Storico in formazione':
-  (delta>=0?'+':'')+delta.toLocaleString('it-IT',{maximumFractionDigits:2})+'% dalla rilevazione precedente';
- return '<div class="global-cap-chart-heading"><div><span class="global-cap-eyebrow">VERTEX · CRYPTO CAPITALIZATION</span>'+
+ const latest=globalCapState.latest[item.id];
+ const frame=globalCapFrameData(item.id);
+ const {period,raw,points}=frame;
+ const first=raw[0],last=raw[raw.length-1];
+ const delta=first&&last&&first!==last?100*(last.v/first.v-1):null;
+ const timestamp=latest?localeDate(latest.t,{
+  day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}):'';
+ const deltaText=delta===null?'Variazione non ancora calcolabile':
+  (delta>=0?'+':'')+delta.toLocaleString('it-IT',{maximumFractionDigits:2})+
+  '% nelle rilevazioni di '+period.label;
+ const resolution=period.id==='Tutto'?'Tutto lo storico locale':
+  'Finestra '+period.description+' · risoluzione nominale '+period.label;
+ const tiny=period.bucket<60000;
+ const status=globalCapLiveLabel();
+ return '<div class="global-cap-chart-heading"><div>'+
+  '<span class="global-cap-eyebrow">VERTEX · CRYPTO CAPITALIZATION</span>'+
   '<h3>'+item.id+'</h3><p>'+esc(item.description)+'</p></div>'+
   '<button type="button" class="global-cap-close" data-global-cap-close="1" aria-label="Chiudi grafico">✕</button></div>'+
   '<div class="global-cap-summary"><strong>'+globalCapMoney(latest?.v)+'</strong>'+
   '<span class="global-cap-change '+(delta===null?'is-neutral':delta<0?'is-negative':'is-positive')+'">'+
   esc(deltaText)+'</span></div>'+
-  '<div class="global-cap-controls"><span>'+esc(latest?.source||'In attesa di fonte')+
-  (timestamp?' · '+timestamp:'')+'</span><div class="global-cap-controls-buttons">'+
+  '<div class="global-cap-controls">'+
+  '<div class="global-cap-feed"><span class="global-cap-source">'+
+  esc(latest?.source||'In attesa di fonte')+(timestamp?' · '+timestamp:'')+'</span>'+
+  '<span class="global-cap-live-status" role="status" id="globalCapLiveStatus">'+
+  esc(status)+'</span></div>'+
+  '<div class="global-cap-controls-buttons">'+
+  '<div class="global-cap-period-scroll" role="group" aria-label="Seleziona timeframe del grafico">'+
   GLOBAL_CAP_PERIODS.map(p=>'<button type="button" data-global-cap-period="'+p.id+
-   '" class="global-cap-period'+(globalCapPeriod===p.id?' active':'')+
-   '" aria-pressed="'+(globalCapPeriod===p.id)+'">'+p.label+'</button>').join('')+
-  '<button type="button" class="global-cap-refresh" data-global-cap-refresh="1"'+
-   (globalCapState.busy?' disabled':'')+' title="Aggiorna capitalizzazione" aria-label="Aggiorna">↻</button></div></div>'+
-  '<div class="global-cap-chart"><div class="global-cap-plot">'+globalCapNativeSvg(item.id)+'</div>'+
+  '" class="global-cap-period'+(globalCapPeriod===p.id?' active':'')+
+  '" aria-label="Timeframe '+p.label+', '+esc(p.description)+'" aria-pressed="'+
+  (globalCapPeriod===p.id)+'" title="'+esc(p.description)+'">'+p.label+'</button>').join('')+
+  '</div><button type="button" class="global-cap-refresh" data-global-cap-refresh="1"'+
+  (globalCapState.busy?' disabled':'')+' title="Verifica nuovi dati" aria-label="Aggiorna capitalizzazione">↻</button></div></div>'+
+  '<div class="global-cap-range-summary"><strong>'+esc(resolution)+'</strong>'+
+  '<span>'+raw.length+' rilevazioni disponibili · '+points.length+' punti mostrati</span></div>'+
+  '<div class="global-cap-chart"><div class="global-cap-plot">'+globalCapNativeSvg(item.id,frame)+'</div>'+
   (points.length<2?'<p class="global-cap-placeholder">'+
-   (globalCapState.busy?'Caricamento della capitalizzazione…':
-    latest?'Una rilevazione reale disponibile: la linea crescerà con i prossimi aggiornamenti.':
-    'Dati in attesa: usa ↻ per riprovare.')+'</p>':'')+'</div>'+
-  globalCapShares(item.id)+
-  '<p class="global-cap-explainer">Grafico originale Vertex: storico delle rilevazioni salvate in questo browser, senza valori inventati. '+
-  'Fonti CoinGecko/CoinLore; metriche non identiche agli indici di altri provider. '+
-  (globalCapState.error?esc(globalCapState.error)+' ':'')+
-  (globalCapState.busy?'Aggiornamento in corso…':'Aggiornamento su richiesta o all’apertura.')+'</p>';
+   (globalCapState.busy?'Caricamento delle rilevazioni reali…':
+    !latest?'Dati assenti. Riprova quando la fonte è disponibile.':
+    'Storico insufficiente per questo timeframe: nessun valore intermedio simulato.')+'</p>':'')+
+  '</div>'+globalCapShares(item.id)+
+  '<p class="global-cap-explainer">'+
+  (tiny?'I timeframe in secondi sono selezionabili, ma la fonte aggregata non produce dati verificati ogni secondo. ':'')+
+  'Grafico Vertex basato su rilevazioni effettive salvate nel browser; gli intervalli senza dati rimangono vuoti. '+
+  'Verifica automatica della fonte ogni ~60 secondi con il grafico aperto; l’aggiornamento effettivo dipende da CoinGecko/CoinLore. '+
+  'Il timeframe Tutto comprende solo lo storico salvato su questo dispositivo. '+
+  (globalCapState.error?esc(globalCapState.error):'')+'</p>';
 }
 function globalCapModule(){
  return '<section class="global-cap-module" aria-label="Capitalizzazione crypto in Vertex">'+
@@ -1385,7 +1403,14 @@ function globalCapModule(){
 }
 function paintGlobalCapChart(){
  if(state.page!=='global'||!globalCapActive)return;
- const body=$('#globalCapChartBody');if(body)body.innerHTML=globalCapContent();
+ const body=$('#globalCapChartBody');
+ if(body){
+  const prior=body.querySelector('.global-cap-period-scroll');
+  const left=prior?.scrollLeft||0;
+  body.innerHTML=globalCapContent();
+  const next=body.querySelector('.global-cap-period-scroll');
+  if(next)next.scrollLeft=left;
+ }
 }
 function mountGlobalCapChart(){
  if(state.page!=='global'||!globalCapActive)return;
