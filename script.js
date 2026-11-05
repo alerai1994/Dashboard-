@@ -1141,10 +1141,10 @@ function globalCapWidgetConfig(item){
   locale:'it',
   allow_symbol_change:false,
   hide_side_toolbar:true,
-  hide_top_toolbar:false, // Important: users can adjust indicators here
-  hide_legend:false,hide_volume:true,
-  withdateranges:true,
-  show_popup_button:true,popup_width:'1450',popup_height:'900',
+  hide_top_toolbar:true, // Hide TradingView's internal timeframe/indicator toolbar; Vertex has its own
+  hide_legend:true,hide_volume:true, // Indicators remain plotted; remove title/OHLC/EMA legend
+  withdateranges:false, // Hide TradingView's bottom 1D/5D/1M/YTD toolbar; keep date axis
+  show_popup_button:false, // Remove TradingView's top-right launch control
   save_image:false,calendar:false,hotlist:false,details:false,
   watchlist:[],compareSymbols:[],
   support_host:'https://www.tradingview.com',
