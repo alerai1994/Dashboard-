@@ -2241,7 +2241,19 @@ body:is(.theme-sand,.theme-ice) .settings-theme-swatch{border-color:var(--line)}
 }
 .global-cap-tv{
  display:block;width:100%;height:100%;min-width:0;
- padding:0;margin:0;
+ padding:0;margin:0;position:relative;
+}
+/* The bottom-right TradingView settings gear belongs to a cross-origin
+   iframe. Cover only that control: leave the chart and TV branding intact. */
+.global-cap-tv>.global-cap-settings-cover{
+ position:absolute;
+ right:0;
+ bottom:29px; /* Above the provider copyright footer. */
+ width:45px;
+ height:36px;
+ z-index:4;
+ pointer-events:auto;
+ border-radius:0 0 5px 0;
 }
 .global-cap-tv>.tradingview-widget-container__widget{
  display:block;width:100%;height:100%;min-height:0;
