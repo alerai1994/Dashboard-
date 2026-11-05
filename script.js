@@ -5403,6 +5403,8 @@ function startVertexApp(){
  setInterval(updateClock,30000);
  setInterval(()=>{if(state.adaptiveBrightness&&!document.hidden)applyBrightness()},60000);
  setInterval(updateWorldSunlight,1000);
+ // Save only measured market-cap snapshots while the native graph is in use.
+ setInterval(()=>{if(state.page==='global'&&globalCapActive&&!document.hidden)refreshGlobalCapData()},300000);
  setInterval(()=>{
   if(orderBookViewActive()&&!document.hidden){
    keepOrderBookLive();
@@ -5429,12 +5431,14 @@ function startVertexApp(){
   else {
    connectCryptoStream();connectForexStream();fetchQuotes();pollCryptoPrices();updateWorldSunlight(true);applyBrightness();
    if(orderBookViewActive()){startOrderBookLive();refreshOrderBook()}
+   if(state.page==='global'&&globalCapActive)refreshGlobalCapData();
     if(state.dialogId){scheduleDetailChartDraw();scheduleChartLiveRefresh()}
   }
  });
  window.addEventListener('online',()=>{
   connectCryptoStream();connectForexStream();fetchQuotes();pollCryptoPrices();
   if(orderBookViewActive()){startOrderBookLive(true);refreshOrderBook(true)}
+  if(state.page==='global'&&globalCapActive)refreshGlobalCapData(true);
  });
  window.addEventListener('offline',()=>{
   closeStream();disconnectForexStream();stopOrderBookLive();updateLiveBadges();
