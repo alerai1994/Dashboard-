@@ -2110,6 +2110,32 @@ function orderBookSide(orders,side,unit){
  }).join('')+'</tbody></table></div>'+
  '<div class="ob-side-footer"><span>Totale '+orders.length+' livelli '+(isBid?'BID':'ASK')+'</span><strong>'+orderBookNumber(cumulative)+' USDT</strong></div></section>';
 }
+// Balance is measured from genuine resting BID/ASK levels of the SAME Spot book.
+// Compare quote notional (price * amount in USDT); never synthesize missing depth.
+function orderBookPressureStats(bids,asks){
+ const value=levels=>Array.isArray(levels)?levels.reduce((sum,entry)=>{
+  const price=Number(entry?.[0]),qty=Number(entry?.[1]),amount=price*qty;
+  return Number.isFinite(amount)&&amount>0?sum+amount:sum;
+ },0):0;
+ const bidTotal=value(bids),askTotal=value(asks),total=bidTotal+askTotal;
+ if(!Number.isFinite(total)||total<=0)return null;
+ const bidShare=Math.round(bidTotal/total*1000)/10;
+ return {bidShare,askShare:Math.round((100-bidShare)*10)/10,bidTotal,askTotal};
+}
+function orderBookPressureBar(bids,asks){
+ const share=orderBookPressureStats(bids,asks);
+ if(!share)return '<p class="ob-pressure-unavailable">Percentuali BID/ASK non disponibili.</p>';
+ const percent=v=>v.toLocaleString('it-IT',{minimumFractionDigits:1,maximumFractionDigits:1})+'%';
+ const buy=percent(share.bidShare),sell=percent(share.askShare);
+ const description='Profondità dei livelli visibili in USDT · BID '+buy+' · ASK '+sell;
+ return '<div class="ob-pressure-meter" title="'+esc(description)+'" aria-label="'+esc(description)+'">'+
+  '<span class="ob-pressure-label ob-pressure-bid">BID <strong>'+buy+'</strong></span>'+
+  '<div class="ob-pressure-track" role="meter" aria-label="Quota BID della profondità visibile" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+share.bidShare+'" aria-valuetext="'+esc(description)+'">'+
+  '<span class="ob-pressure-fill ob-pressure-fill-bid" style="width:'+share.bidShare+'%"></span>'+
+  '<span class="ob-pressure-fill ob-pressure-fill-ask" style="width:'+share.askShare+'%"></span></div>'+
+  '<span class="ob-pressure-label ob-pressure-ask">ASK <strong>'+sell+'</strong></span>'+
+  '</div>';
+}
 function orderBookDisplay(){
  const src=orderBookSource(orderBookState.id);
  if(!src)return '<div class="ob-status"><strong>Order book Spot non disponibile</strong><p>Per questa crypto non è stata verificata una coppia di order book corrispondente. Non vengono mostrati ordini di un token omonimo o dati stimati.</p></div>';
@@ -2149,6 +2175,7 @@ function orderBookDisplay(){
  '<strong class="ob-trade-number">'+orderBookNumber(referencePrice,true)+
  ' <span class="ob-price-arrow ob-price-arrow-'+priceTrend+'" title="'+esc(arrowHint)+'" aria-label="'+esc(arrowHint)+'">'+priceArrow+'</span>'+
  ' <span class="ob-trade-currency">USDT</span></strong></div>'+
+ orderBookPressureBar(bids,asks)+
  '</section>'+
  orderBookSide(bids,'bid',book.unit)+
  '</div>';
