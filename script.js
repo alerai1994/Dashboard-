@@ -1938,7 +1938,7 @@ function ingestCryptoEtfQuotes(rows){
 }
 function updateCryptoEtfQuoteDom(){
  for(const product of CRYPTO_ETF_PRODUCTS){
-  for(const node of $('[data-etf-quote-id="'+product.quoteId+'"]')){
+  for(const node of $$('[data-etf-quote-id="'+product.quoteId+'"]')){
    node.innerHTML=cryptoEtfQuoteMarkup(product);
   }
  }
