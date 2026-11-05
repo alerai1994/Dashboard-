@@ -1103,209 +1103,8 @@ function techBigTechOverview(){
 }
 
 
-// Vertex-native market-cap chart: no external chart renderer.
-// Only genuine public-market readings are graphed; historical points are saved
-// locally as the dashboard receives them, with no invented intermediate values.
-// Official TradingView Advanced Chart for the four CRYPTOCAP market indices.
-// Chart OHLC and historical indicator values come from TradingView, not
-// interpolated browser snapshots or pseudo-candles from sparse aggregate feeds.
-const GLOBAL_CAP_INDICES=Object.freeze([
- {id:'TOTAL',symbol:'CRYPTOCAP:TOTAL',description:'Capitalizzazione delle principali criptovalute',url:'https://www.tradingview.com/symbols/TOTAL/'},
- {id:'TOTAL2',symbol:'CRYPTOCAP:TOTAL2',description:'Capitalizzazione del mercato crypto, escluso Bitcoin',url:'https://www.tradingview.com/symbols/TOTAL2/'},
- {id:'TOTAL3',symbol:'CRYPTOCAP:TOTAL3',description:'Capitalizzazione del mercato crypto, esclusi Bitcoin ed Ethereum',url:'https://www.tradingview.com/symbols/TOTAL3/'},
- {id:'TOTALDEFI',symbol:'CRYPTOCAP:TOTALDEFI',description:'Capitalizzazione delle criptovalute DeFi',url:'https://www.tradingview.com/symbols/TOTALDEFI/'}
-]);
-// These match the controls previously requested by the user. Not every interval
-// is available for every symbol / account in TradingView's embedded chart.
-const GLOBAL_CAP_PERIODS=Object.freeze([
- {id:'1s',tv:'1S'},{id:'5s',tv:'5S'},{id:'15s',tv:'15S'},{id:'30s',tv:'30S'},
- {id:'1H',tv:'60'},{id:'2h',tv:'120'},{id:'3h',tv:'180'},{id:'4h',tv:'240'},
- {id:'5h',tv:'300'},{id:'12h',tv:'720'},{id:'1D',tv:'D'},{id:'2D',tv:'2D'},
- {id:'3D',tv:'3D'},{id:'1W',tv:'W'},{id:'2W',tv:'2W'},{id:'1M',tv:'M'},
- {id:'2M',tv:'2M'},{id:'3M',tv:'3M'},{id:'Tutto',tv:'D'}
-]);
-let globalCapActive=null,globalCapPeriod=load('globalCapPeriod','Tutto');
-if(!GLOBAL_CAP_PERIODS.some(period=>period.id===globalCapPeriod))globalCapPeriod='Tutto';
-function globalCapSelected(){return GLOBAL_CAP_INDICES.find(item=>item.id===globalCapActive)||null;}
-function globalCapPeriodSelected(){return GLOBAL_CAP_PERIODS.find(item=>item.id===globalCapPeriod)||GLOBAL_CAP_PERIODS[18];}
-function globalCapWidgetConfig(item){
- const duration=globalCapPeriodSelected();
- return {
-  autosize:true,
-  symbol:item.symbol,
-  interval:duration.tv,
-  timezone:'Europe/Rome',
-  theme:['light','sand','ice'].includes(state.theme)?'light':'dark',
-  backgroundColor:['light','sand','ice'].includes(state.theme)?'#ffffff':'#0d1d2b',
-  gridColor:['light','sand','ice'].includes(state.theme)?'rgba(65,90,112,0.08)':'rgba(135,163,188,0.09)',
-  style:'1', // Original exchange OHLC candlesticks
-  locale:'it',
-  allow_symbol_change:false,
-  hide_side_toolbar:true,
-  hide_top_toolbar:true, // Hide TradingView's internal timeframe/indicator toolbar; Vertex has its own
-  hide_legend:true,hide_volume:true, // Indicators remain plotted; remove title/OHLC/EMA legend
-  withdateranges:false, // Hide TradingView's bottom 1D/5D/1M/YTD toolbar; keep date axis
-  show_popup_button:false, // Remove TradingView's top-right launch control
-  save_image:false,calendar:false,hotlist:false,details:false,
-  watchlist:[],compareSymbols:[],
-  support_host:'https://www.tradingview.com',
-  // Request the four EMAs (with lengths) and the three oscillators.
-  // Study inputs/availability can vary in TradingView's free embedded widget.
-  studies:[
-   {id:'MAExp@tv-basicstudies',inputs:{length:12}},
-   {id:'MAExp@tv-basicstudies',inputs:{length:26}},
-   {id:'MAExp@tv-basicstudies',inputs:{length:50}},
-   {id:'MAExp@tv-basicstudies',inputs:{length:200}},
-   'RSI@tv-basicstudies',
-   'StochasticRSI@tv-basicstudies',
-   'MACD@tv-basicstudies'
-  ],
-  // Daily and longer intervals can reveal the full available TradingView history.
-  // Intraday / seconds history remains provider-limited.
-  // Only Tutto uses full daily history; other intervals open on recent candles.
-  ...(duration.id==='Tutto'?{range:'all'}:{})
- };
-}
-function globalCapModule(){
- const current=globalCapSelected();
- return '<section class="global-cap-module" aria-label="Capitalizzazione crypto con storico TradingView">'+
-  '<div class="global-cap-pills" role="group" aria-label="Seleziona l’indice di capitalizzazione">'+
-  GLOBAL_CAP_INDICES.map(item=>'<button type="button" class="global-cap-pill'+
-    (current?.id===item.id?' is-selected':'')+'" data-global-cap="'+item.id+
-    '" aria-pressed="'+(current?.id===item.id)+'" aria-controls="globalCapChartPanel"'+
-    ' aria-expanded="'+(current?.id===item.id)+'">'+item.id+'</button>').join('')+
-  '</div>'+
-  '<section class="global-cap-chart-panel panel" id="globalCapChartPanel"'+(current?'':' hidden')+
-  ' aria-label="Grafico storico a candele">'+
-  '<div class="global-cap-chart-heading"><div>'+
-  '<span class="global-cap-eyebrow">CRYPTOCAP · TRADINGVIEW</span>'+
-  '<h3 id="globalCapTitle">'+esc(current?.id||'')+'</h3>'+
-  '<p id="globalCapDescription">'+esc(current?.description||'')+'</p></div>'+
-  '<button type="button" class="global-cap-close" data-global-cap-close="1" aria-label="Chiudi grafico">✕</button></div>'+
-  '<div class="global-cap-interval-bar">'+
-  '<div class="global-cap-period-scroll" role="group" aria-label="Timeframe TradingView">'+
-  GLOBAL_CAP_PERIODS.map(period=>'<button type="button" class="global-cap-period'+
-   (period.id===globalCapPeriod?' active':'')+'" data-global-cap-period="'+period.id+
-   '" aria-pressed="'+(period.id===globalCapPeriod)+'">'+period.id+'</button>').join('')+
-  '</div></div>'+
-  '<div class="global-cap-indicator-note">Candele aggiornate dal provider · EMA 12/26/50/200 · RSI (14) · Stochastic RSI · MACD (12/26/9)</div>'+ 
-  '<div class="global-cap-history-guide" id="globalCapHistoryGuide">'+
-  (globalCapPeriod==='Tutto'?'<strong>Dall’inizio a oggi:</strong> mostra le candele giornaliere dal primo dato storico che TradingView rende disponibile fino alle più recenti.':'<strong>Timeframe '+esc(globalCapPeriod)+':</strong> visualizza lo storico consentito da TradingView per questa risoluzione.')+
-  ' Usa lo zoom per vedere meglio i periodi storici; i dati più vecchi dipendono dal provider.</div>'+
-  '<div class="global-cap-live-bar">'+
-  '<span class="global-cap-feed-status" id="globalCapStreamState" role="status">Attesa del feed TradingView…</span>'+
-  '<button type="button" class="global-cap-history-button" data-global-cap-history="1" title="Ripristina tutto lo storico disponibile fino a oggi">Dall’inizio a oggi</button>'+ 
-  '<button type="button" class="global-cap-latest" data-global-cap-latest="1" title="Torna al grafico con le candele più recenti">Ultime candele</button>'+
-  '<a class="global-cap-provider-link" href="https://www.tradingview.com/chart/?symbol='+encodeURIComponent(current?.symbol||'CRYPTOCAP:TOTAL')+'" target="_blank" rel="noopener noreferrer">Apri TradingView ↗</a>'+
-  '</div>'+
-  '<div class="global-cap-tradingview-embed" id="globalCapWidget" aria-label="Grafico TradingView"></div>'+
-  '<p id="globalCapTvError" class="global-cap-error" role="status"></p>'+
-  '<div class="global-cap-bottom"><span>Fonte TradingView · dati storici del simbolo CRYPTOCAP · intervalli in secondi soggetti alla disponibilità del provider.</span>'+
-  '</div>'+
-  '</section></section>';
-}
-function mountGlobalCapChart(){
- const item=globalCapSelected();
- if(state.page!=='global'||!item)return;
- const panel=$('#globalCapChartPanel'),target=$('#globalCapWidget');
- if(!panel||!target)return;
- panel.hidden=false;
- const name=$('#globalCapTitle'),description=$('#globalCapDescription');
- if(name)name.textContent=item.id;
- if(description)description.textContent=item.description;
- const providerLink=$('.global-cap-provider-link');
- if(providerLink)providerLink.href='https://www.tradingview.com/chart/?symbol='+encodeURIComponent(item.symbol);
- const errorNode=$('#globalCapTvError');if(errorNode)errorNode.textContent='';
- const feedState=$('#globalCapStreamState');
- const selectedPeriod=globalCapPeriodSelected();
- if(feedState)feedState.textContent='Caricamento '+item.id+' · '+selectedPeriod.id+' · feed TradingView…';
- // Replacing the prior node disposes its iframe and avoids concurrent
- // TradingView graphs when the user changes asset or timeframe.
- target.replaceChildren();
- const widget=document.createElement('div');
- widget.className='tradingview-widget-container global-cap-tv';
- const host=document.createElement('div');
- host.className='tradingview-widget-container__widget';
- widget.appendChild(host);
- // The official embedded chart retains TradingView's own in-chart branding.
- // No redundant custom attribution link is added outside the iframe.
- target.appendChild(widget);
- // Official TradingView embed script (lazy-loaded on pill selection).
- const script=document.createElement('script');
- script.type='text/javascript';script.async=true;
- script.src='https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
- script.textContent=JSON.stringify(globalCapWidgetConfig(item));
- script.onload=()=>{
-  if(!target.contains(widget)||globalCapActive!==item.id||globalCapPeriod!==selectedPeriod.id)return;
-  const status=$('#globalCapStreamState');
-  if(status)status.textContent='Grafico '+item.id+' · '+selectedPeriod.id+' caricato · aggiornamenti gestiti da TradingView';
- };
- script.onerror=()=>{
-  if(target.contains(widget)&&state.page==='global'&&globalCapActive===item.id){
-   const status=$('#globalCapTvError');
-   if(status)status.textContent='Grafico temporaneamente non disponibile. Verifica la connessione o ricarica la pagina.';
-   const feed=$('#globalCapStreamState');if(feed)feed.textContent='Feed TradingView non caricato';
-  }
- };
- widget.appendChild(script);
- // Widget controls live in a cross-origin iframe. Keep visual masking
- // scoped to the chart container rather than affecting the rest of Vertex.
- const isLightCapTheme=['light','sand','ice'].includes(state.theme);
- const chartMaskColor=isLightCapTheme?'#ffffff':'#0b1925';
- const settingsCover=document.createElement('div');
- settingsCover.className='global-cap-settings-cover';
- settingsCover.setAttribute('aria-hidden','true');
- settingsCover.style.backgroundColor=globalCapWidgetConfig(item).backgroundColor;
- widget.appendChild(settingsCover);
- // The small emblem is anchored at the lower left of the embedded graph.
- // Keep the source attribution text beneath the graph visible.
- const logoCover=document.createElement('div');
- logoCover.className='global-cap-logo-cover';
- logoCover.setAttribute('aria-hidden','true');
- logoCover.style.backgroundColor=chartMaskColor;
- widget.appendChild(logoCover);
-}
-function selectGlobalCapChart(id){
- if(state.page!=='global'||id!==null&&!GLOBAL_CAP_INDICES.some(item=>item.id===id))return;
- globalCapActive=id;
- const panel=$('#globalCapChartPanel');if(!panel)return;
- document.querySelectorAll('#pageContainer [data-global-cap]').forEach(button=>{
-  const selected=button.dataset.globalCap===id;
-  button.classList.toggle('is-selected',selected);
-  button.setAttribute('aria-pressed',String(selected));
-  button.setAttribute('aria-expanded',String(selected));
- });
- if(!id){
-  panel.hidden=true;
-  const widget=$('#globalCapWidget');if(widget)widget.replaceChildren();
-  return;
- }
- // Open each index on the entire available daily history by default.
- // Manual timeframe selections remain possible after opening the index.
- selectGlobalCapPeriod('Tutto',true);
-}
-function selectGlobalCapPeriod(id,force=false){
- if(!GLOBAL_CAP_PERIODS.some(period=>period.id===id)||state.page!=='global')return;
- if(globalCapPeriod===id&&!force)return;
- globalCapPeriod=id;
- save('globalCapPeriod',id);
- const guide=$('#globalCapHistoryGuide');
- if(guide)guide.innerHTML=id==='Tutto'?'<strong>Dall’inizio a oggi:</strong> candele giornaliere dal primo dato disponibile su TradingView fino a oggi. Usa lo zoom per esplorare la storia; i dati più vecchi dipendono dal provider.':
-  '<strong>Timeframe '+esc(id)+':</strong> lo storico mostrato dipende dalla disponibilità TradingView. Trascina il grafico e usa lo zoom.';
- const list=$('.global-cap-period-scroll'),left=list?.scrollLeft||0;
- if(list){
-  list.querySelectorAll('[data-global-cap-period]').forEach(button=>{
-   const selected=button.dataset.globalCapPeriod===id;
-   button.classList.toggle('active',selected);
-   button.setAttribute('aria-pressed',String(selected));
-  });
-  list.scrollLeft=left;
- }
- mountGlobalCapChart();
-}
-
 function globalPage(){
- return globalCapModule()+'<section class="market-index-strip">'+TOP_IDS.map(indexCard).join('')+'</section>'+
+ return '<section class="market-index-strip">'+TOP_IDS.map(indexCard).join('')+'</section>'+
   '<div class="global-grid">'+regionList()+mapPanel()+
  '<aside class="aside-stack">'+QUOTE_GROUPS.map(sidePanel).join('')+'</aside>'+
  '<div class="region-photo-grid" aria-label="Panoramica fotografica delle regioni">'+REGIONS.map(photoCard).join('')+'</div></div>'+
@@ -3377,8 +3176,7 @@ function render(){
  }
  const main=$('#pageContainer');
  main.innerHTML=PAGE_RENDERERS[state.page]();
- if(state.page==='global'&&globalCapActive)mountGlobalCapChart();
- updateNav();
+  updateNav();
  paintCryptoPriceHighlights();
  if(state.page==='etf')loadCryptoCapData();
  if(state.page==='news'&&!secNewsState.loaded&&!secNewsState.loading)loadSecNews();
@@ -5115,12 +4913,7 @@ function setupEvents(){
   }
   const btn=e.target.closest('button,a,tr[data-asset]');
   if(!btn)return;
-   if(btn.dataset.globalCap){selectGlobalCapChart(btn.dataset.globalCap);return;}
-   if(btn.dataset.globalCapPeriod){selectGlobalCapPeriod(btn.dataset.globalCapPeriod);return;}
-   if(btn.dataset.globalCapHistory!==undefined){selectGlobalCapPeriod('Tutto',true);return;}
-   if(btn.dataset.globalCapLatest!==undefined){mountGlobalCapChart();return;}
-    if(btn.dataset.globalCapClose!==undefined){selectGlobalCapChart(null);return;}
-   if(btn.dataset.secCategory){secNewsState.selected=btn.dataset.secCategory;secNewsState.visible=20;render();return;}
+                   if(btn.dataset.secCategory){secNewsState.selected=btn.dataset.secCategory;secNewsState.visible=20;render();return;}
   if(btn.dataset.secMore){secNewsState.visible+=20;render();return;}
   if(btn.dataset.secRefresh){loadSecNews(true);return;}
   if(btn.dataset.adaptiveBrightness){
