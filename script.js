@@ -3278,12 +3278,15 @@ function toast(message){
 }
 const VERTEX_ROME_DATE=new Intl.DateTimeFormat('it-IT',{day:'numeric',month:'long',year:'numeric',timeZone:'Europe/Rome'});
 const VERTEX_ROME_TIME=new Intl.DateTimeFormat('it-IT',{hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23',timeZone:'Europe/Rome'});
+const VERTEX_ROME_ISO_DATE=new Intl.DateTimeFormat('en-GB',{year:'numeric',month:'2-digit',day:'2-digit',timeZone:'Europe/Rome'});
 function updateClock(){
  const now=new Date();
  const dateNode=$('#localDate'),timeNode=$('#localTime');
  if(dateNode){
   dateNode.textContent=VERTEX_ROME_DATE.format(now);
-  dateNode.dateTime=new Intl.DateTimeFormat('en-CA',{year:'numeric',month:'2-digit',day:'2-digit',timeZone:'Europe/Rome'}).format(now);
+  const parts=VERTEX_ROME_ISO_DATE.formatToParts(now);
+  const part=key=>parts.find(piece=>piece.type===key)?.value||'';
+  dateNode.dateTime=part('year')+'-'+part('month')+'-'+part('day');
  }
  if(timeNode)timeNode.textContent=VERTEX_ROME_TIME.format(now);
 }
