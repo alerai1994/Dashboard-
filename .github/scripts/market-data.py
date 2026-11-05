@@ -49,6 +49,12 @@ FOREX = [
     ("eurusd", "EURUSD=X"), ("gbpusd", "GBPUSD=X"), ("usdjpy", "JPY=X"),
     ("usdchf", "CHF=X"), ("audusd", "AUDUSD=X"), ("usdcny", "CNY=X")
 ]
+# Genuine fund-share prices; never substitute crypto spot prices.
+# Amsterdam AINJ is USD; Paris AINJ.PA (fallback) is EUR.
+ETFS = [
+    ("etf-ibit", "IBIT"), ("etf-etha", "ETHA"),
+    ("etf-bsol", "BSOL"), ("etf-ainj", "AINJ.AS"),
+]
 CRYPTO = [
     ("btc", "bitcoin"), ("eth", "ethereum"), ("sol", "solana"),
     ("inj", "injective-protocol"), ("bnb", "binancecoin"),
@@ -667,6 +673,17 @@ def repair_regional_percentages(markets):
     return markets
 
 
+def etf_quotes():
+    rows = fetch_group(ETFS)
+    for index, row in enumerate(rows):
+        if row["id"] == "etf-ainj" and valid(row.get("value")) is None:
+            # Preserve EUR from the alternative Euronext Paris listing.
+            alternate = yahoo_quote(("etf-ainj", "AINJ.PA"))
+            if valid(alternate.get("value")) is not None:
+                rows[index] = alternate
+    return rows
+
+
 def main():
     data = {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
@@ -675,17 +692,18 @@ def main():
         "bigtech": fetch_group(BIGTECH),
         "commodities": fetch_group(COMMODITIES),
         "forex": fetch_group(FOREX),
+        "etfs": etf_quotes(),
         "crypto": crypto_quotes(),
     }
-    ready = sum(1 for group in ("markets", "bigtech", "commodities", "forex", "crypto")
+    ready = sum(1 for group in ("markets", "bigtech", "commodities", "forex", "etfs", "crypto")
                 for row in data[group] if row["value"] is not None)
-    print("Verified quotes:", ready, "of", sum(map(len, (MARKETS, TECH, BIGTECH, COMMODITIES, FOREX, CRYPTO))))
+    print("Verified quotes:", ready, "of", sum(map(len, (MARKETS, TECH, BIGTECH, COMMODITIES, FOREX, ETFS, CRYPTO))))
     # If every request is denied, preserve the last successful snapshot rather than
     # overwriting real existing prices with empty values.
     if ready == 0 and OUTPUT.exists():
         try:
             old = json.loads(OUTPUT.read_text(encoding="utf-8"))
-            if any(x.get("value") is not None for g in ("markets", "bigtech", "commodities", "forex", "crypto")
+            if any(x.get("value") is not None for g in ("markets", "bigtech", "commodities", "forex", "etfs", "crypto")
                    for x in old.get(g, [])):
                 print("All APIs unavailable; retaining last successful snapshot")
                 return
