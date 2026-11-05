@@ -3147,21 +3147,14 @@ function updateNav(){
  updateCryptoAlertIndicator();
 }
 function render(){
- // Global header: UTC/local clock (when visible), notification bell, then
- // AR aligned at the far right. Preserve the other pages' original order.
+ // Keep the Rome clock as the rightmost header item on every page.
  const bell=$('#notificationsButton'),profile=$('#profileButton'),actions=$('.top-actions');
  const clock=actions?.querySelector('.live-clock');
  document.body.classList.toggle('page-global',state.page==='global');
  if(actions&&bell&&profile){
-  if(state.page==='global'){
-   if(clock)actions.appendChild(clock);
-   actions.appendChild(bell);
-   actions.appendChild(profile);
-  }else{
-   actions.appendChild(bell);
-   actions.appendChild(profile);
-   if(clock)actions.appendChild(clock);
-  }
+  actions.appendChild(bell);
+  actions.appendChild(profile);
+  if(clock)actions.appendChild(clock);
  }
  const page=SECTIONS[state.page]||SECTIONS.global;
  $('#pageTitle').textContent=page[0];$('#pageSubtitle').textContent=page[1];
@@ -3283,10 +3276,16 @@ function playClickSound(preview=false){
 function toast(message){
  const el=$('#toast');el.textContent=String(message);el.hidden=false;clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.hidden=true,3400);
 }
+const VERTEX_ROME_DATE=new Intl.DateTimeFormat('it-IT',{day:'numeric',month:'long',year:'numeric',timeZone:'Europe/Rome'});
+const VERTEX_ROME_TIME=new Intl.DateTimeFormat('it-IT',{hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23',timeZone:'Europe/Rome'});
 function updateClock(){
  const now=new Date();
- $('#localDate').textContent=new Intl.DateTimeFormat('it-IT',{weekday:'short',day:'2-digit',month:'short',year:'numeric',timeZone:'Europe/Rome'}).format(now);
- $('#localTime').textContent=new Intl.DateTimeFormat('it-IT',{hour:'2-digit',minute:'2-digit',hourCycle:'h23',timeZone:'Europe/Rome'}).format(now)+' (Roma)';
+ const dateNode=$('#localDate'),timeNode=$('#localTime');
+ if(dateNode){
+  dateNode.textContent=VERTEX_ROME_DATE.format(now);
+  dateNode.dateTime=new Intl.DateTimeFormat('en-CA',{year:'numeric',month:'2-digit',day:'2-digit',timeZone:'Europe/Rome'}).format(now);
+ }
+ if(timeNode)timeNode.textContent=VERTEX_ROME_TIME.format(now);
 }
 /* GitHub Pages serves static snapshots. A cheap HEAD check avoids downloading
    the 2MB historic-data file every minute when the snapshot has not changed. */
@@ -5169,7 +5168,7 @@ function startVertexApp(){
   }).catch(()=>{});
  }
  setupEvents();updateVertexAppIcon();applyTheme();applyFontStyle();applyBrightness();updateClock();
- setInterval(updateClock,30000);
+ setInterval(updateClock,1000);
  setInterval(()=>{if(state.adaptiveBrightness&&!document.hidden)applyBrightness()},60000);
  setInterval(updateWorldSunlight,1000);
  setInterval(()=>{
