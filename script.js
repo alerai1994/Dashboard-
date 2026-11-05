@@ -1909,13 +1909,15 @@ function cryptoEtfQuoteMarkup(product){
   '<small class="crypto-etf-quote-meta">In attesa della quotazione di borsa verificata. Non viene usato il prezzo spot della crypto.</small>';
  const price=cryptoEtfNumberFormat.format(Number(row.value));
  const currency=typeof row.currency==='string'&&/^[A-Z]{3}$/.test(row.currency)?row.currency:'Valuta n.d.';
- const change=Number(row.change);
- const delta=Number.isFinite(change)?cryptoEtfChangeFormat.format(change)+'%':'—';
+ const hasChange=row.change!==null&&row.change!==undefined&&Number.isFinite(Number(row.change));
+ const change=hasChange?Number(row.change):null;
+ const delta=hasChange?cryptoEtfChangeFormat.format(change)+'%':'—';
  const cls=change>0?'color-up':change<0?'color-down':'color-flat';
  const stamp=Date.parse(row.time||'');
  const date=Number.isFinite(stamp)?cryptoEtfDateFormat.format(new Date(stamp)):'data non fornita';
- const delayed=Number.isFinite(Number(row.delayMinutes))&&row.delayMinutes!==null?
-  ' · ritardo indicato '+Number(row.delayMinutes)+' min':' · possibile ritardo';
+ const hasDelay=row.delayMinutes!==null&&row.delayMinutes!==undefined&&
+  Number.isFinite(Number(row.delayMinutes));
+ const delayed=hasDelay?' · ritardo indicato '+Number(row.delayMinutes)+' min':' · possibile ritardo';
  const source=typeof row.source==='string'?row.source:'Yahoo Finance';
  const venue=product.crypto==='inj'?(row.symbol==='AINJ.PA'?' · Euronext Paris':' · Euronext Amsterdam'):'';
  return '<small>Ultima quotazione quota '+esc(product.ticker)+'</small>'+
