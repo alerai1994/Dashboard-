@@ -1433,6 +1433,26 @@ function globalCapNativeSvg(id,frame=globalCapFrameData(id)){
  svg.push('</svg>');
  return svg.join('');
 }
+function showGlobalCapCandleTooltip(event){
+ const tip=$('#globalCapCandleTooltip');
+ if(!tip||state.page!=='global'||!globalCapActive)return;
+ const group=event.target instanceof Element?event.target.closest('[data-cap-candle]'):null;
+ if(!group){tip.hidden=true;return;}
+ const plot=group.closest('.global-cap-chart');
+ if(!plot){tip.hidden=true;return;}
+ const fields=group.dataset,val=key=>globalCapMoney(Number(fields[key]));
+ const count=Number(fields.capCount)||1;
+ tip.innerHTML='<strong>'+esc(fields.capDate||'Data non disponibile')+'</strong>'+
+  '<span>APERTURA <b>'+val('capOpen')+'</b></span>'+
+  '<span>CHIUSURA <b>'+val('capClose')+'</b></span>'+
+  '<span class="cap-high">HIGH <b>'+val('capHigh')+'</b></span>'+
+  '<span class="cap-low">LOW <b>'+val('capLow')+'</b></span>'+
+  '<small>'+count+' rilevazion'+(count===1?'e':'i')+' effettiv'+(count===1?'a':'e')+'</small>';
+ tip.hidden=false;
+ const rect=plot.getBoundingClientRect();
+ tip.style.left=Math.round(Math.max(7,Math.min(rect.width-tip.offsetWidth-7,event.clientX-rect.left+15)))+'px';
+ tip.style.top=Math.round(Math.max(7,Math.min(rect.height-tip.offsetHeight-7,event.clientY-rect.top-23)))+'px';
+}
 function globalCapLiveLabel(){
  if(globalCapState.busy)return '● Verifica della fonte in corso…';
  if(!navigator.onLine)return '● Offline · ultimi dati salvati';
@@ -1468,6 +1488,7 @@ function globalCapContent(){
  const latest=globalCapState.latest[item.id];
  const frame=globalCapFrameData(item.id);
  const {period,raw,points}=frame;
+ const capBars=globalCapOHLC(frame);
  const first=raw[0],last=raw[raw.length-1];
  const delta=first&&last&&first!==last?100*(last.v/first.v-1):null;
  const timestamp=latest?localeDate(latest.t,{
@@ -1500,16 +1521,23 @@ function globalCapContent(){
   '</div><button type="button" class="global-cap-refresh" data-global-cap-refresh="1"'+
   (globalCapState.busy?' disabled':'')+' title="Verifica nuovi dati" aria-label="Aggiorna capitalizzazione">↻</button></div></div>'+
   '<div class="global-cap-range-summary"><strong>'+esc(resolution)+'</strong>'+
-  '<span>'+raw.length+' rilevazioni disponibili · '+points.length+' punti mostrati</span></div>'+
-  '<div class="global-cap-chart"><div class="global-cap-plot">'+globalCapNativeSvg(item.id,frame)+'</div>'+
-  (points.length<2?'<p class="global-cap-placeholder">'+
+  '<span>'+raw.length+' rilevazioni reali · '+capBars.length+' candele OHLC</span></div>'+
+  '<div class="global-cap-terminal-legend" aria-label="Medie mobili">'+
+  '<span><i class="global-cap-ema-12"></i> EMA 12</span>'+
+  '<span><i class="global-cap-ema-26"></i> EMA 26</span>'+
+  '<span><i class="global-cap-ema-50"></i> EMA 50</span>'+
+  '<span><i class="global-cap-ema-200"></i> EMA 200</span></div>'+
+  '<div class="global-cap-chart global-cap-terminal-chart"><div class="global-cap-plot">'+globalCapNativeSvg(item.id,frame)+'</div>'+
+  '<div id="globalCapCandleTooltip" class="global-cap-candle-tooltip" role="status" hidden></div>'+
+  (capBars.length<200?'<span class="global-cap-history-warning">EMA 200: storico insufficiente</span>':'')+
+  (capBars.length<2?'<p class="global-cap-placeholder">'+
    (globalCapState.busy?'Caricamento delle rilevazioni reali…':
     !latest?'Dati assenti. Riprova quando la fonte è disponibile.':
     'Storico insufficiente per questo timeframe: nessun valore intermedio simulato.')+'</p>':'')+
   '</div>'+globalCapShares(item.id)+
   '<p class="global-cap-explainer">'+
   (tiny?'I timeframe in secondi sono selezionabili, ma la fonte aggregata non produce dati verificati ogni secondo. ':'')+
-  'Grafico Vertex basato su rilevazioni effettive salvate nel browser; gli intervalli senza dati rimangono vuoti. '+
+  'Candele OHLC e indicatori calcolati esclusivamente dalle rilevazioni effettive salvate nel browser; gli intervalli senza dati rimangono vuoti. '+
   'Verifica automatica della fonte ogni ~60 secondi con il grafico aperto; l’aggiornamento effettivo dipende da CoinGecko/CoinLore. '+
   'Il timeframe Tutto comprende solo lo storico salvato su questo dispositivo. '+
   (globalCapState.error?esc(globalCapState.error):'')+'</p>';
@@ -5363,6 +5391,14 @@ function setupEvents(){
   if(!e.target.closest('.search-wrap'))$('#searchMenu').hidden=true;
   if(e.target.closest('#sidebar')||e.target.closest('#menuToggle'))return;
   if($('#sidebar').classList.contains('open'))$('#sidebar').classList.remove('open');
+ });
+ $('#pageContainer').addEventListener('pointermove',showGlobalCapCandleTooltip);
+ $('#pageContainer').addEventListener('pointerdown',e=>{
+  if(e.target instanceof Element&&e.target.closest('[data-cap-candle]'))
+   showGlobalCapCandleTooltip(e);
+ });
+ $('#pageContainer').addEventListener('pointerleave',()=>{
+  const tip=$('#globalCapCandleTooltip');if(tip)tip.hidden=true;
  });
  $('#pageContainer').addEventListener('click',e=>{
   if(Date.now()<miniCandleSuppressClickUntil&&e.target.closest('.market-chart-card')){
