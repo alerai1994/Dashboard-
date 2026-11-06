@@ -6,5 +6,6 @@
   android:resizeMode="horizontal|vertical"
   android:widgetCategory="home_screen"
   android:configure="com.vertex.crypto.WidgetConfigActivity"
+  android:widgetFeatures="reconfigurable"
   android:updatePeriodMillis="1800000"
   android:description="@string/widget_description"/>
