@@ -4937,6 +4937,27 @@ function setupCanvasInteractions(){
  });
  dlg.addEventListener('wheel',e=>{if(e.target.id==='detailChart')e.preventDefault()},{passive:false});
 }
+// Quantity, average buy price and total invested form a single cost basis.
+// The user's most recently edited cost field is authoritative.
+function syncPortfolioCostFields(changedId){
+ const form=$('#portfolioForm'),qtyInput=$('#holdingQty');
+ const avgInput=$('#holdingAverageBuyPrice'),investedInput=$('#holdingInvestedUsd');
+ if(!form||!qtyInput||!avgInput||!investedInput)return;
+ let source=form.dataset.costSource||'';
+ if(changedId==='holdingAverageBuyPrice')source='average';
+ if(changedId==='holdingInvestedUsd')source='invested';
+ form.dataset.costSource=source;
+ if(!source)return;
+ const sourceInput=source==='average'?avgInput:investedInput;
+ const destInput=source==='average'?investedInput:avgInput;
+ if(!sourceInput.value.trim()){destInput.value='';return}
+ const qty=parsePortfolioNumber(qtyInput.value),amount=parsePortfolioNumber(sourceInput.value);
+ if(!Number.isFinite(qty)||qty<=0||!Number.isFinite(amount)||amount<0){
+  destInput.value='';return;
+ }
+ const derived=source==='average'?qty*amount:amount/qty;
+ destInput.value=Number.isFinite(derived)&&derived>=0?String(derived):'';
+}
 function savePortfolioForm(formElement){
  if(!formElement)return;
    const form=new FormData(formElement),id=String(form.get('id')||'');
@@ -4946,6 +4967,9 @@ function savePortfolioForm(formElement){
    const prev=editing?state.holdings[idx]:null;
    const investedRaw=String(form.get('investedUsd')??'').trim();
    const investedUsd=investedRaw?parsePortfolioNumber(investedRaw):null;
+   const averageRaw=String(form.get('avgBuyPrice')??'').trim();
+   const averageBuyPrice=averageRaw?parsePortfolioNumber(averageRaw):null;
+   const costSource=formElement.dataset.costSource||'';
    const manualField=form.get('manualPrice');
    const manualRaw=manualField===null?'':String(manualField).trim();
    const manualPrice=manualField===null?
@@ -4961,6 +4985,10 @@ function savePortfolioForm(formElement){
       !Number.isFinite(investedUsd/qty))){
     portfolioFormError('Inserisci un importo investito valido in dollari (USD), uguale o superiore a zero.','holdingInvestedUsd');return;
    }
+   if(averageRaw&&(!Number.isFinite(averageBuyPrice)||averageBuyPrice<0||
+      !Number.isFinite(averageBuyPrice*qty))){
+    portfolioFormError('Inserisci un prezzo medio di acquisto valido in USD, uguale o superiore a zero.','holdingAverageBuyPrice');return;
+   }
    if(manualRaw&&(!Number.isFinite(manualPrice)||manualPrice<=0||
       !Number.isFinite(qty*manualPrice))){
     portfolioFormError('Il prezzo attuale manuale deve essere maggiore di zero. Oppure lascia il campo vuoto.','holdingManualPrice');return;
@@ -4968,8 +4996,14 @@ function savePortfolioForm(formElement){
    const manualUpdatedAt=manualPrice===null?null:
     prev&&prev.id===id&&Number(prev.manualPrice)===manualPrice&&prev.manualUpdatedAt?
      prev.manualUpdatedAt:new Date().toISOString();
-   const cost=investedUsd===null?null:investedUsd/qty;
-   const holding={...(prev||{}),id,qty,investedUsd,cost,manualPrice,manualUpdatedAt};
+   // Prefer the last actively edited cost field; fall back to a populated
+   // field for autofill and pre-existing records. Do not round crypto prices.
+   const useAverage=averageRaw&&(costSource==='average'||!investedRaw);
+   const effectiveInvested=useAverage?averageBuyPrice*qty:
+    investedRaw?investedUsd:averageRaw?averageBuyPrice*qty:null;
+   const cost=effectiveInvested===null?null:(useAverage?averageBuyPrice:effectiveInvested/qty);
+   const holding={...(prev||{}),id,qty,investedUsd:effectiveInvested,
+    avgBuyPrice:cost,cost,manualPrice,manualUpdatedAt};
    const next=state.holdings.slice();
    if(editing)next[idx]=holding;else next.push(holding);
    if(!persistPortfolio(next))return;
@@ -5191,6 +5225,8 @@ function setupEvents(){
    e.target.removeAttribute('aria-invalid');
    const message=$('#portfolioFormFeedback');
    if(message){message.hidden=true;message.textContent='';message.classList.remove('is-error')}
+   if(['holdingQty','holdingAverageBuyPrice','holdingInvestedUsd'].includes(e.target.id))
+    syncPortfolioCostFields(e.target.id);
   }
   if(e.target.id==='orderBookSearch'){
    orderBookState.search=e.target.value;
