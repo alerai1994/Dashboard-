@@ -138,8 +138,9 @@ class VertexWidgetProvider : AppWidgetProvider() {
    }
    manager.updateAppWidget(id, views)
   }
+ }
 
-  override fun onReceive(context: Context, intent: Intent) {
+ override fun onReceive(context: Context, intent: Intent) {
    if (intent.action == AppWidgetManager.ACTION_APPWIDGET_UPDATE ||
        intent.action == ACTION_REFRESH) {
     val pending = goAsync()
