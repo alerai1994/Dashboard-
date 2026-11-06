@@ -60,7 +60,7 @@ class MainActivity : Activity() {
   content.addView(label("VERTEX · MERCATI",26f,Color.rgb(101,179,255)).apply {
    setTypeface(null,Typeface.BOLD)
   })
-  content.addView(label("Indici, Tech, Big Tech, Forex, ETF e Crypto sulla Home",14f,Color.rgb(167,187,210)))
+  content.addView(label("Indici, Tech, Big Tech, materie prime, Forex, ETF e Crypto",14f,Color.rgb(167,187,210)))
   val controls=LinearLayout(this).apply {orientation=LinearLayout.HORIZONTAL}
   controls.addView(nativeButton("Aggiorna"){refresh()},
    LinearLayout.LayoutParams(0,dp(54),1f))
@@ -83,7 +83,7 @@ class MainActivity : Activity() {
   content.addView(scroll,LinearLayout.LayoutParams(
    ViewGroup.LayoutParams.MATCH_PARENT,0,1f))
   content.addView(label("Prezzi anche ritardati. Tocca un mercato per i dettagli. " +
-   "Per configurare i widget: tieni premuta la Home → Widget → Vertex Crypto.",
+   "Per configurare i widget: tieni premuta la Home → Widget → Vertex Mercati.",
    11f,Color.rgb(145,166,185)))
   setContentView(content)
   search.addTextChangedListener(object:TextWatcher{
@@ -107,7 +107,7 @@ class MainActivity : Activity() {
   if(android.os.Build.VERSION.SDK_INT>=26&&manager.isRequestPinAppWidgetSupported){
    val requested=manager.requestPinAppWidget(provider,null,null)
    if(requested) {
-    AlertDialog.Builder(this).setTitle("Vertex Crypto")
+    AlertDialog.Builder(this).setTitle("Vertex Mercati")
      .setMessage("Conferma il widget sulla Home. Scegli il mercato da mostrare nella schermata di configurazione.")
      .setPositiveButton("OK",null).show()
     return
@@ -184,7 +184,7 @@ class MainActivity : Activity() {
     }
    }?:"—"
    panel.addView(label(price,23f,Color.WHITE).apply {setTypeface(null,Typeface.BOLD)})
-   val pct=q.change?.let{String.format(Locale.US,"%+.2f%%",it)}?:"—"
+   val pct=q.change?.let{String.format(Locale.ITALY,"%+.2f%%",it)}?:"—"
    val color=when {
     q.change==null || q.change==0.0 -> Color.LTGRAY
     q.change>0 -> Color.rgb(29,220,158)
