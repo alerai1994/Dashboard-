@@ -52,8 +52,11 @@ FOREX = [
 # Genuine fund-share prices; never substitute crypto spot prices.
 # Amsterdam AINJ is USD; Paris AINJ.PA (fallback) is EUR.
 ETFS = [
-    ("etf-ibit", "IBIT"), ("etf-etha", "ETHA"),
-    ("etf-bsol", "BSOL"), ("etf-ainj", "AINJ.AS"),
+    ("etf-ibit", "IBIT"), ("etf-fbtc", "FBTC"), ("etf-gbtc", "GBTC"),
+    ("etf-etha", "ETHA"), ("etf-feth", "FETH"), ("etf-ethe", "ETHE"),
+    ("etf-bsol", "BSOL"), ("etf-fsol", "FSOL"), ("etf-gsol", "GSOL"),
+    ("etf-ainj", "AINJ.AS"),
+
 ]
 CRYPTO = [
     ("btc", "bitcoin"), ("eth", "ethereum"), ("sol", "solana"),
