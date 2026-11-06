@@ -1,7 +1,7 @@
-# Vertex Crypto — widget nativi per Android, iPhone/iPad e Windows 11
+# Vertex — widget nativi per la Home Android e per gli altri sistemi
 
 Questo repository contiene:
-- **Android**: app Android con `AppWidgetProvider`, schermata di configurazione per 42 crypto, refresh e più widget indipendenti.
+- **Android**: app `Vertex Mercati` con `AppWidgetProvider` configurabile per 89 strumenti (42 crypto, 14 indici, 5 Tech, 12 Big Tech, 6 materie prime, 6 Forex e 4 ETF/ETP), refresh e più widget indipendenti.
 - **iOS/iPadOS**: app SwiftUI e target WidgetKit/App Intents che consente di modificare la crypto di ciascun widget.
 - **Windows 11**: provider **nativo** Windows App SDK (.NET 8 / C# con registrazione COM tramite pacchetto MSIX) e, in alternativa, integrazione nella bacheca Widget dell'app PWA installata da Edge.
 - **Dashboard web**: non contiene più la sezione Widget Crypto. I widget sono gestiti e selezionati soltanto dal sistema operativo, dopo l'installazione dell'app nativa (Android/iPadOS) o del provider/PWA per Windows.
@@ -12,7 +12,7 @@ I tre sistemi leggono `market-quotes.json` verificato dal repository. Quando il 
 
 Vertex Crypto dispone di progetti di applicazione nativa distinti, sviluppati con le API del sistema:
 
-- **Android (Kotlin)** — `native/android`: app con elenco crypto ricercabile, prezzi e variazioni, dettagli dei mercati, aggiornamento del feed, comando per richiedere al launcher un widget Home, e provider `AppWidgetProvider` configurabile.
+- **Android (Kotlin)** — `native/android`: app mercati ricercabile con tutti i 89 strumenti, prezzi e variazioni, aggiornamento del feed, comando per richiedere al launcher un widget Home e provider `AppWidgetProvider` configurabile per ogni mercato.
 - **iPhone e iPad (SwiftUI)** — `native/ios`: app con ricerca, preferiti, schede dei mercati, aggiornamento delle quotazioni e WidgetKit (widget piccoli, medi e grandi con crypto configurabile).
 - **macOS (SwiftUI)** — stesso progetto Xcode, target `VertexCryptoMac` e `VertexCryptoMacWidget`. L'utente può aggiungere i widget al desktop o al Centro Notifiche secondo le funzioni del sistema.
 - **Windows 11 (C# WinForms)** — `native/windows/VertexCryptoProvider`: app desktop con ricerca e prezzi, più provider `IWidgetProvider` per i widget nella bacheca **Win + W**. La registrazione del provider richiede il packaging MSIX sotto `native/windows/VertexCryptoPackage`.
@@ -26,11 +26,11 @@ Su **Android** e **iPhone/iPad** i widget compaiono nella schermata Home del dis
 
 ## Android — installazione APK
 
-1. Nel repository apri **Actions → Build native device widgets**. Se il job Android è riuscito, scarica l'artifact **vertex-crypto-android-debug-apk**: contiene `app-debug.apk` da installare sul tuo telefono Android; per produzione, firma un APK/AAB con la tua chiave.
+1. Nel repository apri **Actions → Build Vertex native apps and widgets**. Se il job Android è riuscito, scarica l'artifact **vertex-crypto-android-debug-apk**: contiene `app-debug.apk` da installare sul tuo telefono Android; per produzione, firma un APK/AAB con la tua chiave.
 2. In alternativa, apri `native/android` in Android Studio (JDK 17, SDK 35, Gradle 8.11.1), sincronizza ed esegui `app` sul telefono.
-3. Tieni premuta la schermata Home → **Widget** → **Vertex Crypto** → trascina il riquadro.
-4. Nella schermata di configurazione seleziona una delle **42 crypto**, compresa **ORE Protocol**. Tocca il nome del widget per cambiare crypto o ↻ per richiedere un nuovo prezzo. Puoi inserire più widget.
-5. L'aggiornamento periodico richiesto è 30 minuti, ma il sistema può ritardarlo. Serve una connessione e le quotazioni possono essere ritardate.
+3. Sul Samsung Galaxy: tieni premuto uno spazio libero nella schermata Home → **Widget** → cerca **Vertex Mercati** → aggiungi il riquadro.
+4. Nella configurazione scegli tra **89 strumenti**: Bitcoin, Ethereum, Solana, Injective, ORE, indici, azioni tecnologiche, materie prime, Forex oppure ETF/ETP. Tocca il nome del widget per cambiare strumento oppure ↻ per aggiornare la quotazione. Puoi aggiungere più widget, ciascuno indipendente.
+5. Il sistema richiede aggiornamenti periodici ogni **30 minuti**; Android può ritardarli per batteria o restrizioni in background. Il pulsante ↻ richiede un aggiornamento manuale. Il colore del prezzo confronta due osservazioni successive dello stesso strumento, mentre la percentuale rappresenta la variazione riportata dalla fonte. I dati non sono streaming in tempo reale e possono essere ritardati.
 
 ## iOS / iPadOS — installazione dell'app e del widget
 
