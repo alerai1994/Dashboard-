@@ -11,6 +11,9 @@ import android.widget.RemoteViews
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.time.OffsetDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 class VertexWidgetProvider : AppWidgetProvider() {
@@ -31,7 +34,8 @@ class VertexWidgetProvider : AppWidgetProvider() {
   } catch (_: Exception) { null }
 
   private fun quote(feed: JSONObject, id: String): JSONObject? {
-   val rows = feed.optJSONArray("crypto") ?: return null
+   val group=MarketCatalog.byId[id]?.feedGroup ?: return null
+   val rows = feed.optJSONArray(group) ?: return null
    for (i in 0 until rows.length()) {
     val row = rows.optJSONObject(i) ?: continue
     if (row.optString("id") == id) return row
@@ -49,14 +53,56 @@ class VertexWidgetProvider : AppWidgetProvider() {
    val row = quote(feed, selected)
    val value = row?.optDouble("value", Double.NaN) ?: Double.NaN
    val change = row?.optDouble("change", Double.NaN) ?: Double.NaN
-   val price = when {
-    !value.isFinite() || value <= 0 -> "—"
-    value >= 1 -> "$" + String.format(Locale.US, "%,.2f", value)
-    else -> "$" + String.format(Locale.US, "%.6f", value)
+   val spec=MarketCatalog.byId[selected]
+   val currency=row?.optString("currency")?.takeIf { it.isNotBlank() } ?: "USD"
+   val price=when {
+    !value.isFinite()||value<=0 -> "—"
+    spec?.feedGroup=="forex" -> String.format(Locale.ITALY,if(value>=100)"%,.3f" else "%,.5f",value)
+    spec?.feedGroup=="markets" -> String.format(Locale.ITALY,"%,.2f",value)
+    else -> {
+     val digits=when {
+      value>=1 -> 2
+      value>=0.01 -> 4
+      value>=0.0001 -> 6
+      else -> 9
+     }
+     val amount=String.format(Locale.ITALY,"%,"+ "."+digits+"f",value)
+     if(currency=="USD"||currency=="USDT") "$"+amount else amount+" "+currency
+    }
    }
-   val percent = if (change.isFinite()) String.format(Locale.US, "%+.2f%%", change) else "—"
-   val asOf = row?.optString("time")?.takeIf { it.isNotBlank() }
-    ?.take(16)?.replace('T',' ')?.plus(" UTC") ?: "Quotazione non disponibile"
+   val percent=if(change.isFinite())String.format(Locale.ITALY,"%+.2f%%",change) else "—"
+   val quoteTime=row?.optString("time")?.takeIf { it.isNotBlank() }
+   val asOf=try {
+    val local=OffsetDateTime.parse(quoteTime).atZoneSameInstant(ZoneId.of("Europe/Rome"))
+    "Rilevato "+local.format(DateTimeFormatter.ofPattern("dd/MM HH:mm"))
+   }catch (_:Exception){"Orario fonte non disponibile"}
+   // The colored share price responds to actual successive observations,
+   // not to the day's percentage (which is displayed separately).
+   val prefs=context.getSharedPreferences("vertex_widgets",Context.MODE_PRIVATE)
+   val previous=prefs.getString("last_price_$id",null)?.toDoubleOrNull()
+   val previousSource=prefs.getString("last_source_$id",null)
+   val previousTime=prefs.getString("last_time_$id",null)
+   val lastDirection=prefs.getInt("last_direction_$id",0)
+   val source=row?.optString("source") ?: ""
+   val sameSource=previousSource==source
+   val sameObservation=previousTime==quoteTime
+   val direction=when {
+    !value.isFinite()||value<=0||previous==null||previous<=0||!sameSource -> 0
+    previousTime!=null&&quoteTime!=null&&previousTime>quoteTime -> lastDirection
+    value>previous -> 1
+    value<previous -> -1
+    sameObservation -> lastDirection
+    else -> 0
+   }
+   if(value.isFinite()&&value>0&&
+    (previousTime==null||quoteTime==null||previousTime<=quoteTime)){
+    prefs.edit()
+     .putString("last_price_$id",value.toString())
+     .putString("last_source_$id",source)
+     .putString("last_time_$id",quoteTime)
+     .putInt("last_direction_$id",direction)
+     .apply()
+   }
 
    val editIntent = Intent(context, WidgetConfigActivity::class.java).apply {
     putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
@@ -72,14 +118,20 @@ class VertexWidgetProvider : AppWidgetProvider() {
     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
    val views = RemoteViews(context.packageName, R.layout.widget_crypto).apply {
-    setTextViewText(R.id.widget_name, "VERTEX · " + (CoinCatalog.names[selected] ?: selected.uppercase()))
+    setTextViewText(R.id.widget_name, "VERTEX · " + (MarketCatalog.names[selected] ?: selected.uppercase()))
     setTextViewText(R.id.widget_price, price)
     setTextViewText(R.id.widget_change, percent)
     setTextViewText(R.id.widget_asof, asOf)
+    setTextColor(R.id.widget_price,when{
+     direction>0 -> Color.rgb(29,220,158)
+     direction<0 -> Color.rgb(255,102,119)
+     else -> Color.WHITE
+    })
     setTextColor(R.id.widget_change, when {
      !change.isFinite() -> Color.GRAY
      change < 0 -> Color.rgb(255,102,119)
-     else -> Color.rgb(29,220,158)
+     change > 0 -> Color.rgb(29,220,158)
+     else -> Color.GRAY
     })
     setOnClickPendingIntent(R.id.widget_name, editPending)
     setOnClickPendingIntent(R.id.widget_refresh, refreshPending)
@@ -111,7 +163,13 @@ class VertexWidgetProvider : AppWidgetProvider() {
   override fun onDeleted(context: Context, appWidgetIds: IntArray) {
    val prefs = context.getSharedPreferences("vertex_widgets", Context.MODE_PRIVATE)
    val editor = prefs.edit()
-   appWidgetIds.forEach { editor.remove("coin_$it") }
+   appWidgetIds.forEach {
+    editor.remove("coin_$it")
+    editor.remove("last_price_$it")
+    editor.remove("last_source_$it")
+    editor.remove("last_time_$it")
+    editor.remove("last_direction_$it")
+   }
    editor.apply()
    super.onDeleted(context, appWidgetIds)
   }
