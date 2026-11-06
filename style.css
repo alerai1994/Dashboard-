@@ -1264,7 +1264,7 @@ body.theme-light .vertex-boot-note{color:#56738f}
 .crypto-etf-title h2{font-size:20px;margin:0 0 5px}
 .crypto-etf-title p{font-size:12px;color:var(--muted);margin:0}
 .crypto-etf-total{font-size:11px;white-space:nowrap;color:var(--muted);padding:6px 10px;border:1px solid var(--line);border-radius:20px}
-.crypto-etf-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.crypto-etf-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .crypto-etf-card{min-width:0;padding:17px;border:1px solid var(--line);border-radius:15px;display:flex;flex-direction:column;gap:9px;background:var(--panel)}
 .crypto-etf-card-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .crypto-etf-asset{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--muted);font-weight:700}
@@ -1298,6 +1298,26 @@ body.theme-light .vertex-boot-note{color:#56738f}
 .crypto-etf-disclaimer{font-size:10px;line-height:1.6;color:var(--muted);margin:12px 0 0}
 @media(max-width:1250px){.crypto-etf-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:650px){.crypto-etf-grid{grid-template-columns:1fr}.crypto-etf-title h2{font-size:17px}}
+
+
+/* Verified ETF/ETP quote history — line changes color with actual price trend. */
+.crypto-etf-chart{border:1px solid var(--line-soft);background:var(--surface);padding:11px;border-radius:10px;min-width:0;--etf-stroke:#21b989}
+.crypto-etf-chart.down{--etf-stroke:#e96173}
+.crypto-etf-chart-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.crypto-etf-chart-head>strong{font-size:12px}
+.crypto-etf-periods{display:flex;flex-wrap:wrap;gap:4px}
+.crypto-etf-periods button{background:transparent;color:var(--muted);font-size:10px;font-weight:750;padding:5px 7px;border:1px solid var(--line);border-radius:7px;cursor:pointer}
+.crypto-etf-periods button.active{background:var(--brand);color:white;border-color:var(--brand)}
+.crypto-etf-periods button:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.crypto-etf-chart svg{display:block;width:100%;height:183px;overflow:visible;margin:8px 0 3px}
+.crypto-etf-chart svg text{fill:var(--muted);font-size:10px;font-weight:550}
+.crypto-etf-chart .etf-gridline{stroke:var(--line);stroke-width:1;stroke-dasharray:4 5}
+.crypto-etf-chart .etf-path{fill:none;stroke:var(--etf-stroke);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.crypto-etf-chart .etf-fill{fill:var(--etf-stroke);opacity:.085}
+.crypto-etf-chart .etf-dot{fill:var(--etf-stroke)}
+.crypto-etf-chart>small{display:block;color:var(--muted);font-size:9px;line-height:1.45}
+.crypto-etf-empty{min-height:165px;display:grid;place-items:center;text-align:center;color:var(--muted);font-size:12px;line-height:1.55;margin:0}
+@media(max-width:760px){.crypto-etf-chart{padding:9px}.crypto-etf-chart svg{height:160px}}
 
 /* Settings: automatic price band for all 42 crypto, without an Alerts page. */
 .crypto-bell-settings{margin-top:16px}
