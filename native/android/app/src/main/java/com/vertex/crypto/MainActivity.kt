@@ -57,10 +57,10 @@ class MainActivity : Activity() {
    setPadding(dp(16),dp(18),dp(16),dp(16))
    setBackgroundColor(Color.rgb(7,19,32))
   }
-  content.addView(label("VERTEX · CRYPTO",26f,Color.rgb(101,179,255)).apply {
+  content.addView(label("VERTEX · MERCATI",26f,Color.rgb(101,179,255)).apply {
    setTypeface(null,Typeface.BOLD)
   })
-  content.addView(label("Quotazioni reali, widget sulla Home",14f,Color.rgb(167,187,210)))
+  content.addView(label("Indici, Tech, Big Tech, Forex, ETF e Crypto sulla Home",14f,Color.rgb(167,187,210)))
   val controls=LinearLayout(this).apply {orientation=LinearLayout.HORIZONTAL}
   controls.addView(nativeButton("Aggiorna"){refresh()},
    LinearLayout.LayoutParams(0,dp(54),1f))
@@ -68,7 +68,7 @@ class MainActivity : Activity() {
    LinearLayout.LayoutParams(0,dp(54),1f))
   content.addView(controls)
   search=EditText(this).apply{
-   hint="Cerca BTC, Solana, ORE…"
+   hint="Cerca BTC, NVIDIA, EUR/USD, ETF…"
    setSingleLine(true)
    setTextColor(Color.WHITE)
    setHintTextColor(Color.rgb(132,153,176))
@@ -108,13 +108,13 @@ class MainActivity : Activity() {
    val requested=manager.requestPinAppWidget(provider,null,null)
    if(requested) {
     AlertDialog.Builder(this).setTitle("Vertex Crypto")
-     .setMessage("Conferma il widget sulla Home. Tocca il suo nome per scegliere una delle 42 criptovalute.")
+     .setMessage("Conferma il widget sulla Home. Scegli il mercato da mostrare nella schermata di configurazione.")
      .setPositiveButton("OK",null).show()
     return
    }
   }
   AlertDialog.Builder(this).setTitle("Aggiungi un widget")
-   .setMessage("Tieni premuta la schermata Home, apri Widget, cerca Vertex Crypto e scegli la moneta.")
+   .setMessage("Tieni premuta la schermata Home, apri Widget, cerca Vertex Mercati e scegli il mercato.")
    .setPositiveButton("OK",null).show()
  }
  private fun refresh(){
@@ -130,7 +130,7 @@ class MainActivity : Activity() {
      quotes.addAll(result)
      lastRefresh=System.currentTimeMillis()
      busy=false
-     status.text="${quotes.size} crypto disponibili · fonte Vertex · dati anche ritardati"
+     status.text="${quotes.size} strumenti disponibili · fonte Vertex · dati anche ritardati"
      draw()
     }
    }catch(error:Exception){
@@ -148,7 +148,7 @@ class MainActivity : Activity() {
   val needle=search.text.toString().trim().lowercase(Locale.ROOT)
   cards.removeAllViews()
   val list=quotes.filter{q->
-   val title=CoinCatalog.names[q.id]?:q.id
+   val title=MarketCatalog.names[q.id]?:q.id
    needle.isEmpty()||title.lowercase(Locale.ROOT).contains(needle)||q.id.contains(needle)
   }
   if(list.isEmpty()){
@@ -163,24 +163,39 @@ class MainActivity : Activity() {
     val params=LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(8)}
     layoutParams=params
    }
-   val title=label(CoinCatalog.names[q.id]?:q.id,16f).apply{
+   val title=label(MarketCatalog.names[q.id]?:q.id,16f).apply{
     setTypeface(null,Typeface.BOLD)
    }
    panel.addView(title)
+   val asset=MarketCatalog.byId[q.id]
    val price=q.price?.let {
-    if(it>=1)String.format(Locale.US,"$%,.2f",it)
-    else String.format(Locale.US,"$%.7f",it)
+    when(asset?.feedGroup){
+     "forex" -> String.format(Locale.ITALY,if(it>=100)"%,.3f" else "%,.5f",it)
+     "markets" -> String.format(Locale.ITALY,"%,.2f",it)
+     else -> {
+      val digits=when {
+       it>=1 -> 2
+       it>=0.01 -> 4
+       it>=0.0001 -> 6
+       else -> 9
+      }
+      "$"+String.format(Locale.ITALY,"%,."+digits+"f",it)
+     }
+    }
    }?:"—"
    panel.addView(label(price,23f,Color.WHITE).apply {setTypeface(null,Typeface.BOLD)})
    val pct=q.change?.let{String.format(Locale.US,"%+.2f%%",it)}?:"—"
-   val color=if(q.change==null)Color.LTGRAY else if(q.change>=0)
-    Color.rgb(29,220,158) else Color.rgb(255,107,125)
+   val color=when {
+    q.change==null || q.change==0.0 -> Color.LTGRAY
+    q.change>0 -> Color.rgb(29,220,158)
+    else -> Color.rgb(255,107,125)
+   }
    panel.addView(label(pct,14f,color))
    panel.addView(label("Fonte: ${q.source?:"n.d."} · ${q.time?:"orario non disponibile"}",
     11f,Color.rgb(149,176,201)))
    panel.setOnClickListener {
-    AlertDialog.Builder(this).setTitle(CoinCatalog.names[q.id]?:q.id)
-     .setMessage("Prezzo: $price\nVariazione: $pct\nFonte: ${q.source?:"n.d."}\nDato: ${q.time?:"n.d."}\n\nPer aggiungerlo sulla Home, usa il widget Vertex Crypto e seleziona questa moneta.")
+    AlertDialog.Builder(this).setTitle(MarketCatalog.names[q.id]?:q.id)
+     .setMessage("Prezzo: $price\nVariazione: $pct\nFonte: ${q.source?:"n.d."}\nDato: ${q.time?:"n.d."}\n\nPer aggiungerlo sulla Home, usa il widget Vertex Mercati e seleziona questo strumento.")
      .setPositiveButton("Chiudi",null).show()
    }
    cards.addView(panel)
