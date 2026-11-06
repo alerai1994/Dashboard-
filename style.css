@@ -2225,3 +2225,51 @@ body .topbar .live-clock strong{
 #pageContainer .photo-card-metrics strong.quote-price-neutral,
 #searchMenu button[data-asset] .quote-price-neutral,
 #dialogBody .dialog-stats strong.quote-price-neutral{color:var(--muted)!important;text-shadow:none!important}
+
+
+/* UPPER/LOWER alert blink: the existing 15s expiry is owned by script.js. */
+/* A real threshold crossing applies these classes to its price and the bell.
+   Dynamic quote movement colors remain in place beneath the temporary alert. */
+@keyframes vertexThresholdBlink{
+ 0%,48%{opacity:1}
+ 49%,100%{opacity:.2}
+}
+#pageContainer .crypto-price-upper,
+#pageContainer .crypto-price-lower,
+#dialogBody .crypto-price-upper,
+#dialogBody .crypto-price-lower,
+#searchMenu .crypto-price-upper,
+#searchMenu .crypto-price-lower,
+#notificationsButton.bell-alert-upper,
+#notificationsButton.bell-alert-lower{
+ animation:vertexThresholdBlink .8s steps(1,end) infinite;
+}
+/* Alert colors override dynamic quote colors only during those 15 seconds. */
+#pageContainer [data-asset] :is(.asset-price,.mini-price,.tech-asset-value).crypto-price-upper,
+#pageContainer tr[data-asset] td.crypto-price-upper,
+#dialogBody .dialog-stats strong.crypto-price-upper,
+#searchMenu button[data-asset] .crypto-price-upper{
+ color:#facc15!important;
+ text-shadow:0 0 10px rgba(250,204,21,.35)!important;
+}
+#pageContainer [data-asset] :is(.asset-price,.mini-price,.tech-asset-value).crypto-price-lower,
+#pageContainer tr[data-asset] td.crypto-price-lower,
+#dialogBody .dialog-stats strong.crypto-price-lower,
+#searchMenu button[data-asset] .crypto-price-lower{
+ color:#ff415b!important;
+ text-shadow:0 0 10px rgba(255,65,91,.35)!important;
+}
+/* Motion sensitivity: retain the alert color for 15s without flashing. */
+@media(prefers-reduced-motion:reduce){
+ #pageContainer .crypto-price-upper,
+ #pageContainer .crypto-price-lower,
+ #dialogBody .crypto-price-upper,
+ #dialogBody .crypto-price-lower,
+ #searchMenu .crypto-price-upper,
+ #searchMenu .crypto-price-lower,
+ #notificationsButton.bell-alert-upper,
+ #notificationsButton.bell-alert-lower{
+  animation:none!important;
+  opacity:1!important;
+ }
+}
