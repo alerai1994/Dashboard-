@@ -2014,6 +2014,59 @@ function updateCryptoEtfQuoteDom(){
   }
  }
 }
+
+const ETF_CHART_PERIODS=['1D','5D','1M','1A'];
+const etfPeriods=Object.create(null);
+const etfHistory={funds:{},lastFetch:0,loading:false,error:false};
+function cryptoEtfChart(product){
+ const period=etfPeriods[product.quoteId]||'1M';
+ const rows=etfHistory.funds[product.quoteId]?.periods?.[period];
+ const samples=Array.isArray(rows)?rows.filter(p=>Array.isArray(p)&&p.length===2&&Number(p[0])>946684800&&Number.isFinite(Number(p[1]))&&Number(p[1])>0):[];
+ const header='<div class="crypto-etf-chart-head"><strong>Grafico quota '+esc(product.ticker)+'</strong>'+
+  '<div class="crypto-etf-periods" role="group" aria-label="Periodo del grafico">'+ETF_CHART_PERIODS.map(p=>
+   '<button type="button" data-etf-chart-period="'+p+'" data-etf-id="'+esc(product.quoteId)+
+   '" aria-pressed="'+(p===period)+'" class="'+(p===period?'active':'')+'">'+p+'</button>').join('')+'</div></div>';
+ if(samples.length<2)return '<div class="crypto-etf-chart">'+header+'<p class="crypto-etf-empty">'+
+  (etfHistory.error?'Storico temporaneamente non raggiungibile.':'Storico di borsa verificato in preparazione.')+'</p></div>';
+ const prices=samples.map(p=>Number(p[1])),lo=Math.min(...prices),hi=Math.max(...prices),pad=Math.max((hi-lo)*.15,hi*.002);
+ const points=samples.map((p,i)=>[25+470*i/(samples.length-1),143-120*(Number(p[1])-(lo-pad))/(hi-lo+2*pad)]);
+ const line='M'+points.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join('L');
+ const area=line+'L495,143L25,143Z',end=points[points.length-1],down=prices[prices.length-1]<prices[0];
+ const dt=v=>new Intl.DateTimeFormat('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Rome'}).format(new Date(Number(v)*1000));
+ return '<div class="crypto-etf-chart '+(down?'down':'up')+'">'+header+
+  '<svg viewBox="0 0 520 183" preserveAspectRatio="none" role="img" aria-label="Andamento quotazione '+esc(product.ticker)+' · '+period+'">'+
+  '<line class="etf-gridline" x1="25" y1="42" x2="495" y2="42"/>'+
+  '<line class="etf-gridline" x1="25" y1="92" x2="495" y2="92"/>'+
+  '<line class="etf-gridline" x1="25" y1="143" x2="495" y2="143"/>'+
+  '<path class="etf-fill" d="'+area+'"/><path class="etf-path" d="'+line+'"/>'+
+  '<circle class="etf-dot" cx="'+end[0].toFixed(1)+'" cy="'+end[1].toFixed(1)+'" r="3"/>'+
+  '<text x="25" y="13">'+esc(cryptoEtfNumberFormat.format(hi))+'</text>'+
+  '<text x="25" y="158">'+esc(cryptoEtfNumberFormat.format(lo))+'</text>'+
+  '<text x="25" y="177">'+esc(dt(samples[0][0]))+'</text>'+
+  '<text x="495" y="177" text-anchor="end">'+esc(dt(samples[samples.length-1][0]))+'</text></svg>'+
+  '<small>Yahoo Finance · grafico quota ETF/ETP · possibile ritardo</small></div>';
+}
+function paintCryptoEtfCharts(){
+ if(state.page!=='etf')return;
+ for(const product of CRYPTO_ETF_PRODUCTS){
+  const node=document.querySelector('[data-etf-chart="'+product.quoteId+'"]');
+  if(node)node.innerHTML=cryptoEtfChart(product);
+ }
+}
+async function loadCryptoEtfHistory(){
+ if(etfHistory.loading||Date.now()-etfHistory.lastFetch<300000)return;
+ etfHistory.loading=true;etfHistory.lastFetch=Date.now();
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),7500);
+ try{
+  const response=await fetch('./etf-history.json?v='+Math.floor(Date.now()/300000),{cache:'no-store',signal:controller.signal});
+  if(!response.ok)throw Error('ETF history '+response.status);
+  const data=await response.json();
+  if(!data||!data.funds||typeof data.funds!=='object')throw Error('ETF data invalid');
+  etfHistory.funds=data.funds;etfHistory.error=false;
+ }catch(_e){etfHistory.error=true}
+ finally{clearTimeout(timer);etfHistory.loading=false;paintCryptoEtfCharts()}
+}
+
 function cryptoEtfSection(){
  const cards=CRYPTO_ETF_PRODUCTS.map(product=>{
   const asset=ASSET_BY_ID[product.crypto],q=quote(product.crypto);
@@ -2032,7 +2085,8 @@ function cryptoEtfSection(){
    '<p class="crypto-etf-description">'+esc(product.description)+'</p>'+
    '<div class="crypto-etf-market-note" data-etf-quote-id="'+esc(product.quoteId)+'">'+
     cryptoEtfQuoteMarkup(product)+'</div>'+
-   '<div class="crypto-etf-spot"><small>Crypto sottostante · prezzo spot (NON quota ETF)</small>'+
+   '<div data-etf-chart="'+esc(product.quoteId)+'">'+cryptoEtfChart(product)+'</div>'+
+    '<div class="crypto-etf-spot"><small>Crypto sottostante · prezzo spot (NON quota ETF)</small>'+
     '<div><strong class="asset-price '+quotePriceClass(product.crypto)+'">'+esc(spot)+'</strong>'+
     '<span class="asset-change '+(Number(q?.change)>0?'color-up':Number(q?.change)<0?'color-down':'')+'">'+esc(delta)+'</span></div>'+
     '<small class="market-quote-asof">'+esc(stamp)+'</small></div>'+
@@ -2042,8 +2096,8 @@ function cryptoEtfSection(){
  }).join('');
  return '<section class="crypto-etfs-section" aria-label="ETF ed ETP delle criptovalute">'+
   '<div class="crypto-etf-title"><div><h2>ETF ed ETP Crypto</h2>'+
-  '<p>Bitcoin, Ethereum, Solana e Injective · ETF ed ETP negoziati</p></div>'+
-  '<span class="crypto-etf-total">4 prodotti</span></div>'+
+  '<p>Bitcoin, Ethereum, Solana e Injective · quotazioni e grafici storici ETF/ETP</p></div>'+
+  '<span class="crypto-etf-total">4 quotazioni · 4 grafici</span></div>'+
   '<div class="crypto-etf-grid">'+cards+'</div>'+
   '<p class="crypto-etf-disclaimer">Le quotazioni delle quote ETF/ETP provengono da Yahoo Finance, con aggiornamenti automatici periodici; possono essere ritardate. '+
   'I mercati chiusi non producono nuovi scambi. Per AINJ viene utilizzata la quotazione di Amsterdam in USD, oppure quella di Parigi in EUR se Amsterdam non è disponibile. '+
@@ -3302,7 +3356,7 @@ function render(){
  main.innerHTML=PAGE_RENDERERS[state.page]();
   updateNav();
  paintCryptoPriceHighlights();
- if(state.page==='etf')loadCryptoCapData();
+ if(state.page==='etf'){loadCryptoCapData();loadCryptoEtfHistory();}
  if(state.page==='news'&&!secNewsState.loaded&&!secNewsState.loading)loadSecNews();
  if(state.page==='global'||(state.page==='workspace'&&workspaceShown('global'))){
   if(!state.land)loadWorldShape();
@@ -5091,6 +5145,14 @@ function setupEvents(){
    save('adaptiveBrightness',state.adaptiveBrightness);
    applyBrightness();
    if(state.page==='settings')render();
+   return;
+  }
+  if(btn.dataset.etfChartPeriod&&btn.dataset.etfId&&state.page==='etf'){
+   if(ETF_CHART_PERIODS.includes(btn.dataset.etfChartPeriod)&&
+      CRYPTO_ETF_PRODUCTS.some(p=>p.quoteId===btn.dataset.etfId)){
+    etfPeriods[btn.dataset.etfId]=btn.dataset.etfChartPeriod;
+    paintCryptoEtfCharts();
+   }
    return;
   }
   if(btn.dataset.capSwap!==undefined&&state.page==='etf'){
