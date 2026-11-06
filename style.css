@@ -1319,6 +1319,23 @@ body.theme-light .vertex-boot-note{color:#56738f}
 .crypto-etf-empty{min-height:165px;display:grid;place-items:center;text-align:center;color:var(--muted);font-size:12px;line-height:1.55;margin:0}
 @media(max-width:760px){.crypto-etf-chart{padding:9px}.crypto-etf-chart svg{height:160px}}
 
+
+/* Multiple exchange-traded quotes grouped beneath each BTC/ETH/SOL chart. */
+.crypto-etf-others{border:1px solid var(--line-soft);background:var(--surface);border-radius:10px;padding:11px;display:grid;gap:8px}
+.crypto-etf-others h4{font-size:11px;font-weight:750;margin:0 0 2px}
+.crypto-etf-other{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr) 22px;align-items:center;gap:8px;padding-top:9px;border-top:1px solid var(--line-soft)}
+.crypto-etf-other-name{display:grid;gap:3px;min-width:0}
+.crypto-etf-other-name strong{font-size:13px}
+.crypto-etf-other-name small{font-size:9px;line-height:1.35;color:var(--muted)}
+.crypto-etf-other-quote{min-width:0;display:grid;gap:4px}
+.crypto-etf-other-quote>small{font-size:9px;color:var(--muted);line-height:1.35;overflow-wrap:anywhere}
+.crypto-etf-other-quote .crypto-etf-quote-line{align-items:center}
+.crypto-etf-other-quote .crypto-etf-share-price{font-size:14px;font-weight:800}
+.crypto-etf-other-quote .crypto-etf-share-price span{font-size:10px;font-weight:600}
+.crypto-etf-other-quote .crypto-etf-share-change{font-size:10px;font-weight:700}
+.crypto-etf-other>a{color:var(--brand);font-size:16px;text-decoration:none;text-align:center}
+@media(max-width:480px){.crypto-etf-other{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 18px;gap:5px}}
+
 /* Settings: automatic price band for all 42 crypto, without an Alerts page. */
 .crypto-bell-settings{margin-top:16px}
 .crypto-bell-settings .settings-sound-row{align-items:center}
