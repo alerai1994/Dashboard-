@@ -41,7 +41,7 @@ assert(ore.bids?.length>0&&ore.asks?.length>0,'ORE orderbook missing bids or ask
 const adapted=source.replace('function render(){','function render(){return;')
  .replace('function toast(message){','function toast(message){return;')
  .replace('(function () {','return (function () {')
- .replace(/\}\)\(\);\s*$/,'return {PAGE_RENDERERS,state,portfolioPage,edit:i=>portfolioEditIndex=i,unlockVertexAudio,playClickSound,playCryptoAlertSound,workspaceChange,workspacePage,workspaceShown,getWorkspaceLayout:()=>workspaceLayout,getWorkspaceEdit:()=>workspaceEditMode};})();');
+ .replace(/\}\)\(\);\s*$/,'return {PAGE_RENDERERS,state,portfolioPage,portfolioRow,edit:i=>portfolioEditIndex=i,unlockVertexAudio,playClickSound,playCryptoAlertSound,workspaceChange,workspacePage,workspaceShown,getWorkspaceLayout:()=>workspaceLayout,getWorkspaceEdit:()=>workspaceEditMode};})();');
 assert(adapted.includes('edit:i=>'),'Cannot instrument app for smoke test');
 /* Simulated WebAudio: exercise sound scheduling without playing real audio in CI. */
 const audioEvents={created:0,resumes:0,notes:[]};
@@ -94,7 +94,27 @@ for(const key of ['themeMode','fontStyle','portfolioSave','orderBookAsset','asse
 }
 app.state.holdings=[null];app.edit(0);
 assert(app.portfolioPage().includes('portfolioForm'),'Corrupt portfolio holding crashes edit');
-console.log('PASS themes/fonts/feeds/icons/orderbook/portfolio corruption');
+app.edit(-1);
+const newPortfolioForm=app.portfolioPage();
+assert(newPortfolioForm.includes('id="holdingAverageBuyPrice"'),
+ 'Portfolio average purchase input missing');
+assert(newPortfolioForm.includes('name="avgBuyPrice"'),
+ 'Portfolio average purchase field is not submitted');
+assert(newPortfolioForm.includes('<th>Prezzo medio acquisto</th>'),
+ 'Portfolio positions must show average buy price');
+const averageHolding={id:'btc',qty:2,avgBuyPrice:125,investedUsd:200};
+const averageRow=app.portfolioRow(averageHolding,0);
+assert.equal(averageRow.cost,125,'Manual average price must take priority');
+assert.equal(averageRow.invested,250,'Invested amount must follow quantity times manual average');
+const oldHolding={id:'btc',qty:2,investedUsd:200};
+const oldRow=app.portfolioRow(oldHolding,0);
+assert.equal(oldRow.cost,100,'Existing holdings must preserve legacy cost calculation');
+assert.equal(oldRow.invested,200,'Existing holdings must retain invested amount');
+app.state.holdings=[averageHolding];app.edit(0);
+const editingPortfolio=app.portfolioPage();
+assert(editingPortfolio.includes('id="holdingAverageBuyPrice"'),
+ 'Editing a position must include average purchase input');
+console.log('PASS themes/fonts/feeds/icons/orderbook/portfolio and average buy price');
 
 assert(settings.includes('data-test-click-sound="1"'),'No test for click sound');
 assert(settings.includes('data-test-crypto-alert-sound="above"'),'No UPPER audio preview');
