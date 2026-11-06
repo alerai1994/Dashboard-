@@ -26,21 +26,23 @@ object QuoteRepository {
    if(connection.responseCode !in 200..299)
     throw IllegalStateException("HTTP "+connection.responseCode)
    val json=connection.inputStream.bufferedReader().use { JSONObject(it.readText()) }
-   val rows=json.optJSONArray("crypto") ?: throw IllegalStateException("Feed crypto vuoto")
    val result=mutableListOf<CryptoQuote>()
-   for(i in 0 until rows.length()){
-    val item=rows.optJSONObject(i) ?: continue
-    val id=item.optString("id")
-    if(!CoinCatalog.names.containsKey(id))continue
-    val rawPrice=item.optDouble("value",Double.NaN)
-    val rawChange=item.optDouble("change",Double.NaN)
-    result.add(CryptoQuote(
-     id=id,
-     price=rawPrice.takeIf { it.isFinite() && it>0 },
-     change=rawChange.takeIf { it.isFinite() },
-     time=item.optString("time").takeIf { it.isNotEmpty() },
-     source=item.optString("source").takeIf { it.isNotEmpty() }
-    ))
+   for(group in MarketCatalog.groups){
+    val rows=json.optJSONArray(group) ?: continue
+    for(i in 0 until rows.length()){
+     val item=rows.optJSONObject(i) ?: continue
+     val id=item.optString("id")
+     if(MarketCatalog.byId[id]?.feedGroup!=group)continue
+     val rawPrice=item.optDouble("value",Double.NaN)
+     val rawChange=item.optDouble("change",Double.NaN)
+     result.add(CryptoQuote(
+      id=id,
+      price=rawPrice.takeIf { it.isFinite() && it>0 },
+      change=rawChange.takeIf { it.isFinite() },
+      time=item.optString("time").takeIf { it.isNotEmpty() },
+      source=item.optString("source").takeIf { it.isNotEmpty() }
+     ))
+    }
    }
    if(result.isEmpty())throw IllegalStateException("Nessuna quotazione disponibile")
    return result
