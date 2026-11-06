@@ -2197,3 +2197,31 @@ body .topbar .live-clock strong{
  body .topbar .live-clock strong{font-size:14px}
  body .topbar .live-clock{top:0;right:0}
 }
+
+
+/* Price trend colors for all market groups (including live refresh). */
+/* These rules take priority over the crypto alert highlight color, while
+   preserving the alert notification logic and every market's source change. */
+#pageContainer [data-asset] .asset-price.quote-price-up,
+#pageContainer [data-asset] .mini-price.quote-price-up,
+#pageContainer [data-asset] .tech-asset-value.quote-price-up,
+#pageContainer tr[data-asset] td.quote-price-up,
+#pageContainer .photo-card-metrics strong.quote-price-up,
+#searchMenu button[data-asset] .quote-price-up,
+#dialogBody .dialog-stats strong.quote-price-up{color:var(--green)!important;text-shadow:none!important}
+
+#pageContainer [data-asset] .asset-price.quote-price-down,
+#pageContainer [data-asset] .mini-price.quote-price-down,
+#pageContainer [data-asset] .tech-asset-value.quote-price-down,
+#pageContainer tr[data-asset] td.quote-price-down,
+#pageContainer .photo-card-metrics strong.quote-price-down,
+#searchMenu button[data-asset] .quote-price-down,
+#dialogBody .dialog-stats strong.quote-price-down{color:var(--red)!important;text-shadow:none!important}
+
+#pageContainer [data-asset] .asset-price.quote-price-neutral,
+#pageContainer [data-asset] .mini-price.quote-price-neutral,
+#pageContainer [data-asset] .tech-asset-value.quote-price-neutral,
+#pageContainer tr[data-asset] td.quote-price-neutral,
+#pageContainer .photo-card-metrics strong.quote-price-neutral,
+#searchMenu button[data-asset] .quote-price-neutral,
+#dialogBody .dialog-stats strong.quote-price-neutral{color:var(--muted)!important;text-shadow:none!important}
