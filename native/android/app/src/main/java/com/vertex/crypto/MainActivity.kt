@@ -2,8 +2,6 @@ package com.vertex.crypto
 
 import android.app.Activity
 import android.app.AlertDialog
-import android.appwidget.AppWidgetManager
-import android.content.ComponentName
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -61,12 +59,8 @@ class MainActivity : Activity() {
    setTypeface(null,Typeface.BOLD)
   })
   content.addView(label("Indici, Tech, Big Tech, materie prime, Forex, ETF e Crypto",14f,Color.rgb(167,187,210)))
-  val controls=LinearLayout(this).apply {orientation=LinearLayout.HORIZONTAL}
-  controls.addView(nativeButton("Aggiorna"){refresh()},
-   LinearLayout.LayoutParams(0,dp(54),1f))
-  controls.addView(nativeButton("Aggiungi widget"){pinWidget()},
-   LinearLayout.LayoutParams(0,dp(54),1f))
-  content.addView(controls)
+  content.addView(nativeButton("Aggiorna"){refresh()},
+   LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(54)))
   search=EditText(this).apply{
    hint="Cerca BTC, NVIDIA, EUR/USD, ETF…"
    setSingleLine(true)
@@ -82,8 +76,7 @@ class MainActivity : Activity() {
   scroll.addView(cards)
   content.addView(scroll,LinearLayout.LayoutParams(
    ViewGroup.LayoutParams.MATCH_PARENT,0,1f))
-  content.addView(label("Prezzi anche ritardati. Tocca un mercato per i dettagli. " +
-   "Per configurare i widget: tieni premuta la Home → Widget → Vertex Mercati.",
+  content.addView(label("Prezzi anche ritardati. Tocca un mercato per i dettagli.",
    11f,Color.rgb(145,166,185)))
   setContentView(content)
   search.addTextChangedListener(object:TextWatcher{
@@ -101,22 +94,6 @@ class MainActivity : Activity() {
  }
  override fun onPause(){handler.removeCallbacks(periodic);super.onPause()}
 
- private fun pinWidget(){
-  val manager=AppWidgetManager.getInstance(this)
-  val provider=ComponentName(this,VertexWidgetProvider::class.java)
-  if(android.os.Build.VERSION.SDK_INT>=26&&manager.isRequestPinAppWidgetSupported){
-   val requested=manager.requestPinAppWidget(provider,null,null)
-   if(requested) {
-    AlertDialog.Builder(this).setTitle("Vertex Mercati")
-     .setMessage("Conferma il widget sulla Home. Scegli il mercato da mostrare nella schermata di configurazione.")
-     .setPositiveButton("OK",null).show()
-    return
-   }
-  }
-  AlertDialog.Builder(this).setTitle("Aggiungi un widget")
-   .setMessage("Tieni premuta la schermata Home, apri Widget, cerca Vertex Mercati e scegli il mercato.")
-   .setPositiveButton("OK",null).show()
- }
  private fun refresh(){
   if(busy)return
   busy=true
@@ -195,7 +172,7 @@ class MainActivity : Activity() {
     11f,Color.rgb(149,176,201)))
    panel.setOnClickListener {
     AlertDialog.Builder(this).setTitle(MarketCatalog.names[q.id]?:q.id)
-     .setMessage("Prezzo: $price\nVariazione: $pct\nFonte: ${q.source?:"n.d."}\nDato: ${q.time?:"n.d."}\n\nPer aggiungerlo sulla Home, usa il widget Vertex Mercati e seleziona questo strumento.")
+     .setMessage("Prezzo: $price\nVariazione: $pct\nFonte: ${q.source?:"n.d."}\nDato: ${q.time?:"n.d."}")
      .setPositiveButton("Chiudi",null).show()
    }
    cards.addView(panel)
