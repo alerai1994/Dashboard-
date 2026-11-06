@@ -26,8 +26,16 @@ class WidgetConfigActivity : Activity() {
   if(selectedIndex>=0)spinner.setSelection(selectedIndex)
   findViewById<Button>(R.id.save_widget).setOnClickListener {
    val selected=MarketCatalog.entries[spinner.selectedItemPosition].id
-   getSharedPreferences("vertex_widgets",MODE_PRIVATE)
-    .edit().putString("coin_$widgetId",selected).apply()
+   val prefs=getSharedPreferences("vertex_widgets",MODE_PRIVATE)
+   val previousId=prefs.getString("coin_$widgetId",null)
+   val editor=prefs.edit().putString("coin_$widgetId",selected)
+   if(previousId!=selected){
+    editor.remove("last_price_$widgetId")
+     .remove("last_time_$widgetId")
+     .remove("last_source_$widgetId")
+     .remove("last_direction_$widgetId")
+   }
+   editor.apply()
    val refresh=Intent(this,VertexWidgetProvider::class.java).apply {
     action=VertexWidgetProvider.ACTION_REFRESH
     putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS,intArrayOf(widgetId))
