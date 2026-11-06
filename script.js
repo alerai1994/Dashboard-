@@ -1955,8 +1955,15 @@ const CRYPTO_ETF_PRODUCTS=[
  {crypto:'inj',ticker:'AINJ',quoteId:'etf-ainj',name:'21Shares Injective Staking ETP',
   issuer:'21Shares',market:'Amsterdam · Europa',kind:'ETP / ETN · non ETF USA',
   url:'https://www.21shares.com/it-eu/product/ainj',
-  description:'ETP su Injective con staking, quotato in Europa; non è un ETF statunitense.'}
+  description:'ETP su Injective con staking, quotato in Europa; non è un ETF statunitense.'},
+ {crypto:'btc',ticker:'FBTC',quoteId:'etf-fbtc',name:'Fidelity Wise Origin Bitcoin Fund',issuer:'Fidelity',market:'Cboe · USA',kind:'ETF / ETP spot',url:'https://www.fidelity.com/etfs/crypto-funds'},
+ {crypto:'btc',ticker:'GBTC',quoteId:'etf-gbtc',name:'Grayscale Bitcoin Trust ETF',issuer:'Grayscale',market:'NYSE Arca · USA',kind:'ETF / ETP spot',url:'https://etfs.grayscale.com/gbtc'},
+ {crypto:'eth',ticker:'FETH',quoteId:'etf-feth',name:'Fidelity Ethereum Fund',issuer:'Fidelity',market:'Cboe · USA',kind:'ETF / ETP spot',url:'https://www.fidelity.com/etfs/crypto-funds'},
+ {crypto:'eth',ticker:'ETHE',quoteId:'etf-ethe',name:'Grayscale Ethereum Trust ETF',issuer:'Grayscale',market:'NYSE Arca · USA',kind:'ETF / ETP spot',url:'https://etfs.grayscale.com/ethe'},
+ {crypto:'sol',ticker:'FSOL',quoteId:'etf-fsol',name:'Fidelity Solana Fund',issuer:'Fidelity',market:'USA',kind:'ETF / ETP spot',url:'https://www.fidelity.com/etfs/crypto-funds'},
+ {crypto:'sol',ticker:'GSOL',quoteId:'etf-gsol',name:'Grayscale Solana Trust ETF',issuer:'Grayscale',market:'USA',kind:'ETF / ETP spot',url:'https://etfs.grayscale.com/'}
 ];
+const CRYPTO_ETF_PRIMARY=CRYPTO_ETF_PRODUCTS.filter(p=>['etf-ibit','etf-etha','etf-bsol','etf-ainj'].includes(p.quoteId));
 // ETF/ETP share quotes are separate from the underlying crypto quotes.
 // Never infer a product price from its underlying coin.
 const cryptoEtfQuoteState=Object.create(null);
@@ -2048,7 +2055,7 @@ function cryptoEtfChart(product){
 }
 function paintCryptoEtfCharts(){
  if(state.page!=='etf')return;
- for(const product of CRYPTO_ETF_PRODUCTS){
+ for(const product of CRYPTO_ETF_PRIMARY){
   const node=document.querySelector('[data-etf-chart="'+product.quoteId+'"]');
   if(node)node.innerHTML=cryptoEtfChart(product);
  }
@@ -2067,8 +2074,18 @@ async function loadCryptoEtfHistory(){
  finally{clearTimeout(timer);etfHistory.loading=false;paintCryptoEtfCharts()}
 }
 
+function cryptoEtfOtherQuotes(product){
+ const items=CRYPTO_ETF_PRODUCTS.filter(p=>p.crypto===product.crypto&&p.quoteId!==product.quoteId);
+ if(!items.length)return '';
+ return '<div class="crypto-etf-others"><h4>Altre quotazioni '+esc(product.crypto.toUpperCase())+'</h4>'+
+  items.map(p=>'<div class="crypto-etf-other"><div class="crypto-etf-other-name"><strong>'+esc(p.ticker)+
+   '</strong><small>'+esc(p.name)+'</small></div>'+
+   '<div class="crypto-etf-other-quote" data-etf-quote-id="'+esc(p.quoteId)+'">'+cryptoEtfQuoteMarkup(p)+'</div>'+
+   '<a href="'+esc(p.url)+'" target="_blank" rel="noopener noreferrer" aria-label="Scheda ufficiale '+esc(p.ticker)+'">↗</a></div>').join('')+
+  '</div>';
+}
 function cryptoEtfSection(){
- const cards=CRYPTO_ETF_PRODUCTS.map(product=>{
+ const cards=CRYPTO_ETF_PRIMARY.map(product=>{
   const asset=ASSET_BY_ID[product.crypto],q=quote(product.crypto);
   const spot=asset&&q&&num(q.value)&&q.value>0?assetValue(asset):'—';
   const delta=q&&Number.isFinite(Number(q.change))?pct(q.change):'—';
@@ -2086,6 +2103,7 @@ function cryptoEtfSection(){
    '<div class="crypto-etf-market-note" data-etf-quote-id="'+esc(product.quoteId)+'">'+
     cryptoEtfQuoteMarkup(product)+'</div>'+
    '<div data-etf-chart="'+esc(product.quoteId)+'">'+cryptoEtfChart(product)+'</div>'+
+    cryptoEtfOtherQuotes(product)+
     '<div class="crypto-etf-spot"><small>Crypto sottostante · prezzo spot (NON quota ETF)</small>'+
     '<div><strong class="asset-price '+quotePriceClass(product.crypto)+'">'+esc(spot)+'</strong>'+
     '<span class="asset-change '+(Number(q?.change)>0?'color-up':Number(q?.change)<0?'color-down':'')+'">'+esc(delta)+'</span></div>'+
@@ -2097,7 +2115,7 @@ function cryptoEtfSection(){
  return '<section class="crypto-etfs-section" aria-label="ETF ed ETP delle criptovalute">'+
   '<div class="crypto-etf-title"><div><h2>ETF ed ETP Crypto</h2>'+
   '<p>Bitcoin, Ethereum, Solana e Injective · quotazioni e grafici storici ETF/ETP</p></div>'+
-  '<span class="crypto-etf-total">4 quotazioni · 4 grafici</span></div>'+
+  '<span class="crypto-etf-total">'+CRYPTO_ETF_PRODUCTS.length+' quotazioni · 4 grafici</span></div>'+
   '<div class="crypto-etf-grid">'+cards+'</div>'+
   '<p class="crypto-etf-disclaimer">Le quotazioni delle quote ETF/ETP provengono da Yahoo Finance, con aggiornamenti automatici periodici; possono essere ritardate. '+
   'I mercati chiusi non producono nuovi scambi. Per AINJ viene utilizzata la quotazione di Amsterdam in USD, oppure quella di Parigi in EUR se Amsterdam non è disponibile. '+
@@ -3263,7 +3281,7 @@ function workspaceWidgetBody(id){
   '<button type="button" class="ws-book-scroll-control" data-ws-book-scroll="next" aria-label="Scorri criptovalute verso destra" title="Scorri a destra">›</button></div>'+
   '<p class="ws-book-scroll-hint">Scorri lateralmente per vedere tutte le crypto, poi seleziona quella da analizzare.</p>'+
   '</div><div class="ws-book-detail" id="workspaceBookDetail">'+workspaceOrderBookLevels()+'</div></div>';
- if(id==='etf')return '<div class="ws-etf-grid">'+CRYPTO_ETF_PRODUCTS.map(product=>{
+ if(id==='etf')return '<div class="ws-etf-grid">'+CRYPTO_ETF_PRIMARY.map(product=>{
   const a=ASSET_BY_ID[product.crypto];
   return '<article class="ws-etf-item"><strong>'+esc(product.ticker)+'</strong>'+
    '<span>'+esc(product.name)+'</span><small>'+esc(product.kind+' · '+product.issuer)+'</small>'+
