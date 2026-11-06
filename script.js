@@ -892,6 +892,18 @@ function updatePriceDom(){
    if(el.classList.contains('market-chart-card')&&el.title!==shownStatus)
     el.title=shownStatus;
   }
+  // Keep an open search suggestion in sync with each received price.
+  const searchMenu=$('#searchMenu');
+  if(searchMenu&&!searchMenu.hidden){
+   for(const button of searchMenu.querySelectorAll('button[data-asset]')){
+    if(button.dataset.asset!==id)continue;
+    const priceNode=button.lastElementChild;
+    if(priceNode){
+     if(priceNode.textContent!==shownPrice)priceNode.textContent=shownPrice;
+     setQuotePriceMovement(priceNode,id);
+    }
+   }
+  }
   if(state.dialogId===id){
    const p=document.querySelector('#dialogBody .dialog-stats strong');
    const c=document.querySelector('#dialogBody .dialog-stats .change');
