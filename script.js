@@ -1536,11 +1536,16 @@ function portfolioRow(holding,index){
  const hasInvestedField=Object.prototype.hasOwnProperty.call(h,'investedUsd');
  const directAmount=hasInvestedField&&h.investedUsd!==null&&h.investedUsd!==''?Number(h.investedUsd):null;
  const directValid=valid&&directAmount!==null&&Number.isFinite(directAmount)&&directAmount>=0;
+ const averageField=h.avgBuyPrice!==undefined&&h.avgBuyPrice!==null&&h.avgBuyPrice!=='';
+ const average=averageField?Number(h.avgBuyPrice):null;
+ const averageValid=valid&&average!==null&&Number.isFinite(average)&&average>=0&&Number.isFinite(qty*average);
  const legacyCost=!hasInvestedField&&h.cost!==undefined&&h.cost!==null&&h.cost!==''?Number(h.cost):null;
  const legacyValid=valid&&legacyCost!==null&&Number.isFinite(legacyCost)&&legacyCost>=0&&Number.isFinite(qty*legacyCost);
- const hasCost=directValid||legacyValid;
- const invested=directValid?directAmount:(legacyValid?qty*legacyCost:null);
- const cost=hasCost?invested/qty:null;
+ // A manually saved average purchase price takes priority. Legacy invested
+ // amounts and cost fields remain supported without a data migration.
+ const hasCost=averageValid||directValid||legacyValid;
+ const invested=averageValid?qty*average:(directValid?directAmount:(legacyValid?qty*legacyCost:null));
+ const cost=averageValid?average:(hasCost?invested/qty:null);
  const override=h.manualPrice!==null&&h.manualPrice!==undefined&&h.manualPrice!=='';
  const manual=override?Number(h.manualPrice):null;
  const manualValid=override&&Number.isFinite(manual)&&manual>0;
@@ -1602,6 +1607,9 @@ function portfolioPage(){
  const total=portfolioTotals(),editing=Number.isInteger(portfolioEditIndex)&&
   portfolioEditIndex>=0&&portfolioEditIndex<state.holdings.length;
  const edit=editing?state.holdings[portfolioEditIndex]:null;
+ const editRow=editing?portfolioRow(edit,portfolioEditIndex):null;
+ const averageSource=edit&&edit.avgBuyPrice!==undefined&&edit.avgBuyPrice!==null&&edit.avgBuyPrice!==''?
+  'average':(editRow&&editRow.hasCost?'invested':'');
  const chosen=editing&&portfolioEligible(edit?.id)?edit.id:
   (ASSETS.find(a=>a.group==='crypto')||ASSETS[0]).id;
  const opts=ASSETS.filter(a=>portfolioEligible(a.id)).map(a=>
@@ -1618,19 +1626,23 @@ function portfolioPage(){
  '</div>'+
  '<section class="content-card panel portfolio-editor" id="portfolioEditor">'+
  '<div class="portfolio-section-heading"><div><h3 id="portfolioFormTitle">'+(editing?'Modifica posizione':'Aggiungi una posizione')+'</h3>'+
- '<p>Inserisci la quantità posseduta e l’importo investito in dollari. Puoi usare la virgola o il punto come separatore decimale.</p></div>'+
+ '<p>Inserisci la quantità e il prezzo medio di acquisto oppure l’importo investito in USD. L’altro campo si calcola automaticamente. Puoi usare virgola o punto.</p></div>'+
  '<button type="button" class="btn btn-small" data-portfolio-refresh="1">'+sym('refresh')+' Aggiorna prezzi</button></div>'+
- '<form id="portfolioForm" class="form-grid" novalidate>'+
+ '<form id="portfolioForm" class="form-grid" data-cost-source="'+averageSource+'" novalidate>'+
  '<div class="form-field"><label for="holdingAsset">Criptovaluta o strumento</label>'+
  '<div class="holding-asset-selector"><span id="holdingAssetLogo">'+assetLogo(ASSET_BY_ID[chosen])+'</span>'+
  '<select id="holdingAsset" name="id" required>'+opts+'</select></div></div>'+
  '<div class="form-field"><label for="holdingQty">Quantità posseduta</label>'+
  '<input id="holdingQty" type="text" inputmode="decimal" autocomplete="off" name="qty" placeholder="Es. 1,25" value="'+
  esc(edit?String(edit.qty):'')+'" required></div>'+
+ '<div class="form-field"><label for="holdingAverageBuyPrice">Prezzo medio di acquisto (USD)</label>'+
+ '<input id="holdingAverageBuyPrice" type="text" inputmode="decimal" autocomplete="off" name="avgBuyPrice" placeholder="Es. 120,50" value="'+
+ esc(editRow&&editRow.hasCost?String(editRow.cost):'')+'">'+
+ '<small>Prezzo per singola unità inserito manualmente. Calcola l’importo investito in base alla quantità.</small></div>'+
  '<div class="form-field"><label for="holdingInvestedUsd">Importo investito (USD)</label>'+
  '<input id="holdingInvestedUsd" type="text" inputmode="decimal" autocomplete="off" name="investedUsd" placeholder="Es. 1500,00" value="'+
- esc(edit&&portfolioRow(edit,portfolioEditIndex).hasCost?String(portfolioRow(edit,portfolioEditIndex).invested):'')+'">'+
- '<small>Inserisci il totale dei dollari investiti, non il prezzo per unità. Facoltativo.</small></div>'+
+ esc(editRow&&editRow.hasCost?String(editRow.invested):'')+'">'+
+ '<small>Totale investito. Se lo modifichi, il prezzo medio viene ricalcolato automaticamente.</small></div>'+
  '<div id="portfolioFormFeedback" class="portfolio-form-feedback" role="alert" hidden></div>'+
  '<div class="form-actions"><button class="btn btn-primary" type="submit" data-portfolio-save="1">'+sym(editing?'check':'plus')+
  (editing?' Salva modifiche':' Aggiungi posizione')+'</button>'+
@@ -1639,7 +1651,7 @@ function portfolioPage(){
  '<section class="content-card panel portfolio-positions" style="margin-top:13px">'+
  '<div class="portfolio-section-heading"><div><h3>Le tue posizioni</h3><p>Valore e risultato aggiornati quando cambiano le quotazioni disponibili.</p></div></div>'+
  (rows.length?'<div class="data-table-scroll"><table class="data-table portfolio-table">'+
- '<thead><tr><th>Strumento</th><th>Quantità</th><th>Costo unit. calc.</th><th>Investito (USD)</th>'+
+ '<thead><tr><th>Strumento</th><th>Quantità</th><th>Prezzo medio acquisto</th><th>Investito (USD)</th>'+
  '<th>Prezzo attuale</th><th>Valore</th><th>P/L</th><th>Azioni</th></tr></thead><tbody>'+
  rows.map(r=>{
   const h=r.h,a=r.a;
@@ -1657,9 +1669,9 @@ function portfolioPage(){
    '<td><div class="portfolio-row-actions"><button class="btn btn-small" type="button" data-edit-holding="'+r.index+'">Modifica</button>'+
    '<button class="btn btn-small" type="button" data-delete-holding="'+r.index+'">Rimuovi</button></div></td></tr>';
  }).join('')+'</tbody></table></div>':
- '<div class="empty-state"><h3>Nessuna posizione</h3><p>Seleziona uno strumento, inserisci la quantità e, se lo conosci, l’importo investito in USD.</p></div>')+
+ '<div class="empty-state"><h3>Nessuna posizione</h3><p>Seleziona uno strumento, inserisci la quantità e il prezzo medio di acquisto oppure l’importo investito.</p></div>')+
  portfolioStorageWarning()+
- '<p class="notice">Le posizioni sono salvate soltanto in questo browser. Il valore segue le quotazioni disponibili, anche ritardate. Il costo unitario è calcolato dividendo i dollari investiti per la quantità. Senza un importo investito non è possibile calcolare il profitto/perdita. I vecchi importi di carico rimangono disponibili. Non include commissioni, imposte o cambi valutari.</p>'+
+ '<p class="notice">Le posizioni sono salvate soltanto in questo browser. Puoi inserire manualmente il prezzo medio di acquisto (USD) oppure il totale investito: i due valori si sincronizzano in base alla quantità. Profitto/perdita = valore attuale meno capitale investito. I dati di carico precedenti vengono conservati. Le quotazioni possono essere ritardate; commissioni, imposte e cambi valutari non sono inclusi.</p>'+
  '</section>';
 }
 const SEC_CATEGORIES=[
