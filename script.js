@@ -3011,7 +3011,7 @@ function settingsPage(){
  '<input type="range" id="cryptoAutoPercentSlider" min="0.1" max="5" step="0.1" value="'+state.cryptoAutoPercent+
  '" style="--volume-progress:'+(state.cryptoAutoPercent/5*100)+'%" aria-label="Sensibilità campanella, percentuale di movimento">'+
  '<div class="settings-volume-scale"><span>±0,1%</span><span>±5%</span></div>'+
- '<p class="subnote">Ogni crypto parte dal primo prezzo realmente ricevuto in questa sessione. Dopo un avviso la sua soglia automatica si ricalibra sul prezzo raggiunto. Il prezzo e la campanella diventano gialli (UPPER) o rossi (LOWER) per 15 secondi, poi tornano al colore normale. Ogni nuovo segnale riavvia i 15 secondi per la relativa crypto. Nessuna pagina Alerts viene aperta. Eventuali soglie di prezzo già salvate continuano a funzionare.</p>'+
+ '<p class="subnote">Ogni crypto parte dal primo prezzo realmente ricevuto in questa sessione. Dopo un avviso la sua soglia automatica si ricalibra sul prezzo raggiunto. Quando viene raggiunta una soglia, il prezzo e la campanella lampeggiano per 15 secondi: giallo per UPPER e rosso per LOWER. Poi il prezzo torna al colore del movimento di mercato e la campanella torna normale. Ogni nuovo segnale riavvia i 15 secondi per la relativa crypto. Con la riduzione del movimento attiva, il colore resta fisso senza lampeggiare. Nessuna pagina Alerts viene aperta. Eventuali soglie di prezzo già salvate continuano a funzionare.</p>'+
  '<div class="settings-audio-tests" role="group" aria-label="Prova il suono degli avvisi crypto">'+
  '<button type="button" class="outline-button" data-test-crypto-alert-sound="above">▶ Prova UPPER ↑</button>'+
  '<button type="button" class="outline-button" data-test-crypto-alert-sound="below">▶ Prova LOWER ↓</button></div>'+
