@@ -255,11 +255,40 @@ const formatValue=(v,a)=>{
 const assetValue=a=>formatValue(quote(a.id)&&quote(a.id).value,a);
 const refTime=id=>quote(id)&&quote(id).time?localeDate(quote(id).time,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'Non disponibile';
 const classArrow=id=>trendClass(change(id));
-// Price color reflects the source's session/24h change, not an invented tick.
-const quotePriceClass=id=>{const t=trend(change(id));return 'quote-price-'+(t==='up'||t==='down'?t:'neutral')};
-function setQuotePriceMovement(el,movement){
+// Price colors compare successive observed prices, not the 24h percentage.
+const quotePriceDirections=new Map();
+function quoteFeedFamily(q){
+ const source=String(q?.source||'').toLowerCase();
+ if(source.includes('binance'))return 'binance';
+ if(source.includes('coingecko'))return 'coingecko';
+ if(source.includes('yahoo'))return 'yahoo';
+ if(source.includes('mt5')||source.includes('biquote'))return 'broker-mt5';
+ return source;
+}
+function recordQuotePriceDirection(id,previous,incoming){
+ const next=Number(incoming?.value),old=Number(previous?.value);
+ if(!Number.isFinite(next)||next<=0){quotePriceDirections.delete(id);return}
+ if(!Number.isFinite(old)||old<=0){quotePriceDirections.set(id,'neutral');return}
+ const oldTime=Date.parse(previous?.time||''),nextTime=Date.parse(incoming?.time||'');
+ // Old snapshots must not reverse the trend of fresher ticks.
+ if(Number.isFinite(oldTime)&&Number.isFinite(nextTime)&&nextTime<oldTime)return;
+ // A different vendor/market price is not a tick of the original feed.
+ if(quoteFeedFamily(previous)!==quoteFeedFamily(incoming)){
+  quotePriceDirections.set(id,'neutral');return;
+ }
+ if(next===old){
+  // Preserve movement on duplicate snapshots; neutral for a genuine flat tick.
+  if(!Number.isFinite(oldTime)||!Number.isFinite(nextTime)||nextTime>oldTime)
+   quotePriceDirections.set(id,'neutral');
+  return;
+ }
+ quotePriceDirections.set(id,next>old?'up':'down');
+}
+const quotePriceClass=id=>'quote-price-'+(quotePriceDirections.get(id)||'neutral');
+function setQuotePriceMovement(el,id){
  if(!el)return;
- const t=trend(movement),next='quote-price-'+(t==='up'||t==='down'?t:'neutral');
+ const next=quotePriceClass(id);
+ if(el.classList.contains(next))return;
  el.classList.remove('quote-price-up','quote-price-down','quote-price-neutral');
  el.classList.add(next);
 }
@@ -759,7 +788,7 @@ function patchRegions(){
   document.querySelectorAll('#pageContainer .photo-card[data-region="'+r.id+'"]').forEach(el=>{
    el.dataset.trend=trend(change(r.lead));
    const v=el.querySelector('.photo-card-metrics strong'),p=el.querySelector('.photo-card-metrics .change');
-   if(v&&lead){v.textContent=assetValue(lead);setQuotePriceMovement(v,leadQuote&&leadQuote.change)};
+   if(v&&lead){v.textContent=assetValue(lead);setQuotePriceMovement(v,r.lead)};
    if(p){p.textContent=pct(leadQuote&&leadQuote.change);setMovementClass(p,leadQuote&&leadQuote.change)}
    // Update the SVG when the daily series arrives after the card was rendered.
    if(r.id==='middle-east'){
@@ -839,7 +868,7 @@ function updatePriceDom(){
    const delta=el.querySelector('.asset-change,.mini-change,.tech-asset-change');
    if(price){
     if(price.textContent!==shownPrice)price.textContent=shownPrice;
-    setQuotePriceMovement(price,q.change);
+    setQuotePriceMovement(price,id);
    }
    if(delta){
     if(delta.textContent!==shownChange)delta.textContent=shownChange;
@@ -849,7 +878,7 @@ function updatePriceDom(){
     const cells=el.querySelectorAll('td');
     if(cells.length>=3){
      if(cells[1].textContent!==shownPrice)cells[1].textContent=shownPrice;
-     setQuotePriceMovement(cells[1],q.change);
+     setQuotePriceMovement(cells[1],id);
      if(cells[2].textContent!==shownChange)cells[2].textContent=shownChange;
      setMovementClass(cells[2],q.change);
     }
@@ -869,7 +898,7 @@ function updatePriceDom(){
    const m=document.querySelector('#dialogBody .dialog-meta');
    if(p){
     if(p.textContent!==shownPrice)p.textContent=shownPrice;
-    setQuotePriceMovement(p,q.change);
+    setQuotePriceMovement(p,id);
    }
    if(c){
     if(c.textContent!==shownChange)c.textContent=shownChange;
@@ -910,7 +939,8 @@ function applyLiveTick(d){
  const eventMs=Number(d.E),timeMs=Number.isFinite(eventMs)&&eventMs>1000000000000?eventMs:Date.now();
  const change24h=Number.isFinite(open)&&open>0?(close/open-1)*100:null;
  const fresh={value:close,change:change24h,currency:'USDT',source:'Binance Spot (USDT)',time:new Date(timeMs).toISOString(),live:true,polled:false,received:Date.now()};
- STREAM_OVERLAY.set(id,fresh);
+ recordQuotePriceDirection(id,state.quotes[id],fresh);
+  STREAM_OVERLAY.set(id,fresh);
  state.quotes[id]={...(state.quotes[id]||{id,history:[],candles:[]}),...fresh};
  observeChartQuote(id,fresh);scheduleMarketMiniPaint();
  streamStatus.last=Date.now();streamStatus.seen.add(id);streamStatus.dirty.add(id);
@@ -991,7 +1021,8 @@ async function pollCryptoPrices(){
    const fresh={value:price,change:changePct,currency:'USDT',
     source:'Binance Spot · REST',time:new Date(stamp).toISOString(),
     live:false,polled:true,received:now};
-   STREAM_OVERLAY.set(id,fresh);
+   recordQuotePriceDirection(id,state.quotes[id],fresh);
+  STREAM_OVERLAY.set(id,fresh);
    state.quotes[id]={...(state.quotes[id]||{id,history:[],candles:[]}),...fresh};
    observeChartQuote(id,fresh);scheduleMarketMiniPaint();
    streamStatus.dirty.add(id);added++;
@@ -1045,7 +1076,8 @@ function forexTick(tick){
   currency:'RATIO',time:new Date(sent).toISOString(),live:true,
   source:'biquote · broker Forex MT5',received:Date.now(),marketState:'open'
  };
- FX_OVERLAY.set(id,fresh);
+ recordQuotePriceDirection(id,state.quotes[id],fresh);
+  FX_OVERLAY.set(id,fresh);
  state.quotes[id]={...(state.quotes[id]||{id,history:[],candles:[]}),...fresh};
  observeChartQuote(id,fresh);scheduleMarketMiniPaint();
  fxStatus.last=Date.now();fxStatus.seen.add(id);
@@ -3432,11 +3464,12 @@ async function fetchQuotes(isManual=false){
   const changed=[];
   for(const [id,value] of Object.entries(next)){
    const old=state.quotes[id];
+   recordQuotePriceDirection(id,old,value);
    if(!old||old.value!==value.value||old.change!==value.change||old.time!==value.time||
       old.logo!==value.logo||old.live!==value.live||old.source!==value.source)changed.push(id);
   }
   for(const id of Object.keys(state.quotes)){
-   if(!next[id])changed.push(id);
+   if(!next[id]){changed.push(id);quotePriceDirections.delete(id)}
   }
   state.quotes=next;
   for(const id of changed)if(next[id])observeChartQuote(id,next[id]);
