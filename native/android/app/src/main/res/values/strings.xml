@@ -1,5 +1,5 @@
 <resources>
- <string name="app_name">Vertex Crypto</string>
- <string name="widget_description">Prezzi e variazioni delle crypto a tua scelta</string>
+ <string name="app_name">Vertex Mercati</string>
+ <string name="widget_description">Widget Home per indici, ETF, Tech, materie prime, Forex e crypto</string>
  <string name="widget_refresh">Aggiorna il prezzo del widget</string>
 </resources>
