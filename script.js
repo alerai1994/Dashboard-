@@ -255,6 +255,14 @@ const formatValue=(v,a)=>{
 const assetValue=a=>formatValue(quote(a.id)&&quote(a.id).value,a);
 const refTime=id=>quote(id)&&quote(id).time?localeDate(quote(id).time,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'Non disponibile';
 const classArrow=id=>trendClass(change(id));
+// Price color reflects the source's session/24h change, not an invented tick.
+const quotePriceClass=id=>{const t=trend(change(id));return 'quote-price-'+(t==='up'||t==='down'?t:'neutral')};
+function setQuotePriceMovement(el,movement){
+ if(!el)return;
+ const t=trend(movement),next='quote-price-'+(t==='up'||t==='down'?t:'neutral');
+ el.classList.remove('quote-price-up','quote-price-down','quote-price-neutral');
+ el.classList.add(next);
+}
 function sparkLine(id,width=120,height=32){
  const q=quote(id),candles=q&&q.candles,values=Array.isArray(candles)&&candles.length>2?candles.slice(-26).map(x=>x.c):q&&Array.isArray(q.history)?q.history:[];
  let arr=values.map(Number).filter(num);
@@ -287,7 +295,7 @@ function selectRegion(id){state.region=state.region===id?null:id;render();const 
 function indexCard(id){
  const a=ASSET_BY_ID[id],q=quote(id),tr=trend(q&&q.change);
  return '<button class="index-mini panel" type="button" data-asset="'+esc(id)+'" data-trend="'+tr+'" aria-label="Apri '+esc(a.name)+'">'+
- '<span class="mini-title'+(showAssetLogo(a)?' crypto-mini-title':'')+'">'+(showAssetLogo(a)?assetLogo(a):'')+'<span>'+esc(a.short)+'</span></span><span class="mini-price mono">'+assetValue(a)+'</span><span class="mini-country">'+esc(a.group==='crypto'?'Crypto':a.country||'')+'</span>'+
+ '<span class="mini-title'+(showAssetLogo(a)?' crypto-mini-title':'')+'">'+(showAssetLogo(a)?assetLogo(a):'')+'<span>'+esc(a.short)+'</span></span><span class="mini-price mono '+quotePriceClass(id)+'">'+assetValue(a)+'</span><span class="mini-country">'+esc(a.group==='crypto'?'Crypto':a.country||'')+'</span>'+
  '<b class="mini-change change">'+pct(q&&q.change)+'</b>'+sparkLine(id)+'</button>';
 }
 function geographicLegend(){return '<div class="map-legend"><span style="color:var(--green)"><i></i> Rialzo</span><span style="color:var(--red)"><i></i> Ribasso</span><span style="color:var(--muted)"><i></i> N/D</span></div>';}
@@ -601,7 +609,7 @@ function sidePanel(group){
  '<div class="instrument-rows">'+visible.map(id=>{
  const a=ASSET_BY_ID[id],q=quote(id);
  return '<button type="button" class="instrument-row" data-asset="'+id+'" aria-label="Apri '+esc(a.name)+'">'+assetLogo(a)+'<span class="asset-label">'+esc(a.name)+'</span>'+
- '<span class="asset-price">'+assetValue(a)+'</span><span class="asset-change '+classArrow(id)+'">'+pct(q&&q.change)+'</span></button>';
+ '<span class="asset-price '+quotePriceClass(id)+'">'+assetValue(a)+'</span><span class="asset-change '+classArrow(id)+'">'+pct(q&&q.change)+'</span></button>';
  }).join('')+'</div>'+
  (crypto?'<button type="button" class="crypto-expand-btn" data-crypto-expand="1" aria-expanded="'+String(state.cryptoExpanded)+'">'+(state.cryptoExpanded?'− Mostra meno':'＋ Mostra altre '+(count-visible.length)+' crypto')+'</button>':'')+'</section>';
 }
@@ -621,7 +629,7 @@ function photoCard(r){
  const spark=r.id==='middle-east'?middleEastPhotoChart():sparkLine(r.lead,120,32);
  return '<button type="button" class="photo-card" data-region="'+r.id+'" data-trend="'+trend(q&&q.change)+'" data-id="'+r.id+'" aria-label="Apri '+esc(r.name)+'">'+
  '<span class="photo-cover" aria-hidden="true"></span><span class="photo-card-body"><span class="photo-card-title">'+esc(r.name)+'</span>'+
- '<span class="photo-card-metrics"><strong>'+meanPrice(r)+'</strong><span class="change '+trendClass(change(r.lead))+'">'+pct(change(r.lead))+'</span></span>'+spark+'</span></button>';
+ '<span class="photo-card-metrics"><strong class="'+quotePriceClass(r.lead)+'">'+meanPrice(r)+'</strong><span class="change '+trendClass(change(r.lead))+'">'+pct(change(r.lead))+'</span></span>'+spark+'</span></button>';
 }
 
 /* Live market feed: streaming Binance Spot USDT quotes when available.
@@ -751,7 +759,7 @@ function patchRegions(){
   document.querySelectorAll('#pageContainer .photo-card[data-region="'+r.id+'"]').forEach(el=>{
    el.dataset.trend=trend(change(r.lead));
    const v=el.querySelector('.photo-card-metrics strong'),p=el.querySelector('.photo-card-metrics .change');
-   if(v&&lead)v.textContent=assetValue(lead);
+   if(v&&lead){v.textContent=assetValue(lead);setQuotePriceMovement(v,leadQuote&&leadQuote.change)};
    if(p){p.textContent=pct(leadQuote&&leadQuote.change);setMovementClass(p,leadQuote&&leadQuote.change)}
    // Update the SVG when the daily series arrives after the card was rendered.
    if(r.id==='middle-east'){
@@ -829,7 +837,10 @@ function updatePriceDom(){
   for(const el of nodesById.get(id)||[]){
    const price=el.querySelector('.asset-price,.mini-price,.tech-asset-value');
    const delta=el.querySelector('.asset-change,.mini-change,.tech-asset-change');
-   if(price&&price.textContent!==shownPrice)price.textContent=shownPrice;
+   if(price){
+    if(price.textContent!==shownPrice)price.textContent=shownPrice;
+    setQuotePriceMovement(price,q.change);
+   }
    if(delta){
     if(delta.textContent!==shownChange)delta.textContent=shownChange;
     setMovementClass(delta,q.change);
@@ -838,6 +849,7 @@ function updatePriceDom(){
     const cells=el.querySelectorAll('td');
     if(cells.length>=3){
      if(cells[1].textContent!==shownPrice)cells[1].textContent=shownPrice;
+     setQuotePriceMovement(cells[1],q.change);
      if(cells[2].textContent!==shownChange)cells[2].textContent=shownChange;
      setMovementClass(cells[2],q.change);
     }
@@ -855,7 +867,10 @@ function updatePriceDom(){
    const p=document.querySelector('#dialogBody .dialog-stats strong');
    const c=document.querySelector('#dialogBody .dialog-stats .change');
    const m=document.querySelector('#dialogBody .dialog-meta');
-   if(p&&p.textContent!==shownPrice)p.textContent=shownPrice;
+   if(p){
+    if(p.textContent!==shownPrice)p.textContent=shownPrice;
+    setQuotePriceMovement(p,q.change);
+   }
    if(c){
     if(c.textContent!==shownChange)c.textContent=shownChange;
     setMovementClass(c,q.change);
@@ -1134,7 +1149,7 @@ function tableForAssets(items,emptyTitle){
  if(!items.length)return '<div class="empty-state"><h3>'+esc(emptyTitle||'Nessun mercato da mostrare')+'</h3><p>Modifica la ricerca o aggiungi strumenti alla watchlist.</p></div>';
  return '<div class="data-table-scroll"><table class="data-table"><thead><tr><th>Strumento</th><th>Ultimo prezzo</th><th>Variazione</th><th>Storico</th><th>Fonte</th></tr></thead><tbody>'+
  items.map(a=>'<tr tabindex="0" data-asset="'+a.id+'" aria-label="Dettagli '+esc(a.name)+'"><td><span class="market-table-asset">'+(showAssetLogo(a)?assetLogo(a):'')+'<span><strong>'+esc(a.name)+'</strong><small>'+esc(a.symbol)+'</small></span></span></td>'+
- '<td>'+assetValue(a)+'</td><td class="'+classArrow(a.id)+'">'+pct(change(a.id))+'</td>'+
+ '<td class="'+quotePriceClass(a.id)+'">'+assetValue(a)+'</td><td class="'+classArrow(a.id)+'">'+pct(change(a.id))+'</td>'+
  '<td class="'+classArrow(a.id)+'">'+sparkLine(a.id,90,26)+'</td><td><small>'+esc(a.group==='crypto'?'Binance/CoinGecko':a.group==='forex'?'Broker MT5/Yahoo':'Yahoo Finance')+'</small></td></tr>').join('')+
  '</tbody></table></div>';
 }
@@ -1239,7 +1254,7 @@ function marketChartCard(a){
  return '<button type="button" class="market-chart-card" data-asset="'+esc(a.id)+'" data-trend="'+trend(q&&q.change)+'" aria-label="Apri grafico completo di '+esc(a.name)+'">'+
  '<span class="market-chart-top">'+(showAssetLogo(a)?assetLogo(a):'')+
  '<span class="market-chart-title"><strong>'+esc(a.short||a.name)+'</strong><small>'+esc(a.symbol)+' · '+label+'</small></span></span>'+
- '<span class="market-chart-values"><strong class="asset-price">'+assetValue(a)+'</strong>'+
+ '<span class="market-chart-values"><strong class="asset-price '+quotePriceClass(a.id)+'">'+assetValue(a)+'</strong>'+
  '<span class="asset-change '+classArrow(a.id)+'">'+pct(q&&q.change)+'</span></span>'+
  '<small class="market-quote-asof">'+esc(instrumentQuoteStatus(a.id))+'</small>'+
  '<span class="market-mini-chart">'+marketChartPlot(a.id)+'</span>'+ 
@@ -1962,7 +1977,7 @@ function cryptoEtfSection(){
    '<div class="crypto-etf-market-note" data-etf-quote-id="'+esc(product.quoteId)+'">'+
     cryptoEtfQuoteMarkup(product)+'</div>'+
    '<div class="crypto-etf-spot"><small>Crypto sottostante · prezzo spot (NON quota ETF)</small>'+
-    '<div><strong class="asset-price">'+esc(spot)+'</strong>'+
+    '<div><strong class="asset-price '+quotePriceClass(product.crypto)+'">'+esc(spot)+'</strong>'+
     '<span class="asset-change '+(Number(q?.change)>0?'color-up':Number(q?.change)<0?'color-down':'')+'">'+esc(delta)+'</span></div>'+
     '<small class="market-quote-asof">'+esc(stamp)+'</small></div>'+
    '<a href="'+esc(product.url)+'" target="_blank" rel="noopener noreferrer" class="crypto-etf-link"'+
@@ -3473,7 +3488,7 @@ function updateSearch(){
  const input=$('#searchInput'),menu=$('#searchMenu'),matches=findAssets(input.value);
  state.searchResults=matches;
  if(!matches.length){menu.hidden=true;input.setAttribute('aria-expanded','false');return}
- menu.innerHTML=matches.map(a=>'<button type="button" data-asset="'+a.id+'"><span class="search-asset-label">'+(showAssetLogo(a)?assetLogo(a):'')+'<span><strong>'+esc(a.name)+'</strong><small>'+esc(a.group.toUpperCase()+' · '+a.symbol)+'</small></span></span><span class="'+classArrow(a.id)+' '+(cryptoBoundaryFor(a.id)==='above'?'crypto-price-upper':cryptoBoundaryFor(a.id)==='below'?'crypto-price-lower':'')+'">'+assetValue(a)+'</span></button>').join('');
+ menu.innerHTML=matches.map(a=>'<button type="button" data-asset="'+a.id+'"><span class="search-asset-label">'+(showAssetLogo(a)?assetLogo(a):'')+'<span><strong>'+esc(a.name)+'</strong><small>'+esc(a.group.toUpperCase()+' · '+a.symbol)+'</small></span></span><span class="'+quotePriceClass(a.id)+' '+(cryptoBoundaryFor(a.id)==='above'?'crypto-price-upper':cryptoBoundaryFor(a.id)==='below'?'crypto-price-lower':'')+'">'+assetValue(a)+'</span></button>').join('');
  menu.hidden=false;input.setAttribute('aria-expanded','true');
 }
 function loadWorldShape(){
@@ -4376,7 +4391,7 @@ function refreshDialog(){
  const candleAvailable=isCrypto?
   (chartSeries.id===a.id&&chartSeries.range===chartRange&&chartSeries.candles.length>=2):
   (q&&Array.isArray(q.candles)&&q.candles.length>=2);
- $('#dialogBody').innerHTML='<div class="dialog-stats"><strong>'+assetValue(a)+'</strong><span class="change '+classArrow(a.id)+'">'+pct(q&&q.change)+'</span><span class="dialog-meta">Ultima quotazione: '+esc(refTime(a.id))+'</span></div>'+
+ $('#dialogBody').innerHTML='<div class="dialog-stats"><strong class="'+quotePriceClass(a.id)+'">'+assetValue(a)+'</strong><span class="change '+classArrow(a.id)+'">'+pct(q&&q.change)+'</span><span class="dialog-meta">Ultima quotazione: '+esc(refTime(a.id))+'</span></div>'+
  '<div class="chart-toolbar"><div class="chart-legend"><span><i style="background:#74b2ff"></i>EMA 12</span><span><i style="background:#f1ba55"></i>EMA 26</span><span><i style="background:#b382ee"></i>EMA 50</span><span><i style="background:#ef7192"></i>EMA 200</span></div><span class="badge"'+(isCrypto?' id="chartHistoryBadge" role="status"':'')+'>'+(isCrypto?'Periodo '+chartRange:(candleAvailable?'Candele OHLC · storico':'Candele OHLC non disponibili'))+'</span></div>'+
  '<div class="chart-coverage" id="chartHistoryDates" role="status" aria-live="polite" hidden></div>'+ 
   '<div class="chart-live-quote-status" id="chartLiveQuoteStatus" role="status" aria-live="off"></div>'+
