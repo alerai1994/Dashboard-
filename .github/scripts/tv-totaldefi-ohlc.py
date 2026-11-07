@@ -10,15 +10,17 @@ import secrets
 import time
 from datetime import datetime, timezone
 
-SYMBOLS = ("TOTAL", "TOTAL2", "TOTAL3", "TOTALDEFI")
+SYMBOLS = ("TOTAL", "TOTAL2", "TOTAL3", "TOTALDEFI", "OTHERS")
+PRICE_SYMBOLS = {"BTC": "BITSTAMP:BTCUSD", "ETH": "KRAKEN:ETHUSD"}
 START = int(datetime(2013, 1, 1, tzinfo=timezone.utc).timestamp())
 END = int(datetime(2026, 11, 8, tzinfo=timezone.utc).timestamp())
 
 
 def get_crypto_market_ohlc(name="TOTALDEFI"):
     """Fetch exact real daily candles for one CRYPTOCAP index; never infer prices."""
-    if name not in SYMBOLS:
-        raise ValueError("Unexpected crypto market index")
+    if name not in SYMBOLS and name not in PRICE_SYMBOLS:
+        raise ValueError("Unexpected crypto market or asset ticker")
+    full_symbol = "CRYPTOCAP:" + name if name in SYMBOLS else PRICE_SYMBOLS[name]
 
     from websocket import create_connection
     sid = "cs_" + secrets.token_hex(6)
@@ -41,7 +43,7 @@ def get_crypto_market_ohlc(name="TOTALDEFI"):
         send("quote_create_session", [qid])
         send("resolve_symbol", [
             sid, "symbol_1",
-            '={"symbol":"CRYPTOCAP:' + name + '","adjustment":"splits","session":"regular"}',
+            '={"symbol":"' + full_symbol + '","adjustment":"splits","session":"regular"}',
         ])
         send("create_series", [sid, "s1", "s1", "symbol_1", "1D", 5000])
         seen_series = False
