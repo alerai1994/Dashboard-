@@ -2418,3 +2418,24 @@ body.page-global .global-crypto-cap-pill:focus-visible{outline:2px solid var(--b
  body.page-global .global-crypto-cap-pills>.global-crypto-cap-pill{min-height:42px;padding:7px 10px}
  body.page-global .global-crypto-cap-pill span{font-size:10px}
 }
+
+/* Shared responsive crosshair tooltip for mouse, stylus and touchscreen. */
+#globalCryptoHistoryChart .global-cap-chart-tooltip{
+ position:absolute;z-index:8;display:flex;flex-direction:column;align-items:flex-start;
+ box-sizing:border-box;min-width:165px;max-width:min(245px,calc(100% - 8px));
+ gap:5px;padding:11px 13px;border-radius:11px;
+ border:1px solid var(--line);
+ background:var(--panel);color:var(--text);
+ box-shadow:0 12px 28px #0006;
+ pointer-events:none;white-space:normal;overflow-wrap:anywhere;
+ font-variant-numeric:tabular-nums;
+}
+#globalCryptoHistoryChart .global-cap-chart-tooltip[hidden]{display:none!important}
+#globalCryptoHistoryChart .global-cap-chart-tooltip strong{font-size:12px;line-height:1.4}
+#globalCryptoHistoryChart .global-cap-chart-tooltip span{font-size:11px;line-height:1.4}
+#globalCryptoHistoryChart .global-cap-chart-tooltip .global-tooltip-value{
+ font-size:15px;font-weight:800;color:var(--text);
+}
+@media(pointer:coarse){
+ #globalCryptoHistoryChart .global-cap-chart-tooltip{padding:12px 14px;min-width:175px}
+}
