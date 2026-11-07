@@ -16,11 +16,13 @@ concurrency:
 jobs:
   extra-charts:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 9
     steps:
       - uses: actions/checkout@v4
-      - name: Validate data collector
-        run: python3 -m py_compile .github/scripts/global-extra-charts.py
+      - name: Install market-data reader and validate collector
+        run: |
+          python3 -m pip install --quiet websocket-client
+          python3 -m py_compile .github/scripts/global-extra-charts.py .github/scripts/tv-totaldefi-ohlc.py
       - name: Fetch verified Altcoin Season, BTC and ETH history
         run: python3 .github/scripts/global-extra-charts.py
       - name: Publish extra chart history
