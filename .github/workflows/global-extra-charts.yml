@@ -1,0 +1,43 @@
+name: Vertex Global Extra Charts Data
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/scripts/global-extra-charts.py
+      - .github/workflows/global-extra-charts.yml
+  schedule:
+    - cron: '14 0,12 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: vertex-global-extra-charts
+  cancel-in-progress: false
+jobs:
+  extra-charts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate data collector
+        run: python3 -m py_compile .github/scripts/global-extra-charts.py
+      - name: Fetch verified Altcoin Season, BTC and ETH history
+        run: python3 .github/scripts/global-extra-charts.py
+      - name: Publish extra chart history
+        shell: bash
+        run: |
+          if [ ! -f global-special-charts.json ]; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          cp global-special-charts.json "$RUNNER_TEMP/global-special-charts.json"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            cp "$RUNNER_TEMP/global-special-charts.json" global-special-charts.json
+            git add global-special-charts.json
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -m "data: refresh Altcoin Index and Rainbow prices [skip ci]"
+            if git push origin HEAD:main; then exit 0; fi
+            sleep 2
+          done
+          exit 1
