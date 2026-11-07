@@ -2039,6 +2039,17 @@ const CRYPTO_ETF_PRODUCTS=[
  {crypto:'sol',ticker:'FSOL',quoteId:'etf-fsol',name:'Fidelity Solana Fund',issuer:'Fidelity',market:'USA',kind:'ETF / ETP spot',url:'https://www.fidelity.com/etfs/crypto-funds'},
  {crypto:'sol',ticker:'GSOL',quoteId:'etf-gsol',name:'Grayscale Solana Trust ETF',issuer:'Grayscale',market:'USA',kind:'ETF / ETP spot',url:'https://etfs.grayscale.com/'}
 ];
+// AINJ is one European ETP with two confirmed Euronext listings (same ISIN),
+// not two distinct INJ ETFs. Display each exchange's independently verified quote.
+const INJ_ETP_LISTINGS=[
+ {crypto:'inj',ticker:'AINJ',quoteId:'etf-ainj-amsterdam',
+  name:'Euronext Amsterdam · USD',market:'Amsterdam · USD',
+  url:'https://www.borsaitaliana.it/borsa/etc-etn/scheda/CH1360612134-XAMC.html?lang=it'},
+ {crypto:'inj',ticker:'AINJ',quoteId:'etf-ainj-paris',
+  name:'Euronext Parigi · EUR',market:'Parigi · EUR',
+  url:'https://www.21shares.com/it-eu/product/ainj'}
+];
+const ALL_CRYPTO_ETF_QUOTES=[...CRYPTO_ETF_PRODUCTS,...INJ_ETP_LISTINGS];
 const CRYPTO_ETF_PRIMARY=CRYPTO_ETF_PRODUCTS.filter(p=>['etf-ibit','etf-etha','etf-bsol','etf-ainj'].includes(p.quoteId));
 // ETF/ETP share quotes are separate from the underlying crypto quotes.
 // Never infer a product price from its underlying coin.
@@ -2081,7 +2092,7 @@ function cryptoEtfQuoteMarkup(product){
 }
 function ingestCryptoEtfQuotes(rows){
  if(!Array.isArray(rows))return;
- const ids=new Set(CRYPTO_ETF_PRODUCTS.map(p=>p.quoteId));
+ const ids=new Set(ALL_CRYPTO_ETF_QUOTES.map(p=>p.quoteId));
  for(const row of rows){
   if(!row||!ids.has(row.id)||!Number.isFinite(Number(row.value))||Number(row.value)<=0)continue;
   const prior=cryptoEtfQuoteState[row.id];
@@ -2091,7 +2102,7 @@ function ingestCryptoEtfQuotes(rows){
  }
 }
 function updateCryptoEtfQuoteDom(){
- for(const product of CRYPTO_ETF_PRODUCTS){
+ for(const product of ALL_CRYPTO_ETF_QUOTES){
   for(const node of $$('[data-etf-quote-id="'+product.quoteId+'"]')){
    node.innerHTML=cryptoEtfQuoteMarkup(product);
   }
@@ -2151,13 +2162,15 @@ async function loadCryptoEtfHistory(){
 }
 
 function cryptoEtfOtherQuotes(product){
- const items=CRYPTO_ETF_PRODUCTS.filter(p=>p.crypto===product.crypto&&p.quoteId!==product.quoteId);
+ const items=CRYPTO_ETF_PRODUCTS.filter(p=>p.crypto===product.crypto&&p.quoteId!==product.quoteId)
+  .concat(product.crypto==='inj'?INJ_ETP_LISTINGS:[]);
  if(!items.length)return '';
  return '<div class="crypto-etf-others"><h4>Altre quotazioni '+esc(product.crypto.toUpperCase())+'</h4>'+
   items.map(p=>'<div class="crypto-etf-other"><div class="crypto-etf-other-name"><strong>'+esc(p.ticker)+
    '</strong><small>'+esc(p.name)+'</small></div>'+
    '<div class="crypto-etf-other-quote" data-etf-quote-id="'+esc(p.quoteId)+'">'+cryptoEtfQuoteMarkup(p)+'</div>'+
-   '<a href="'+esc(p.url)+'" target="_blank" rel="noopener noreferrer" aria-label="Scheda ufficiale '+esc(p.ticker)+'">↗</a></div>').join('')+
+   '<a href="'+esc(p.url)+'" target="_blank" rel="noopener noreferrer" aria-label="Scheda ufficiale '+esc(p.ticker)+' · '+esc(p.name)+'">↗</a></div>').join('')+
+  (product.crypto==='inj'?'<p class="crypto-etf-listing-note">Stesso ETP AINJ · ISIN CH1360612134. Amsterdam (USD) e Parigi (EUR) hanno quotazioni di borsa separate e possono essere ritardate.</p>':'')+
   '</div>';
 }
 function cryptoEtfSection(){
@@ -2191,10 +2204,10 @@ function cryptoEtfSection(){
  return '<section class="crypto-etfs-section" aria-label="ETF ed ETP delle criptovalute">'+
   '<div class="crypto-etf-title"><div><h2>ETF ed ETP Crypto</h2>'+
   '<p>Bitcoin, Ethereum, Solana e Injective · quotazioni e grafici storici ETF/ETP</p></div>'+
-  '<span class="crypto-etf-total">'+CRYPTO_ETF_PRODUCTS.length+' quotazioni · 4 grafici</span></div>'+
+  '<span class="crypto-etf-total">'+ALL_CRYPTO_ETF_QUOTES.length+' quotazioni · 4 grafici</span></div>'+
   '<div class="crypto-etf-grid">'+cards+'</div>'+
   '<p class="crypto-etf-disclaimer">Le quotazioni delle quote ETF/ETP provengono da Yahoo Finance, con aggiornamenti automatici periodici; possono essere ritardate. '+
-  'I mercati chiusi non producono nuovi scambi. Per AINJ viene utilizzata la quotazione di Amsterdam in USD, oppure quella di Parigi in EUR se Amsterdam non è disponibile. '+
+  'I mercati chiusi non producono nuovi scambi. Per AINJ, il grafico principale usa Amsterdam in USD oppure Parigi in EUR se Amsterdam non è disponibile; sotto sono riportate separatamente le due piazze. '+
   'La fonte, la valuta e l’orario dell’ultima quotazione verificata sono riportati sulle schede. '+
   'Il prezzo spot della criptovaluta è separato e non sostituisce il prezzo della quota ETF/ETP. '+
   'AINJ è un ETP europeo e non un ETF USA. Il capitale investito è a rischio.</p>'+
