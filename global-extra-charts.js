@@ -435,6 +435,10 @@ function drawExtraRainbowChart(c,w,h,host){
 }
 
 
+// Explicit bridge for the main dashboard renderer and hover tooltips.
+window.__vertexDrawRainbowChart=drawExtraRainbowChart;
+window.__vertexRainbowTooltip=extraRainbowTooltip;
+
 // Render header values as soon as Global opens. Do not wait for a chart click.
 // Both scripts are deferred; DOMContentLoaded fires once the host dashboard
 // and this module are available. Subsequent navigation is handled in render().
