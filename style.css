@@ -2439,3 +2439,16 @@ body.page-global .global-crypto-cap-pill:focus-visible{outline:2px solid var(--b
 @media(pointer:coarse){
  #globalCryptoHistoryChart .global-cap-chart-tooltip{padding:12px 14px;min-width:175px}
 }
+
+/* Visible pointer inspection on every Global historic chart, including touch. */
+#globalCryptoHistoryChart{touch-action:pan-y;position:relative}
+#globalCryptoHistoryChart canvas{touch-action:none;cursor:crosshair}
+#globalCryptoHistoryChart .global-cap-chart-tooltip:not([hidden]){
+ display:flex!important;visibility:visible!important;opacity:1!important;
+ background:var(--panel)!important;color:var(--text)!important;
+ border:1px solid var(--brand)!important;box-shadow:0 10px 32px #0007;
+ z-index:30!important;pointer-events:none!important;
+}
+#globalCryptoHistoryChart .global-cap-chart-tooltip .global-tooltip-value{
+ font-size:15px;font-weight:800;
+}
