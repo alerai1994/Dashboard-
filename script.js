@@ -1357,7 +1357,8 @@ function drawNativeCapChart(){
   }else stats.innerHTML='';
  }
  if(source)source.textContent=(nativeCapChart.sources[currentGlobalCapChart]||'Dati di mercato verificati')+
-  ' · Il grafico usa solo le date realmente disponibili. 1D: andamento giornaliero; 1W/1M: candele OHLC dai valori osservati, non estremi intraday.';
+  ' · Il grafico usa solo le date realmente disponibili. 1D: andamento giornaliero; 1W/1M: candele OHLC dai valori osservati, non estremi intraday.'+
+  (currentGlobalCapChart==='TOTALDEFI'?' Lo storico CoinPaprika usa una composizione di token DeFi diversa dal valore globale CoinGecko nella pillola.':'');
  const message=nativeCapChart.loading?'Caricamento dello storico verificato…':
  nativeCapChart.error||(!rows.length?'Nessuno storico verificato per questo indice; verranno mostrate le rilevazioni realmente archiviate.':'');
  if(empty){empty.textContent=message;empty.hidden=!message;}
