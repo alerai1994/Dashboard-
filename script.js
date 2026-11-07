@@ -1167,6 +1167,36 @@ function techBigTechOverview(){
    figures may differ from other index providers. No fabricated fallback values. */
 const globalCryptoCapState={values:{},loadedAt:0,lastAttempt:0,loading:false,partial:false};
 const GLOBAL_CRYPTO_CAP_POLL_MS=90000;
+let capArchivePromise=null;
+async function loadGlobalCapArchivedPills(){
+ if(capArchivePromise)return capArchivePromise;
+ capArchivePromise=(async()=>{
+  const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),15000);
+  try{
+   const response=await fetch('./global-cap-history.json?v='+Math.floor(Date.now()/300000),{cache:'no-store',signal:ctl.signal});
+   if(!response.ok)throw Error('HTTP '+response.status);
+   const payload=await response.json();
+   const series=payload?.series||{};
+   let restored=0;
+   for(const id of ['TOTAL','TOTAL2','TOTAL3','TOTALDEFI']){
+    const points=Array.isArray(series[id])?series[id]:[];
+    const last=[...points].reverse().find(p=>Array.isArray(p)&&Number.isFinite(Number(p[1]))&&Number(p[1])>0);
+    if(!last)continue;
+    if(!(Number(globalCryptoCapState.values[id])>0)){
+     globalCryptoCapState.values[id]=Number(last[1]);restored++;
+    }
+   }
+   if(restored){
+    globalCryptoCapState.archiveUpdatedAt=payload.updatedAt||null;
+    globalCryptoCapState.snapshot=true;
+    paintGlobalCryptoCaps();
+   }
+  }catch(err){console.warn('Market cap archive unavailable:',err)}
+  finally{clearTimeout(timer)}
+ })();
+ return capArchivePromise;
+}
+
 function globalCryptoCapUsd(value){
  if(!num(value)||value<=0)return '—';
  const unit=value>=1e12?1e12:value>=1e9?1e9:1e6;
@@ -1188,7 +1218,9 @@ function paintGlobalCryptoCaps(){
  if(s.loading&&!available)status.textContent='CoinGecko · caricamento dati reali…';
  else if(s.loading)status.textContent='CoinGecko · aggiornamento in corso…';
  else if(!available)status.textContent='CoinGecko · dati temporaneamente non disponibili';
+ else if(s.snapshot&&s.partial)status.textContent='Archivio · dati storici aggiornati al '+(s.archiveUpdatedAt?new Date(s.archiveUpdatedAt).toLocaleString('it-IT'):'ultimo salvataggio')+' · live non disponibile';
  else if(s.partial)status.textContent='CoinGecko · ultimo dato disponibile'+clock+' · aggiornamento parziale/non riuscito';
+ else if(s.snapshot)status.textContent='Archivio · ultime chiusure disponibili'+(s.archiveUpdatedAt?' · '+new Date(s.archiveUpdatedAt).toLocaleString('it-IT'):'');
  else status.textContent='CoinGecko · dati recuperati'+clock+' · verifica automatica ogni 90 s';
 }
 async function requestGlobalCryptoCapData(url){
@@ -1232,7 +1264,7 @@ async function refreshGlobalCryptoCaps(force=false){
    validDefi=true;
   }
  }
- if(validGlobal||validDefi)s.loadedAt=Date.now();
+ if(validGlobal||validDefi){s.loadedAt=Date.now();s.snapshot=false;}
  s.partial=!(validGlobal&&validDefi);
  s.loading=false;
  paintGlobalCryptoCaps();
@@ -3820,15 +3852,24 @@ function render(){
  }
  const page=SECTIONS[state.page]||SECTIONS.global;
  $('#pageTitle').textContent=page[0];$('#pageSubtitle').textContent=page[1];
+ // Render the actual page BEFORE fetching market data. An external feed must never
+ // leave the entire application trapped on the initial loading placeholder.
+ const main=$('#pageContainer');
+ try { main.innerHTML=PAGE_RENDERERS[state.page](); }
+ catch(err){
+  console.error('Vertex page render failed:',err);
+  main.innerHTML='<section class="panel" style="padding:24px"><h2>Impossibile mostrare questa sezione</h2><p>Riprova a ricaricare la pagina. I servizi dati sono indipendenti dalla dashboard.</p></section>';
+ }
  const globalCapHeader=$('#globalCryptoCaps');
  if(globalCapHeader){
   globalCapHeader.hidden=state.page!=='global';
   if(state.page==='global'){
-   paintGlobalCryptoCaps();
-   refreshGlobalCryptoCaps();
-   // Header values for the extra indices load automatically, not on chart click.
-   if(typeof updateExtraGlobalPillData==='function')updateExtraGlobalPillData();
-   if(typeof loadExtraGlobalCharts==='function')loadExtraGlobalCharts();
+   // Never allow optional charts or remote APIs to interrupt the main interface.
+   try{paintGlobalCryptoCaps()}catch(err){console.error('Cap pills:',err)}
+   try{refreshGlobalCryptoCaps()}catch(err){console.error('Cap refresh:',err)}
+   try{loadGlobalCapArchivedPills()}catch(err){console.error('Cap archive:',err)}
+   try{if(typeof updateExtraGlobalPillData==='function')updateExtraGlobalPillData()}catch(err){console.error('Special pill data:',err)}
+   try{if(typeof loadExtraGlobalCharts==='function')loadExtraGlobalCharts()}catch(err){console.error('Special charts:',err)}
   }
  }
  const hideSearch=['global','portfolio','settings','analytics','orderbook','workspace','etf','news'].includes(state.page);
@@ -3840,9 +3881,7 @@ function render(){
   const searchInput=$('#searchInput');
   if(searchInput)searchInput.setAttribute('aria-expanded','false');
  }
- const main=$('#pageContainer');
- main.innerHTML=PAGE_RENDERERS[state.page]();
- paintGlobalCapChart();
+ try{paintGlobalCapChart()}catch(err){console.error('Cap chart:',err)}
   updateNav();
  paintCryptoPriceHighlights();
  if(state.page==='etf'){loadCryptoCapData();loadCryptoEtfHistory();}
@@ -5930,8 +5969,7 @@ function startVertexApp(){
    if(!orderBookIsStreaming()&&!orderBookIsFastPolling())refreshOrderBook();
   }
  },5000);
- render();
- dismissVertexBoot();
+ try{render()}finally{dismissVertexBoot()}
  fetchQuotes();
  connectCryptoStream();
  const fxLibrary=$('#fxSignalrLibrary');
