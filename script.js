@@ -5968,7 +5968,7 @@ function init(){
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 
-/* Extra charts integrated into the dashboard scope to access its private state. */
+/* Altcoin and Rainbow charts share dashboard state. */
 /* Vertex Global: Altcoin Index and BTC/ETH logarithmic Rainbow charts.
    Market data is downloaded from the versioned first-party JSON archive.
    All rainbow bands are descriptive regressions fitted to observed closes:
@@ -5993,7 +5993,7 @@ function extraCleanPoints(input){
 }
 function extraMoney(n){
  if(!(n>0))return '—';
- return '+n.toLocaleString('en-US',{maximumFractionDigits:n<10?3:n<100?2:0});
+ return '$'+n.toLocaleString('en-US',{maximumFractionDigits:n<10?3:n<100?2:0});
 }
 function extraLogFit(points){
  if(points.length<24)return null;
