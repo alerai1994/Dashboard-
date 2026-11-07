@@ -1277,7 +1277,7 @@ const GLOBAL_CAP_CHART_NAMES=Object.freeze({
  TOTAL2:'Capitalizzazione senza Bitcoin',
  TOTAL3:'Capitalizzazione senza Bitcoin ed Ethereum',
  TOTALDEFI:'Capitalizzazione del settore DeFi',
- ALTCOIN:'Altcoin Index · CRYPTOCAP:OTHERS',
+ ALTCOIN:'Altcoin Season Index · scala 0–100',
  BTC_RAINBOW:'BTC · Rainbow Chart',
  ETH_RAINBOW:'ETH · Rainbow Chart'
 });
@@ -1448,6 +1448,9 @@ function drawNativeCapChart(){
  canvas.style.width=w+'px';canvas.style.height=h+'px';
  const c=canvas.getContext('2d');if(!c)return;
  c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,w,h);
+ if(currentGlobalCapChart==='ALTCOIN'&&typeof window.__vertexDrawAltcoinIndex==='function'){
+  window.__vertexDrawAltcoinIndex(c,w,h,host);return;
+ }
  if(typeof isRainbowExtraChart==='function'&&isRainbowExtraChart(currentGlobalCapChart)){
   if(typeof drawExtraRainbowChart==='function')drawExtraRainbowChart(c,w,h,host);
   return;
@@ -1582,7 +1585,9 @@ function nativeCapAttach(){
   nativeCapChart.hover=pos;drawNativeCapChart();
   if(tip){
    const p=view.rows[pos];
-   tip.innerHTML=(typeof isRainbowExtraChart==='function'&&isRainbowExtraChart(currentGlobalCapChart)&&
+   tip.innerHTML=currentGlobalCapChart==='ALTCOIN'?
+    '<strong>'+nativeCapDate(p.t)+'</strong><span>Altcoin Season Index: '+p.c.toLocaleString('it-IT',{maximumFractionDigits:0})+'/100</span>':
+    (typeof isRainbowExtraChart==='function'&&isRainbowExtraChart(currentGlobalCapChart)&&
     typeof extraRainbowTooltip==='function')?extraRainbowTooltip(p,currentGlobalCapChart):
     '<strong>'+nativeCapDate(p.t)+'</strong><span>Chiusura '+nativeCapUsd(p.c)+'</span>'+
     (nativeCapChart.timeframe==='1D'&&!p.verifiedOHLC?'':'<span>Apertura '+nativeCapUsd(p.o)+'</span><span>Massimo '+nativeCapUsd(p.h)+'</span><span>Minimo '+nativeCapUsd(p.l)+'</span>');
@@ -1608,7 +1613,7 @@ function paintGlobalCapChart(){
  const eyebrow=$('#globalCapChartEyebrow');
  if(eyebrow)eyebrow.textContent=(id==='BTC_RAINBOW'||id==='ETH_RAINBOW')?
   'VERTEX · RAINBOW CHART · MODELLO STORICO':
-  id==='ALTCOIN'?'VERTEX · ALTCOIN INDEX · CRYPTOCAP:OTHERS':
+  id==='ALTCOIN'?'VERTEX · ALTCOIN SEASON INDEX · 0–100':
   'VERTEX · HISTORICAL MARKET CAP';
  panel.querySelectorAll('[data-cap-timeframe]').forEach(b=>{
   const active=b.dataset.capTimeframe===nativeCapChart.timeframe;
