@@ -1515,7 +1515,7 @@ function vertexDrawChartValueFlag(ctx,canvasWidth,chartRight,valueY,label,color)
  if(available<26)return;
  const fontSize=available<73?9:10;
  ctx.save();
- ctx.font='700 '+fontSize+'px system-ui,sans-serif';
+ ctx.font=vertexCanvasFont(fontSize,'700');
  let text=label;
  let measured=ctx.measureText(text).width;
  if(measured>available-17){
@@ -1548,6 +1548,7 @@ function vertexDrawChartValueFlag(ctx,canvasWidth,chartRight,valueY,label,color)
  ctx.restore();
 }
 window.__vertexDrawChartValueFlag=vertexDrawChartValueFlag;
+window.__vertexCanvasFont=vertexCanvasFont;
 function drawNativeCapChart(){
  const canvas=$('#globalCapCanvas'),host=$('#globalCryptoHistoryChart'),empty=$('#globalCapChartEmpty');
  if(!canvas||!host||!currentGlobalCapChart||state.page!=='global')return;
@@ -1600,7 +1601,7 @@ function drawNativeCapChart(){
  const pad=Math.max((hi-lo)*.12,hi*.003);lo=Math.max(0,lo-pad);hi+=pad;
  const x=i=>L+(i+.5)*PW/rows.length;
  const y=v=>T+(hi-v)/(hi-lo)*PH;
- c.font='11px system-ui,sans-serif';c.textBaseline='middle';
+ c.font=vertexCanvasFont(11);c.textBaseline='middle';
  for(let k=0;k<=5;k++){
   const val=lo+(hi-lo)*k/5,cy=y(val);
   c.strokeStyle=colors.line;c.globalAlpha=.48;c.lineWidth=.75;
@@ -1653,7 +1654,7 @@ function drawNativeCapChart(){
   c.strokeStyle=colors.muted;c.lineWidth=.8;c.setLineDash([3,4]);c.beginPath();
   c.moveTo(x(pos),T);c.lineTo(x(pos),T+PH);c.moveTo(L,y(p.c));c.lineTo(L+PW,y(p.c));c.stroke();c.setLineDash([]);
  }
- c.restore();c.fillStyle=colors.muted;c.textAlign='left';c.font='10px system-ui,sans-serif';c.fillText('USD · CAPITALIZZAZIONE',L,14);
+ c.restore();c.fillStyle=colors.muted;c.textAlign='left';c.font=vertexCanvasFont(10);c.fillText('USD · CAPITALIZZAZIONE',L,14);
  const valueIndex=nativeCapChart.hover!==null&&nativeCapChart.hover>=0&&nativeCapChart.hover<rows.length?
   nativeCapChart.hover:rows.length-1;
  const valuePoint=rows[valueIndex];
@@ -4136,15 +4137,29 @@ function applyTheme(){
  });
 }
 function applyFontStyle(){
+ // The chosen typeface must be consistent in the page, dialogs, inputs and charts.
  document.documentElement.dataset.vertexFont=state.fontStyle;
+ document.body?.setAttribute('data-vertex-font',state.fontStyle);
+}
+function vertexCanvasFont(size=11,weight='normal'){
+ const family=getComputedStyle(document.body).fontFamily||
+  "Inter, Arial, sans-serif";
+ return weight+' '+size+'px '+family;
 }
 function setFontStyle(id){
  if(!Object.hasOwn(VERTEX_FONTS,id))return;
  state.fontStyle=id;
  applyFontStyle();
  save('fontStyle',id);
+ // Refresh all native graph labels after a typeface change.
  if(state.dialogId)scheduleDetailChartDraw();
  if(state.page==='settings'||(state.page==='workspace'&&workspaceShown('settings')))render();
+ if(state.page==='global')paintGlobalCapChart();
+ if(document.fonts?.ready)document.fonts.ready.then(()=>{
+  if(state.fontStyle!==id)return;
+  if(state.dialogId)scheduleDetailChartDraw();
+  if(state.page==='global')paintGlobalCapChart();
+ }).catch(()=>{});
 }
 function setTheme(mode){
  state.themeMode=(mode==='auto'||Object.hasOwn(THEME_NAMES,mode))?mode:'dark';
