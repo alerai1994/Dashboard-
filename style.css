@@ -2325,3 +2325,7 @@ body .topbar .live-clock strong{
  .global-crypto-cap-pill span{font-size:9px}
  .global-crypto-cap-pill strong{font-size:11px}
 }
+
+
+/* INJ: explanatory note below independently sourced Amsterdam and Paris quotes. */
+.crypto-etf-listing-note{margin:2px 0 0;font-size:10px;line-height:1.5;color:var(--muted);border-top:1px solid var(--line-soft);padding-top:9px}
