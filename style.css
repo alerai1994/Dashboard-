@@ -2452,3 +2452,22 @@ body.page-global .global-crypto-cap-pill:focus-visible{outline:2px solid var(--b
 #globalCryptoHistoryChart .global-cap-chart-tooltip .global-tooltip-value{
  font-size:15px;font-weight:800;
 }
+
+/* Font selected in Settings applies across the entire interface, including
+   controls and dialog overlays, while each font preview retains its own face. */
+html,body{font-family:var(--vertex-font)}
+body :is(button,input,select,textarea,option,dialog,[role="dialog"]){
+ font-family:var(--vertex-font);
+}
+.settings-font-grid .settings-font-option.font-preview-inter,
+.settings-font-grid .settings-font-option.font-preview-inter *{font-family:'Inter',Arial,sans-serif}
+.settings-font-grid .settings-font-option.font-preview-roboto,
+.settings-font-grid .settings-font-option.font-preview-roboto *{font-family:'Roboto',Arial,sans-serif}
+.settings-font-grid .settings-font-option.font-preview-poppins,
+.settings-font-grid .settings-font-option.font-preview-poppins *{font-family:'Poppins',Arial,sans-serif}
+.settings-font-grid .settings-font-option.font-preview-montserrat,
+.settings-font-grid .settings-font-option.font-preview-montserrat *{font-family:'Montserrat',Arial,sans-serif}
+.settings-font-grid .settings-font-option.font-preview-lora,
+.settings-font-grid .settings-font-option.font-preview-lora *{font-family:'Lora',Georgia,serif}
+.settings-font-grid .settings-font-option.font-preview-nunito,
+.settings-font-grid .settings-font-option.font-preview-nunito *{font-family:'Nunito Sans',Arial,sans-serif}
