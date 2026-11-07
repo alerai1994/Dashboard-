@@ -2383,3 +2383,38 @@ body .topbar .live-clock strong{
 }
 .global-special-pill strong{font-size:11px}
 .global-special-pill.is-active{box-shadow:inset 0 0 0 1px var(--brand)}
+
+
+/* Global seven market-cap pills: one uninterrupted left-to-right row.
+   Allow scroll on smaller screens instead of stacking or clipping labels. */
+body.page-global .page-heading{min-width:0;flex:1 1 auto}
+body.page-global .global-crypto-caps{width:100%;max-width:100%;min-width:0;margin-top:13px}
+body.page-global .global-crypto-cap-pills{
+ display:flex!important;flex-flow:row nowrap!important;
+ grid-template-columns:none!important;align-items:center;justify-content:flex-start;
+ width:100%;min-width:0;max-width:100%;
+ overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;
+ -webkit-overflow-scrolling:touch;scrollbar-width:thin;
+ gap:8px;padding:2px 2px 9px;scroll-padding-inline:4px
+}
+body.page-global .global-crypto-cap-pills>.global-crypto-cap-pill{
+ flex:0 0 auto;white-space:nowrap;min-width:0;
+ padding:7px 11px;min-height:43px;justify-content:center
+}
+body.page-global .global-special-pill .global-special-pill-data{
+ display:flex;flex-direction:column;align-items:flex-end;justify-content:center;
+ min-width:0;gap:3px;line-height:1.08
+}
+body.page-global .global-special-pill-data strong{font-size:12px;line-height:1.1}
+body.page-global .global-special-pill-data small{
+ color:var(--muted);font-size:9px;white-space:nowrap;font-variant-numeric:tabular-nums;
+ font-weight:650
+}
+body.page-global .global-special-pill-data small.is-positive{color:#18b88c}
+body.page-global .global-special-pill-data small.is-negative{color:#ee7181}
+body.page-global .global-crypto-cap-pill:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+@media(max-width:600px){
+ body.page-global .global-crypto-cap-pills{display:flex!important;grid-template-columns:none!important;flex-wrap:nowrap!important}
+ body.page-global .global-crypto-cap-pills>.global-crypto-cap-pill{min-height:42px;padding:7px 10px}
+ body.page-global .global-crypto-cap-pill span{font-size:10px}
+}
