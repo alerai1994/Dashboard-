@@ -77,16 +77,19 @@ function updateExtraGlobalPillData(){
    continue;
   }
   const last=rows[rows.length-1],prior=rows.length>1?rows[rows.length-2]:null;
-  valueNode.textContent=id==='ALTCOIN'?nativeCapUsd(last[1]):extraMoney(last[1]);
+  valueNode.textContent=id==='ALTCOIN'?Math.round(last[1])+'%':extraMoney(last[1]);
   let dailyChange=null;
   // Percentage change between the two last verified daily close observations.
   if(prior&&prior[1]>0)dailyChange=(last[1]/prior[1]-1)*100;
   changeNode.classList.toggle('is-positive',dailyChange!==null&&dailyChange>0);
   changeNode.classList.toggle('is-negative',dailyChange!==null&&dailyChange<0);
-  changeNode.textContent=dailyChange===null?'Variazione n/d':
+  const indexDelta=prior?Math.round(last[1]-prior[1]):null;
+  changeNode.textContent=id==='ALTCOIN'?
+   (indexDelta===null?'Ultimo valore archiviato':'1D '+(indexDelta>=0?'+':'')+indexDelta+' punti'):
+   (dailyChange===null?'Variazione n/d':
    '1D '+(dailyChange>=0?'+':'')+dailyChange.toLocaleString('it-IT',{
     minimumFractionDigits:2,maximumFractionDigits:2
-   })+'%';
+   })+'%');
   if(button){
    if(!button.dataset.extraBaseTitle)button.dataset.extraBaseTitle=button.title||id;
    const updated=new Date(last[0]).toLocaleDateString('it-IT',{timeZone:'UTC',day:'2-digit',month:'short',year:'numeric'});
@@ -108,21 +111,14 @@ async function loadExtraGlobalCharts(){
   const response=await fetch(url,{signal:controller.signal,cache:'no-store'});
   if(!response.ok)throw Error('HTTP '+response.status);
   const payload=await response.json();
-  const alt=payload?.alt_market||{};
-  if(alt.symbol==='CRYPTOCAP:OTHERS'){
-   const points=extraCleanPoints(alt.points);
-   nativeCapChart.data.ALTCOIN=points;
-   nativeCapChart.sources.ALTCOIN=alt.source||'CRYPTOCAP:OTHERS';
-   extraGlobalState.meta.ALTCOIN={frequency:alt.frequency||'1D',source:alt.source};
-   const known=new Map(points),candles=new Map();
-   for(const row of Array.isArray(alt.bars)?alt.bars:[]){
-    if(!Array.isArray(row)||row.length<5)continue;
-    const [t,o,h,l,c]=row.slice(0,5).map(Number);
-    if(!known.has(t)||![o,h,l,c].every(v=>Number.isFinite(v)&&v>0))continue;
-    if(l>Math.min(o,c)||Math.max(o,c)>h||Math.abs(c-known.get(t))>c*.00001)continue;
-    candles.set(t,[o,h,l,c]);
-   }
-   if(candles.size>800)nativeCapChart.ohlc.ALTCOIN=candles;
+  // Altcoin Season Index is a bounded 0–100 score, not CRYPTOCAP:OTHERS market cap.
+  const alt=payload?.altcoin||{};
+  const altPoints=extraCleanPoints(alt.points).filter(([t,v])=>v>=0&&v<=100);
+  if(altPoints.length){
+   nativeCapChart.data.ALTCOIN=altPoints;
+   nativeCapChart.ohlc.ALTCOIN=null;
+   nativeCapChart.sources.ALTCOIN=alt.source||'CoinMarketCap · Altcoin Season Index';
+   extraGlobalState.meta.ALTCOIN={frequency:alt.frequency||'1D',source:alt.source,updatedAt:payload.updatedAt};
   }
   for(const [id,asset] of Object.entries(extraRainbowIds)){
    const quote=payload?.rainbow?.[asset]||{};
@@ -145,6 +141,66 @@ async function loadExtraGlobalCharts(){
    paintGlobalCapChart();
  }
 }
+
+/* Altcoin Season: literal 0–100 axis and real observed historical scores. */
+function drawExtraAltcoinIndex(c,w,h,host){
+ const points=nativeCapChart.data.ALTCOIN||[];
+ const view=nativeCapWindow(),rows=view.rows;
+ const empty=$('#globalCapChartEmpty'),stats=$('#globalCapChartStats');
+ const source=$('#globalCapHistorySource'),subtitle=$('#globalCapFullRangeStatus');
+ const isLoaded=extraGlobalState.loaded;
+ const missing=extraGlobalState.loading?'Caricamento Altcoin Season Index…':
+  extraGlobalState.error||(!points.length&&isLoaded?'Storico Altcoin Season Index non disponibile.':'');
+ if(empty){empty.textContent=missing;empty.hidden=!missing}
+ if(subtitle)subtitle.textContent='Altcoin Season Index · scala 0–100 · '+nativeCapChart.timeframe+
+  ' · '+(points.length?'storico '+nativeCapDate(points[0][0])+' – '+nativeCapDate(points.at(-1)[0]):'caricamento');
+ if(source)source.textContent=(nativeCapChart.sources.ALTCOIN||'CoinMarketCap · Altcoin Season Index')+
+  ' · Indice da 0 a 100: sotto 25 stagione Bitcoin, sopra 75 stagione altcoin. Valori giornalieri archiviati, non capitalizzazione di mercato.';
+ if(stats){
+  if(points.length){
+   const last=points.at(-1),prior=points.at(-2);
+   const delta=prior?Math.round(last[1]-prior[1]):null;
+   stats.innerHTML='<div><small>Indice attuale archiviato</small><strong>'+Math.round(last[1])+'/100</strong></div>'+
+    '<div><small>Variazione 1D</small><strong>'+(delta===null?'—':(delta>=0?'+':'')+delta+' punti')+'</strong></div>'+
+    '<div><small>Ultimo dato</small><strong>'+nativeCapDate(last[0])+'</strong></div>';
+  }else stats.innerHTML='';
+ }
+ if(!rows.length)return;
+ const L=24,R=65,T=26,B=43,PW=Math.max(70,w-L-R),PH=Math.max(80,h-T-B);
+ const X=i=>L+(i+.5)*PW/rows.length,Y=value=>T+(100-value)/100*PH;
+ const muted=nativeCapPalette('--muted','#8f9eaa');
+ const grid=nativeCapPalette('--line','#35475c');
+ const bright=nativeCapPalette('--brand','#4d9dff');
+ c.font='11px system-ui,sans-serif';c.textBaseline='middle';
+ for(let score=0;score<=100;score+=25){
+  const y=Y(score);c.strokeStyle=grid;c.globalAlpha=.55;c.lineWidth=.8;
+  c.beginPath();c.moveTo(L,y);c.lineTo(L+PW,y);c.stroke();c.globalAlpha=1;
+  c.fillStyle=muted;c.textAlign='left';c.fillText(score+'%',L+PW+9,y);
+ }
+ for(let k=0;k<=5;k++){
+  const i=Math.min(rows.length-1,Math.floor((rows.length-1)*k/5));
+  c.fillStyle=muted;c.textAlign='center';
+  c.fillText(new Date(rows[i].t).toLocaleDateString('it-IT',
+   {month:'short',year:'2-digit',timeZone:'UTC'}),X(i),h-16);
+ }
+ c.save();c.beginPath();c.rect(L,T,PW,PH);c.clip();
+ const gradient=c.createLinearGradient(0,T,0,T+PH);
+ gradient.addColorStop(0,'rgba(35,174,144,.22)');
+ gradient.addColorStop(1,'rgba(48,144,230,.07)');
+ c.beginPath();
+ rows.forEach((p,i)=>i?c.lineTo(X(i),Y(p.c)):c.moveTo(X(i),Y(p.c)));
+ c.lineTo(X(rows.length-1),Y(0));c.lineTo(X(0),Y(0));c.closePath();c.fillStyle=gradient;c.fill();
+ c.beginPath();rows.forEach((p,i)=>i?c.lineTo(X(i),Y(p.c)):c.moveTo(X(i),Y(p.c)));
+ c.strokeStyle=bright;c.lineWidth=2.2;c.lineJoin='round';c.stroke();
+ const p=rows[nativeCapChart.hover!==null&&nativeCapChart.hover>=0&&nativeCapChart.hover<rows.length?nativeCapChart.hover:rows.length-1];
+ const idx=rows.indexOf(p);c.beginPath();c.arc(X(idx),Y(p.c),3.3,0,Math.PI*2);c.fillStyle=bright;c.fill();
+ c.restore();
+ host.dataset.plotWidth=String(PW);
+ host.dataset.plotLeft=String(L);
+ host.dataset.viewCount=String(rows.length);
+}
+window.__vertexDrawAltcoinIndex=drawExtraAltcoinIndex;
+
 function drawExtraRainbowChart(c,w,h,host){
  const id=vertexChartScope.currentGlobalCapChart,asset=extraRainbowIds[id];
  const points=nativeCapChart.data[id]||[],fit=extraGlobalState.model[id];
