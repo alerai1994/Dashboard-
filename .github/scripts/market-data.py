@@ -5,6 +5,8 @@ Source: Yahoo Finance chart API (indices, FX, futures); CoinGecko (crypto).
 """
 import json
 import os
+import re
+from html import unescape
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -679,6 +681,78 @@ def repair_regional_percentages(markets):
     return markets
 
 
+
+def ainj_paris_public_quote():
+    """Official public AINJ Paris quote with original exchange timestamp.
+    
+    Borsa Italiana Euronext public pages indicate delayed market data.
+    Never calculate share prices from the INJ token or the Amsterdam listing.
+    """
+    urls = (
+        "https://www.borsaitaliana.it/borsa/etc-etn/dettaglio.html?isin=CH1360612134&lang=it&mic=XPAR",
+        "https://www.borsaitaliana.it/borsa/etc-etn/scheda/CH1360612134-XPAR.html?lang=it",
+    )
+    headers = {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "it-IT,it;q=0.9",
+    }
+    for url in urls:
+        try:
+            with urlopen(Request(url, headers=headers), timeout=9) as response:
+                html = response.read(1100000).decode("utf-8", "replace")
+            html = re.sub(r"(?is)<(script|style)\b[^>]*>.*?</\1>", " ", html)
+            visible = unescape(re.sub(r"(?s)<[^>]+>", " ", html))
+            visible = re.sub(r"\s+", " ", visible)
+            low = visible.lower()
+            if ("21shares injective staking etp" not in low or
+                    "ch1360612134" not in low or "xpar" not in low or
+                    "venue: paris" not in low):
+                continue
+            trade = re.search(
+                r"(\d{1,5},\d{2,6})\s+([+-]\d{1,3}(?:,\d+)?)\s*%\s+"
+                r"Fase:.*?Ultimo Contratto:\s*(\d{2}/\d{2}/\d{2})\s+"
+                r"(\d{2}\.\d{2}\.\d{2})\s+Venue:\s*Paris\b",
+                visible, re.IGNORECASE,
+            )
+            if trade:
+                price_text, change_text, quote_date, quote_clock = trade.groups()
+                price = float(price_text.replace(".", "").replace(",", "."))
+                change = float(change_text.replace(",", "."))
+            else:
+                closing = re.search(
+                    r"Prezzo di riferimento\s+(\d{1,5},\d{2,6})\s*[-–]\s*"
+                    r"(\d{2}/\d{2}/\d{2})\s+(\d{2}\.\d{2}\.\d{2})",
+                    visible, re.IGNORECASE,
+                )
+                if not closing:
+                    continue
+                price_text, quote_date, quote_clock = closing.groups()
+                price = float(price_text.replace(".", "").replace(",", "."))
+                change = None
+            if not (0 < price < 100000):
+                continue
+            observed = datetime.strptime(
+                quote_date + " " + quote_clock, "%d/%m/%y %H.%M.%S"
+            ).replace(tzinfo=ZoneInfo("Europe/Paris")).astimezone(timezone.utc)
+            age = (datetime.now(timezone.utc) - observed).total_seconds()
+            if age < -300 or age > 7 * 86400:
+                continue
+            return {
+                "id": "etf-ainj-paris",
+                "symbol": "AINJ.PA",
+                "value": round(price, 6),
+                "change": round(change, 4) if change is not None else None,
+                "currency": "EUR",
+                "time": observed.isoformat(),
+                "source": "Borsa Italiana / Euronext Paris",
+                "delayMinutes": 15,
+            }
+        except (HTTPError, URLError, TimeoutError, OSError, ValueError,
+                TypeError, OverflowError, UnicodeError):
+            continue
+    return None
+
 def etf_quotes():
     rows = fetch_group(ETFS)
     for index, row in enumerate(rows):
@@ -687,6 +761,10 @@ def etf_quotes():
             alternate = yahoo_quote(("etf-ainj", "AINJ.PA"))
             if valid(alternate.get("value")) is not None:
                 rows[index] = alternate
+        if row["id"] == "etf-ainj-paris" and valid(row.get("value")) is None:
+            verified = ainj_paris_public_quote()
+            if verified is not None:
+                rows[index] = verified
     return rows
 
 
