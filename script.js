@@ -2047,7 +2047,7 @@ const INJ_ETP_LISTINGS=[
   url:'https://www.borsaitaliana.it/borsa/etc-etn/scheda/CH1360612134-XAMC.html?lang=it'},
  {crypto:'inj',ticker:'AINJ',quoteId:'etf-ainj-paris',
   name:'Euronext Parigi · EUR',market:'Parigi · EUR',
-  url:'https://www.21shares.com/it-eu/product/ainj'}
+  url:'https://www.marketscreener.com/quote/etf/21SHARES-INJECTIVE-STAKIN-172466854/quotes/'}
 ];
 const ALL_CRYPTO_ETF_QUOTES=[...CRYPTO_ETF_PRODUCTS,...INJ_ETP_LISTINGS];
 const CRYPTO_ETF_PRIMARY=CRYPTO_ETF_PRODUCTS.filter(p=>['etf-ibit','etf-etha','etf-bsol','etf-ainj'].includes(p.quoteId));
