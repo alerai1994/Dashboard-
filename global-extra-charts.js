@@ -78,19 +78,20 @@ function updateExtraGlobalPillData(){
    continue;
   }
   const last=rows.at(-1),prior=rows.at(-2),online=extraIsLive(id);
+  const realtime=online&&extraGlobalState.live[id]?.realtime===true;
   const live=extraGlobalState.live[id],button=valueNode.closest('button');
   valueNode.textContent=id==='ALTCOIN'?Math.round(last[1])+'%':extraMoney(last[1]);
   changeNode.classList.remove('is-positive','is-negative');
   let delta=null,description='';
   if(id==='ALTCOIN'){
    delta=prior?Math.round(last[1]-prior[1]):null;
-   description=online?'LIVE · '+extraTime(live.timestamp):
+   description=online?'CMC AGGIORNATO · '+extraTime(live.timestamp):
     'ARCHIVIO · '+extraTime(last[0]);
   }else{
    delta=online&&Number.isFinite(live.change24h)?live.change24h:
     prior&&prior[1]>0?(last[1]/prior[1]-1)*100:null;
    const percent=delta===null?'n/d':(delta>=0?'+':'')+delta.toFixed(2)+'%';
-   description=(online?'LIVE · ':'ARCHIVIO · ')+percent;
+   description=(realtime?'LIVE · ':online?'RECENTE · ':'ARCHIVIO · ')+percent;
   }
   changeNode.textContent=description;
   changeNode.classList.toggle('is-positive',delta!==null&&delta>0);
@@ -99,7 +100,7 @@ function updateExtraGlobalPillData(){
    if(!button.dataset.extraBaseTitle)button.dataset.extraBaseTitle=button.title||id;
    const model=extraGlobalState.model[id];
    const zone=isRainbowExtraChart(id)?extraRainbowZone(last[0],last[1],model):null;
-   button.title=button.dataset.extraBaseTitle+' · '+(online?'LIVE':'DATO ARCHIVIATO')+
+   button.title=button.dataset.extraBaseTitle+' · '+(realtime?'LIVE':online?'AGGIORNATO':'DATO ARCHIVIATO')+
     ' · '+valueNode.textContent+' · '+new Date(last[0]).toLocaleString('it-IT')+
     (zone===null?'':' · fascia Rainbow: '+extraRainbowZones[zone]);
   }
@@ -186,7 +187,7 @@ function extraTimestamp(raw){
  }
  return null;
 }
-function extraApplyLive(id,value,timestamp,source,change24h=null){
+function extraApplyLive(id,value,timestamp,source,change24h=null,realtime=false){
  const n=Number(value),t=extraTimestamp(timestamp);
  if(!Number.isFinite(n)||!Number.isFinite(t)||n<0||(id!=='ALTCOIN'&&n===0))return false;
  if(id==='ALTCOIN'&&!(n>=0&&n<=100))return false;
@@ -194,6 +195,7 @@ function extraApplyLive(id,value,timestamp,source,change24h=null){
  if(!nativeCapChart.data[id]?.length)return false;
  const existing=extraGlobalState.live[id];
  if(existing&&existing.timestamp>t)return false;
+ if(existing?.realtime&&!realtime&&Date.now()-existing.receivedAt<25000)return false;
  const utcDay=ms=>Math.floor(ms/86400000);
  const day=utcDay(t),original=nativeCapChart.data[id];
  // Keep previous daily historical candles, replace only the newest UTC day's
@@ -202,7 +204,7 @@ function extraApplyLive(id,value,timestamp,source,change24h=null){
  replacement.push([t,n]);replacement.sort((a,b)=>a[0]-b[0]);
  nativeCapChart.data[id]=replacement;
  extraGlobalState.live[id]={
-  timestamp:t,receivedAt:Date.now(),source,
+  timestamp:t,receivedAt:Date.now(),source,realtime,
   change24h:Number.isFinite(Number(change24h))?Number(change24h):null
  };
  updateExtraGlobalPillData();
@@ -218,9 +220,9 @@ async function refreshExtraLiveQuotes(){
    Object.entries(extraRainbowIds).map(async([id,asset])=>{
     const raw=await extraFetchJson('https://data-api.binance.vision/api/v3/ticker/24hr?symbol='+asset+'USDT');
     const price=Number(raw?.lastPrice);
-    const timestamp=Date.now();
-    if(!(price>0))throw Error('Prezzo non valido');
-    extraApplyLive(id,price,timestamp,'Binance · '+asset+'/USDT',raw.priceChangePercent);
+    const timestamp=extraTimestamp(raw?.closeTime);
+    if(!(price>0)||!timestamp)throw Error('Prezzo o ora del mercato non validi');
+    extraApplyLive(id,price,timestamp,'Binance Spot REST · '+asset+'/USDT',raw.priceChangePercent);
    })
   );
   for(const result of entries)if(result.status==='rejected')
@@ -262,14 +264,28 @@ async function refreshExtraLiveSnapshot(){
  }catch(err){console.warn('Timestamped live snapshot unavailable:',err)}
  finally{extraLivePending.snapshot=false;updateExtraGlobalPillData()}
 }
+/* Reuse verified Binance WebSocket ticks from the main market dashboard. */
+function syncExtraRainbowWithCryptoStream(){
+ if(!extraGlobalState.loaded||document.hidden)return;
+ for(const [id,asset] of Object.entries(extraRainbowIds)){
+  const quote=state.quotes?.[asset.toLowerCase()];
+  if(!quote||quote.live!==true||!Number.isFinite(quote.received)||
+    Date.now()-quote.received>20000)continue;
+  const t=extraTimestamp(quote.time);
+  if(!(t&&Number.isFinite(quote.value)&&quote.value>0))continue;
+  if(extraGlobalState.live[id]?.timestamp===t&&extraGlobalState.live[id]?.realtime)continue;
+  extraApplyLive(id,quote.value,t,'Binance WebSocket · '+asset+'/USDT',quote.change,true);
+ }
+}
 function startExtraLivePolling(){
  if(extraLiveStarted)return;extraLiveStarted=true;
  setInterval(refreshExtraLiveQuotes,EXTRA_BTC_ETH_MS);
+ setInterval(syncExtraRainbowWithCryptoStream,1200);
  setInterval(refreshExtraLiveAltcoin,EXTRA_ALTCOIN_MS);
  setInterval(refreshExtraLiveSnapshot,60000);
  document.addEventListener('visibilitychange',()=>{
   if(!document.hidden){
-   refreshExtraLiveQuotes();refreshExtraLiveAltcoin();refreshExtraLiveSnapshot();
+   syncExtraRainbowWithCryptoStream();refreshExtraLiveQuotes();refreshExtraLiveAltcoin();refreshExtraLiveSnapshot();
   }
  });
 }
@@ -291,13 +307,13 @@ function drawExtraAltcoinIndex(c,w,h,host){
   (nativeCapChart.range==='1D'?' · dati giornalieri, non intraday':'');
  if(source)source.textContent=(nativeCapChart.sources.ALTCOIN||'CoinMarketCap · Altcoin Season Index')+
   ' · Indice 0–100: linea blu da 50% a 100%, arancione sotto 50%. Sotto 25 stagione Bitcoin; sopra 75 stagione altcoin. '+
-  (extraIsLive('ALTCOIN')?'Ultima osservazione ufficiale aggiornata':'Ultimo dato archiviato')+'.';
+  (extraIsLive('ALTCOIN')?'Ultima rilevazione ufficiale aggiornata, non streaming':'Ultimo dato archiviato')+'.';
  if(stats){
   if(rows.length){
    const first=rows[0],last=rows.at(-1);
    const delta=rows.length>1?Math.round(last.c-first.c):null;
    const current=points.length>0&&last.t===points.at(-1)[0]&&extraIsLive('ALTCOIN');
-   stats.innerHTML='<div><small>Indice '+(current?'LIVE':'nel periodo')+'</small><strong>'+Math.round(last.c)+'/100</strong></div>'+
+   stats.innerHTML='<div><small>Indice '+(current?'CMC aggiornato':'nel periodo')+'</small><strong>'+Math.round(last.c)+'/100</strong></div>'+
     '<div><small>Variazione '+nativeCapChart.range+'</small><strong>'+(delta===null?'n/d':(delta>=0?'+':'')+delta+' punti')+'</strong></div>'+
     '<div><small>Periodo sul grafico</small><strong>'+nativeCapDate(first.t)+' – '+nativeCapDate(last.t)+'</strong></div>';
   }else stats.innerHTML='';
@@ -380,7 +396,7 @@ function drawExtraRainbowChart(c,w,h,host){
  if(empty){empty.textContent=warning;empty.hidden=!warning;}
  if(stats)stats.innerHTML='';
  if(source)source.textContent=(nativeCapChart.sources[id]||asset+'/USD · prezzi storici')+
-  ' · '+(extraIsLive(id)?'Ultimo prezzo in '+asset+'/USDT · aggiornamento live':'Prezzi storici archiviati in '+asset+'/USD')+
+  ' · '+(extraGlobalState.live[id]?.realtime&&extraIsLive(id)?'Prezzo '+asset+'/USDT in streaming':extraIsLive(id)?'Prezzo '+asset+'/USDT recente da REST':'Prezzi archiviati in '+asset+'/USD')+
   ' · Fasce illustrative di regressione logaritmica, ricalcolate sullo storico. Non sono quotazioni, supporti garantiti né previsioni. Frequenza delle osservazioni: '+
   (extraGlobalState.meta[id]?.frequency||'n/d')+'.';
  if(!rows.length||!fit)return;
@@ -388,7 +404,7 @@ function drawExtraRainbowChart(c,w,h,host){
  const zone=extraRainbowZone(last.t,last.c,fit);
  const isCurrent=points.length>0&&last.t===points.at(-1)[0]&&extraIsLive(id);
  const change=rows.length>1&&first.c>0?(last.c/first.c-1)*100:null;
- if(stats)stats.innerHTML='<div><small>'+(isCurrent?'Ultimo prezzo LIVE · USDT':'Prezzo nel periodo · USD')+'</small><strong>'+
+ if(stats)stats.innerHTML='<div><small>'+(isCurrent&&extraGlobalState.live[id]?.realtime?'Ultimo prezzo LIVE · USDT':isCurrent?'Prezzo recente · USDT':'Prezzo nel periodo · USD')+'</small><strong>'+
   extraMoney(last.c)+'</strong></div>'+
   '<div><small>Variazione '+nativeCapChart.range+'</small><strong>'+
   (change===null?'n/d':(change>=0?'+':'')+change.toFixed(2)+'%')+'</strong></div>'+
