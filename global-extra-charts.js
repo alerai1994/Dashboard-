@@ -332,6 +332,12 @@ function drawExtraAltcoinIndex(c,w,h,host){
  const p=rows[nativeCapChart.hover!==null&&nativeCapChart.hover>=0&&nativeCapChart.hover<rows.length?nativeCapChart.hover:rows.length-1];
  const idx=rows.indexOf(p);c.beginPath();c.arc(X(idx),Y(p.c),3.3,0,Math.PI*2);c.fillStyle=bright;c.fill();
  c.restore();
+ const selected=nativeCapChart.hover!==null&&nativeCapChart.hover>=0&&nativeCapChart.hover<rows.length?
+  nativeCapChart.hover:rows.length-1;
+ const selectedPoint=rows[selected];
+ if(typeof window.__vertexDrawChartValueFlag==='function')
+  window.__vertexDrawChartValueFlag(c,w,L+PW,Y(selectedPoint.c),
+   Math.round(selectedPoint.c)+'%',bright);
  host.dataset.plotWidth=String(PW);
  host.dataset.plotLeft=String(L);
  host.dataset.viewCount=String(rows.length);
@@ -431,6 +437,12 @@ function drawExtraRainbowChart(c,w,h,host){
  c.restore();
  c.fillStyle=muted;c.textAlign='left';c.font='10px system-ui,sans-serif';
  c.fillText('USD · PREZZO LOGARITMICO · MODELLO RAINBOW',left,14);
+ const selected=nativeCapChart.hover!==null&&nativeCapChart.hover>=0&&nativeCapChart.hover<rows.length?
+  nativeCapChart.hover:rows.length-1;
+ const selectedPoint=rows[selected];
+ if(typeof window.__vertexDrawChartValueFlag==='function')
+  window.__vertexDrawChartValueFlag(c,w,left+plotW,y(Math.log(selectedPoint.c)),
+   extraMoney(selectedPoint.c),text);
  host.dataset.plotWidth=String(plotW);
  host.dataset.plotLeft=String(left);
  host.dataset.viewCount=String(rows.length);
