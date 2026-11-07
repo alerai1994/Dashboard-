@@ -160,7 +160,8 @@ def read_market_index_altcoins(previous):
         if len(points) >= 1000:
             return {"symbol": "CRYPTOCAP:OTHERS",
                     "source": "TradingView CRYPTOCAP:OTHERS · altcoin cap excluding top 10",
-                    "unit": "USD", "frequency": "1D", "points": points}
+                    "unit": "USD", "frequency": "1D", "points": points,
+                    "bars": bars}
         print("Altcoin index returned fewer than 1000 real closes:", len(points))
     except (OSError, ValueError, TypeError, RuntimeError) as err:
         print("Altcoin market index unavailable:", type(err).__name__, str(err)[:180])
