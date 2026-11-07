@@ -2371,3 +2371,12 @@ body .topbar .live-clock strong{
 
 /* TOTALDEFI uses all available verified data across the full native chart. */
 .global-crypto-history-chart canvas{width:100%;height:100%}
+
+/* Extra Global market index / rainbow controls, matching Vertex themes. */
+.global-special-pill{gap:8px}
+.global-special-pill[data-global-cap-chart$="_RAINBOW"] span{
+ background:linear-gradient(100deg,#498cf3 0%,#34bd9c 28%,#dbc951 66%,#e66a65 100%);
+ -webkit-background-clip:text;background-clip:text;color:transparent
+}
+.global-special-pill strong{font-size:11px}
+.global-special-pill.is-active{box-shadow:inset 0 0 0 1px var(--brand)}
