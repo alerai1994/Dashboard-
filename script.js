@@ -4027,6 +4027,7 @@ function updateNav(){
  updateCryptoAlertIndicator();
 }
 function render(){
+ applyFontStyle(); // Preserve the selected font after every page redraw.
  // Keep the Rome clock as the rightmost header item on every page.
  const bell=$('#notificationsButton'),profile=$('#profileButton'),actions=$('.top-actions');
  const clock=actions?.querySelector('.live-clock');
@@ -4136,14 +4137,30 @@ function applyTheme(){
   button.setAttribute('aria-pressed',String(selected));
  });
 }
+const VERTEX_FONT_FAMILIES=Object.freeze({
+ inter:'"Inter",Arial,sans-serif',
+ roboto:'"Roboto",Arial,sans-serif',
+ poppins:'"Poppins",Arial,sans-serif',
+ montserrat:'"Montserrat",Arial,sans-serif',
+ lora:'"Lora",Georgia,serif',
+ nunito:'"Nunito Sans",Arial,sans-serif'
+});
 function applyFontStyle(){
- // The chosen typeface must be consistent in the page, dialogs, inputs and charts.
- document.documentElement.dataset.vertexFont=state.fontStyle;
- document.body?.setAttribute('data-vertex-font',state.fontStyle);
+ const font=Object.hasOwn(VERTEX_FONT_FAMILIES,state.fontStyle)?
+  state.fontStyle:'inter';
+ const family=VERTEX_FONT_FAMILIES[font];
+ // Apply the chosen family explicitly, not only via a CSS custom property:
+ // page transitions, dialog overlays and embedded browsers keep the same font.
+ document.documentElement.dataset.vertexFont=font;
+ document.documentElement.style.setProperty('--vertex-font',family);
+ document.documentElement.style.fontFamily=family;
+ if(document.body){
+  document.body.dataset.vertexFont=font;
+  document.body.style.fontFamily=family;
+ }
 }
 function vertexCanvasFont(size=11,weight='normal'){
- const family=getComputedStyle(document.body).fontFamily||
-  "Inter, Arial, sans-serif";
+ const family=VERTEX_FONT_FAMILIES[state.fontStyle]||VERTEX_FONT_FAMILIES.inter;
  return weight+' '+size+'px '+family;
 }
 function setFontStyle(id){
@@ -4151,6 +4168,14 @@ function setFontStyle(id){
  state.fontStyle=id;
  applyFontStyle();
  save('fontStyle',id);
+ // The selected preview must visibly match the chosen typeface immediately.
+ document.querySelectorAll('[data-font-style]').forEach(button=>{
+  const selected=button.dataset.fontStyle===id;
+  button.classList.toggle('is-selected',selected);
+  button.setAttribute('aria-pressed',String(selected));
+  const check=button.querySelector('.settings-font-check');
+  if(check)check.textContent=selected?'✓':'';
+ });
  // Refresh all native graph labels after a typeface change.
  if(state.dialogId)scheduleDetailChartDraw();
  if(state.page==='settings'||(state.page==='workspace'&&workspaceShown('settings')))render();
