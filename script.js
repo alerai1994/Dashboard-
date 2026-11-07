@@ -3826,6 +3826,9 @@ function render(){
   if(state.page==='global'){
    paintGlobalCryptoCaps();
    refreshGlobalCryptoCaps();
+   // Header values for the extra indices load automatically, not on chart click.
+   if(typeof updateExtraGlobalPillData==='function')updateExtraGlobalPillData();
+   if(typeof loadExtraGlobalCharts==='function')loadExtraGlobalCharts();
   }
  }
  const hideSearch=['global','portfolio','settings','analytics','orderbook','workspace','etf','news'].includes(state.page);
