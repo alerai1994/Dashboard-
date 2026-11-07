@@ -12,12 +12,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Lora:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&family=Roboto:wght@400;500;600;700;800&family=Nunito+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261107-global-toolbar-right-v160">
+<link rel="stylesheet" href="style.css?v=20261107-seven-pills-data-v161">
 <script id="fxSignalrLibrary" src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js" async crossorigin="anonymous"></script>
 <script src="crypto-orderbooks-data.js?v=20261101-all42-crypto-v35" defer></script>
 <script src="ore-orderbook-data.js?v=20261101-ore-backup-v34" defer></script>
-<script src="script.js?v=20261107-global-toolbar-right-v160" defer></script>
-<script src="global-extra-charts.js?v=20261107-global-extra-v159" defer></script>
+<script src="script.js?v=20261107-seven-pills-data-v161" defer></script>
+<script src="global-extra-charts.js?v=20261107-seven-pills-data-v161" defer></script>
 </head>
 <body class="theme-dark">
 <div class="vertex-boot-screen" id="vertexBootScreen" role="status" aria-live="polite" aria-label="Caricamento di Vertex">
@@ -108,9 +108,9 @@
             <button type="button" class="global-crypto-cap-pill" data-global-cap-chart="TOTAL2" aria-controls="globalCryptoHistory" aria-expanded="false" aria-pressed="false" title="Capitalizzazione del mercato crypto, escluso Bitcoin · grafico storico"><span>TOTAL2</span><strong data-global-cap="TOTAL2">—</strong></button>
             <button type="button" class="global-crypto-cap-pill" data-global-cap-chart="TOTAL3" aria-controls="globalCryptoHistory" aria-expanded="false" aria-pressed="false" title="Capitalizzazione del mercato crypto, esclusi Bitcoin ed Ethereum · grafico storico"><span>TOTAL3</span><strong data-global-cap="TOTAL3">—</strong></button>
             <button type="button" class="global-crypto-cap-pill" data-global-cap-chart="TOTALDEFI" aria-controls="globalCryptoHistory" aria-expanded="false" aria-pressed="false" title="Capitalizzazione del settore DeFi · grafico storico"><span>TOTALDEFI</span><strong data-global-cap="TOTALDEFI">—</strong></button>
-            <button type="button" class="global-crypto-cap-pill global-special-pill" data-global-cap-chart="ALTCOIN" aria-controls="globalCryptoHistory" aria-expanded="false" aria-pressed="false" title="Indice delle altcoin · CRYPTOCAP:OTHERS, escluse le prime 10 · apri il grafico"><span>ALTCOIN INDEX</span><strong data-special-cap="ALTCOIN">—</strong></button>
-            <button type="button" class="global-crypto-cap-pill global-special-pill" data-global-cap-chart="BTC_RAINBOW" aria-controls="globalCryptoHistory" aria-expanded="false" aria-pressed="false" title="Rainbow Chart di Bitcoin · USD e fasce logaritmiche · apri il grafico"><span>BTC RAINBOW</span><strong data-special-cap="BTC_RAINBOW">—</strong></button>
-            <button type="button" class="global-crypto-cap-pill global-special-pill" data-global-cap-chart="ETH_RAINBOW" aria-controls="globalCryptoHistory" aria-expanded="false" aria-pressed="false" title="Rainbow Chart di Ethereum · USD e fasce logaritmiche · apri il grafico"><span>ETH RAINBOW</span><strong data-special-cap="ETH_RAINBOW">—</strong></button>
+            <button type="button" class="global-crypto-cap-pill global-special-pill" data-global-cap-chart="ALTCOIN" aria-controls="globalCryptoHistory" aria-expanded="false" aria-pressed="false" title="Indice delle altcoin · CRYPTOCAP:OTHERS, escluse le prime 10 · apri il grafico"><span>ALTCOIN INDEX</span><div class="global-special-pill-data"><strong data-special-cap="ALTCOIN">—</strong><small data-special-change="ALTCOIN" aria-label="Variazione giornaliera">Caricamento…</small></div></button>
+            <button type="button" class="global-crypto-cap-pill global-special-pill" data-global-cap-chart="BTC_RAINBOW" aria-controls="globalCryptoHistory" aria-expanded="false" aria-pressed="false" title="Rainbow Chart di Bitcoin · USD e fasce logaritmiche · apri il grafico"><span>BTC RAINBOW</span><div class="global-special-pill-data"><strong data-special-cap="BTC_RAINBOW">—</strong><small data-special-change="BTC_RAINBOW" aria-label="Variazione giornaliera">Caricamento…</small></div></button>
+            <button type="button" class="global-crypto-cap-pill global-special-pill" data-global-cap-chart="ETH_RAINBOW" aria-controls="globalCryptoHistory" aria-expanded="false" aria-pressed="false" title="Rainbow Chart di Ethereum · USD e fasce logaritmiche · apri il grafico"><span>ETH RAINBOW</span><div class="global-special-pill-data"><strong data-special-cap="ETH_RAINBOW">—</strong><small data-special-change="ETH_RAINBOW" aria-label="Variazione giornaliera">Caricamento…</small></div></button>
           </div>
           <div class="global-crypto-cap-source" id="globalCryptoCapsStatus" aria-live="polite">CoinGecko · caricamento dati reali…</div>
         </div>
