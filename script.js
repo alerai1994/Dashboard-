@@ -1242,75 +1242,233 @@ async function refreshGlobalCryptoCaps(force=false){
 /* Real historical OHLC candles of TradingView's CRYPTOCAP market indices. */
 const GLOBAL_CAP_CHART_NAMES=Object.freeze({
  TOTAL:'Capitalizzazione complessiva delle criptovalute',
- TOTAL2:'Mercato crypto escluso Bitcoin',
- TOTAL3:'Mercato crypto esclusi Bitcoin ed Ethereum',
+ TOTAL2:'Capitalizzazione senza Bitcoin',
+ TOTAL3:'Capitalizzazione senza Bitcoin ed Ethereum',
  TOTALDEFI:'Capitalizzazione del settore DeFi'
 });
-let currentGlobalCapChart=null,globalCapWidgetRequested=false;
+let currentGlobalCapChart=null;
+const nativeCapChart={
+ data:Object.create(null),sources:{},loaded:false,loading:false,error:'',
+ timeframe:'1W',range:'ALL',visibleCount:null,shift:0,hover:null,drag:null
+};
 function globalCryptoHistoryPanel(){
- return '<section id="globalCryptoHistory" class="global-crypto-history panel" hidden aria-labelledby="globalCryptoHistoryTitle">'+
-  '<header class="global-crypto-history-header"><div><span class="eyebrow">STORICO CRYPTOCAP · TRADINGVIEW</span>'+
-  '<h2 id="globalCryptoHistoryTitle">Grafico storico</h2>'+
-  '<p>Grafico a candele · tutto lo storico disponibile fino all’ultima candela · zoom e trascinamento</p></div>'+
-  '<div class="global-crypto-history-actions"><a id="globalCryptoHistoryLink" href="https://www.tradingview.com/chart/?symbol=CRYPTOCAP%3ATOTAL" target="_blank" rel="noopener noreferrer">Apri su TradingView ↗</a>'+
-  '<button type="button" data-close-global-cap-chart aria-label="Chiudi il grafico storico">✕</button></div></header>'+
-  '<div id="globalCryptoHistoryChart" class="global-crypto-history-chart" aria-label="Grafico delle capitalizzazioni crypto"><p>Caricamento del grafico…</p></div>'+
-  '<p class="global-crypto-history-source">Grafico: indici CRYPTOCAP TradingView · Valori delle pillole: CoinGecko. Le metodologie sono diverse e possono dare risultati differenti.</p>'+
-  '</section>';
+ return '<section id="globalCryptoHistory" class="global-crypto-history panel" hidden>'+
+ '<header class="global-crypto-history-header"><div><span class="eyebrow">VERTEX · HISTORICAL MARKET CAP</span>'+
+ '<h2 id="globalCryptoHistoryTitle">Storico capitalizzazione</h2>'+
+ '<p>Grafico nativo · dati osservati · usa la rotella per lo zoom e trascina per spostarti nel tempo</p></div>'+
+ '<div class="global-crypto-history-actions"><button type="button" data-cap-zoom="in" aria-label="Ingrandisci">+</button>'+
+ '<button type="button" data-cap-zoom="out" aria-label="Riduci">−</button>'+
+ '<button type="button" data-cap-reset="1" aria-label="Ripristina grafico">↺</button>'+
+ '<button type="button" data-close-global-cap-chart="1" aria-label="Chiudi grafico">✕</button></div></header>'+
+ '<div class="global-crypto-history-toolbar">'+
+ '<div class="global-cap-chart-tabs">'+['1D','1W','1M'].map(k=>
+ '<button type="button" data-cap-timeframe="'+k+'" class="'+(k===nativeCapChart.timeframe?'active':'')+'">'+k+'</button>').join('')+'</div>'+
+ '<div class="global-cap-chart-tabs">'+['30D','90D','1Y','ALL'].map(k=>
+ '<button type="button" data-cap-range="'+k+'" class="'+(k===nativeCapChart.range?'active':'')+'">'+(k==='ALL'?'TUTTO':k)+'</button>').join('')+'</div></div>'+
+ '<div class="global-cap-chart-stats" id="globalCapChartStats"></div>'+
+ '<div class="global-crypto-history-chart" id="globalCryptoHistoryChart">'+
+ '<canvas id="globalCapCanvas" role="img" aria-label="Capitalizzazione storica osservata in dollari"></canvas>'+
+ '<div class="global-cap-chart-empty" id="globalCapChartEmpty" hidden></div>'+
+ '<div class="global-cap-chart-tooltip" id="globalCapChartTooltip" hidden></div></div>'+
+ '<p class="global-crypto-history-source" id="globalCapHistorySource"></p></section>';
 }
-function ensureGlobalCapWidget(){
- if(globalCapWidgetRequested)return;
- globalCapWidgetRequested=true;
- const script=document.createElement('script');
- script.type='module';
- script.src='https://widgets.tradingview-widget.com/w/en/tv-advanced-chart.js';
- script.onerror=()=>{
-  const host=$('#globalCryptoHistoryChart');
-  if(host&&currentGlobalCapChart&&state.page==='global')
-   host.innerHTML='<p class="global-crypto-chart-error">Impossibile caricare TradingView. Apri il grafico completo dal link qui sopra.</p>';
- };
- document.head.appendChild(script);
+function nativeCapUsd(v){
+ if(!Number.isFinite(v)||v<=0)return '—';
+ const unit=v>=1e12?1e12:v>=1e9?1e9:1e6;
+ const label=unit===1e12?'T':unit===1e9?'B':'M';
+ return '$'+(v/unit).toLocaleString('en-US',{maximumFractionDigits:2})+label;
+}
+function nativeCapDate(t){
+ return new Date(t).toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});
+}
+async function loadNativeCapHistory(){
+ if(nativeCapChart.loading||nativeCapChart.loaded)return;
+ nativeCapChart.loading=true;drawNativeCapChart();
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);
+ try{
+  const response=await fetch('./global-cap-history.json?v='+Math.floor(Date.now()/300000),{cache:'no-store',signal:controller.signal});
+  if(!response.ok)throw Error('HTTP '+response.status);
+  const payload=await response.json();
+  if(!payload?.series||typeof payload.series!=='object')throw Error('Formato storico non valido');
+  for(const id of Object.keys(GLOBAL_CAP_CHART_NAMES)){
+   const input=Array.isArray(payload.series[id])?payload.series[id]:[];
+   const clean=new Map();
+   for(const p of input){
+    if(!Array.isArray(p)||p.length!==2)continue;
+    const t=Number(p[0]),v=Number(p[1]);
+    if(Number.isFinite(t)&&t>1356998400000&&Number.isFinite(v)&&v>0)clean.set(t,[t,v]);
+   }
+   nativeCapChart.data[id]=[...clean.values()].sort((a,b)=>a[0]-b[0]);
+  }
+  nativeCapChart.sources=payload.sources||{};
+  nativeCapChart.loaded=true;nativeCapChart.error='';
+ }catch(err){nativeCapChart.error='Storico temporaneamente non raggiungibile ('+(err?.message||'errore')+').';}
+ finally{clearTimeout(timer);nativeCapChart.loading=false;drawNativeCapChart();}
+}
+function nativeCapBuckets(rows){
+ if(nativeCapChart.timeframe==='1D')return rows.map(([t,v])=>({t,o:v,h:v,l:v,c:v,n:1}));
+ const bucket=new Map(),isWeek=nativeCapChart.timeframe==='1W';
+ for(const [t,v] of rows){
+  const date=new Date(t),day=date.getUTCDay();
+  const key=isWeek?new Date(t-((day+6)%7)*86400000).toISOString().slice(0,10):date.toISOString().slice(0,7);
+  let item=bucket.get(key);
+  if(!item){item={t,o:v,h:v,l:v,c:v,n:1};bucket.set(key,item);}
+  else{item.h=Math.max(item.h,v);item.l=Math.min(item.l,v);item.c=v;item.n++;}
+ }
+ return [...bucket.values()];
+}
+function nativeCapWindow(){
+ const rows=nativeCapChart.data[currentGlobalCapChart]||[];
+ if(!rows.length)return {rows:[],all:[],first:0};
+ let selected=rows;
+ if(nativeCapChart.range!=='ALL'){
+  const days=nativeCapChart.range==='30D'?30:nativeCapChart.range==='90D'?90:365;
+  const latest=rows[rows.length-1][0];
+  selected=rows.filter(p=>p[0]>=latest-days*86400000);
+ }
+ const all=nativeCapBuckets(selected),total=all.length;
+ const maxPoints=Math.min(total,Math.max(5,nativeCapChart.visibleCount||total));
+ nativeCapChart.shift=Math.min(Math.max(0,nativeCapChart.shift),Math.max(0,total-maxPoints));
+ const first=Math.max(0,total-maxPoints-nativeCapChart.shift);
+ return {rows:all.slice(first,first+maxPoints),all,first};
+}
+function nativeCapPalette(key,fallback){
+ return getComputedStyle(document.body).getPropertyValue(key).trim()||fallback;
+}
+function drawNativeCapChart(){
+ const canvas=$('#globalCapCanvas'),host=$('#globalCryptoHistoryChart'),empty=$('#globalCapChartEmpty');
+ if(!canvas||!host||!currentGlobalCapChart||state.page!=='global')return;
+ const rect=host.getBoundingClientRect(),w=Math.max(285,Math.floor(rect.width-2)),h=Math.max(360,Math.floor(rect.height-2));
+ const dpr=Math.min(3,window.devicePixelRatio||1);
+ canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);
+ canvas.style.width=w+'px';canvas.style.height=h+'px';
+ const c=canvas.getContext('2d');if(!c)return;
+ c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,w,h);
+ const {rows,all}=nativeCapWindow(),original=nativeCapChart.data[currentGlobalCapChart]||[];
+ const stats=$('#globalCapChartStats'),source=$('#globalCapHistorySource');
+ if(stats){
+  if(original.length){
+   const first=original[0],last=original[original.length-1],prior=original[original.length-2];
+   const difference=prior?(last[1]/prior[1]-1)*100:null;
+   stats.innerHTML='<div><small>Ultimo dato osservato</small><strong>'+nativeCapUsd(last[1])+'</strong></div>'+
+   '<div><small>Variazione tra osservazioni</small><strong class="'+(difference>0?'color-up':difference<0?'color-down':'')+'">'+
+   (difference===null?'—':(difference>=0?'+':'')+difference.toFixed(2)+'%')+'</strong></div>'+
+   '<div><small>Periodo disponibile</small><strong>'+nativeCapDate(first[0])+' – '+nativeCapDate(last[0])+'</strong></div>';
+  }else stats.innerHTML='';
+ }
+ if(source)source.textContent=(nativeCapChart.sources[currentGlobalCapChart]||'Dati di mercato verificati')+
+  ' · Il grafico usa solo le date realmente disponibili. 1D: andamento giornaliero; 1W/1M: candele OHLC dai valori osservati, non estremi intraday.';
+ const message=nativeCapChart.loading?'Caricamento dello storico verificato…':
+ nativeCapChart.error||(!rows.length?'Nessuno storico verificato per questo indice; verranno mostrate le rilevazioni realmente archiviate.':'');
+ if(empty){empty.textContent=message;empty.hidden=!message;}
+ if(!rows.length)return;
+ const colors={text:nativeCapPalette('--text','#dbe6f5'),muted:nativeCapPalette('--muted','#8898a9'),
+  line:nativeCapPalette('--line','#35475c'),brand:nativeCapPalette('--brand','#4d9dff'),up:'#19b891',down:'#f06478'};
+ const L=16,R=84,T=28,B=43,PW=Math.max(50,w-L-R),PH=Math.max(50,h-T-B);
+ const vals=rows.flatMap(x=>[x.l,x.h]);
+ let lo=Math.min(...vals),hi=Math.max(...vals);
+ const pad=Math.max((hi-lo)*.12,hi*.003);lo=Math.max(0,lo-pad);hi+=pad;
+ const x=i=>L+(i+.5)*PW/rows.length,y=v=>T+(hi-v)/(hi-lo)*PH;
+ c.font='11px system-ui,sans-serif';c.textBaseline='middle';
+ for(let k=0;k<=5;k++){
+  const val=lo+(hi-lo)*k/5,cy=y(val);
+  c.strokeStyle=colors.line;c.globalAlpha=.48;c.lineWidth=.75;
+  c.beginPath();c.moveTo(L,cy);c.lineTo(L+PW,cy);c.stroke();c.globalAlpha=1;
+  c.textAlign='left';c.fillStyle=colors.muted;c.fillText(nativeCapUsd(val),w-R+8,cy);
+ }
+ c.textAlign='center';
+ for(let k=0;k<6;k++){
+  const pos=Math.min(rows.length-1,Math.floor((rows.length-1)*k/5));
+  c.fillStyle=colors.muted;c.fillText(new Date(rows[pos].t).toLocaleDateString('it-IT',{month:'short',year:'2-digit',timeZone:'UTC'}),x(pos),h-17);
+ }
+ c.save();c.beginPath();c.rect(L,T,PW,PH);c.clip();
+ if(nativeCapChart.timeframe==='1D'){
+  c.strokeStyle=colors.brand;c.lineWidth=2.2;c.lineJoin='round';
+  c.beginPath();rows.forEach((p,i)=>i===0?c.moveTo(x(i),y(p.c)):c.lineTo(x(i),y(p.c)));c.stroke();
+  if(rows.length===1){c.beginPath();c.arc(x(0),y(rows[0].c),3.5,0,Math.PI*2);c.fillStyle=colors.brand;c.fill();}
+ }else{
+  const bw=Math.max(1.1,Math.min(17,PW/rows.length*.72));
+  rows.forEach((p,i)=>{
+   c.strokeStyle=c.fillStyle=p.c>=p.o?colors.up:colors.down;
+   c.lineWidth=Math.max(.8,Math.min(1.3,bw*.2));
+   c.beginPath();c.moveTo(x(i),y(p.h));c.lineTo(x(i),y(p.l));c.stroke();
+   c.fillRect(x(i)-bw/2,y(Math.max(p.o,p.c)),bw,Math.max(1.5,Math.abs(y(p.o)-y(p.c))));
+  });
+ }
+ const last=rows[rows.length-1];
+ c.strokeStyle=colors.brand;c.setLineDash([4,5]);c.lineWidth=.9;c.beginPath();
+ c.moveTo(L,y(last.c));c.lineTo(L+PW,y(last.c));c.stroke();c.setLineDash([]);
+ if(nativeCapChart.hover!==null&&nativeCapChart.hover<rows.length){
+  const pos=nativeCapChart.hover,p=rows[pos];
+  c.strokeStyle=colors.muted;c.lineWidth=.8;c.setLineDash([3,4]);c.beginPath();
+  c.moveTo(x(pos),T);c.lineTo(x(pos),T+PH);c.moveTo(L,y(p.c));c.lineTo(L+PW,y(p.c));c.stroke();c.setLineDash([]);
+ }
+ c.restore();c.fillStyle=colors.muted;c.textAlign='left';c.font='10px system-ui,sans-serif';c.fillText('USD · CAPITALIZZAZIONE',L,14);
+ host.dataset.plotWidth=String(PW);host.dataset.plotLeft=String(L);host.dataset.viewCount=String(rows.length);
+}
+function nativeCapAttach(){
+ const host=$('#globalCryptoHistoryChart');
+ if(!host||host.dataset.vertexBound)return;
+ host.dataset.vertexBound='1';
+ const tip=$('#globalCapChartTooltip');
+ host.addEventListener('wheel',e=>{
+  e.preventDefault();
+  const total=nativeCapWindow().all.length;
+  if(total<6)return;
+  const existing=nativeCapChart.visibleCount||total;
+  nativeCapChart.visibleCount=Math.min(total,Math.max(5,Math.round(existing*(e.deltaY>0?1.28:.8))));
+  nativeCapChart.hover=null;drawNativeCapChart();
+ },{passive:false});
+ host.addEventListener('pointerdown',e=>{
+  if(e.button!==0)return;
+  nativeCapChart.drag={x:e.clientX,shift:nativeCapChart.shift};
+  try{host.setPointerCapture(e.pointerId)}catch(_err){}
+ });
+ host.addEventListener('pointermove',e=>{
+  const bounds=host.getBoundingClientRect(),x=e.clientX-bounds.left;
+  const view=nativeCapWindow(),count=view.rows.length,pw=Number(host.dataset.plotWidth)||bounds.width-100;
+  if(!count)return;
+  if(nativeCapChart.drag){
+   nativeCapChart.shift=Math.max(0,Math.round(nativeCapChart.drag.shift+(e.clientX-nativeCapChart.drag.x)*count/pw));
+   nativeCapChart.hover=null;if(tip)tip.hidden=true;drawNativeCapChart();return;
+  }
+  const left=Number(host.dataset.plotLeft)||16;
+  const pos=Math.max(0,Math.min(count-1,Math.floor((x-left)/pw*count)));
+  nativeCapChart.hover=pos;drawNativeCapChart();
+  if(tip){
+   const p=view.rows[pos];
+   tip.innerHTML='<strong>'+nativeCapDate(p.t)+'</strong><span>Chiusura '+nativeCapUsd(p.c)+'</span>'+
+    (nativeCapChart.timeframe==='1D'?'':'<span>Apertura '+nativeCapUsd(p.o)+'</span><span>Massimo osservato '+nativeCapUsd(p.h)+'</span><span>Minimo osservato '+nativeCapUsd(p.l)+'</span>');
+   tip.style.left=Math.max(5,Math.min(bounds.width-190,x+15))+'px';tip.hidden=false;
+  }
+ });
+ host.addEventListener('pointerup',e=>{nativeCapChart.drag=null;try{host.releasePointerCapture(e.pointerId)}catch(_err){}});
+ host.addEventListener('pointercancel',()=>{nativeCapChart.drag=null});
+ host.addEventListener('pointerleave',()=>{nativeCapChart.hover=null;if(tip)tip.hidden=true;drawNativeCapChart();});
 }
 function paintGlobalCapChart(){
- for(const button of $$('#globalCryptoCaps [data-global-cap-chart]')){
-  const active=state.page==='global'&&currentGlobalCapChart===button.dataset.globalCapChart;
-  button.classList.toggle('is-active',active);
-  button.setAttribute('aria-pressed',String(active));
-  button.setAttribute('aria-expanded',String(active));
+ for(const b of $$('#globalCryptoCaps [data-global-cap-chart]')){
+  const active=state.page==='global'&&currentGlobalCapChart===b.dataset.globalCapChart;
+  b.classList.toggle('is-active',active);b.setAttribute('aria-pressed',String(active));
+  b.setAttribute('aria-expanded',String(active));
  }
- const panel=$('#globalCryptoHistory');
- if(!panel)return;
- const id=currentGlobalCapChart;
- const show=state.page==='global'&&Object.hasOwn(GLOBAL_CAP_CHART_NAMES,id||'');
+ const panel=$('#globalCryptoHistory');if(!panel)return;
+ const id=currentGlobalCapChart,show=state.page==='global'&&Object.hasOwn(GLOBAL_CAP_CHART_NAMES,id||'');
  panel.hidden=!show;
  if(!show)return;
  const title=$('#globalCryptoHistoryTitle');
  if(title)title.textContent=id+' · '+GLOBAL_CAP_CHART_NAMES[id];
- const link=$('#globalCryptoHistoryLink');
- if(link)link.href='https://www.tradingview.com/chart/?symbol='+encodeURIComponent('CRYPTOCAP:'+id);
- const host=$('#globalCryptoHistoryChart');
- if(!host)return;
- ensureGlobalCapWidget();
- let chart=host.querySelector('tv-advanced-chart');
- if(!chart){
-  host.replaceChildren();
-  chart=document.createElement('tv-advanced-chart');
-  host.appendChild(chart);
- }
- chart.setAttribute('symbol','CRYPTOCAP:'+id);
- chart.setAttribute('interval','1D');
- chart.setAttribute('range','ALL');
- chart.setAttribute('date-range','all');
- chart.setAttribute('timezone','Etc/UTC');
- chart.setAttribute('locale','it');
- chart.setAttribute('theme',state.theme==='light'?'light':'dark');
- chart.setAttribute('chart-type','candles');
+ panel.querySelectorAll('[data-cap-timeframe]').forEach(b=>b.classList.toggle('active',b.dataset.capTimeframe===nativeCapChart.timeframe));
+ panel.querySelectorAll('[data-cap-range]').forEach(b=>b.classList.toggle('active',b.dataset.capRange===nativeCapChart.range));
+ nativeCapAttach();drawNativeCapChart();if(!nativeCapChart.loaded)loadNativeCapHistory();
 }
 function toggleGlobalCapChart(id){
  if(state.page!=='global'||!Object.hasOwn(GLOBAL_CAP_CHART_NAMES,id))return;
  currentGlobalCapChart=currentGlobalCapChart===id?null:id;
+ nativeCapChart.timeframe=id==='TOTALDEFI'?'1D':'1W';
+ nativeCapChart.range='ALL';nativeCapChart.visibleCount=null;nativeCapChart.shift=0;nativeCapChart.hover=null;
  paintGlobalCapChart();
- if(currentGlobalCapChart)$('#globalCryptoHistory')?.scrollIntoView({behavior:'smooth',block:'nearest'});
+ if(currentGlobalCapChart)$('#globalCryptoHistory')?.scrollIntoView({block:'nearest',behavior:'smooth'});
 }
 
 function globalPage(){
@@ -5266,15 +5424,33 @@ function savePortfolioForm(formElement){
     editing?'Posizione aggiornata e salvata.':'Posizione aggiunta e salvata.');
 }
 function setupEvents(){
+ window.addEventListener('resize',()=>{if(state.page==='global'&&currentGlobalCapChart)drawNativeCapChart();});
 
  $('#globalCryptoCaps').addEventListener('click',e=>{
   const button=e.target.closest('[data-global-cap-chart]');
   if(button)toggleGlobalCapChart(button.dataset.globalCapChart);
  });
  $('#pageContainer').addEventListener('click',e=>{
-  if(e.target.closest('[data-close-global-cap-chart]')){
-   currentGlobalCapChart=null;
-   paintGlobalCapChart();
+  if(e.target.closest('[data-close-global-cap-chart]')){currentGlobalCapChart=null;paintGlobalCapChart();return;}
+  const frame=e.target.closest('[data-cap-timeframe]');
+  if(frame&&['1D','1W','1M'].includes(frame.dataset.capTimeframe)){
+   nativeCapChart.timeframe=frame.dataset.capTimeframe;nativeCapChart.visibleCount=null;nativeCapChart.shift=0;
+   nativeCapChart.hover=null;paintGlobalCapChart();return;
+  }
+  const range=e.target.closest('[data-cap-range]');
+  if(range&&['30D','90D','1Y','ALL'].includes(range.dataset.capRange)){
+   nativeCapChart.range=range.dataset.capRange;nativeCapChart.visibleCount=null;nativeCapChart.shift=0;
+   nativeCapChart.hover=null;paintGlobalCapChart();return;
+  }
+  const zoom=e.target.closest('[data-cap-zoom]');
+  if(zoom){
+   const count=nativeCapWindow().all.length;
+   nativeCapChart.visibleCount=Math.min(count,Math.max(5,Math.round((nativeCapChart.visibleCount||count)*(zoom.dataset.capZoom==='in'?.7:1.4))));
+   nativeCapChart.hover=null;paintGlobalCapChart();return;
+  }
+  if(e.target.closest('[data-cap-reset]')){
+   nativeCapChart.range='ALL';nativeCapChart.visibleCount=null;nativeCapChart.shift=0;nativeCapChart.hover=null;
+   paintGlobalCapChart();return;
   }
  });
  // User gestures are required to unlock Web Audio on Safari/iOS and Chromium.
