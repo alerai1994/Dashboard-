@@ -57,6 +57,44 @@ function extraRainbowTooltip(candle,id){
   '<span>'+asset+'/USD '+extraMoney(candle.c)+'</span>'+
   (zone===null?'':'<span>Zona: '+extraRainbowZones[zone]+'</span>');
 }
+
+function updateExtraGlobalPillData(){
+ for(const id of ['ALTCOIN','BTC_RAINBOW','ETH_RAINBOW']){
+  const valueNode=document.querySelector('[data-special-cap="'+id+'"]');
+  const changeNode=document.querySelector('[data-special-change="'+id+'"]');
+  if(!valueNode||!changeNode)continue;
+  const rows=nativeCapChart.data[id]||[];
+  const button=valueNode.closest('button');
+  if(!rows.length){
+   if(extraGlobalState.loaded||extraGlobalState.error){
+    valueNode.textContent='—';
+    changeNode.textContent='Dato non disponibile';
+   }
+   continue;
+  }
+  const last=rows[rows.length-1],prior=rows.length>1?rows[rows.length-2]:null;
+  valueNode.textContent=id==='ALTCOIN'?nativeCapUsd(last[1]):extraMoney(last[1]);
+  let dailyChange=null;
+  // Percentage change between the two last verified daily close observations.
+  if(prior&&prior[1]>0)dailyChange=(last[1]/prior[1]-1)*100;
+  changeNode.classList.toggle('is-positive',dailyChange!==null&&dailyChange>0);
+  changeNode.classList.toggle('is-negative',dailyChange!==null&&dailyChange<0);
+  changeNode.textContent=dailyChange===null?'Variazione n/d':
+   '1D '+(dailyChange>=0?'+':'')+dailyChange.toLocaleString('it-IT',{
+    minimumFractionDigits:2,maximumFractionDigits:2
+   })+'%';
+  if(button){
+   if(!button.dataset.extraBaseTitle)button.dataset.extraBaseTitle=button.title||id;
+   const updated=new Date(last[0]).toLocaleDateString('it-IT',{timeZone:'UTC',day:'2-digit',month:'short',year:'numeric'});
+   const model=extraGlobalState.model[id];
+   const band=isRainbowExtraChart(id)?extraRainbowZone(last[0],last[1],model):null;
+   button.title=button.dataset.extraBaseTitle+
+    ' · ultima chiusura: '+valueNode.textContent+
+    ' · '+updated+(band===null?'':' · fascia Rainbow: '+extraRainbowZones[band]);
+  }
+ }
+}
+
 async function loadExtraGlobalCharts(){
  if(extraGlobalState.loading||extraGlobalState.loaded)return;
  extraGlobalState.loading=true;
@@ -91,19 +129,14 @@ async function loadExtraGlobalCharts(){
    extraGlobalState.meta[id]={frequency:quote.frequency||'1D',source:quote.source};
    extraGlobalState.model[id]=extraLogFit(rows);
   }
-  for(const id of ['ALTCOIN','BTC_RAINBOW','ETH_RAINBOW']){
-   const pill=document.querySelector('[data-special-cap="'+id+'"]');
-   const rows=nativeCapChart.data[id];
-   if(!pill||!rows?.length)continue;
-   const value=rows[rows.length-1][1];
-   pill.textContent=id==='ALTCOIN'?nativeCapUsd(value):extraMoney(value);
-  }
+  updateExtraGlobalPillData();
   extraGlobalState.error='';
   extraGlobalState.loaded=true;
  }catch(error){
   extraGlobalState.error='Dati non disponibili: '+(error?.message||'errore');
  }finally{
   clearTimeout(timeout);extraGlobalState.loading=false;
+  updateExtraGlobalPillData();
   if(state.page==='global'&&['ALTCOIN','BTC_RAINBOW','ETH_RAINBOW'].includes(currentGlobalCapChart))
    paintGlobalCapChart();
  }
@@ -193,3 +226,16 @@ function drawExtraRainbowChart(c,w,h,host){
  host.dataset.plotLeft=String(left);
  host.dataset.viewCount=String(rows.length);
 }
+
+
+// Render header values as soon as Global opens. Do not wait for a chart click.
+// Both scripts are deferred; DOMContentLoaded fires once the host dashboard
+// and this module are available. Subsequent navigation is handled in render().
+function bootstrapExtraGlobalCaps(){
+ if(typeof state==='undefined'||state.page!=='global')return;
+ updateExtraGlobalPillData();
+ loadExtraGlobalCharts();
+}
+if(document.readyState==='loading')
+ document.addEventListener('DOMContentLoaded',bootstrapExtraGlobalCaps,{once:true});
+else bootstrapExtraGlobalCaps();
