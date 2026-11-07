@@ -290,7 +290,7 @@ function drawExtraAltcoinIndex(c,w,h,host){
   (rows.length?' · '+nativeCapDate(rows[0].t)+' – '+nativeCapDate(rows.at(-1).t):' · nessun dato in questo intervallo')+
   (nativeCapChart.range==='1D'?' · dati giornalieri, non intraday':'');
  if(source)source.textContent=(nativeCapChart.sources.ALTCOIN||'CoinMarketCap · Altcoin Season Index')+
-  ' · Indice 0–100: sotto 25 stagione Bitcoin, sopra 75 stagione altcoin. '+
+  ' · Indice 0–100: linea blu da 50% a 100%, arancione sotto 50%. Sotto 25 stagione Bitcoin; sopra 75 stagione altcoin. '+
   (extraIsLive('ALTCOIN')?'Ultima osservazione ufficiale aggiornata':'Ultimo dato archiviato')+'.';
  if(stats){
   if(rows.length){
@@ -320,24 +320,46 @@ function drawExtraAltcoinIndex(c,w,h,host){
   c.fillText(new Date(rows[i].t).toLocaleDateString('it-IT',
    {month:'short',year:'2-digit',timeZone:'UTC'}),X(i),h-16);
  }
+ // The exact 50% level splits both the filled area and the line color.
+ // Drawing the same observed path inside two complementary clips interpolates
+ // crossings precisely without changing the underlying live/historical data.
+ const threshold=Y(50),blue='#3b82f6',orange='#f59e0b';
+ const trace=()=>{
+  c.beginPath();
+  rows.forEach((p,i)=>i?c.lineTo(X(i),Y(p.c)):c.moveTo(X(i),Y(p.c)));
+ };
+ const fillArea=()=>{
+  trace();
+  c.lineTo(X(rows.length-1),Y(0));
+  c.lineTo(X(0),Y(0));
+  c.closePath();c.fill();
+ };
  c.save();c.beginPath();c.rect(L,T,PW,PH);c.clip();
- const gradient=c.createLinearGradient(0,T,0,T+PH);
- gradient.addColorStop(0,'rgba(35,174,144,.22)');
- gradient.addColorStop(1,'rgba(48,144,230,.07)');
- c.beginPath();
- rows.forEach((p,i)=>i?c.lineTo(X(i),Y(p.c)):c.moveTo(X(i),Y(p.c)));
- c.lineTo(X(rows.length-1),Y(0));c.lineTo(X(0),Y(0));c.closePath();c.fillStyle=gradient;c.fill();
- c.beginPath();rows.forEach((p,i)=>i?c.lineTo(X(i),Y(p.c)):c.moveTo(X(i),Y(p.c)));
- c.strokeStyle=bright;c.lineWidth=2.2;c.lineJoin='round';c.stroke();
+ for(const zone of [
+  {top:T,height:threshold-T,color:blue,fill:'rgba(59,130,246,.20)'},
+  {top:threshold,height:T+PH-threshold,color:orange,fill:'rgba(245,158,11,.18)'}
+ ]){
+  c.save();
+  c.beginPath();c.rect(L,zone.top,PW,zone.height);c.clip();
+  c.fillStyle=zone.fill;fillArea();
+  c.strokeStyle=zone.color;c.lineWidth=2.5;c.lineJoin='round';c.lineCap='round';
+  trace();c.stroke();
+  c.restore();
+ }
+ // Visible threshold at 50% regardless of selected timeframe.
+ c.beginPath();c.setLineDash([5,5]);c.strokeStyle=grid;c.lineWidth=1;
+ c.moveTo(L,threshold);c.lineTo(L+PW,threshold);c.stroke();c.setLineDash([]);
  const p=rows[nativeCapChart.hover!==null&&nativeCapChart.hover>=0&&nativeCapChart.hover<rows.length?nativeCapChart.hover:rows.length-1];
- const idx=rows.indexOf(p);c.beginPath();c.arc(X(idx),Y(p.c),3.3,0,Math.PI*2);c.fillStyle=bright;c.fill();
+ const idx=rows.indexOf(p);
+ c.beginPath();c.arc(X(idx),Y(p.c),3.8,0,Math.PI*2);
+ c.fillStyle=p.c>=50?blue:orange;c.fill();
  c.restore();
  const selected=nativeCapChart.hover!==null&&nativeCapChart.hover>=0&&nativeCapChart.hover<rows.length?
   nativeCapChart.hover:rows.length-1;
  const selectedPoint=rows[selected];
  if(typeof window.__vertexDrawChartValueFlag==='function')
   window.__vertexDrawChartValueFlag(c,w,L+PW,Y(selectedPoint.c),
-   Math.round(selectedPoint.c)+'%',bright);
+   Math.round(selectedPoint.c)+'%',selectedPoint.c>=50?blue:orange);
  host.dataset.plotWidth=String(PW);
  host.dataset.plotLeft=String(L);
  host.dataset.viewCount=String(rows.length);
