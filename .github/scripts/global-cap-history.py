@@ -306,5 +306,35 @@ def main():
     print("Saved genuine history", {k: len(v) for k, v in all_series.items()})
 
 
+
+
+def collect_verified_index_candles():
+    """Save original TOTAL/TOTAL2/TOTAL3 daily OHLC, separately from Santiment."""
+    reader = runpy.run_path(str(ROOT / ".github/scripts/tv-totaldefi-ohlc.py"))["get_crypto_market_ohlc"]
+    for name in SANTIMENT_METRICS:
+        try:
+            bars = reader(name)
+            if len(bars) < 1500:
+                print(name, "insufficient original OHLC:", len(bars))
+                continue
+            earliest = int(datetime(2020, 1, 1, tzinfo=timezone.utc).timestamp() * 1000)
+            latest = int(datetime(2026, 10, 20, tzinfo=timezone.utc).timestamp() * 1000)
+            if bars[0][0] > earliest or bars[-1][0] < latest:
+                print(name, "historical range is incomplete")
+                continue
+            output = ROOT / ("global-cap-" + name.lower() + ".json")
+            payload = {
+                "symbol": "CRYPTOCAP:" + name,
+                "source": "TradingView CRYPTOCAP · verified daily index OHLC",
+                "updatedAt": datetime.now(timezone.utc).isoformat(),
+                "interval": "1D",
+                "bars": bars,
+            }
+            output.write_text(json.dumps(payload, separators=(",", ":"), ensure_ascii=False) + "\n", encoding="utf-8")
+            print("Saved", output.name, len(bars), "genuine daily candles")
+        except (OSError, ValueError, TypeError, RuntimeError) as exc:
+            print(name, "actual OHLC unavailable:", str(exc)[:180])
+
 if __name__ == "__main__":
     main()
+    collect_verified_index_candles()
