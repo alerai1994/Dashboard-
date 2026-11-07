@@ -1497,9 +1497,9 @@ function drawNativeCapChart(){
  if(currentGlobalCapChart==='ALTCOIN'&&typeof window.__vertexDrawAltcoinIndex==='function'){
   window.__vertexDrawAltcoinIndex(c,w,h,host);return;
  }
- if(typeof isRainbowExtraChart==='function'&&isRainbowExtraChart(currentGlobalCapChart)){
-  if(typeof drawExtraRainbowChart==='function')drawExtraRainbowChart(c,w,h,host);
-  return;
+ if((currentGlobalCapChart==='BTC_RAINBOW'||currentGlobalCapChart==='ETH_RAINBOW')&&
+  typeof window.__vertexDrawRainbowChart==='function'){
+  window.__vertexDrawRainbowChart(c,w,h,host);return;
  }
  const {rows,all}=nativeCapWindow(),original=nativeCapChart.data[currentGlobalCapChart]||[];
  const verifiedDeFi=currentGlobalCapChart==='TOTALDEFI'&&nativeCapChart.ohlc.TOTALDEFI?.size>=2000;
@@ -1626,8 +1626,8 @@ function nativeCapAttach(){
    const p=view.rows[pos];
    tip.innerHTML=currentGlobalCapChart==='ALTCOIN'?
     '<strong>'+nativeCapDate(p.t)+'</strong><span>Altcoin Season Index: '+p.c.toLocaleString('it-IT',{maximumFractionDigits:0})+'/100</span>':
-    (typeof isRainbowExtraChart==='function'&&isRainbowExtraChart(currentGlobalCapChart)&&
-    typeof extraRainbowTooltip==='function')?extraRainbowTooltip(p,currentGlobalCapChart):
+    ((currentGlobalCapChart==='BTC_RAINBOW'||currentGlobalCapChart==='ETH_RAINBOW')&&
+    typeof window.__vertexRainbowTooltip==='function')?window.__vertexRainbowTooltip(p,currentGlobalCapChart):
     '<strong>'+nativeCapDate(p.t)+'</strong><span>Chiusura '+nativeCapUsd(p.c)+'</span>'+
     (nativeCapChart.timeframe==='1D'&&!p.verifiedOHLC?'':'<span>Apertura '+nativeCapUsd(p.o)+'</span><span>Massimo '+nativeCapUsd(p.h)+'</span><span>Minimo '+nativeCapUsd(p.l)+'</span>');
    tip.style.left=Math.max(5,Math.min(bounds.width-190,x+15))+'px';tip.hidden=false;
