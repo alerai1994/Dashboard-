@@ -58,7 +58,9 @@ function extraRainbowTooltip(candle,id){
  const asset=extraRainbowIds[id],fit=extraGlobalState.model[id];
  const zone=extraRainbowZone(candle.t,candle.c,fit);
  return '<strong>'+nativeCapDate(candle.t)+'</strong>'+
-  '<span>'+asset+(extraIsLive(id)&&extraGlobalState.live[id]?.timestamp===candle.t?'/USDT':'/USD')+' '+extraMoney(candle.c)+'</span>'+
+  '<span>Prezzo '+asset+'</span>'+
+  '<span class="global-tooltip-value">'+extraMoney(candle.c)+
+  (extraIsLive(id)&&extraGlobalState.live[id]?.timestamp===candle.t?' USDT':' USD')+'</span>'+
   (zone===null?'':'<span>Zona: '+extraRainbowZones[zone]+'</span>');
 }
 
