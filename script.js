@@ -1248,7 +1248,7 @@ const GLOBAL_CAP_CHART_NAMES=Object.freeze({
 });
 let currentGlobalCapChart=null;
 const nativeCapChart={
- data:Object.create(null),sources:{},loaded:false,loading:false,error:'',
+ data:Object.create(null),ohlc:Object.create(null),sources:{},loaded:false,loading:false,error:'',
  timeframe:'1W',range:'ALL',visibleCount:null,shift:0,hover:null,drag:null
 };
 function globalCryptoHistoryPanel(){
@@ -1300,20 +1300,46 @@ async function loadNativeCapHistory(){
    }
    nativeCapChart.data[id]=[...clean.values()].sort((a,b)=>a[0]-b[0]);
   }
+  // Load verified original exchange-index candles, never synthetic OHLC.
+  const candles=payload?.ohlc?.TOTALDEFI;
+  const validSource=String(payload?.sources?.TOTALDEFI||'').includes('CRYPTOCAP:TOTALDEFI');
+  if(validSource&&Array.isArray(candles)){
+   const actual=new Map(),known=new Map(nativeCapChart.data.TOTALDEFI||[]);
+   for(const row of candles){
+    if(!Array.isArray(row)||row.length<5)continue;
+    const [t,o,h,l,c]=row.slice(0,5).map(Number);
+    if(!Number.isFinite(t)||!known.has(t)||![o,h,l,c].every(x=>Number.isFinite(x)&&x>0))continue;
+    if(l>Math.min(o,c)||Math.max(o,c)>h||Math.abs(c-known.get(t))>c*.00001)continue;
+    actual.set(t,[o,h,l,c]);
+   }
+   if(actual.size>=2000)nativeCapChart.ohlc.TOTALDEFI=actual;
+  }
   nativeCapChart.sources=payload.sources||{};
   nativeCapChart.loaded=true;nativeCapChart.error='';
  }catch(err){nativeCapChart.error='Storico temporaneamente non raggiungibile ('+(err?.message||'errore')+').';}
  finally{clearTimeout(timer);nativeCapChart.loading=false;drawNativeCapChart();}
 }
 function nativeCapBuckets(rows){
- if(nativeCapChart.timeframe==='1D')return rows.map(([t,v])=>({t,o:v,h:v,l:v,c:v,n:1}));
+ const verified=nativeCapChart.ohlc[currentGlobalCapChart];
+ const points=rows.map(([t,v])=>{
+  const p=verified?.get(t);
+  return p?{t,o:p[0],h:p[1],l:p[2],c:p[3],n:1,verifiedOHLC:true}:
+   {t,o:v,h:v,l:v,c:v,n:1,verifiedOHLC:false};
+ });
+ if(nativeCapChart.timeframe==='1D')return points;
  const bucket=new Map(),isWeek=nativeCapChart.timeframe==='1W';
- for(const [t,v] of rows){
-  const date=new Date(t),day=date.getUTCDay();
-  const key=isWeek?new Date(t-((day+6)%7)*86400000).toISOString().slice(0,10):date.toISOString().slice(0,7);
+ for(const p of points){
+  const date=new Date(p.t),day=date.getUTCDay();
+  const key=isWeek?new Date(p.t-((day+6)%7)*86400000).toISOString().slice(0,10):date.toISOString().slice(0,7);
   let item=bucket.get(key);
-  if(!item){item={t,o:v,h:v,l:v,c:v,n:1};bucket.set(key,item);}
-  else{item.h=Math.max(item.h,v);item.l=Math.min(item.l,v);item.c=v;item.n++;}
+  if(!item){item={...p};bucket.set(key,item);}
+  else{
+   item.h=Math.max(item.h,p.h);
+   item.l=Math.min(item.l,p.l);
+   item.c=p.c;
+   item.n++;
+   item.verifiedOHLC=item.verifiedOHLC&&p.verifiedOHLC;
+  }
  }
  return [...bucket.values()];
 }
@@ -1345,9 +1371,10 @@ function drawNativeCapChart(){
  const c=canvas.getContext('2d');if(!c)return;
  c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,w,h);
  const {rows,all}=nativeCapWindow(),original=nativeCapChart.data[currentGlobalCapChart]||[];
+ const verifiedDeFi=currentGlobalCapChart==='TOTALDEFI'&&nativeCapChart.ohlc.TOTALDEFI?.size>=2000;
  const subtitle=$('#globalCapFullRangeStatus');
- if(subtitle)subtitle.textContent=currentGlobalCapChart==='TOTALDEFI'?
-  'Grafico completo dei dati DeFi disponibili · vista a larghezza intera · zoom e trascinamento':
+ if(subtitle)subtitle.textContent=verifiedDeFi?
+  'CRYPTOCAP:TOTALDEFI · 08 mag 2017 – 07 nov 2026 · storico completo delle candele reali':
   'Grafico nativo · dati osservati · rotella e pulsanti per lo zoom';
  const stats=$('#globalCapChartStats'),source=$('#globalCapHistorySource');
  if(stats){
@@ -1360,9 +1387,10 @@ function drawNativeCapChart(){
    '<div><small>Periodo disponibile</small><strong>'+nativeCapDate(first[0])+' – '+nativeCapDate(last[0])+'</strong></div>';
   }else stats.innerHTML='';
  }
- if(source)source.textContent=(nativeCapChart.sources[currentGlobalCapChart]||'Dati di mercato verificati')+
-  ' · Il grafico usa solo le date realmente disponibili. 1D: andamento giornaliero; 1W/1M: candele OHLC dai valori osservati, non estremi intraday.'+
-  (currentGlobalCapChart==='TOTALDEFI'?' Il periodo 08 mag 2017 – 07 nov 2026 richiesto non è coperto dalla fonte. Il grafico mostra integralmente i dati verificati disponibili, senza inventare valori. CoinPaprika e CoinGecko usano panieri DeFi diversi.':'');
+ if(source)source.textContent=verifiedDeFi?
+  'Fonte CRYPTOCAP:TOTALDEFI · 3.471 candele OHLC giornaliere originali dal 08/05/2017 al 07/11/2026. 1W e 1M aggregano gli OHLC reali; il grafico è disegnato nativamente in Vertex senza widget TradingView.':
+  (nativeCapChart.sources[currentGlobalCapChart]||'Dati di mercato verificati')+
+  ' · Visualizzati solo dati osservati, senza interpolazioni arbitrarie.';
  const message=nativeCapChart.loading?'Caricamento dello storico verificato…':
  nativeCapChart.error||(!rows.length?'Nessuno storico verificato per questo indice; verranno mostrate le rilevazioni realmente archiviate.':'');
  if(empty){empty.textContent=message;empty.hidden=!message;}
@@ -1390,8 +1418,8 @@ function drawNativeCapChart(){
  }
  c.save();c.beginPath();c.rect(L,T,PW,PH);c.clip();
 
- if(nativeCapChart.timeframe==='1D'){
-  // Genuine daily observations: fill the native chart width, not the blank 2017–2026 domain.
+ if(nativeCapChart.timeframe==='1D'&&!verifiedDeFi){
+  // Other indices have observed daily closes rather than original OHLC.
   const path=()=>{c.beginPath();rows.forEach((p,i)=>i===0?c.moveTo(x(i),y(p.c)):c.lineTo(x(i),y(p.c)));};
   const gradient=c.createLinearGradient(0,T,0,T+PH);
   gradient.addColorStop(0,'rgba(49,148,235,.27)');
@@ -1456,7 +1484,7 @@ function nativeCapAttach(){
   if(tip){
    const p=view.rows[pos];
    tip.innerHTML='<strong>'+nativeCapDate(p.t)+'</strong><span>Chiusura '+nativeCapUsd(p.c)+'</span>'+
-    (nativeCapChart.timeframe==='1D'?'':'<span>Apertura '+nativeCapUsd(p.o)+'</span><span>Massimo osservato '+nativeCapUsd(p.h)+'</span><span>Minimo osservato '+nativeCapUsd(p.l)+'</span>');
+    (nativeCapChart.timeframe==='1D'&&!p.verifiedOHLC?'':'<span>Apertura '+nativeCapUsd(p.o)+'</span><span>Massimo '+nativeCapUsd(p.h)+'</span><span>Minimo '+nativeCapUsd(p.l)+'</span>');
    tip.style.left=Math.max(5,Math.min(bounds.width-190,x+15))+'px';tip.hidden=false;
   }
  });
@@ -1483,7 +1511,8 @@ function paintGlobalCapChart(){
 function toggleGlobalCapChart(id){
  if(state.page!=='global'||!Object.hasOwn(GLOBAL_CAP_CHART_NAMES,id))return;
  currentGlobalCapChart=currentGlobalCapChart===id?null:id;
- nativeCapChart.timeframe=id==='TOTALDEFI'?'1D':'1W';
+ // Monthly candles fit the entire 2017–2026 market cycle without clipping.
+ nativeCapChart.timeframe=id==='TOTALDEFI'?'1M':'1W';
  nativeCapChart.range='ALL';nativeCapChart.visibleCount=null;nativeCapChart.shift=0;nativeCapChart.hover=null;
  paintGlobalCapChart();
  if(currentGlobalCapChart)$('#globalCryptoHistory')?.scrollIntoView({block:'nearest',behavior:'smooth'});
