@@ -56,7 +56,10 @@ ETFS = [
     ("etf-etha", "ETHA"), ("etf-feth", "FETH"), ("etf-ethe", "ETHE"),
     ("etf-bsol", "BSOL"), ("etf-fsol", "FSOL"), ("etf-gsol", "GSOL"),
     ("etf-ainj", "AINJ.AS"),
-
+    # Same 21Shares Injective Staking ETP, quoted independently at both venues.
+    # Real share prices only: Amsterdam USD / Paris EUR, no crypto-spot proxy.
+    ("etf-ainj-amsterdam", "AINJ.AS"),
+    ("etf-ainj-paris", "AINJ.PA"),
 ]
 CRYPTO = [
     ("btc", "bitcoin"), ("eth", "ethereum"), ("sol", "solana"),
