@@ -1248,14 +1248,14 @@ const GLOBAL_CAP_CHART_NAMES=Object.freeze({
 });
 let currentGlobalCapChart=null;
 const nativeCapChart={
- data:Object.create(null),ohlc:Object.create(null),sources:{},loaded:false,loading:false,error:'',
+ data:Object.create(null),ohlc:Object.create(null),sources:{},indexRequested:Object.create(null),loaded:false,loading:false,error:'',
  timeframe:'1W',range:'ALL',visibleCount:null,shift:0,hover:null,drag:null
 };
 function globalCryptoHistoryPanel(){
  return '<section id="globalCryptoHistory" class="global-crypto-history panel" hidden>'+
  '<header class="global-crypto-history-header"><div><span class="eyebrow">VERTEX · HISTORICAL MARKET CAP</span>'+
  '<h2 id="globalCryptoHistoryTitle">Storico capitalizzazione</h2>'+
- '<p id="globalCapFullRangeStatus">Grafico nativo · dati osservati · usa la rotella per lo zoom e trascina per spostarti nel tempo</p></div>'+
+ '<p id="globalCapFullRangeStatus" aria-live="polite">Grafico nativo · usa i tasti 1D, 1W e 1M per cambiare le candele</p></div>'+
  '<div class="global-crypto-history-actions"><button type="button" data-cap-zoom="in" aria-label="Ingrandisci">+</button>'+
  '<button type="button" data-cap-zoom="out" aria-label="Riduci">−</button>'+
  '<button type="button" data-cap-reset="1" aria-label="Ripristina grafico">↺</button>'+
@@ -1317,7 +1317,48 @@ async function loadNativeCapHistory(){
   nativeCapChart.sources=payload.sources||{};
   nativeCapChart.loaded=true;nativeCapChart.error='';
  }catch(err){nativeCapChart.error='Storico temporaneamente non raggiungibile ('+(err?.message||'errore')+').';}
- finally{clearTimeout(timer);nativeCapChart.loading=false;drawNativeCapChart();}
+ finally{
+  clearTimeout(timer);
+  nativeCapChart.loading=false;
+  // After global snapshot load, request real daily index OHLC for the active tab.
+  if(nativeCapChart.loaded&&state.page==='global'&&currentGlobalCapChart)paintGlobalCapChart();
+  else drawNativeCapChart();
+ }
+}
+/* For TOTAL, TOTAL2 and TOTAL3, load the genuine daily index candles.
+   The independent files avoid mixing Santiment close-only history with OHLC. */
+async function loadRealNativeCapIndex(id){
+ if(!['TOTAL','TOTAL2','TOTAL3'].includes(id)||nativeCapChart.indexRequested[id])return;
+ nativeCapChart.indexRequested[id]=true;
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),16000);
+ try{
+  const url='./global-cap-'+id.toLowerCase()+'.json?v='+Math.floor(Date.now()/300000);
+  const response=await fetch(url,{signal:controller.signal,cache:'no-store'});
+  if(!response.ok)throw Error('HTTP '+response.status);
+  const payload=await response.json();
+  if(payload?.symbol!=='CRYPTOCAP:'+id||payload?.interval!=='1D'||!Array.isArray(payload.bars))
+   throw Error('Fonte OHLC non valida');
+  const candles=new Map();
+  for(const bar of payload.bars){
+   if(!Array.isArray(bar)||bar.length<5)continue;
+   const [t,o,h,l,c]=bar.slice(0,5).map(Number);
+   if(!Number.isFinite(t)||![o,h,l,c].every(v=>Number.isFinite(v)&&v>0))continue;
+   if(l>Math.min(o,c)||Math.max(o,c)>h)continue;
+   candles.set(t,[o,h,l,c]);
+  }
+  if(candles.size<1500)throw Error('Storico OHLC incompleto');
+  const ordered=[...candles.entries()].sort((a,b)=>a[0]-b[0]);
+  nativeCapChart.ohlc[id]=new Map(ordered);
+  nativeCapChart.data[id]=ordered.map(([t,bar])=>[t,bar[3]]);
+  nativeCapChart.sources[id]=payload.source||('CRYPTOCAP:'+id+' · OHLC giornalieri verificati');
+ }catch(error){
+  // Keep the previous Santiment close-only graph if an independent
+  // genuine-candle feed is not available. Never invent daily highs/lows.
+  console.warn('Vertex market history',id,error?.message||error);
+ }finally{
+  clearTimeout(timer);
+  if(state.page==='global'&&currentGlobalCapChart===id)paintGlobalCapChart();
+ }
 }
 function nativeCapBuckets(rows){
  const verified=nativeCapChart.ohlc[currentGlobalCapChart];
@@ -1372,25 +1413,35 @@ function drawNativeCapChart(){
  c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,w,h);
  const {rows,all}=nativeCapWindow(),original=nativeCapChart.data[currentGlobalCapChart]||[];
  const verifiedDeFi=currentGlobalCapChart==='TOTALDEFI'&&nativeCapChart.ohlc.TOTALDEFI?.size>=2000;
+ const realOHLC=(nativeCapChart.ohlc[currentGlobalCapChart]?.size||0)>=1500;
  const subtitle=$('#globalCapFullRangeStatus');
- if(subtitle)subtitle.textContent=verifiedDeFi?
-  'CRYPTOCAP:TOTALDEFI · 08 mag 2017 – 07 nov 2026 · candele giornaliere verdi e rosse con stoppini':
-  'Grafico nativo · dati osservati · rotella e pulsanti per lo zoom';
+ if(subtitle){
+  const first=all[0],last=all[all.length-1];
+  const frameCount=all.length.toLocaleString('it-IT');
+  const dates=first&&last?' · '+nativeCapDate(first.t)+' – '+nativeCapDate(last.t):'';
+  const granularity=nativeCapChart.timeframe==='1D'?'giornaliere':
+   nativeCapChart.timeframe==='1W'?'settimanali':'mensili';
+  subtitle.textContent=nativeCapChart.timeframe+' · '+frameCount+' candele '+granularity+
+   dates+(realOHLC?' · OHLC reali':' · dati osservati');
+ }
  const stats=$('#globalCapChartStats'),source=$('#globalCapHistorySource');
  if(stats){
   if(original.length){
    const first=original[0],last=original[original.length-1],prior=original[original.length-2];
-   const difference=prior?(last[1]/prior[1]-1)*100:null;
-   stats.innerHTML='<div><small>Ultimo dato osservato</small><strong>'+nativeCapUsd(last[1])+'</strong></div>'+
-   '<div><small>Variazione tra osservazioni</small><strong class="'+(difference>0?'color-up':difference<0?'color-down':'')+'">'+
+   const activeClose=all.length?all[all.length-1].c:last[1];
+   const priorClose=all.length>1?all[all.length-2].c:null;
+   const difference=priorClose?(activeClose/priorClose-1)*100:null;
+   stats.innerHTML='<div><small>Ultima chiusura</small><strong>'+nativeCapUsd(activeClose)+'</strong></div>'+
+   '<div><small>Variazione '+nativeCapChart.timeframe+'</small><strong class="'+(difference>0?'color-up':difference<0?'color-down':'')+'">'+
    (difference===null?'—':(difference>=0?'+':'')+difference.toFixed(2)+'%')+'</strong></div>'+
    '<div><small>Periodo disponibile</small><strong>'+nativeCapDate(first[0])+' – '+nativeCapDate(last[0])+'</strong></div>';
   }else stats.innerHTML='';
  }
- if(source)source.textContent=verifiedDeFi?
-  'Fonte CRYPTOCAP:TOTALDEFI · 3.471 candele OHLC giornaliere originali dal 08/05/2017 al 07/11/2026. 1W e 1M aggregano gli OHLC reali; il grafico è disegnato nativamente in Vertex senza widget TradingView.':
+ if(source)source.textContent=realOHLC?
+  (nativeCapChart.sources[currentGlobalCapChart]||'CRYPTOCAP · OHLC verificati')+
+  ' · Intervallo '+nativeCapChart.timeframe+': 1D usa le candele originali; 1W e 1M aggregano apertura, massimo, minimo e chiusura della settimana o del mese. Nessun widget TradingView.':
   (nativeCapChart.sources[currentGlobalCapChart]||'Dati di mercato verificati')+
-  ' · Visualizzati solo dati osservati, senza interpolazioni arbitrarie.';
+  ' · Storico di chiusure giornaliere; i massimi e minimi intraday non sono disponibili da questa fonte.';
  const message=nativeCapChart.loading?'Caricamento dello storico verificato…':
  nativeCapChart.error||(!rows.length?'Nessuno storico verificato per questo indice; verranno mostrate le rilevazioni realmente archiviate.':'');
  if(empty){empty.textContent=message;empty.hidden=!message;}
@@ -1418,7 +1469,7 @@ function drawNativeCapChart(){
  }
  c.save();c.beginPath();c.rect(L,T,PW,PH);c.clip();
 
- if(nativeCapChart.timeframe==='1D'&&!verifiedDeFi){
+ if(nativeCapChart.timeframe==='1D'&&!realOHLC){
   // Other indices have observed daily closes rather than original OHLC.
   const path=()=>{c.beginPath();rows.forEach((p,i)=>i===0?c.moveTo(x(i),y(p.c)):c.lineTo(x(i),y(p.c)));};
   const gradient=c.createLinearGradient(0,T,0,T+PH);
@@ -1434,7 +1485,7 @@ function drawNativeCapChart(){
  }else{
   // Fine candlesticks with real high/low wicks, not overlapping 3px bars.
   const step=PW/rows.length;
-  const dense=verifiedDeFi&&nativeCapChart.timeframe==='1D'&&step<2;
+  const dense=realOHLC&&nativeCapChart.timeframe==='1D'&&step<2;
   const bodyWidth=dense?Math.max(.72,Math.min(1.0,step*.85)):Math.max(1.15,Math.min(16,step*.7));
   const wickWidth=dense?Math.max(.45,Math.min(.8,step*.7)):Math.max(.65,Math.min(1.3,bodyWidth*.22));
   const minBody=dense?.65:1.35;
@@ -1511,9 +1562,15 @@ function paintGlobalCapChart(){
  if(!show)return;
  const title=$('#globalCryptoHistoryTitle');
  if(title)title.textContent=id+' · '+GLOBAL_CAP_CHART_NAMES[id];
- panel.querySelectorAll('[data-cap-timeframe]').forEach(b=>b.classList.toggle('active',b.dataset.capTimeframe===nativeCapChart.timeframe));
+ panel.querySelectorAll('[data-cap-timeframe]').forEach(b=>{
+  const active=b.dataset.capTimeframe===nativeCapChart.timeframe;
+  b.classList.toggle('active',active);
+  b.setAttribute('aria-pressed',String(active));
+ });
  panel.querySelectorAll('[data-cap-range]').forEach(b=>b.classList.toggle('active',b.dataset.capRange===nativeCapChart.range));
- nativeCapAttach();drawNativeCapChart();if(!nativeCapChart.loaded)loadNativeCapHistory();
+ nativeCapAttach();drawNativeCapChart();
+ if(!nativeCapChart.loaded)loadNativeCapHistory();
+ else if(id!=='TOTALDEFI')loadRealNativeCapIndex(id);
 }
 function toggleGlobalCapChart(id){
  if(state.page!=='global'||!Object.hasOwn(GLOBAL_CAP_CHART_NAMES,id))return;
