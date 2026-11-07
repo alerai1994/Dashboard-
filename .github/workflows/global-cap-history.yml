@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - .github/scripts/global-cap-history.py
+      - .github/scripts/tv-totaldefi-ohlc.py
       - .github/workflows/global-cap-history.yml
   schedule:
     - cron: '8 0,6,12,18 * * *'
@@ -19,8 +20,10 @@ jobs:
     timeout-minutes: 6
     steps:
       - uses: actions/checkout@v4
-      - name: Check Python syntax
-        run: python3 -m py_compile .github/scripts/global-cap-history.py
+      - name: Install chart-data reader and validate Python
+        run: |
+          python3 -m pip install --quiet websocket-client
+          python3 -m py_compile .github/scripts/global-cap-history.py .github/scripts/tv-totaldefi-ohlc.py
       - name: Collect actual historical market capitalisations
         run: python3 .github/scripts/global-cap-history.py
       - name: Publish verified history
