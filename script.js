@@ -1374,7 +1374,7 @@ function drawNativeCapChart(){
  const verifiedDeFi=currentGlobalCapChart==='TOTALDEFI'&&nativeCapChart.ohlc.TOTALDEFI?.size>=2000;
  const subtitle=$('#globalCapFullRangeStatus');
  if(subtitle)subtitle.textContent=verifiedDeFi?
-  'CRYPTOCAP:TOTALDEFI · 08 mag 2017 – 07 nov 2026 · storico completo delle candele reali':
+  'CRYPTOCAP:TOTALDEFI · 08 mag 2017 – 07 nov 2026 · candele giornaliere verdi e rosse con stoppini':
   'Grafico nativo · dati osservati · rotella e pulsanti per lo zoom';
  const stats=$('#globalCapChartStats'),source=$('#globalCapHistorySource');
  if(stats){
@@ -1432,13 +1432,20 @@ function drawNativeCapChart(){
    c.fillStyle=colors.brand;c.fill();
   }
  }else{
-  const bw=Math.max(3,Math.min(22,PW/rows.length*.72));
-  rows.forEach((p,i)=>{
+  // Fine candlesticks with real high/low wicks, not overlapping 3px bars.
+  const step=PW/rows.length;
+  const dense=verifiedDeFi&&nativeCapChart.timeframe==='1D'&&step<2;
+  const bodyWidth=dense?Math.max(.72,Math.min(1.0,step*.85)):Math.max(1.15,Math.min(16,step*.7));
+  const wickWidth=dense?Math.max(.45,Math.min(.8,step*.7)):Math.max(.65,Math.min(1.3,bodyWidth*.22));
+  const minBody=dense?.65:1.35;
+  for(let i=0;i<rows.length;i++){
+   const p=rows[i],at=x(i);
    c.strokeStyle=c.fillStyle=p.c>=p.o?colors.up:colors.down;
-   c.lineWidth=Math.max(.8,Math.min(1.3,bw*.2));
-   c.beginPath();c.moveTo(x(i),y(p.h));c.lineTo(x(i),y(p.l));c.stroke();
-   c.fillRect(x(i)-bw/2,y(Math.max(p.o,p.c)),bw,Math.max(1.5,Math.abs(y(p.o)-y(p.c))));
-  });
+   c.lineWidth=wickWidth;
+   c.beginPath();c.moveTo(at,y(p.h));c.lineTo(at,y(p.l));c.stroke();
+   c.fillRect(at-bodyWidth/2,y(Math.max(p.o,p.c)),bodyWidth,
+    Math.max(minBody,Math.abs(y(p.o)-y(p.c))));
+  }
  }
  const last=rows[rows.length-1];
  c.strokeStyle=colors.brand;c.setLineDash([4,5]);c.lineWidth=.9;c.beginPath();
@@ -1511,8 +1518,8 @@ function paintGlobalCapChart(){
 function toggleGlobalCapChart(id){
  if(state.page!=='global'||!Object.hasOwn(GLOBAL_CAP_CHART_NAMES,id))return;
  currentGlobalCapChart=currentGlobalCapChart===id?null:id;
- // Monthly candles fit the entire 2017–2026 market cycle without clipping.
- nativeCapChart.timeframe=id==='TOTALDEFI'?'1M':'1W';
+ // Use actual daily TOTALDEFI candles across the whole 2017–2026 span, as requested.
+ nativeCapChart.timeframe=id==='TOTALDEFI'?'1D':'1W';
  nativeCapChart.range='ALL';nativeCapChart.visibleCount=null;nativeCapChart.shift=0;nativeCapChart.hover=null;
  paintGlobalCapChart();
  if(currentGlobalCapChart)$('#globalCryptoHistory')?.scrollIntoView({block:'nearest',behavior:'smooth'});
