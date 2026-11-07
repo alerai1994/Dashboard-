@@ -2170,7 +2170,7 @@ function cryptoEtfOtherQuotes(product){
    '</strong><small>'+esc(p.name)+'</small></div>'+
    '<div class="crypto-etf-other-quote" data-etf-quote-id="'+esc(p.quoteId)+'">'+cryptoEtfQuoteMarkup(p)+'</div>'+
    '<a href="'+esc(p.url)+'" target="_blank" rel="noopener noreferrer" aria-label="Scheda ufficiale '+esc(p.ticker)+' · '+esc(p.name)+'">↗</a></div>').join('')+
-  (product.crypto==='inj'?'<p class="crypto-etf-listing-note">Stesso ETP AINJ · ISIN CH1360612134. Amsterdam (USD) e Parigi (EUR) hanno quotazioni di borsa separate e possono essere ritardate.</p>':'')+
+
   '</div>';
 }
 function cryptoEtfSection(){
