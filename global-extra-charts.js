@@ -15,12 +15,12 @@ const extraRainbowColors=['#5154c9','#3c82df','#2baddf','#27bdac','#76c77e','#bc
 const extraRainbowZones=['Sconto profondo','Sottovalutato','Accumulo','Ancora economico','Nella media','Sopra tendenza','Mercato caldo','Euforia','Molto caldo'];
 const extraRainbowEdges=[-2.25,-1.75,-1.25,-.75,-.25,.25,.75,1.25,1.75,2.25];
 function isRainbowExtraChart(id){return Object.hasOwn(extraRainbowIds,id||'');}
-function extraCleanPoints(input){
+function extraCleanPoints(input,allowZero=false){
  const dedup=new Map();
  for(const row of Array.isArray(input)?input:[]){
   if(!Array.isArray(row)||row.length<2)continue;
   const t=Number(row[0]),v=Number(row[1]);
-  if(Number.isFinite(t)&&t>1250000000000&&Number.isFinite(v)&&v>0)dedup.set(t,[t,v]);
+  if(Number.isFinite(t)&&t>1250000000000&&Number.isFinite(v)&&(allowZero?v>=0:v>0))dedup.set(t,[t,v]);
  }
  return [...dedup.values()].sort((a,b)=>a[0]-b[0]);
 }
@@ -115,7 +115,7 @@ async function loadExtraGlobalCharts(){
   const payload=await response.json();
   // Altcoin Season Index is a bounded 0–100 score, not CRYPTOCAP:OTHERS market cap.
   const alt=payload?.altcoin||{};
-  const altPoints=extraCleanPoints(alt.points).filter(([t,v])=>v>=0&&v<=100);
+  const altPoints=extraCleanPoints(alt.points,true).filter(([t,v])=>v>=0&&v<=100);
   if(altPoints.length){
    nativeCapChart.data.ALTCOIN=altPoints;
    nativeCapChart.ohlc.ALTCOIN=null;
