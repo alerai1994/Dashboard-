@@ -1263,11 +1263,13 @@ function globalCryptoHistoryPanel(){
  '<button type="button" data-cap-zoom="out" aria-label="Riduci">−</button>'+
  '<button type="button" data-cap-reset="1" aria-label="Ripristina grafico">↺</button>'+
  '<button type="button" data-close-global-cap-chart="1" aria-label="Chiudi grafico">✕</button></div></header>'+
- '<div class="global-crypto-history-toolbar">'+
- '<div class="global-cap-chart-tabs">'+['1D','1W','1M'].map(k=>
- '<button type="button" data-cap-timeframe="'+k+'" class="'+(k===nativeCapChart.timeframe?'active':'')+'">'+k+'</button>').join('')+'</div>'+
- '<div class="global-cap-chart-tabs">'+['30D','90D','1Y','ALL'].map(k=>
- '<button type="button" data-cap-range="'+k+'" class="'+(k===nativeCapChart.range?'active':'')+'">'+(k==='ALL'?'TUTTO':k)+'</button>').join('')+'</div></div>'+
+ '<div class="global-crypto-history-toolbar" role="group" aria-label="Timeframe e periodo del grafico">'+
+ '<div class="global-cap-chart-tabs global-cap-chart-tabs-all">'+
+ ['1D','1W','1M'].map(k=>
+ '<button type="button" data-cap-timeframe="'+k+'" aria-pressed="'+String(k===nativeCapChart.timeframe)+'" class="'+(k===nativeCapChart.timeframe?'active':'')+'">'+k+'</button>').join('')+
+ '<span class="global-cap-timeframe-divider" aria-hidden="true"></span>'+
+ ['30D','90D','1Y','ALL'].map(k=>
+ '<button type="button" data-cap-range="'+k+'" aria-pressed="'+String(k===nativeCapChart.range)+'" class="'+(k===nativeCapChart.range?'active':'')+'">'+(k==='ALL'?'TUTTO':k)+'</button>').join('')+'</div></div>'+
  '<div class="global-cap-chart-stats" id="globalCapChartStats"></div>'+
  '<div class="global-crypto-history-chart" id="globalCryptoHistoryChart">'+
  '<canvas id="globalCapCanvas" role="img" aria-label="Capitalizzazione storica osservata in dollari"></canvas>'+
@@ -1581,7 +1583,11 @@ function paintGlobalCapChart(){
   b.classList.toggle('active',active);
   b.setAttribute('aria-pressed',String(active));
  });
- panel.querySelectorAll('[data-cap-range]').forEach(b=>b.classList.toggle('active',b.dataset.capRange===nativeCapChart.range));
+ panel.querySelectorAll('[data-cap-range]').forEach(b=>{
+  const active=b.dataset.capRange===nativeCapChart.range;
+  b.classList.toggle('active',active);
+  b.setAttribute('aria-pressed',String(active));
+ });
  nativeCapAttach();drawNativeCapChart();
  if((id==='ALTCOIN'||id==='BTC_RAINBOW'||id==='ETH_RAINBOW')&&
   typeof loadExtraGlobalCharts==='function')loadExtraGlobalCharts();
