@@ -1286,24 +1286,22 @@ const GLOBAL_CAP_CHART_NAMES=Object.freeze({
 let currentGlobalCapChart=null;
 const nativeCapChart={
  data:Object.create(null),ohlc:Object.create(null),sources:{},indexRequested:Object.create(null),loaded:false,loading:false,error:'',
- timeframe:'1W',range:'ALL',visibleCount:null,shift:0,hover:null,drag:null
+ timeframe:'1D',range:'90D',visibleCount:null,shift:0,hover:null,drag:null
 };
 function globalCryptoHistoryPanel(){
  return '<section id="globalCryptoHistory" class="global-crypto-history panel" hidden>'+
  '<header class="global-crypto-history-header"><div><span class="eyebrow" id="globalCapChartEyebrow">VERTEX · HISTORICAL MARKET CAP</span>'+
  '<h2 id="globalCryptoHistoryTitle">Storico capitalizzazione</h2>'+
- '<p id="globalCapFullRangeStatus" aria-live="polite">Grafico nativo · usa i tasti 1D, 1W e 1M per cambiare le candele</p></div>'+
+ '<p id="globalCapFullRangeStatus" aria-live="polite">Seleziona 1D, 1W, 1M, 30D, 90D, 1Y oppure TUTTO</p></div>'+
  '<div class="global-crypto-history-actions"><button type="button" data-cap-zoom="in" aria-label="Ingrandisci">+</button>'+
  '<button type="button" data-cap-zoom="out" aria-label="Riduci">−</button>'+
  '<button type="button" data-cap-reset="1" aria-label="Ripristina grafico">↺</button>'+
  '<button type="button" data-close-global-cap-chart="1" aria-label="Chiudi grafico">✕</button></div></header>'+
- '<div class="global-crypto-history-toolbar" role="group" aria-label="Timeframe e periodo del grafico">'+
+ '<div class="global-crypto-history-toolbar" role="group" aria-label="Seleziona il periodo del grafico">'+
  '<div class="global-cap-chart-tabs global-cap-chart-tabs-all">'+
- ['1D','1W','1M'].map(k=>
- '<button type="button" data-cap-timeframe="'+k+'" aria-pressed="'+String(k===nativeCapChart.timeframe)+'" class="'+(k===nativeCapChart.timeframe?'active':'')+'">'+k+'</button>').join('')+
- '<span class="global-cap-timeframe-divider" aria-hidden="true"></span>'+
- ['30D','90D','1Y','ALL'].map(k=>
- '<button type="button" data-cap-range="'+k+'" aria-pressed="'+String(k===nativeCapChart.range)+'" class="'+(k===nativeCapChart.range?'active':'')+'">'+(k==='ALL'?'TUTTO':k)+'</button>').join('')+'</div></div>'+
+ ['1D','1W','1M','30D','90D','1Y','ALL'].map(k=>
+ '<button type="button" data-cap-range="'+k+'" aria-pressed="'+String(k===nativeCapChart.range)+'" class="'+(k===nativeCapChart.range?'active':'')+'" title="'+
+ (k==='1D'?'Ultime 24 ore':k==='1W'?'Ultimi 7 giorni':k==='1M'?'Ultimo mese di calendario':k==='30D'?'Ultimi 30 giorni':k==='90D'?'Ultimi 90 giorni':k==='1Y'?'Ultimo anno':'Tutto lo storico')+'">'+(k==='ALL'?'TUTTO':k)+'</button>').join('')+'</div></div>'+
  '<div class="global-cap-chart-stats" id="globalCapChartStats"></div>'+
  '<div class="global-crypto-history-chart" id="globalCryptoHistoryChart">'+
  '<canvas id="globalCapCanvas" role="img" aria-label="Capitalizzazione storica osservata in dollari"></canvas>'+
@@ -1451,21 +1449,39 @@ function nativeCapBuckets(rows){
  }
  return [...bucket.values()];
 }
-function nativeCapWindow(){
- const rows=nativeCapChart.data[currentGlobalCapChart]||[];
- if(!rows.length)return {rows:[],all:[],first:0};
- let selected=rows;
- if(nativeCapChart.range!=='ALL'){
-  const days=nativeCapChart.range==='30D'?30:nativeCapChart.range==='90D'?90:365;
-  const latest=rows[rows.length-1][0];
-  selected=rows.filter(p=>p[0]>=latest-days*86400000);
+const NATIVE_CAP_PERIOD_LABEL=Object.freeze({
+ '1D':'Ultime 24 ore','1W':'Ultimi 7 giorni','1M':'Ultimo mese di calendario',
+ '30D':'Ultimi 30 giorni','90D':'Ultimi 90 giorni','1Y':'Ultimo anno','ALL':'Tutto lo storico'
+});
+function nativeCapPeriodStart(last,period){
+ const day=86400000;
+ if(period==='ALL')return -Infinity;
+ if(period==='1D')return last-day;
+ if(period==='1W')return last-7*day;
+ if(period==='30D')return last-30*day;
+ if(period==='90D')return last-90*day;
+ if(period==='1M'||period==='1Y'){
+  const d=new Date(last),month=d.getUTCMonth()-(period==='1Y'?12:1);
+  const first=new Date(Date.UTC(d.getUTCFullYear(),month,1));
+  const maxDate=new Date(Date.UTC(first.getUTCFullYear(),first.getUTCMonth()+1,0)).getUTCDate();
+  return Date.UTC(first.getUTCFullYear(),first.getUTCMonth(),Math.min(d.getUTCDate(),maxDate),
+   d.getUTCHours(),d.getUTCMinutes(),d.getUTCSeconds(),d.getUTCMilliseconds());
  }
- const all=nativeCapBuckets(selected),total=all.length;
- const maxPoints=Math.min(total,Math.max(5,nativeCapChart.visibleCount||total));
- nativeCapChart.shift=Math.min(Math.max(0,nativeCapChart.shift),Math.max(0,total-maxPoints));
- const first=Math.max(0,total-maxPoints-nativeCapChart.shift);
- return {rows:all.slice(first,first+maxPoints),all,first};
+ return last-90*day;
 }
+function nativeCapWindow(){
+ const input=nativeCapChart.data[currentGlobalCapChart]||[];
+ if(!input.length)return {rows:[],all:[],first:0};
+ const latest=input[input.length-1][0];
+ const start=nativeCapPeriodStart(latest,nativeCapChart.range);
+ const selected=input.filter(p=>p[0]>=start&&p[0]<=latest);
+ const all=nativeCapBuckets(selected),total=all.length;
+ const visible=Math.min(total,Math.max(1,nativeCapChart.visibleCount||total));
+ nativeCapChart.shift=Math.min(Math.max(0,nativeCapChart.shift),Math.max(0,total-visible));
+ const first=Math.max(0,total-visible-nativeCapChart.shift);
+ return {rows:all.slice(first,first+visible),all,first,start,end:latest};
+}
+
 function nativeCapPalette(key,fallback){
  return getComputedStyle(document.body).getPropertyValue(key).trim()||fallback;
 }
@@ -1489,26 +1505,19 @@ function drawNativeCapChart(){
  const verifiedDeFi=currentGlobalCapChart==='TOTALDEFI'&&nativeCapChart.ohlc.TOTALDEFI?.size>=2000;
  const realOHLC=(nativeCapChart.ohlc[currentGlobalCapChart]?.size||0)>=1500;
  const subtitle=$('#globalCapFullRangeStatus');
- if(subtitle){
-  const first=all[0],last=all[all.length-1];
-  const frameCount=all.length.toLocaleString('it-IT');
-  const dates=first&&last?' · '+nativeCapDate(first.t)+' – '+nativeCapDate(last.t):'';
-  const granularity=nativeCapChart.timeframe==='1D'?'giornaliere':
-   nativeCapChart.timeframe==='1W'?'settimanali':'mensili';
-  subtitle.textContent=nativeCapChart.timeframe+' · '+frameCount+' candele '+granularity+
-   dates+(realOHLC?' · OHLC reali':' · dati osservati');
- }
+ const firstVisible=rows[0],lastVisible=rows[rows.length-1];
+ const periodLabel=NATIVE_CAP_PERIOD_LABEL[nativeCapChart.range]||nativeCapChart.range;
+ if(subtitle)subtitle.textContent=periodLabel+' · '+rows.length+' rilevazioni visibili'+
+  (firstVisible&&lastVisible?' · '+nativeCapDate(firstVisible.t)+' – '+nativeCapDate(lastVisible.t):'')+
+  (nativeCapChart.range==='1D'?' · dati giornalieri, storico intraday non disponibile':'');
  const stats=$('#globalCapChartStats'),source=$('#globalCapHistorySource');
  if(stats){
-  if(original.length){
-   const first=original[0],last=original[original.length-1],prior=original[original.length-2];
-   const activeClose=all.length?all[all.length-1].c:last[1];
-   const priorClose=all.length>1?all[all.length-2].c:null;
-   const difference=priorClose?(activeClose/priorClose-1)*100:null;
-   stats.innerHTML='<div><small>Ultima chiusura</small><strong>'+nativeCapUsd(activeClose)+'</strong></div>'+
-   '<div><small>Variazione '+nativeCapChart.timeframe+'</small><strong class="'+(difference>0?'color-up':difference<0?'color-down':'')+'">'+
-   (difference===null?'—':(difference>=0?'+':'')+difference.toFixed(2)+'%')+'</strong></div>'+
-   '<div><small>Periodo disponibile</small><strong>'+nativeCapDate(first[0])+' – '+nativeCapDate(last[0])+'</strong></div>';
+  if(firstVisible&&lastVisible){
+   const change=rows.length>1&&firstVisible.c>0?(lastVisible.c/firstVisible.c-1)*100:null;
+   stats.innerHTML='<div><small>Ultimo valore nel periodo</small><strong>'+nativeCapUsd(lastVisible.c)+'</strong></div>'+
+    '<div><small>Variazione '+nativeCapChart.range+'</small><strong class="'+(change>0?'color-up':change<0?'color-down':'')+'">'+
+    (change===null?'n/d':(change>=0?'+':'')+change.toFixed(2)+'%')+'</strong></div>'+
+    '<div><small>Periodo visualizzato</small><strong>'+nativeCapDate(firstVisible.t)+' – '+nativeCapDate(lastVisible.t)+'</strong></div>';
   }else stats.innerHTML='';
  }
  if(source)source.textContent=realOHLC?
@@ -1645,15 +1654,9 @@ function paintGlobalCapChart(){
   'VERTEX · RAINBOW CHART · MODELLO STORICO':
   id==='ALTCOIN'?'VERTEX · ALTCOIN SEASON INDEX · 0–100':
   'VERTEX · HISTORICAL MARKET CAP';
- panel.querySelectorAll('[data-cap-timeframe]').forEach(b=>{
-  const active=b.dataset.capTimeframe===nativeCapChart.timeframe;
-  b.classList.toggle('active',active);
-  b.setAttribute('aria-pressed',String(active));
- });
  panel.querySelectorAll('[data-cap-range]').forEach(b=>{
   const active=b.dataset.capRange===nativeCapChart.range;
-  b.classList.toggle('active',active);
-  b.setAttribute('aria-pressed',String(active));
+  b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));
  });
  nativeCapAttach();drawNativeCapChart();
  if((id==='ALTCOIN'||id==='BTC_RAINBOW'||id==='ETH_RAINBOW')&&
@@ -1665,8 +1668,8 @@ function toggleGlobalCapChart(id){
  if(state.page!=='global'||!Object.hasOwn(GLOBAL_CAP_CHART_NAMES,id))return;
  currentGlobalCapChart=currentGlobalCapChart===id?null:id;
  // Use actual daily TOTALDEFI candles across the whole 2017–2026 span, as requested.
- nativeCapChart.timeframe=(id==='TOTALDEFI'||id==='ALTCOIN')?'1D':'1W';
- nativeCapChart.range='ALL';nativeCapChart.visibleCount=null;nativeCapChart.shift=0;nativeCapChart.hover=null;
+ nativeCapChart.timeframe='1D';
+ nativeCapChart.range='90D';nativeCapChart.visibleCount=null;nativeCapChart.shift=0;nativeCapChart.hover=null;
  paintGlobalCapChart();
  if(currentGlobalCapChart)$('#globalCryptoHistory')?.scrollIntoView({block:'nearest',behavior:'smooth'});
 }
@@ -5642,15 +5645,12 @@ function setupEvents(){
  });
  $('#pageContainer').addEventListener('click',e=>{
   if(e.target.closest('[data-close-global-cap-chart]')){currentGlobalCapChart=null;paintGlobalCapChart();return;}
-  const frame=e.target.closest('[data-cap-timeframe]');
-  if(frame&&['1D','1W','1M'].includes(frame.dataset.capTimeframe)){
-   nativeCapChart.timeframe=frame.dataset.capTimeframe;nativeCapChart.visibleCount=null;nativeCapChart.shift=0;
-   nativeCapChart.hover=null;paintGlobalCapChart();return;
-  }
   const range=e.target.closest('[data-cap-range]');
-  if(range&&['30D','90D','1Y','ALL'].includes(range.dataset.capRange)){
-   nativeCapChart.range=range.dataset.capRange;nativeCapChart.visibleCount=null;nativeCapChart.shift=0;
-   nativeCapChart.hover=null;paintGlobalCapChart();return;
+  if(range&&['1D','1W','1M','30D','90D','1Y','ALL'].includes(range.dataset.capRange)){
+   nativeCapChart.range=range.dataset.capRange;
+   nativeCapChart.timeframe='1D';
+   nativeCapChart.visibleCount=null;nativeCapChart.shift=0;nativeCapChart.hover=null;
+   paintGlobalCapChart();return;
   }
   const zoom=e.target.closest('[data-cap-zoom]');
   if(zoom){
