@@ -2362,3 +2362,9 @@ body .topbar .live-clock strong{
 .global-cap-chart-tooltip span{font-size:10px;color:var(--muted)}
 .global-crypto-history-source{font-size:10px;color:var(--muted);line-height:1.6;margin:10px 2px 0}
 @media(max-width:650px){.global-crypto-history{padding:10px}.global-crypto-history-header h2{font-size:16px}.global-cap-chart-tabs button{padding:6px 7px}.global-crypto-history-chart{height:430px}.global-cap-chart-stats{gap:13px}}
+
+
+/* Respect hidden state for chart overlay, hover tooltip and collapsed panel. */
+.global-crypto-history[hidden],
+.global-cap-chart-empty[hidden],
+.global-cap-chart-tooltip[hidden]{display:none!important}
