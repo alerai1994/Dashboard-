@@ -8,7 +8,7 @@ const $=selector=>document.querySelector(selector);
    they are NOT market prices, valuation guarantees or forecasts. */
 const extraGlobalState={
  loading:false,loaded:false,error:'',model:Object.create(null),
- meta:Object.create(null)
+ meta:Object.create(null),live:Object.create(null)
 };
 const extraRainbowIds=Object.freeze({BTC_RAINBOW:'BTC',ETH_RAINBOW:'ETH'});
 const extraRainbowColors=['#5154c9','#3c82df','#2baddf','#27bdac','#76c77e','#bcd458','#ead04d','#f19d44','#e15d60'];
@@ -58,7 +58,7 @@ function extraRainbowTooltip(candle,id){
  const asset=extraRainbowIds[id],fit=extraGlobalState.model[id];
  const zone=extraRainbowZone(candle.t,candle.c,fit);
  return '<strong>'+nativeCapDate(candle.t)+'</strong>'+
-  '<span>'+asset+'/USD '+extraMoney(candle.c)+'</span>'+
+  '<span>'+asset+(extraIsLive(id)&&extraGlobalState.live[id]?.timestamp===candle.t?'/USDT':'/USD')+' '+extraMoney(candle.c)+'</span>'+
   (zone===null?'':'<span>Zona: '+extraRainbowZones[zone]+'</span>');
 }
 
@@ -68,7 +68,6 @@ function updateExtraGlobalPillData(){
   const changeNode=document.querySelector('[data-special-change="'+id+'"]');
   if(!valueNode||!changeNode)continue;
   const rows=nativeCapChart.data[id]||[];
-  const button=valueNode.closest('button');
   if(!rows.length){
    if(extraGlobalState.loaded||extraGlobalState.error){
     valueNode.textContent='—';
@@ -76,28 +75,31 @@ function updateExtraGlobalPillData(){
    }
    continue;
   }
-  const last=rows[rows.length-1],prior=rows.length>1?rows[rows.length-2]:null;
+  const last=rows.at(-1),prior=rows.at(-2),online=extraIsLive(id);
+  const live=extraGlobalState.live[id],button=valueNode.closest('button');
   valueNode.textContent=id==='ALTCOIN'?Math.round(last[1])+'%':extraMoney(last[1]);
-  let dailyChange=null;
-  // Percentage change between the two last verified daily close observations.
-  if(prior&&prior[1]>0)dailyChange=(last[1]/prior[1]-1)*100;
-  changeNode.classList.toggle('is-positive',dailyChange!==null&&dailyChange>0);
-  changeNode.classList.toggle('is-negative',dailyChange!==null&&dailyChange<0);
-  const indexDelta=prior?Math.round(last[1]-prior[1]):null;
-  changeNode.textContent=id==='ALTCOIN'?
-   (indexDelta===null?'Ultimo valore archiviato':'1D '+(indexDelta>=0?'+':'')+indexDelta+' punti'):
-   (dailyChange===null?'Variazione n/d':
-   '1D '+(dailyChange>=0?'+':'')+dailyChange.toLocaleString('it-IT',{
-    minimumFractionDigits:2,maximumFractionDigits:2
-   })+'%');
+  changeNode.classList.remove('is-positive','is-negative');
+  let delta=null,description='';
+  if(id==='ALTCOIN'){
+   delta=prior?Math.round(last[1]-prior[1]):null;
+   description=online?'LIVE · '+extraTime(live.timestamp):
+    'ARCHIVIO · '+extraTime(last[0]);
+  }else{
+   delta=online&&Number.isFinite(live.change24h)?live.change24h:
+    prior&&prior[1]>0?(last[1]/prior[1]-1)*100:null;
+   const percent=delta===null?'n/d':(delta>=0?'+':'')+delta.toFixed(2)+'%';
+   description=(online?'LIVE · ':'ARCHIVIO · ')+percent;
+  }
+  changeNode.textContent=description;
+  changeNode.classList.toggle('is-positive',delta!==null&&delta>0);
+  changeNode.classList.toggle('is-negative',delta!==null&&delta<0);
   if(button){
    if(!button.dataset.extraBaseTitle)button.dataset.extraBaseTitle=button.title||id;
-   const updated=new Date(last[0]).toLocaleDateString('it-IT',{timeZone:'UTC',day:'2-digit',month:'short',year:'numeric'});
    const model=extraGlobalState.model[id];
-   const band=isRainbowExtraChart(id)?extraRainbowZone(last[0],last[1],model):null;
-   button.title=button.dataset.extraBaseTitle+
-    ' · ultima chiusura: '+valueNode.textContent+
-    ' · '+updated+(band===null?'':' · fascia Rainbow: '+extraRainbowZones[band]);
+   const zone=isRainbowExtraChart(id)?extraRainbowZone(last[0],last[1],model):null;
+   button.title=button.dataset.extraBaseTitle+' · '+(online?'LIVE':'DATO ARCHIVIATO')+
+    ' · '+valueNode.textContent+' · '+new Date(last[0]).toLocaleString('it-IT')+
+    (zone===null?'':' · fascia Rainbow: '+extraRainbowZones[zone]);
   }
  }
 }
@@ -132,6 +134,9 @@ async function loadExtraGlobalCharts(){
   updateExtraGlobalPillData();
   extraGlobalState.error='';
   extraGlobalState.loaded=true;
+  refreshExtraLiveQuotes();
+  refreshExtraLiveAltcoin();
+  refreshExtraLiveSnapshot();
  }catch(error){
   extraGlobalState.error='Dati non disponibili: '+(error?.message||'errore');
  }finally{
@@ -141,6 +146,133 @@ async function loadExtraGlobalCharts(){
    paintGlobalCapChart();
  }
 }
+
+
+/* Live data is separate from archival closes. The provider's original timestamp
+   determines freshness; failed requests never receive a synthetic LIVE status. */
+const EXTRA_BTC_ETH_MS=15000,EXTRA_ALTCOIN_MS=900000;
+const extraLivePending={quotes:false,altcoin:false,snapshot:false};
+let extraLiveStarted=false;
+function extraTime(timestamp){
+ return Number.isFinite(timestamp)?new Date(timestamp).toLocaleTimeString('it-IT',{
+  hour:'2-digit',minute:'2-digit',timeZone:'Europe/Rome'
+ }):'n/d';
+}
+function extraIsLive(id){
+ const item=extraGlobalState.live[id];
+ if(!item||!(item.timestamp>0))return false;
+ const age=Date.now()-item.timestamp,received=Date.now()-item.receivedAt;
+ const limit=id==='ALTCOIN'?26*3600000:75000;
+ const maxReceive=id==='ALTCOIN'?EXTRA_ALTCOIN_MS+180000:75000;
+ return age>=-300000&&age<=limit&&received>=0&&received<maxReceive;
+}
+async function extraFetchJson(url){
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),9000);
+ try{
+  const response=await fetch(url,{cache:'no-store',signal:controller.signal});
+  if(!response.ok)throw Error('HTTP '+response.status);
+  return await response.json();
+ }finally{clearTimeout(timer)}
+}
+function extraTimestamp(raw){
+ if(typeof raw==='number'&&Number.isFinite(raw))
+  return raw<1e11?raw*1000:raw;
+ if(typeof raw==='string'){
+  const parsed=Date.parse(raw);if(Number.isFinite(parsed))return parsed;
+  const numeric=Number(raw);if(Number.isFinite(numeric)&&numeric>0)
+   return numeric<1e11?numeric*1000:numeric;
+ }
+ return null;
+}
+function extraApplyLive(id,value,timestamp,source,change24h=null){
+ const n=Number(value),t=extraTimestamp(timestamp);
+ if(!Number.isFinite(n)||n<=0||!Number.isFinite(t))return false;
+ if(id==='ALTCOIN'&&!(n>=0&&n<=100))return false;
+ if(t>Date.now()+300000||t<Date.now()-(id==='ALTCOIN'?28*3600000:120000))return false;
+ if(!nativeCapChart.data[id]?.length)return false;
+ const existing=extraGlobalState.live[id];
+ if(existing&&existing.timestamp>t)return false;
+ const utcDay=ms=>Math.floor(ms/86400000);
+ const day=utcDay(t),original=nativeCapChart.data[id];
+ // Keep previous daily historical candles, replace only the newest UTC day's
+ // observation by its verified live quote. No fabricated OHLC values.
+ const replacement=original.filter(([pt])=>utcDay(pt)!==day);
+ replacement.push([t,n]);replacement.sort((a,b)=>a[0]-b[0]);
+ nativeCapChart.data[id]=replacement;
+ extraGlobalState.live[id]={
+  timestamp:t,receivedAt:Date.now(),source,
+  change24h:Number.isFinite(Number(change24h))?Number(change24h):null
+ };
+ updateExtraGlobalPillData();
+ if(state.page==='global'&&vertexChartScope.currentGlobalCapChart===id)
+  paintGlobalCapChart();
+ return true;
+}
+async function refreshExtraLiveQuotes(){
+ if(extraLivePending.quotes||!extraGlobalState.loaded||document.hidden)return;
+ extraLivePending.quotes=true;
+ try{
+  const entries=await Promise.allSettled(
+   Object.entries(extraRainbowIds).map(async([id,asset])=>{
+    const raw=await extraFetchJson('https://data-api.binance.vision/api/v3/ticker/24hr?symbol='+asset+'USDT');
+    const price=Number(raw?.lastPrice);
+    const timestamp=Date.now();
+    if(!(price>0))throw Error('Prezzo non valido');
+    extraApplyLive(id,price,timestamp,'Binance · '+asset+'/USDT',raw.priceChangePercent);
+   })
+  );
+  for(const result of entries)if(result.status==='rejected')
+   console.warn('Rainbow live quote unavailable:',result.reason);
+ }finally{extraLivePending.quotes=false;updateExtraGlobalPillData()}
+}
+async function refreshExtraLiveAltcoin(){
+ if(extraLivePending.altcoin||!extraGlobalState.loaded||document.hidden)return;
+ extraLivePending.altcoin=true;
+ try{
+  const raw=await extraFetchJson(
+   'https://pro-api.coinmarketcap.com/public-api/v1/altcoin-season-index/latest'
+  );
+  if(Number(raw?.status?.error_code||0)!==0)throw Error('CoinMarketCap API error');
+  const data=raw?.data||{},timestamp=extraTimestamp(data.snapshot_time);
+  if(!(Number(data.altcoin_index)>=0&&Number(data.altcoin_index)<=100&&timestamp))
+   throw Error('Dati CMC incompleti');
+  extraApplyLive('ALTCOIN',data.altcoin_index,timestamp,'CoinMarketCap · Altcoin Season Index');
+ }catch(err){console.warn('Altcoin Season direct API unavailable:',err)}
+ finally{extraLivePending.altcoin=false;updateExtraGlobalPillData()}
+}
+async function refreshExtraLiveSnapshot(){
+ if(extraLivePending.snapshot||!extraGlobalState.loaded||document.hidden)return;
+ extraLivePending.snapshot=true;
+ try{
+  const raw=await extraFetchJson('./global-special-live.json?v='+Math.floor(Date.now()/60000));
+  const fetched=extraTimestamp(raw?.fetchedAt);
+  // Snapshot must have been fetched recently, not copied from an older action.
+  if(!(fetched&&Date.now()-fetched<35*60000&&fetched<Date.now()+300000))return;
+  if(raw.altcoin){
+   const item=raw.altcoin;
+   extraApplyLive('ALTCOIN',item.value,item.timestamp,item.source);
+  }
+  for(const [id,asset] of Object.entries(extraRainbowIds)){
+   const item=raw?.rainbow?.[asset];
+   if(!item)continue;
+   extraApplyLive(id,item.value,item.timestamp,item.source,item.change24h);
+  }
+ }catch(err){console.warn('Timestamped live snapshot unavailable:',err)}
+ finally{extraLivePending.snapshot=false;updateExtraGlobalPillData()}
+}
+function startExtraLivePolling(){
+ if(extraLiveStarted)return;extraLiveStarted=true;
+ setInterval(refreshExtraLiveQuotes,EXTRA_BTC_ETH_MS);
+ setInterval(refreshExtraLiveAltcoin,EXTRA_ALTCOIN_MS);
+ setInterval(refreshExtraLiveSnapshot,60000);
+ document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden){
+   refreshExtraLiveQuotes();refreshExtraLiveAltcoin();refreshExtraLiveSnapshot();
+  }
+ });
+}
+startExtraLivePolling();
+
 
 /* Altcoin Season: literal 0–100 axis and real observed historical scores. */
 function drawExtraAltcoinIndex(c,w,h,host){
@@ -155,12 +287,13 @@ function drawExtraAltcoinIndex(c,w,h,host){
  if(subtitle)subtitle.textContent='Altcoin Season Index · scala 0–100 · '+nativeCapChart.timeframe+
   ' · '+(points.length?'storico '+nativeCapDate(points[0][0])+' – '+nativeCapDate(points.at(-1)[0]):'caricamento');
  if(source)source.textContent=(nativeCapChart.sources.ALTCOIN||'CoinMarketCap · Altcoin Season Index')+
-  ' · Indice da 0 a 100: sotto 25 stagione Bitcoin, sopra 75 stagione altcoin. Valori giornalieri archiviati, non capitalizzazione di mercato.';
+  ' · Indice 0–100: sotto 25 stagione Bitcoin, sopra 75 stagione altcoin. '+
+  (extraIsLive('ALTCOIN')?'Ultima osservazione ufficiale aggiornata':'Ultimo dato archiviato')+'.';
  if(stats){
   if(points.length){
    const last=points.at(-1),prior=points.at(-2);
    const delta=prior?Math.round(last[1]-prior[1]):null;
-   stats.innerHTML='<div><small>Indice attuale archiviato</small><strong>'+Math.round(last[1])+'/100</strong></div>'+
+   stats.innerHTML='<div><small>Indice '+(extraIsLive('ALTCOIN')?'aggiornato':'archiviato')+'</small><strong>'+Math.round(last[1])+'/100</strong></div>'+
     '<div><small>Variazione 1D</small><strong>'+(delta===null?'—':(delta>=0?'+':'')+delta+' punti')+'</strong></div>'+
     '<div><small>Ultimo dato</small><strong>'+nativeCapDate(last[0])+'</strong></div>';
   }else stats.innerHTML='';
@@ -214,12 +347,13 @@ function drawExtraRainbowChart(c,w,h,host){
  if(empty){empty.textContent=warning;empty.hidden=!warning;}
  if(stats)stats.innerHTML='';
  if(source)source.textContent=(nativeCapChart.sources[id]||asset+'/USD · prezzi storici')+
+  ' · '+(extraIsLive(id)?'Ultimo prezzo in '+asset+'/USDT · aggiornamento live':'Prezzi storici archiviati in '+asset+'/USD')+
   ' · Fasce illustrative di regressione logaritmica, ricalcolate sullo storico. Non sono quotazioni, supporti garantiti né previsioni. Frequenza delle osservazioni: '+
   (extraGlobalState.meta[id]?.frequency||'n/d')+'.';
  if(!rows.length||!fit)return;
  const first=points[0],last=points[points.length-1];
  const zone=extraRainbowZone(last[0],last[1],fit);
- if(stats)stats.innerHTML='<div><small>Ultimo prezzo archiviato</small><strong>'+
+ if(stats)stats.innerHTML='<div><small>'+(extraIsLive(id)?'Ultimo prezzo LIVE · USDT':'Ultimo prezzo archiviato · USD')+'</small><strong>'+
   extraMoney(last[1])+'</strong></div>'+
   '<div><small>Fascia Rainbow</small><strong>'+extraRainbowZones[zone??4]+'</strong></div>'+
   '<div><small>Periodo disponibile</small><strong>'+nativeCapDate(first[0])+
