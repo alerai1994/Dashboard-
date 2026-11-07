@@ -2070,8 +2070,12 @@ function cryptoEtfQuote(product){
 function cryptoEtfQuoteMarkup(product){
  const row=cryptoEtfQuote(product);
  if(!row)return '<small>Prezzo quota '+esc(product.ticker)+'</small>'+
-  '<strong class="crypto-etf-quote-unavailable">Non disponibile</strong>'+
-  '<small class="crypto-etf-quote-meta">In attesa della quotazione di borsa verificata. Non viene usato il prezzo spot della crypto.</small>';
+  '<strong class="crypto-etf-quote-unavailable">Prezzo non ricevuto</strong>'+
+  '<small class="crypto-etf-quote-meta">'+
+  (product.quoteId==='etf-ainj-paris'
+   ? 'La fonte differita di Euronext Parigi non risponde. Apri la quotazione tramite il link a destra.'
+   : 'Dati di borsa momentaneamente non ricevuti. Consulta la fonte per l’ultima quotazione.')+
+  '</small>';
  const price=cryptoEtfNumberFormat.format(Number(row.value));
  const currency=typeof row.currency==='string'&&/^[A-Z]{3}$/.test(row.currency)?row.currency:'Valuta n.d.';
  const hasChange=row.change!==null&&row.change!==undefined&&Number.isFinite(Number(row.change));
@@ -2206,7 +2210,7 @@ function cryptoEtfSection(){
   '<p>Bitcoin, Ethereum, Solana e Injective · quotazioni e grafici storici ETF/ETP</p></div>'+
   '<span class="crypto-etf-total">'+ALL_CRYPTO_ETF_QUOTES.length+' quotazioni · 4 grafici</span></div>'+
   '<div class="crypto-etf-grid">'+cards+'</div>'+
-  '<p class="crypto-etf-disclaimer">Le quotazioni delle quote ETF/ETP provengono da Yahoo Finance, con aggiornamenti automatici periodici; possono essere ritardate. '+
+  '<p class="crypto-etf-disclaimer">Le quotazioni delle quote ETF/ETP provengono da Yahoo Finance e, per Parigi quando necessario, dai dati pubblici Borsa Italiana/Euronext, differiti di 15 minuti. Non è uno streaming di borsa in tempo reale. '+
   'I mercati chiusi non producono nuovi scambi. Per AINJ, il grafico principale usa Amsterdam in USD oppure Parigi in EUR se Amsterdam non è disponibile; sotto sono riportate separatamente le due piazze. '+
   'La fonte, la valuta e l’orario dell’ultima quotazione verificata sono riportati sulle schede. '+
   'Il prezzo spot della criptovaluta è separato e non sostituisce il prezzo della quota ETF/ETP. '+
