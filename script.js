@@ -1165,7 +1165,7 @@ function techBigTechOverview(){
 /* TOTAL, TOTAL2, TOTAL3, TOTALDEFI — market caps from public CoinGecko endpoints.
    TOTAL2/TOTAL3 are computed from real global cap and reported BTC/ETH dominance;
    figures may differ from other index providers. No fabricated fallback values. */
-const globalCryptoCapState={values:{},loadedAt:0,lastAttempt:0,loading:false,partial:false};
+const globalCryptoCapState={values:{},loadedAt:0,lastAttempt:0,loading:false,partial:false,liveIds:new Set()};
 const GLOBAL_CRYPTO_CAP_POLL_MS=90000;
 let capArchivePromise=null;
 async function loadGlobalCapArchivedPills(){
@@ -1265,6 +1265,8 @@ async function refreshGlobalCryptoCaps(force=false){
   }
  }
  if(validGlobal||validDefi){s.loadedAt=Date.now();s.snapshot=false;}
+ s.liveIds=new Set([...(validGlobal?['TOTAL','TOTAL2','TOTAL3']:[]),...(validDefi?['TOTALDEFI']:[])]);
+ nativeCapSyncLiveValues();
  s.partial=!(validGlobal&&validDefi);
  s.loading=false;
  paintGlobalCryptoCaps();
@@ -1356,6 +1358,7 @@ async function loadNativeCapHistory(){
   }
   nativeCapChart.sources=payload.sources||{};
   nativeCapChart.loaded=true;nativeCapChart.error='';
+  nativeCapSyncLiveValues();
  }catch(err){nativeCapChart.error='Storico temporaneamente non raggiungibile ('+(err?.message||'errore')+').';}
  finally{
   clearTimeout(timer);
@@ -1398,6 +1401,30 @@ async function loadRealNativeCapIndex(id){
  }finally{
   clearTimeout(timer);
   if(state.page==='global'&&currentGlobalCapChart===id)paintGlobalCapChart();
+ }
+}
+/* Add actual observed live market caps to the selected historical chart.
+   A value from the archive never becomes a fabricated live candle. */
+function nativeCapSyncLiveValues(){
+ if(!nativeCapChart.loaded||!globalCryptoCapState.loadedAt)return;
+ const time=globalCryptoCapState.loadedAt;
+ if(Date.now()-time>180000)return;
+ let changed=false;
+ for(const id of ['TOTAL','TOTAL2','TOTAL3','TOTALDEFI']){
+  if(!globalCryptoCapState.liveIds.has(id))continue;
+  const value=globalCryptoCapState.values[id];
+  const rows=nativeCapChart.data[id];
+  if(!num(value)||value<=0||!Array.isArray(rows)||!rows.length)continue;
+  const day=Math.floor(time/86400000);
+  const updated=rows.filter(row=>Math.floor(row[0]/86400000)!==day);
+  updated.push([time,value]);
+  updated.sort((a,b)=>a[0]-b[0]);
+  nativeCapChart.data[id]=updated;
+  changed=true;
+ }
+ if(changed&&state.page==='global'&&
+  ['TOTAL','TOTAL2','TOTAL3','TOTALDEFI'].includes(currentGlobalCapChart)){
+  paintGlobalCapChart();
  }
 }
 function nativeCapBuckets(rows){
