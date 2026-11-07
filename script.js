@@ -1466,7 +1466,7 @@ function paintGlobalCapChart(){
 function toggleGlobalCapChart(id){
  if(state.page!=='global'||!Object.hasOwn(GLOBAL_CAP_CHART_NAMES,id))return;
  currentGlobalCapChart=currentGlobalCapChart===id?null:id;
- nativeCapChart.timeframe=id==='TOTALDEFI'?'1D':'1W';
+ nativeCapChart.timeframe='1W';
  nativeCapChart.range='ALL';nativeCapChart.visibleCount=null;nativeCapChart.shift=0;nativeCapChart.hover=null;
  paintGlobalCapChart();
  if(currentGlobalCapChart)$('#globalCryptoHistory')?.scrollIntoView({block:'nearest',behavior:'smooth'});
