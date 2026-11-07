@@ -2471,3 +2471,26 @@ body :is(button,input,select,textarea,option,dialog,[role="dialog"]){
 .settings-font-grid .settings-font-option.font-preview-lora *{font-family:'Lora',Georgia,serif}
 .settings-font-grid .settings-font-option.font-preview-nunito,
 .settings-font-grid .settings-font-option.font-preview-nunito *{font-family:'Nunito Sans',Arial,sans-serif}
+
+/* Font controls: selected font wins over defaults in the header, navigation,
+   cards, input fields and overlays; the six choice previews stay distinctive. */
+html[data-vertex-font] body,
+html[data-vertex-font] body :is(
+ button,input,select,textarea,option,summary,
+ h1,h2,h3,h4,h5,h6,p,span,strong,small,label,td,th,a,li,
+ .sidebar,.topbar,.panel,.dialog,.modal
+):not(.settings-font-option):not(.settings-font-option *){
+ font-family:var(--vertex-font);
+}
+html[data-vertex-font] .settings-font-grid .settings-font-option.font-preview-inter,
+html[data-vertex-font] .settings-font-grid .settings-font-option.font-preview-inter *{font-family:'Inter',Arial,sans-serif}
+html[data-vertex-font] .settings-font-grid .settings-font-option.font-preview-roboto,
+html[data-vertex-font] .settings-font-grid .settings-font-option.font-preview-roboto *{font-family:'Roboto',Arial,sans-serif}
+html[data-vertex-font] .settings-font-grid .settings-font-option.font-preview-poppins,
+html[data-vertex-font] .settings-font-grid .settings-font-option.font-preview-poppins *{font-family:'Poppins',Arial,sans-serif}
+html[data-vertex-font] .settings-font-grid .settings-font-option.font-preview-montserrat,
+html[data-vertex-font] .settings-font-grid .settings-font-option.font-preview-montserrat *{font-family:'Montserrat',Arial,sans-serif}
+html[data-vertex-font] .settings-font-grid .settings-font-option.font-preview-lora,
+html[data-vertex-font] .settings-font-grid .settings-font-option.font-preview-lora *{font-family:'Lora',Georgia,serif}
+html[data-vertex-font] .settings-font-grid .settings-font-option.font-preview-nunito,
+html[data-vertex-font] .settings-font-grid .settings-font-option.font-preview-nunito *{font-family:'Nunito Sans',Arial,sans-serif}
