@@ -1162,6 +1162,82 @@ function techBigTechOverview(){
 }
 
 
+/* TOTAL, TOTAL2, TOTAL3, TOTALDEFI — market caps from public CoinGecko endpoints.
+   TOTAL2/TOTAL3 are computed from real global cap and reported BTC/ETH dominance;
+   figures may differ from other index providers. No fabricated fallback values. */
+const globalCryptoCapState={values:{},loadedAt:0,lastAttempt:0,loading:false,partial:false};
+const GLOBAL_CRYPTO_CAP_POLL_MS=90000;
+function globalCryptoCapUsd(value){
+ if(!num(value)||value<=0)return '—';
+ const unit=value>=1e12?1e12:value>=1e9?1e9:1e6;
+ const symbol=unit===1e12?'T':unit===1e9?'B':'M';
+ return '$'+(value/unit).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+symbol;
+}
+function paintGlobalCryptoCaps(){
+ const root=$('#globalCryptoCaps');
+ if(!root||root.hidden)return;
+ for(const el of root.querySelectorAll('[data-global-cap]')){
+  const cap=globalCryptoCapState.values[el.dataset.globalCap];
+  el.textContent=globalCryptoCapUsd(cap);
+ }
+ const status=$('#globalCryptoCapsStatus');
+ if(!status)return;
+ const s=globalCryptoCapState;
+ const available=Object.values(s.values).some(v=>num(v)&&v>0);
+ const clock=s.loadedAt?' alle '+new Date(s.loadedAt).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}):'';
+ if(s.loading&&!available)status.textContent='CoinGecko · caricamento dati reali…';
+ else if(s.loading)status.textContent='CoinGecko · aggiornamento in corso…';
+ else if(!available)status.textContent='CoinGecko · dati temporaneamente non disponibili';
+ else if(s.partial)status.textContent='CoinGecko · ultimo dato disponibile'+clock+' · aggiornamento parziale/non riuscito';
+ else status.textContent='CoinGecko · dati recuperati'+clock+' · verifica automatica ogni 90 s';
+}
+async function requestGlobalCryptoCapData(url){
+ const controller=new AbortController();
+ const timeout=setTimeout(()=>controller.abort(),12000);
+ try{
+  const response=await fetch(url,{cache:'no-store',headers:{Accept:'application/json'},signal:controller.signal});
+  if(!response.ok)throw new Error('CoinGecko HTTP '+response.status);
+  return await response.json();
+ }finally{clearTimeout(timeout)}
+}
+async function refreshGlobalCryptoCaps(force=false){
+ if(state.page!=='global'||document.hidden)return;
+ const s=globalCryptoCapState,now=Date.now();
+ if(s.loading||(!force&&now-s.lastAttempt<GLOBAL_CRYPTO_CAP_POLL_MS))return;
+ s.loading=true;
+ s.lastAttempt=now;
+ paintGlobalCryptoCaps();
+ const requests=[
+  requestGlobalCryptoCapData('https://api.coingecko.com/api/v3/global'),
+  requestGlobalCryptoCapData('https://api.coingecko.com/api/v3/global/decentralized_finance_defi')
+ ];
+ const results=await Promise.allSettled(requests);
+ let validGlobal=false,validDefi=false;
+ if(results[0].status==='fulfilled'){
+  const data=results[0].value?.data;
+  const total=Number(data?.total_market_cap?.usd);
+  const btc=Number(data?.market_cap_percentage?.btc);
+  const eth=Number(data?.market_cap_percentage?.eth);
+  if(Number.isFinite(total)&&total>0&&Number.isFinite(btc)&&Number.isFinite(eth)&&btc>=0&&eth>=0&&btc+eth<100){
+   s.values.TOTAL=total;
+   s.values.TOTAL2=total*(1-btc/100);
+   s.values.TOTAL3=total*(1-(btc+eth)/100);
+   validGlobal=true;
+  }
+ }
+ if(results[1].status==='fulfilled'){
+  const defi=Number(results[1].value?.data?.defi_market_cap);
+  if(Number.isFinite(defi)&&defi>0){
+   s.values.TOTALDEFI=defi;
+   validDefi=true;
+  }
+ }
+ if(validGlobal||validDefi)s.loadedAt=Date.now();
+ s.partial=!(validGlobal&&validDefi);
+ s.loading=false;
+ paintGlobalCryptoCaps();
+}
+
 function globalPage(){
  return '<section class="market-index-strip">'+TOP_IDS.map(indexCard).join('')+'</section>'+
   '<div class="global-grid">'+regionList()+mapPanel()+
@@ -3361,6 +3437,14 @@ function render(){
  }
  const page=SECTIONS[state.page]||SECTIONS.global;
  $('#pageTitle').textContent=page[0];$('#pageSubtitle').textContent=page[1];
+ const globalCapHeader=$('#globalCryptoCaps');
+ if(globalCapHeader){
+  globalCapHeader.hidden=state.page!=='global';
+  if(state.page==='global'){
+   paintGlobalCryptoCaps();
+   refreshGlobalCryptoCaps();
+  }
+ }
  const hideSearch=['global','portfolio','settings','analytics','orderbook','workspace','etf','news'].includes(state.page);
  const searchWrap=$('.search-wrap');
  if(searchWrap)searchWrap.hidden=hideSearch;
@@ -5440,6 +5524,7 @@ function startVertexApp(){
  },{once:true});
  connectForexStream();
  setInterval(()=>{if(!document.hidden)fetchQuotes()},30000);
+ setInterval(()=>{if(!document.hidden&&state.page==='global')refreshGlobalCryptoCaps()},GLOBAL_CRYPTO_CAP_POLL_MS);
  setInterval(pollCryptoPrices,15000);
  setInterval(keepStreamAlive,15000);
  setInterval(()=>{if(!document.hidden)connectForexStream();updateLiveBadges()},15000);
