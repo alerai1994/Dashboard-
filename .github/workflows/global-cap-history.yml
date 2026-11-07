@@ -17,7 +17,7 @@ concurrency:
 jobs:
   history:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - name: Install chart-data reader and validate Python
@@ -29,17 +29,21 @@ jobs:
       - name: Publish verified history
         shell: bash
         run: |
-          if [ ! -f global-cap-history.json ]; then exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          cp global-cap-history.json "$RUNNER_TEMP/global-cap-history.json"
+          files=(global-cap-history.json global-cap-total.json global-cap-total2.json global-cap-total3.json)
+          for file in "${files[@]}"; do
+            if [ -f "$file" ]; then cp "$file" "$RUNNER_TEMP/$file"; fi
+          done
           for attempt in 1 2 3 4 5; do
             git fetch origin main
             git reset --hard origin/main
-            cp "$RUNNER_TEMP/global-cap-history.json" global-cap-history.json
-            git add global-cap-history.json
+            for file in "${files[@]}"; do
+              if [ -f "$RUNNER_TEMP/$file" ]; then cp "$RUNNER_TEMP/$file" "$file"; fi
+            done
+            git add -A -- "${files[@]}"
             if git diff --cached --quiet; then exit 0; fi
-            git commit -m "data: refresh real global crypto history [skip ci]"
+            git commit -m "data: refresh global OHLC candle feeds [skip ci]"
             if git push origin HEAD:main; then exit 0; fi
             sleep 2
           done
