@@ -163,7 +163,7 @@ def read_market_index_altcoins(previous):
                     "unit": "USD", "frequency": "1D", "points": points,
                     "bars": bars}
         print("Altcoin index returned fewer than 1000 real closes:", len(points))
-    except (OSError, ValueError, TypeError, RuntimeError) as err:
+    except (OSError, ValueError, TypeError, RuntimeError, ImportError) as err:
         print("Altcoin market index unavailable:", type(err).__name__, str(err)[:180])
     return previous.get("alt_market") or {"symbol": "CRYPTOCAP:OTHERS",
         "source": "TradingView CRYPTOCAP:OTHERS · altcoin cap excluding top 10",
@@ -185,7 +185,7 @@ def fetch_rainbow_prices(symbol, previous):
                         " · USD daily closes",
                     "frequency": "1D", "points": normalize(same + actual, low=1e-7)}
         print(symbol, "daily market feed too short:", len(actual))
-    except (OSError, ValueError, TypeError, RuntimeError) as err:
+    except (OSError, ValueError, TypeError, RuntimeError, ImportError) as err:
         print(symbol, "market-feed prices:", type(err).__name__, str(err)[:180])
     try:
         recent = fetch_cryptocompare_daily(symbol)
