@@ -1604,47 +1604,50 @@ function nativeCapAttach(){
   drawNativeCapChart();
  };
  const tooltipHtml=p=>{
-  if(currentGlobalCapChart==='ALTCOIN'){
-   return '<strong>'+nativeCapDate(p.t)+'</strong>'+
-    '<span>Altcoin Season Index</span>'+
+  if(currentGlobalCapChart==='ALTCOIN')
+   return '<strong>'+nativeCapDate(p.t)+'</strong><span>Altcoin Season Index</span>'+
     '<span class="global-tooltip-value">'+Math.round(p.c)+'%</span>';
-  }
   if(currentGlobalCapChart==='BTC_RAINBOW'||currentGlobalCapChart==='ETH_RAINBOW'){
    if(typeof window.__vertexRainbowTooltip==='function')
     return window.__vertexRainbowTooltip(p,currentGlobalCapChart);
-   const label=currentGlobalCapChart==='BTC_RAINBOW'?'BTC':'ETH';
    return '<strong>'+nativeCapDate(p.t)+'</strong><span class="global-tooltip-value">'+
-    label+' '+p.c.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:2})+'</span>';
+    (currentGlobalCapChart==='BTC_RAINBOW'?'BTC ':'ETH ')+p.c.toLocaleString('en-US',{
+     style:'currency',currency:'USD',maximumFractionDigits:2})+'</span>';
   }
-  const format=v=>nativeCapUsd(v);
   const verified=p.verifiedOHLC===true;
   return '<strong>'+nativeCapDate(p.t)+'</strong>'+
-   '<span class="global-tooltip-value">Capitalizzazione '+format(p.c)+'</span>'+
-   (verified?'<span>Apertura '+format(p.o)+'</span><span>Massimo '+format(p.h)+
-    '</span><span>Minimo '+format(p.l)+'</span>':'');
+   '<span class="global-tooltip-value">Capitalizzazione '+nativeCapUsd(p.c)+'</span>'+
+   (verified?'<span>Apertura '+nativeCapUsd(p.o)+'</span><span>Massimo '+nativeCapUsd(p.h)+
+    '</span><span>Minimo '+nativeCapUsd(p.l)+'</span>':'');
  };
- const showTooltip=(event)=>{
-  const view=nativeCapWindow(),count=view.rows.length;
-  if(!count||!tip){if(tip)tip.hidden=true;return}
+ function showTooltip(clientX,clientY){
+  const view=nativeCapWindow(),rows=view.rows;
+  if(!rows.length||!tip){if(tip)tip.hidden=true;return}
   const bounds=host.getBoundingClientRect();
-  const x=Math.max(0,Math.min(bounds.width,event.clientX-bounds.left));
-  const y=Math.max(0,Math.min(bounds.height,event.clientY-bounds.top));
-  const plotLeft=Number(host.dataset.plotLeft)||16;
+  const x=Math.max(0,Math.min(bounds.width,clientX-bounds.left));
+  const y=Math.max(0,Math.min(bounds.height,clientY-bounds.top));
+  const left=Number(host.dataset.plotLeft)||16;
   const plotWidth=Math.max(1,Number(host.dataset.plotWidth)||bounds.width-100);
-  const relative=(x-plotLeft)/plotWidth;
-  const index=Math.max(0,Math.min(count-1,Math.floor(relative*count)));
-  const point=view.rows[index];
-  if(!point)return;
-  nativeCapChart.hover=index;
+  const pos=Math.max(0,Math.min(rows.length-1,
+   Math.floor((x-left)/plotWidth*rows.length)));
+  const point=rows[pos];
+  nativeCapChart.hover=pos;
   drawNativeCapChart();
   tip.innerHTML=tooltipHtml(point);
   tip.hidden=false;
-  // Position after measuring the real rectangular card, never outside the plot.
-  const width=tip.offsetWidth||195,height=tip.offsetHeight||75;
-  const horizontal=x+16+width>bounds.width?x-width-16:x+16;
-  const vertical=y-height-15>=4?y-height-15:y+16;
-  tip.style.left=Math.max(4,Math.min(bounds.width-width-4,horizontal))+'px';
-  tip.style.top=Math.max(4,Math.min(bounds.height-height-4,vertical))+'px';
+  tip.setAttribute('role','status');
+  tip.setAttribute('aria-live','off');
+  const cardWidth=tip.offsetWidth||200,cardHeight=tip.offsetHeight||80;
+  const proposedLeft=x+cardWidth+18>bounds.width?x-cardWidth-14:x+14;
+  const proposedTop=y-cardHeight-14>=6?y-cardHeight-14:y+14;
+  tip.style.left=Math.max(6,Math.min(bounds.width-cardWidth-6,proposedLeft))+'px';
+  tip.style.top=Math.max(6,Math.min(bounds.height-cardHeight-6,proposedTop))+'px';
+ }
+ const point=e=>showTooltip(e.clientX,e.clientY);
+ const touch=e=>{
+  const t=e.touches?.[0]||e.changedTouches?.[0];
+  if(!t)return;
+  showTooltip(t.clientX,t.clientY);
  };
  host.addEventListener('wheel',e=>{
   e.preventDefault();
@@ -1655,49 +1658,62 @@ function nativeCapAttach(){
   nativeCapChart.hover=null;if(tip)tip.hidden=true;
   drawNativeCapChart();
  },{passive:false});
+ host.addEventListener('pointerenter',e=>{
+  if(e.pointerType!=='touch')point(e);
+ });
  host.addEventListener('pointerdown',e=>{
   if(e.pointerType==='mouse'&&e.button!==0)return;
-  nativeCapChart.drag={x:e.clientX,y:e.clientY,shift:nativeCapChart.shift,
-   pointerId:e.pointerId,pointerType:e.pointerType,moved:false};
-  showTooltip(e);
-  if(e.pointerType!=='touch'){
+  nativeCapChart.drag={x:e.clientX,shift:nativeCapChart.shift,pointerId:e.pointerId,
+   pointerType:e.pointerType,moved:false};
+  point(e);
+  if(e.pointerType==='mouse'){
    try{host.setPointerCapture(e.pointerId)}catch(_err){}
   }
  });
  host.addEventListener('pointermove',e=>{
   const drag=nativeCapChart.drag;
-  if(drag&&drag.pointerId===e.pointerId){
-   const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
-   // Touch moves probe the chart; deliberate mouse drags pan historical data.
-   if(drag.pointerType==='mouse'&&Math.abs(dx)>7)drag.moved=true;
-   if(drag.pointerType==='mouse'&&drag.moved){
-    const plotWidth=Math.max(1,Number(host.dataset.plotWidth)||host.clientWidth-100);
+  if(drag&&drag.pointerId===e.pointerId&&drag.pointerType==='mouse'){
+   const dx=e.clientX-drag.x;
+   if(Math.abs(dx)>7)drag.moved=true;
+   if(drag.moved){
+    const width=Math.max(1,Number(host.dataset.plotWidth)||host.clientWidth-100);
     const count=nativeCapWindow().rows.length;
-    nativeCapChart.shift=Math.max(0,Math.round(drag.shift+dx*count/plotWidth));
+    nativeCapChart.shift=Math.max(0,Math.round(drag.shift+dx*count/width));
    }
   }
-  showTooltip(e);
+  point(e);
  });
+ // Explicit touch events cover browsers that cancel pointer events while panning.
+ host.addEventListener('touchstart',e=>{
+  touch(e);
+ },{passive:true});
+ host.addEventListener('touchmove',e=>{
+  if(e.touches.length===1){
+   if(e.cancelable)e.preventDefault();
+   touch(e);
+  }
+ },{passive:false});
+ host.addEventListener('touchend',e=>{
+  touch(e);
+  nativeCapChart.drag=null;
+ },{passive:true});
  host.addEventListener('pointerup',e=>{
-  showTooltip(e);
+  point(e);
   nativeCapChart.drag=null;
   try{if(host.hasPointerCapture(e.pointerId))host.releasePointerCapture(e.pointerId)}catch(_err){}
-  if(e.pointerType==='touch'){
-   // Retain the last inspected value briefly; dismiss with next touch outside.
-   host.dataset.touchTooltip='1';
-  }
  });
- host.addEventListener('pointercancel',()=>{
-  nativeCapChart.drag=null;hideTooltip();
+ host.addEventListener('pointercancel',e=>{
+  nativeCapChart.drag=null;
+  if(e.pointerType!=='touch')hideTooltip();
  });
  host.addEventListener('pointerleave',e=>{
   if(e.pointerType==='touch')return;
   if(nativeCapChart.drag?.pointerType==='mouse')return;
   hideTooltip();
  });
+ host.addEventListener('click',e=>point(e));
  document.addEventListener('pointerdown',e=>{
-  if(e.pointerType==='touch'&&!host.contains(e.target)&&!tip?.hidden)
-   hideTooltip();
+  if(!host.contains(e.target)&&tip&&!tip.hidden)hideTooltip();
  },{passive:true});
 }
 
