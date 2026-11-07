@@ -284,18 +284,20 @@ function drawExtraAltcoinIndex(c,w,h,host){
  const missing=extraGlobalState.loading?'Caricamento Altcoin Season Index…':
   extraGlobalState.error||(!points.length&&isLoaded?'Storico Altcoin Season Index non disponibile.':'');
  if(empty){empty.textContent=missing;empty.hidden=!missing}
- if(subtitle)subtitle.textContent='Altcoin Season Index · scala 0–100 · '+nativeCapChart.timeframe+
-  ' · '+(points.length?'storico '+nativeCapDate(points[0][0])+' – '+nativeCapDate(points.at(-1)[0]):'caricamento');
+ if(subtitle)subtitle.textContent='Altcoin Season Index · '+nativeCapChart.range+' · scala 0–100'+
+  (rows.length?' · '+nativeCapDate(rows[0].t)+' – '+nativeCapDate(rows.at(-1).t):' · nessun dato in questo intervallo')+
+  (nativeCapChart.range==='1D'?' · dati giornalieri, non intraday':'');
  if(source)source.textContent=(nativeCapChart.sources.ALTCOIN||'CoinMarketCap · Altcoin Season Index')+
   ' · Indice 0–100: sotto 25 stagione Bitcoin, sopra 75 stagione altcoin. '+
   (extraIsLive('ALTCOIN')?'Ultima osservazione ufficiale aggiornata':'Ultimo dato archiviato')+'.';
  if(stats){
-  if(points.length){
-   const last=points.at(-1),prior=points.at(-2);
-   const delta=prior?Math.round(last[1]-prior[1]):null;
-   stats.innerHTML='<div><small>Indice '+(extraIsLive('ALTCOIN')?'aggiornato':'archiviato')+'</small><strong>'+Math.round(last[1])+'/100</strong></div>'+
-    '<div><small>Variazione 1D</small><strong>'+(delta===null?'—':(delta>=0?'+':'')+delta+' punti')+'</strong></div>'+
-    '<div><small>Ultimo dato</small><strong>'+nativeCapDate(last[0])+'</strong></div>';
+  if(rows.length){
+   const first=rows[0],last=rows.at(-1);
+   const delta=rows.length>1?Math.round(last.c-first.c):null;
+   const current=points.length>0&&last.t===points.at(-1)[0]&&extraIsLive('ALTCOIN');
+   stats.innerHTML='<div><small>Indice '+(current?'LIVE':'nel periodo')+'</small><strong>'+Math.round(last.c)+'/100</strong></div>'+
+    '<div><small>Variazione '+nativeCapChart.range+'</small><strong>'+(delta===null?'n/d':(delta>=0?'+':'')+delta+' punti')+'</strong></div>'+
+    '<div><small>Periodo sul grafico</small><strong>'+nativeCapDate(first.t)+' – '+nativeCapDate(last.t)+'</strong></div>';
   }else stats.innerHTML='';
  }
  if(!rows.length)return;
@@ -340,8 +342,9 @@ function drawExtraRainbowChart(c,w,h,host){
  const {rows,all}=nativeCapWindow();
  const empty=$('#globalCapChartEmpty'),stats=$('#globalCapChartStats');
  const subtitle=$('#globalCapFullRangeStatus'),source=$('#globalCapHistorySource');
- if(subtitle)subtitle.textContent=asset+' · Rainbow Chart · '+nativeCapChart.timeframe+
-  ' · prezzi su scala logaritmica';
+ if(subtitle)subtitle.textContent=asset+' · Rainbow Chart · '+nativeCapChart.range+
+  (rows.length?' · '+nativeCapDate(rows[0].t)+' – '+nativeCapDate(rows.at(-1).t):' · nessun dato nel periodo')+
+  ' · scala logaritmica'+(nativeCapChart.range==='1D'?' · rilevazioni giornaliere, non intraday':'');
  const warning=extraGlobalState.loading?'Caricamento dello storico '+asset+'…':
    extraGlobalState.error||(!rows.length?'Nessuno storico verificato '+asset+'/USD ancora disponibile.':'');
  if(empty){empty.textContent=warning;empty.hidden=!warning;}
@@ -351,13 +354,17 @@ function drawExtraRainbowChart(c,w,h,host){
   ' · Fasce illustrative di regressione logaritmica, ricalcolate sullo storico. Non sono quotazioni, supporti garantiti né previsioni. Frequenza delle osservazioni: '+
   (extraGlobalState.meta[id]?.frequency||'n/d')+'.';
  if(!rows.length||!fit)return;
- const first=points[0],last=points[points.length-1];
- const zone=extraRainbowZone(last[0],last[1],fit);
- if(stats)stats.innerHTML='<div><small>'+(extraIsLive(id)?'Ultimo prezzo LIVE · USDT':'Ultimo prezzo archiviato · USD')+'</small><strong>'+
-  extraMoney(last[1])+'</strong></div>'+
+ const first=rows[0],last=rows.at(-1);
+ const zone=extraRainbowZone(last.t,last.c,fit);
+ const isCurrent=points.length>0&&last.t===points.at(-1)[0]&&extraIsLive(id);
+ const change=rows.length>1&&first.c>0?(last.c/first.c-1)*100:null;
+ if(stats)stats.innerHTML='<div><small>'+(isCurrent?'Ultimo prezzo LIVE · USDT':'Prezzo nel periodo · USD')+'</small><strong>'+
+  extraMoney(last.c)+'</strong></div>'+
+  '<div><small>Variazione '+nativeCapChart.range+'</small><strong>'+
+  (change===null?'n/d':(change>=0?'+':'')+change.toFixed(2)+'%')+'</strong></div>'+
   '<div><small>Fascia Rainbow</small><strong>'+extraRainbowZones[zone??4]+'</strong></div>'+
-  '<div><small>Periodo disponibile</small><strong>'+nativeCapDate(first[0])+
-  ' – '+nativeCapDate(last[0])+'</strong></div>';
+  '<div><small>Periodo sul grafico</small><strong>'+nativeCapDate(first.t)+
+  ' – '+nativeCapDate(last.t)+'</strong></div>';
  const left=18,right=92,top=28,bottom=42,plotW=Math.max(80,w-left-right),plotH=Math.max(70,h-top-bottom);
  const x=i=>left+(i+.5)*plotW/rows.length;
  let low=Infinity,high=-Infinity;
@@ -407,6 +414,12 @@ function drawExtraRainbowChart(c,w,h,host){
  rows.forEach((p,i)=>i?c.lineTo(x(i),y(Math.log(p.c))):c.moveTo(x(i),y(Math.log(p.c))));
  c.lineJoin='round';c.lineCap='round';c.strokeStyle=text;c.lineWidth=1.8;
  c.shadowColor='#0006';c.shadowBlur=3;c.stroke();c.shadowBlur=0;
+ // Make single-day windows legible even when only one daily close exists.
+ const lastIndex=rows.length-1;
+ if(lastIndex>=0){
+  c.beginPath();c.arc(x(lastIndex),y(Math.log(rows[lastIndex].c)),3.5,0,Math.PI*2);
+  c.fillStyle=text;c.fill();
+ }
  if(nativeCapChart.hover!==null&&nativeCapChart.hover>=0&&nativeCapChart.hover<rows.length){
   const p=rows[nativeCapChart.hover],px=x(nativeCapChart.hover),py=y(Math.log(p.c));
   c.setLineDash([4,4]);c.strokeStyle=text;c.lineWidth=.8;c.beginPath();
