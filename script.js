@@ -1238,8 +1238,83 @@ async function refreshGlobalCryptoCaps(force=false){
  paintGlobalCryptoCaps();
 }
 
+
+/* Real historical OHLC candles of TradingView's CRYPTOCAP market indices. */
+const GLOBAL_CAP_CHART_NAMES=Object.freeze({
+ TOTAL:'Capitalizzazione complessiva delle criptovalute',
+ TOTAL2:'Mercato crypto escluso Bitcoin',
+ TOTAL3:'Mercato crypto esclusi Bitcoin ed Ethereum',
+ TOTALDEFI:'Capitalizzazione del settore DeFi'
+});
+let currentGlobalCapChart=null,globalCapWidgetRequested=false;
+function globalCryptoHistoryPanel(){
+ return '<section id="globalCryptoHistory" class="global-crypto-history panel" hidden aria-labelledby="globalCryptoHistoryTitle">'+
+  '<header class="global-crypto-history-header"><div><span class="eyebrow">STORICO CRYPTOCAP · TRADINGVIEW</span>'+
+  '<h2 id="globalCryptoHistoryTitle">Grafico storico</h2>'+
+  '<p>Grafico a candele · tutto lo storico disponibile fino all’ultima candela · zoom e trascinamento</p></div>'+
+  '<div class="global-crypto-history-actions"><a id="globalCryptoHistoryLink" href="https://www.tradingview.com/chart/?symbol=CRYPTOCAP%3ATOTAL" target="_blank" rel="noopener noreferrer">Apri su TradingView ↗</a>'+
+  '<button type="button" data-close-global-cap-chart aria-label="Chiudi il grafico storico">✕</button></div></header>'+
+  '<div id="globalCryptoHistoryChart" class="global-crypto-history-chart" aria-label="Grafico delle capitalizzazioni crypto"><p>Caricamento del grafico…</p></div>'+
+  '<p class="global-crypto-history-source">Grafico: indici CRYPTOCAP TradingView · Valori delle pillole: CoinGecko. Le metodologie sono diverse e possono dare risultati differenti.</p>'+
+  '</section>';
+}
+function ensureGlobalCapWidget(){
+ if(globalCapWidgetRequested)return;
+ globalCapWidgetRequested=true;
+ const script=document.createElement('script');
+ script.type='module';
+ script.src='https://widgets.tradingview-widget.com/w/en/tv-advanced-chart.js';
+ script.onerror=()=>{
+  const host=$('#globalCryptoHistoryChart');
+  if(host&&currentGlobalCapChart&&state.page==='global')
+   host.innerHTML='<p class="global-crypto-chart-error">Impossibile caricare TradingView. Apri il grafico completo dal link qui sopra.</p>';
+ };
+ document.head.appendChild(script);
+}
+function paintGlobalCapChart(){
+ for(const button of $$('#globalCryptoCaps [data-global-cap-chart]')){
+  const active=state.page==='global'&&currentGlobalCapChart===button.dataset.globalCapChart;
+  button.classList.toggle('is-active',active);
+  button.setAttribute('aria-pressed',String(active));
+  button.setAttribute('aria-expanded',String(active));
+ }
+ const panel=$('#globalCryptoHistory');
+ if(!panel)return;
+ const id=currentGlobalCapChart;
+ const show=state.page==='global'&&Object.hasOwn(GLOBAL_CAP_CHART_NAMES,id||'');
+ panel.hidden=!show;
+ if(!show)return;
+ const title=$('#globalCryptoHistoryTitle');
+ if(title)title.textContent=id+' · '+GLOBAL_CAP_CHART_NAMES[id];
+ const link=$('#globalCryptoHistoryLink');
+ if(link)link.href='https://www.tradingview.com/chart/?symbol='+encodeURIComponent('CRYPTOCAP:'+id);
+ const host=$('#globalCryptoHistoryChart');
+ if(!host)return;
+ ensureGlobalCapWidget();
+ let chart=host.querySelector('tv-advanced-chart');
+ if(!chart){
+  host.replaceChildren();
+  chart=document.createElement('tv-advanced-chart');
+  host.appendChild(chart);
+ }
+ chart.setAttribute('symbol','CRYPTOCAP:'+id);
+ chart.setAttribute('interval','1D');
+ chart.setAttribute('range','ALL');
+ chart.setAttribute('date-range','all');
+ chart.setAttribute('timezone','Etc/UTC');
+ chart.setAttribute('locale','it');
+ chart.setAttribute('theme',state.theme==='light'?'light':'dark');
+ chart.setAttribute('chart-type','candles');
+}
+function toggleGlobalCapChart(id){
+ if(state.page!=='global'||!Object.hasOwn(GLOBAL_CAP_CHART_NAMES,id))return;
+ currentGlobalCapChart=currentGlobalCapChart===id?null:id;
+ paintGlobalCapChart();
+ if(currentGlobalCapChart)$('#globalCryptoHistory')?.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
 function globalPage(){
- return '<section class="market-index-strip">'+TOP_IDS.map(indexCard).join('')+'</section>'+
+ return globalCryptoHistoryPanel()+'<section class="market-index-strip">'+TOP_IDS.map(indexCard).join('')+'</section>'+
   '<div class="global-grid">'+regionList()+mapPanel()+
  '<aside class="aside-stack">'+QUOTE_GROUPS.map(sidePanel).join('')+'</aside>'+
  '<div class="region-photo-grid" aria-label="Panoramica fotografica delle regioni">'+REGIONS.map(photoCard).join('')+'</div></div>'+
@@ -3473,6 +3548,7 @@ function render(){
  }
  const main=$('#pageContainer');
  main.innerHTML=PAGE_RENDERERS[state.page]();
+ paintGlobalCapChart();
   updateNav();
  paintCryptoPriceHighlights();
  if(state.page==='etf'){loadCryptoCapData();loadCryptoEtfHistory();}
@@ -5190,6 +5266,17 @@ function savePortfolioForm(formElement){
     editing?'Posizione aggiornata e salvata.':'Posizione aggiunta e salvata.');
 }
 function setupEvents(){
+
+ $('#globalCryptoCaps').addEventListener('click',e=>{
+  const button=e.target.closest('[data-global-cap-chart]');
+  if(button)toggleGlobalCapChart(button.dataset.globalCapChart);
+ });
+ $('#pageContainer').addEventListener('click',e=>{
+  if(e.target.closest('[data-close-global-cap-chart]')){
+   currentGlobalCapChart=null;
+   paintGlobalCapChart();
+  }
+ });
  // User gestures are required to unlock Web Audio on Safari/iOS and Chromium.
  const unlockFromGesture=()=>{if(state.clickSound||state.alertSound)unlockVertexAudio(true)};
  document.addEventListener('pointerdown',unlockFromGesture,true);
