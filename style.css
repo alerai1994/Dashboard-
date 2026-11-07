@@ -2344,7 +2344,10 @@ body .topbar .live-clock strong{
 .global-crypto-history-actions{display:flex;align-items:center;gap:5px}
 .global-crypto-history-actions button{height:34px;min-width:34px;background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:8px;font-size:14px;cursor:pointer}
 .global-crypto-history-actions button:hover{border-color:var(--brand)}
-.global-crypto-history-toolbar{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:9px 0 14px}
+.global-crypto-history-toolbar{display:flex;justify-content:flex-start;align-items:center;flex-wrap:nowrap;gap:0;width:100%;min-width:0;max-width:100%;margin:9px 0 14px;overflow-x:auto;overflow-y:hidden;overscroll-behavior-inline:contain;scrollbar-width:thin}
+.global-cap-chart-tabs-all{margin-left:auto;flex:0 0 auto;white-space:nowrap;min-width:max-content;flex-wrap:nowrap;align-items:center;justify-content:flex-end}
+.global-cap-chart-tabs-all button{flex:0 0 auto;white-space:nowrap}
+.global-cap-timeframe-divider{display:block;flex:0 0 1px;height:19px;background:var(--line);margin:0 4px;opacity:.8}
 .global-cap-chart-tabs{display:flex;gap:4px;background:var(--surface);padding:3px;border-radius:9px;border:1px solid var(--line-soft)}
 .global-cap-chart-tabs button{border:0;padding:6px 10px;background:transparent;color:var(--muted);font-size:11px;font-weight:780;border-radius:6px;cursor:pointer}
 .global-cap-chart-tabs button.active{background:var(--brand);color:#fff}
