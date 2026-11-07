@@ -324,7 +324,7 @@ function drawExtraAltcoinIndex(c,w,h,host){
  const muted=nativeCapPalette('--muted','#8f9eaa');
  const grid=nativeCapPalette('--line','#35475c');
  const bright=nativeCapPalette('--brand','#4d9dff');
- c.font='11px system-ui,sans-serif';c.textBaseline='middle';
+ c.font=window.__vertexCanvasFont?.(11)||'11px sans-serif';c.textBaseline='middle';
  for(let score=0;score<=100;score+=25){
   const y=Y(score);c.strokeStyle=grid;c.globalAlpha=.55;c.lineWidth=.8;
   c.beginPath();c.moveTo(L,y);c.lineTo(L+PW,y);c.stroke();c.globalAlpha=1;
@@ -424,7 +424,7 @@ function drawExtraRainbowChart(c,w,h,host){
  const muted=nativeCapPalette('--muted','#8f9eaa'),
        text=nativeCapPalette('--text','#edf4ff'),
        line=nativeCapPalette('--line','#3b495a');
- c.font='11px system-ui,sans-serif';c.textBaseline='middle';
+ c.font=window.__vertexCanvasFont?.(11)||'11px sans-serif';c.textBaseline='middle';
  for(let k=0;k<=5;k++){
   const lv=low+(high-low)*k/5,cy=y(lv);
   c.globalAlpha=.47;c.strokeStyle=line;c.lineWidth=.8;c.beginPath();
@@ -473,7 +473,7 @@ function drawExtraRainbowChart(c,w,h,host){
   c.beginPath();c.arc(px,py,3,0,Math.PI*2);c.fillStyle=text;c.fill();
  }
  c.restore();
- c.fillStyle=muted;c.textAlign='left';c.font='10px system-ui,sans-serif';
+ c.fillStyle=muted;c.textAlign='left';c.font=window.__vertexCanvasFont?.(10)||'10px sans-serif';
  c.fillText('USD · PREZZO LOGARITMICO · MODELLO RAINBOW',left,14);
  const selected=nativeCapChart.hover!==null&&nativeCapChart.hover>=0&&nativeCapChart.hover<rows.length?
   nativeCapChart.hover:rows.length-1;
