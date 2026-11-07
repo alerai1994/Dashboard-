@@ -2310,3 +2310,18 @@ body .topbar .live-clock strong{
   opacity:1!important;
  }
 }
+
+
+/* Global: live crypto market-cap pills directly underneath the section subtitle. */
+.global-crypto-caps{max-width:880px;margin-top:13px}
+.global-crypto-cap-pills{display:flex;flex-wrap:wrap;gap:8px}
+.global-crypto-cap-pill{display:inline-flex;align-items:center;gap:10px;min-height:36px;padding:7px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);box-shadow:0 2px 8px #00000012;white-space:nowrap}
+.global-crypto-cap-pill span{color:var(--brand);font-size:10px;font-weight:800;letter-spacing:.035em}
+.global-crypto-cap-pill strong{color:var(--text);font-size:12px;font-weight:750;font-variant-numeric:tabular-nums}
+.global-crypto-cap-source{margin:6px 2px 0;color:var(--muted);font-size:10px;line-height:1.4}
+@media(max-width:600px){
+ .global-crypto-cap-pills{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .global-crypto-cap-pill{min-width:0;justify-content:space-between;gap:5px;padding:7px 9px}
+ .global-crypto-cap-pill span{font-size:9px}
+ .global-crypto-cap-pill strong{font-size:11px}
+}
