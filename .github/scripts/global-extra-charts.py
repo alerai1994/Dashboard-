@@ -10,6 +10,7 @@ Rainbow bands are fitted in Vertex's browser, not downloaded prices.
 import json
 import math
 import time
+import runpy
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -147,10 +148,44 @@ def load_monthly_fallback(symbol):
         return []
 
 
+def read_market_index_altcoins(previous):
+    """Market-cap Altcoin Index = CRYPTOCAP:OTHERS (excludes the top 10).
+
+    This is explicitly NOT the CoinMarketCap 0-100 Altcoin Season score.
+    """
+    try:
+        reader = runpy.run_path(str(ROOT / ".github/scripts/tv-totaldefi-ohlc.py"))
+        bars = reader["get_crypto_market_ohlc"]("OTHERS")
+        points = normalize([[row[0], row[4]] for row in bars], low=1e5)
+        if len(points) >= 1000:
+            return {"symbol": "CRYPTOCAP:OTHERS",
+                    "source": "TradingView CRYPTOCAP:OTHERS · altcoin cap excluding top 10",
+                    "unit": "USD", "frequency": "1D", "points": points}
+        print("Altcoin index returned fewer than 1000 real closes:", len(points))
+    except (OSError, ValueError, TypeError, RuntimeError) as err:
+        print("Altcoin market index unavailable:", type(err).__name__, str(err)[:180])
+    return previous.get("alt_market") or {"symbol": "CRYPTOCAP:OTHERS",
+        "source": "TradingView CRYPTOCAP:OTHERS · altcoin cap excluding top 10",
+        "unit": "USD", "frequency": "1D", "points": []}
+
+
 def fetch_rainbow_prices(symbol, previous):
     existing = previous.get("rainbow", {}).get(symbol) or {}
     old_rows = existing.get("points", [])
     old_source = existing.get("source", "")
+    try:
+        reader = runpy.run_path(str(ROOT / ".github/scripts/tv-totaldefi-ohlc.py"))
+        bars = reader["get_crypto_market_ohlc"](symbol)
+        actual = normalize([[row[0], row[4]] for row in bars], low=1e-7)
+        if len(actual) >= 1000:
+            same = old_rows if "CRYPTO:" in old_source else []
+            return {"source": "TradingView · " +
+                        {"BTC": "BITSTAMP:BTCUSD", "ETH": "KRAKEN:ETHUSD"}[symbol] +
+                        " · USD daily closes",
+                    "frequency": "1D", "points": normalize(same + actual, low=1e-7)}
+        print(symbol, "daily market feed too short:", len(actual))
+    except (OSError, ValueError, TypeError, RuntimeError) as err:
+        print(symbol, "market-feed prices:", type(err).__name__, str(err)[:180])
     try:
         recent = fetch_cryptocompare_daily(symbol)
         if len(recent) < 1000:
@@ -174,6 +209,7 @@ def main():
     old = read_previous()
     payload = {"updatedAt": datetime.now(timezone.utc).isoformat(),
                "altcoin": fetch_altcoin_season(old),
+               "alt_market": read_market_index_altcoins(old),
                "rainbow": {}}
     for symbol in ("BTC", "ETH"):
         payload["rainbow"][symbol] = fetch_rainbow_prices(symbol, old)
@@ -181,8 +217,9 @@ def main():
         print(symbol, len(rows), "price observations")
     old_alt = len(payload["altcoin"].get("points", []))
     print("Altcoin Season Index observations:", old_alt)
+    print("Altcoin market cap index observations:", len(payload["alt_market"].get("points", [])))
     if not any(len(item.get("points", [])) for item in
-               [payload["altcoin"], *payload["rainbow"].values()]):
+               [payload["altcoin"], payload["alt_market"], *payload["rainbow"].values()]):
         print("No verified data returned; leaving prior archive unchanged.")
         return
     OUTPUT.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
