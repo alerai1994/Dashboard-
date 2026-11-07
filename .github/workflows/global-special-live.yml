@@ -1,5 +1,10 @@
 name: Vertex Global Live Index & Rainbow Quotes
 on:
+  push:
+    branches: [main]
+    paths:
+      - .github/scripts/global-special-live.py
+      - .github/workflows/global-special-live.yml
   schedule:
     - cron: '*/15 * * * *'
   workflow_dispatch:
