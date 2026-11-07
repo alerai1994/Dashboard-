@@ -442,7 +442,7 @@ function drawExtraRainbowChart(c,w,h,host){
  const selectedPoint=rows[selected];
  if(typeof window.__vertexDrawChartValueFlag==='function')
   window.__vertexDrawChartValueFlag(c,w,left+plotW,y(Math.log(selectedPoint.c)),
-   extraMoney(selectedPoint.c),text);
+   extraMoney(selectedPoint.c),nativeCapPalette('--brand','#2387da'));
  host.dataset.plotWidth=String(plotW);
  host.dataset.plotLeft=String(left);
  host.dataset.viewCount=String(rows.length);
