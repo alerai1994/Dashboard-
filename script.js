@@ -1598,45 +1598,109 @@ function nativeCapAttach(){
  if(!host||host.dataset.vertexBound)return;
  host.dataset.vertexBound='1';
  const tip=$('#globalCapChartTooltip');
+ const hideTooltip=()=>{
+  nativeCapChart.hover=null;
+  if(tip)tip.hidden=true;
+  drawNativeCapChart();
+ };
+ const tooltipHtml=p=>{
+  if(currentGlobalCapChart==='ALTCOIN'){
+   return '<strong>'+nativeCapDate(p.t)+'</strong>'+
+    '<span>Altcoin Season Index</span>'+
+    '<span class="global-tooltip-value">'+Math.round(p.c)+'%</span>';
+  }
+  if(currentGlobalCapChart==='BTC_RAINBOW'||currentGlobalCapChart==='ETH_RAINBOW'){
+   if(typeof window.__vertexRainbowTooltip==='function')
+    return window.__vertexRainbowTooltip(p,currentGlobalCapChart);
+   const label=currentGlobalCapChart==='BTC_RAINBOW'?'BTC':'ETH';
+   return '<strong>'+nativeCapDate(p.t)+'</strong><span class="global-tooltip-value">'+
+    label+' '+p.c.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:2})+'</span>';
+  }
+  const format=v=>nativeCapUsd(v);
+  const verified=p.verifiedOHLC===true;
+  return '<strong>'+nativeCapDate(p.t)+'</strong>'+
+   '<span class="global-tooltip-value">Capitalizzazione '+format(p.c)+'</span>'+
+   (verified?'<span>Apertura '+format(p.o)+'</span><span>Massimo '+format(p.h)+
+    '</span><span>Minimo '+format(p.l)+'</span>':'');
+ };
+ const showTooltip=(event)=>{
+  const view=nativeCapWindow(),count=view.rows.length;
+  if(!count||!tip){if(tip)tip.hidden=true;return}
+  const bounds=host.getBoundingClientRect();
+  const x=Math.max(0,Math.min(bounds.width,event.clientX-bounds.left));
+  const y=Math.max(0,Math.min(bounds.height,event.clientY-bounds.top));
+  const plotLeft=Number(host.dataset.plotLeft)||16;
+  const plotWidth=Math.max(1,Number(host.dataset.plotWidth)||bounds.width-100);
+  const relative=(x-plotLeft)/plotWidth;
+  const index=Math.max(0,Math.min(count-1,Math.floor(relative*count)));
+  const point=view.rows[index];
+  if(!point)return;
+  nativeCapChart.hover=index;
+  drawNativeCapChart();
+  tip.innerHTML=tooltipHtml(point);
+  tip.hidden=false;
+  // Position after measuring the real rectangular card, never outside the plot.
+  const width=tip.offsetWidth||195,height=tip.offsetHeight||75;
+  const horizontal=x+16+width>bounds.width?x-width-16:x+16;
+  const vertical=y-height-15>=4?y-height-15:y+16;
+  tip.style.left=Math.max(4,Math.min(bounds.width-width-4,horizontal))+'px';
+  tip.style.top=Math.max(4,Math.min(bounds.height-height-4,vertical))+'px';
+ };
  host.addEventListener('wheel',e=>{
   e.preventDefault();
   const total=nativeCapWindow().all.length;
   if(total<6)return;
   const existing=nativeCapChart.visibleCount||total;
   nativeCapChart.visibleCount=Math.min(total,Math.max(5,Math.round(existing*(e.deltaY>0?1.28:.8))));
-  nativeCapChart.hover=null;drawNativeCapChart();
+  nativeCapChart.hover=null;if(tip)tip.hidden=true;
+  drawNativeCapChart();
  },{passive:false});
  host.addEventListener('pointerdown',e=>{
-  if(e.button!==0)return;
-  nativeCapChart.drag={x:e.clientX,shift:nativeCapChart.shift};
-  try{host.setPointerCapture(e.pointerId)}catch(_err){}
+  if(e.pointerType==='mouse'&&e.button!==0)return;
+  nativeCapChart.drag={x:e.clientX,y:e.clientY,shift:nativeCapChart.shift,
+   pointerId:e.pointerId,pointerType:e.pointerType,moved:false};
+  showTooltip(e);
+  if(e.pointerType!=='touch'){
+   try{host.setPointerCapture(e.pointerId)}catch(_err){}
+  }
  });
  host.addEventListener('pointermove',e=>{
-  const bounds=host.getBoundingClientRect(),x=e.clientX-bounds.left;
-  const view=nativeCapWindow(),count=view.rows.length,pw=Number(host.dataset.plotWidth)||bounds.width-100;
-  if(!count)return;
-  if(nativeCapChart.drag){
-   nativeCapChart.shift=Math.max(0,Math.round(nativeCapChart.drag.shift+(e.clientX-nativeCapChart.drag.x)*count/pw));
-   nativeCapChart.hover=null;if(tip)tip.hidden=true;drawNativeCapChart();return;
+  const drag=nativeCapChart.drag;
+  if(drag&&drag.pointerId===e.pointerId){
+   const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
+   // Touch moves probe the chart; deliberate mouse drags pan historical data.
+   if(drag.pointerType==='mouse'&&Math.abs(dx)>7)drag.moved=true;
+   if(drag.pointerType==='mouse'&&drag.moved){
+    const plotWidth=Math.max(1,Number(host.dataset.plotWidth)||host.clientWidth-100);
+    const count=nativeCapWindow().rows.length;
+    nativeCapChart.shift=Math.max(0,Math.round(drag.shift+dx*count/plotWidth));
+   }
   }
-  const left=Number(host.dataset.plotLeft)||16;
-  const pos=Math.max(0,Math.min(count-1,Math.floor((x-left)/pw*count)));
-  nativeCapChart.hover=pos;drawNativeCapChart();
-  if(tip){
-   const p=view.rows[pos];
-   tip.innerHTML=currentGlobalCapChart==='ALTCOIN'?
-    '<strong>'+nativeCapDate(p.t)+'</strong><span>Altcoin Season Index: '+p.c.toLocaleString('it-IT',{maximumFractionDigits:0})+'/100</span>':
-    ((currentGlobalCapChart==='BTC_RAINBOW'||currentGlobalCapChart==='ETH_RAINBOW')&&
-    typeof window.__vertexRainbowTooltip==='function')?window.__vertexRainbowTooltip(p,currentGlobalCapChart):
-    '<strong>'+nativeCapDate(p.t)+'</strong><span>Chiusura '+nativeCapUsd(p.c)+'</span>'+
-    (nativeCapChart.timeframe==='1D'&&!p.verifiedOHLC?'':'<span>Apertura '+nativeCapUsd(p.o)+'</span><span>Massimo '+nativeCapUsd(p.h)+'</span><span>Minimo '+nativeCapUsd(p.l)+'</span>');
-   tip.style.left=Math.max(5,Math.min(bounds.width-190,x+15))+'px';tip.hidden=false;
+  showTooltip(e);
+ });
+ host.addEventListener('pointerup',e=>{
+  showTooltip(e);
+  nativeCapChart.drag=null;
+  try{if(host.hasPointerCapture(e.pointerId))host.releasePointerCapture(e.pointerId)}catch(_err){}
+  if(e.pointerType==='touch'){
+   // Retain the last inspected value briefly; dismiss with next touch outside.
+   host.dataset.touchTooltip='1';
   }
  });
- host.addEventListener('pointerup',e=>{nativeCapChart.drag=null;try{host.releasePointerCapture(e.pointerId)}catch(_err){}});
- host.addEventListener('pointercancel',()=>{nativeCapChart.drag=null});
- host.addEventListener('pointerleave',()=>{nativeCapChart.hover=null;if(tip)tip.hidden=true;drawNativeCapChart();});
+ host.addEventListener('pointercancel',()=>{
+  nativeCapChart.drag=null;hideTooltip();
+ });
+ host.addEventListener('pointerleave',e=>{
+  if(e.pointerType==='touch')return;
+  if(nativeCapChart.drag?.pointerType==='mouse')return;
+  hideTooltip();
+ });
+ document.addEventListener('pointerdown',e=>{
+  if(e.pointerType==='touch'&&!host.contains(e.target)&&!tip?.hidden)
+   hideTooltip();
+ },{passive:true});
 }
+
 function paintGlobalCapChart(){
  for(const b of $$('#globalCryptoCaps [data-global-cap-chart]')){
   const active=state.page==='global'&&currentGlobalCapChart===b.dataset.globalCapChart;
