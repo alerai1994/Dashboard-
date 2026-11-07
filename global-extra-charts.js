@@ -1,3 +1,7 @@
+/* Isolated optional charts module; the dashboard loads independently. */
+const vertexChartScope=window.__vertexGlobalChartScope;
+const {state,nativeCapChart,nativeCapUsd,nativeCapDate,nativeCapPalette,nativeCapWindow,paintGlobalCapChart}=vertexChartScope;
+const $=selector=>document.querySelector(selector);
 /* Vertex Global: Altcoin Index and BTC/ETH logarithmic Rainbow charts.
    Market data is downloaded from the versioned first-party JSON archive.
    All rainbow bands are descriptive regressions fitted to observed closes:
@@ -137,12 +141,12 @@ async function loadExtraGlobalCharts(){
  }finally{
   clearTimeout(timeout);extraGlobalState.loading=false;
   updateExtraGlobalPillData();
-  if(state.page==='global'&&['ALTCOIN','BTC_RAINBOW','ETH_RAINBOW'].includes(currentGlobalCapChart))
+  if(state.page==='global'&&['ALTCOIN','BTC_RAINBOW','ETH_RAINBOW'].includes(vertexChartScope.currentGlobalCapChart))
    paintGlobalCapChart();
  }
 }
 function drawExtraRainbowChart(c,w,h,host){
- const id=currentGlobalCapChart,asset=extraRainbowIds[id];
+ const id=vertexChartScope.currentGlobalCapChart,asset=extraRainbowIds[id];
  const points=nativeCapChart.data[id]||[],fit=extraGlobalState.model[id];
  const {rows,all}=nativeCapWindow();
  const empty=$('#globalCapChartEmpty'),stats=$('#globalCapChartStats');
