@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Retrieve actual CRYPTOCAP:TOTALDEFI historical OHLC bars for Vertex.
+"""Retrieve actual CRYPTOCAP market-cap index historical OHLC bars for Vertex.
 
 Uses the anonymous public chart-data connection (no credentials).
 Never replaces existing dataset on partial/failing responses.
@@ -10,11 +10,16 @@ import secrets
 import time
 from datetime import datetime, timezone
 
-START = int(datetime(2017, 5, 8, tzinfo=timezone.utc).timestamp())
+SYMBOLS = ("TOTAL", "TOTAL2", "TOTAL3", "TOTALDEFI")
+START = int(datetime(2013, 1, 1, tzinfo=timezone.utc).timestamp())
 END = int(datetime(2026, 11, 8, tzinfo=timezone.utc).timestamp())
 
 
-def get_totaldefi_ohlc():
+def get_crypto_market_ohlc(name="TOTALDEFI"):
+    """Fetch exact real daily candles for one CRYPTOCAP index; never infer prices."""
+    if name not in SYMBOLS:
+        raise ValueError("Unexpected crypto market index")
+
     from websocket import create_connection
     sid = "cs_" + secrets.token_hex(6)
     qid = "qs_" + secrets.token_hex(6)
@@ -36,9 +41,9 @@ def get_totaldefi_ohlc():
         send("quote_create_session", [qid])
         send("resolve_symbol", [
             sid, "symbol_1",
-            '={"symbol":"CRYPTOCAP:TOTALDEFI","adjustment":"splits","session":"regular"}',
+            '={"symbol":"CRYPTOCAP:' + name + '","adjustment":"splits","session":"regular"}',
         ])
-        send("create_series", [sid, "s1", "s1", "symbol_1", "1D", 4500])
+        send("create_series", [sid, "s1", "s1", "symbol_1", "1D", 5000])
         seen_series = False
         began = time.monotonic()
         while time.monotonic() - began < 85:
@@ -101,14 +106,21 @@ def get_totaldefi_ohlc():
             except Exception:
                 pass
     result = [candles[k] for k in sorted(candles)]
-    print("TOTALDEFI daily OHLC from public chart source:", len(result))
+    print(name, "daily OHLC from public chart source:", len(result))
     if result:
         print("Earliest:", datetime.fromtimestamp(result[0][0]/1000, timezone.utc).date(),
               "Latest:", datetime.fromtimestamp(result[-1][0]/1000, timezone.utc).date())
     return result
 
 
+def get_totaldefi_ohlc():
+    """Backward-compatible entrypoint for existing collectors."""
+    return get_crypto_market_ohlc("TOTALDEFI")
+
+
 if __name__ == "__main__":
-    candles=get_totaldefi_ohlc()
+    import sys
+    symbol = sys.argv[1] if len(sys.argv)>1 else "TOTALDEFI"
+    candles = get_crypto_market_ohlc(symbol)
     if candles:
         print("Sample first:", candles[0], "last:", candles[-1])
