@@ -1328,6 +1328,9 @@ async function loadNativeCapHistory(){
   const payload=await response.json();
   if(!payload?.series||typeof payload.series!=='object')throw Error('Formato storico non valido');
   for(const id of Object.keys(GLOBAL_CAP_CHART_NAMES)){
+   // Optional Altcoin Season and Rainbow series live in global-special-charts.json.
+   // Never overwrite them with missing entries from the cap-history archive.
+   if(!Object.hasOwn(payload.series,id))continue;
    const input=Array.isArray(payload.series[id])?payload.series[id]:[];
    const clean=new Map();
    for(const p of input){
