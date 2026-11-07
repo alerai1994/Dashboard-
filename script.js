@@ -679,7 +679,7 @@ const streamStatus={socket:null,connected:false,seen:new Set(),last:0,openedAt:0
 const cryptoRestStatus={last:0,busy:false,retryAt:0,failures:0};
 function liveConnected(){return streamStatus.connected&&Date.now()-streamStatus.last<25000;}
 function liveLabel(){
- const active=liveConnected(),count=[...streamStatus.seen].filter(id=>STREAM_OVERLAY.has(id)&&Date.now()-STREAM_OVERLAY.get(id).received<90000).length;
+ const active=liveConnected(),count=[...streamStatus.seen].filter(id=>STREAM_OVERLAY.has(id)&&Date.now()-STREAM_OVERLAY.get(id).received<25000).length;
  return active?'● LIVE crypto: '+count+' coppie Binance Spot (USDT)':'○ Crypto: '+(streamStatus.connected?'in attesa dei tick':'connessione / riconnessione');
 }
 function snapshotAgeMinutes(){
@@ -916,7 +916,7 @@ function updatePriceDom(){
     if(c.textContent!==shownChange)c.textContent=shownChange;
     setMovementClass(c,q.change);
    }
-   const metadata=(q.live?'Tick '+(q.source||'streaming')+' · ':'Ultimo prezzo · ')+refTime(id);
+   const metadata=instrumentQuoteStatus(id);
    if(m&&m.textContent!==metadata)m.textContent=metadata;
    updateChartLiveQuoteStatus();
    scheduleDetailChartDraw();
@@ -935,6 +935,26 @@ function updatePriceDom(){
   patchSummary();
   evaluateCryptoAlerts();
   if(ids.some(id=>ASSET_BY_ID[id]?.group==='crypto'))paintCryptoPriceHighlights();
+ }
+ updateLiveBadges();
+}
+/* A live badge must expire when its underlying tick stops. Refresh visible
+   instrument labels without downloading or fabricating replacement quotes. */
+function refreshVisibleQuoteFreshness(){
+ if(document.hidden)return;
+ document.querySelectorAll('#pageContainer [data-asset]').forEach(node=>{
+  const id=node.dataset.asset;
+  if(!ASSET_BY_ID[id])return;
+  const status=instrumentQuoteStatus(id);
+  const asof=node.querySelector('.market-quote-asof');
+  if(asof&&asof.textContent!==status)asof.textContent=status;
+  if(node.classList.contains('market-chart-card')&&node.title!==status)
+   node.title=status;
+ });
+ if(state.dialogId){
+  const meta=document.querySelector('#dialogBody .dialog-meta');
+  const status=instrumentQuoteStatus(state.dialogId);
+  if(meta&&meta.textContent!==status)meta.textContent=status;
  }
  updateLiveBadges();
 }
@@ -6139,7 +6159,8 @@ function startVertexApp(){
   if(!document.hidden)connectForexStream();
  },{once:true});
  connectForexStream();
- setInterval(()=>{if(!document.hidden)fetchQuotes()},30000);
+ setInterval(()=>{if(!document.hidden)fetchQuotes()},15000);
+ setInterval(refreshVisibleQuoteFreshness,5000);
  setInterval(()=>{if(!document.hidden&&state.page==='global')refreshGlobalCryptoCaps()},GLOBAL_CRYPTO_CAP_POLL_MS);
  setInterval(pollCryptoPrices,15000);
  setInterval(keepStreamAlive,15000);
@@ -6149,7 +6170,7 @@ function startVertexApp(){
    navigator.serviceWorker.controller.postMessage({type:'VERTEX_WIDGETS_REFRESH'});
   if(document.hidden){closeStream();disconnectForexStream();stopOrderBookLive()}
   else {
-   connectCryptoStream();connectForexStream();fetchQuotes();pollCryptoPrices();updateWorldSunlight(true);applyBrightness();
+   connectCryptoStream();connectForexStream();fetchQuotes();pollCryptoPrices();refreshVisibleQuoteFreshness();refreshVisibleQuoteFreshness();updateWorldSunlight(true);applyBrightness();
    if(orderBookViewActive()){startOrderBookLive();refreshOrderBook()}
     if(state.dialogId){scheduleDetailChartDraw();scheduleChartLiveRefresh()}
   }
