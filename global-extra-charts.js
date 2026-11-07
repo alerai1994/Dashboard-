@@ -186,9 +186,9 @@ function extraTimestamp(raw){
 }
 function extraApplyLive(id,value,timestamp,source,change24h=null){
  const n=Number(value),t=extraTimestamp(timestamp);
- if(!Number.isFinite(n)||n<=0||!Number.isFinite(t))return false;
+ if(!Number.isFinite(n)||!Number.isFinite(t)||n<0||(id!=='ALTCOIN'&&n===0))return false;
  if(id==='ALTCOIN'&&!(n>=0&&n<=100))return false;
- if(t>Date.now()+300000||t<Date.now()-(id==='ALTCOIN'?28*3600000:120000))return false;
+ if(t>Date.now()+300000||t<Date.now()-(id==='ALTCOIN'?28*3600000:45*60000))return false;
  if(!nativeCapChart.data[id]?.length)return false;
  const existing=extraGlobalState.live[id];
  if(existing&&existing.timestamp>t)return false;
