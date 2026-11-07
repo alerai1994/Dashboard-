@@ -1,0 +1,35 @@
+name: Vertex Global Live Index & Rainbow Quotes
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: vertex-global-live
+  cancel-in-progress: false
+jobs:
+  refresh-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch verified real market observations
+        run: python3 .github/scripts/global-special-live.py
+      - name: Publish timestamped live feed
+        shell: bash
+        run: |
+          cp global-special-live.json "$RUNNER_TEMP/global-special-live.json"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3 4; do
+            git fetch origin main
+            git reset --hard origin/main
+            cp "$RUNNER_TEMP/global-special-live.json" global-special-live.json
+            git add global-special-live.json
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -m "data: refresh live Altcoin Season and Rainbow quotes [skip ci]"
+            if git push origin HEAD:main; then exit 0; fi
+            sleep 2
+          done
+          exit 1
