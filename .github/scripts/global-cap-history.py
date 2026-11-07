@@ -2,12 +2,15 @@
 """Verified historical global cryptocurrency market capitalisation for Vertex.
 
 TOTAL, TOTAL2 and TOTAL3: Santiment aggregate daily market-cap observations.
-TOTALDEFI: daily CoinGecko DeFi market-cap snapshots recorded from now onward.
+TOTALDEFI: CoinPaprika DeFi sector historical market-cap observations.
+The distinct CoinGecko DeFi aggregate snapshot history is kept separately.
 This feed never invents OHLC candles or extrapolates missing market history.
 """
 import json
 import math
 import urllib.request
+import re
+from html.parser import HTMLParser
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -34,9 +37,14 @@ def old_history():
     try:
         old = json.loads(OUTPUT.read_text(encoding="utf-8"))
         rows = old.get("series", {})
-        return {key: rows.get(key, []) for key in (*SANTIMENT_METRICS, "TOTALDEFI")}
+        sources = old.get("sources", {})
+        if not isinstance(rows, dict):
+            rows = {}
+        if not isinstance(sources, dict):
+            sources = {}
+        return rows, sources
     except (ValueError, OSError, TypeError, AttributeError):
-        return {key: [] for key in (*SANTIMENT_METRICS, "TOTALDEFI")}
+        return {}, {}
 
 
 def normalize_points(rows):
@@ -98,6 +106,94 @@ def santiment_history(metric, start, end):
     return normalize_points(points)
 
 
+
+class VisibleHTML(HTMLParser):
+    """Extract text from a public source without executing third-party scripts."""
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.tokens = []
+        self.hidden_depth = 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in ("script", "style", "template", "svg"):
+            self.hidden_depth += 1
+        if tag in ("tr", "td", "th", "p", "div", "h2", "h3", "h4"):
+            self.tokens.append(" ")
+
+    def handle_endtag(self, tag):
+        if tag in ("script", "style", "template", "svg"):
+            self.hidden_depth = max(0, self.hidden_depth - 1)
+        if tag in ("tr", "td", "th", "p", "div", "h2", "h3", "h4"):
+            self.tokens.append(" ")
+
+    def handle_data(self, data):
+        if not self.hidden_depth:
+            self.tokens.append(data)
+
+    def text(self):
+        return re.sub(r"\s+", " ", " ".join(self.tokens))
+
+
+def coinpaprika_defi_history(now):
+    """Observed DeFi sector totals at the end of each closed UTC day.
+
+    CoinPaprika's publicly displayed DeFi sector is *not* the same
+    constituent universe as the CoinGecko global DeFi aggregate shown in
+    the pill. The two series must never be joined or blended.
+    """
+    pages = (
+        "https://coinpaprika.com/categories/defi",
+        "https://coinpaprika.com/it/categories/defi",
+    )
+    for url in pages:
+        try:
+            request = urllib.request.Request(url, headers={
+                "User-Agent": "Mozilla/5.0 (compatible; VertexGlobalMarket/1.0)",
+                "Accept": "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+            })
+            with urllib.request.urlopen(request, timeout=13) as response:
+                body = response.read(5000000).decode("utf-8", "replace")
+            parser = VisibleHTML()
+            parser.feed(body)
+            visible = parser.text()
+            marker = visible.find("Sector totals at each point")
+            if marker < 0:
+                continue
+            ending = visible.find("What's driving the move?", marker)
+            if ending < 0:
+                ending = visible.find("What’s driving the move?", marker)
+            chart = visible[marker:ending] if ending > marker else visible[marker:marker + 5500]
+            pattern = (
+                r"(?<![\d-])(20\d{2}-\d{2}-\d{2})\s+"
+                r"\$([\d,]+(?:\.\d+)?)([KMBT])\s+"
+                r"\$[\d,]+(?:\.\d+)?[KMBT]\s+"
+                r"\$[\d,]+(?:\.\d+)?[KMBT]"
+            )
+            multiplier = {"K": 1e3, "M": 1e6, "B": 1e9, "T": 1e12}
+            result = []
+            for match in re.finditer(pattern, chart, re.IGNORECASE):
+                day, amount, unit = match.groups()
+                timestamp = int(datetime.strptime(day, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp() * 1000)
+                cap = positive(amount.replace(",", ""))
+                if not cap:
+                    continue
+                value = cap * multiplier[unit.upper()]
+                if value < 1e8 or value > 1e13:
+                    continue
+                result.append([timestamp, value])
+            result = normalize_points(result)
+            if len(result) < 7 or result[-1][0] < int((now - timedelta(days=5)).timestamp() * 1000):
+                print("CoinPaprika sector rows insufficient or stale:", len(result))
+                continue
+            print("CoinPaprika actual DeFi sector daily history:", len(result),
+                  datetime.fromtimestamp(result[0][0]/1000, timezone.utc).date(),
+                  datetime.fromtimestamp(result[-1][0]/1000, timezone.utc).date())
+            return result
+        except (ValueError, OSError, TimeoutError, TypeError) as exc:
+            print("CoinPaprika DeFi market-cap history unavailable:", str(exc)[:180])
+    return []
+
 def read_defi_cap():
     request = urllib.request.Request(
         "https://api.coingecko.com/api/v3/global/decentralized_finance_defi",
@@ -114,9 +210,17 @@ def read_defi_cap():
 
 
 def main():
-    previous = old_history()
-    all_series = {key: normalize_points(previous.get(key, [])) for key in (*SANTIMENT_METRICS, "TOTALDEFI")}
+    previous, old_sources = old_history()
     now = datetime.now(timezone.utc)
+    all_series = {key: normalize_points(previous.get(key, [])) for key in SANTIMENT_METRICS}
+    # Migration: the earlier TOTALDEFI history consisted of CoinGecko observations.
+    # Keep them separately to avoid combining two different DeFi taxonomies.
+    prior_cp = "CoinPaprika" in str(old_sources.get("TOTALDEFI", ""))
+    old_cg = previous.get("TOTALDEFI_CG", [])
+    if not prior_cp:
+        old_cg = old_cg + previous.get("TOTALDEFI", [])
+    all_series["TOTALDEFI_CG"] = normalize_points(old_cg)
+    all_series["TOTALDEFI"] = normalize_points(previous.get("TOTALDEFI", [])) if prior_cp else []
     # Subscription-dependent historical depth: never claim data earlier than returned.
     for name, metric in SANTIMENT_METRICS.items():
         old = all_series[name]
@@ -134,18 +238,22 @@ def main():
         if refreshed:
             all_series[name] = normalize_points(old + refreshed)
         print(name, len(all_series[name]), "observations")
+    sector = coinpaprika_defi_history(now)
+    if sector:
+        all_series["TOTALDEFI"] = normalize_points(all_series["TOTALDEFI"] + sector)
     try:
         new_defi = read_defi_cap()
-        all_series["TOTALDEFI"] = normalize_points(all_series["TOTALDEFI"] + [new_defi])
+        all_series["TOTALDEFI_CG"] = normalize_points(all_series["TOTALDEFI_CG"] + [new_defi])
     except (OSError, ValueError, TypeError) as exc:
-        print("TOTALDEFI snapshot unavailable:", str(exc)[:190])
+        print("TOTALDEFI CoinGecko snapshot unavailable:", str(exc)[:190])
     payload = {
         "updatedAt": now.isoformat(),
         "sources": {
             "TOTAL": "Santiment · daily market cap observations",
             "TOTAL2": "Santiment · daily market cap observations",
             "TOTAL3": "Santiment · daily market cap observations",
-            "TOTALDEFI": "CoinGecko · observed DeFi market cap snapshots (no earlier backfill)",
+            "TOTALDEFI": "CoinPaprika · DeFi sector historical cap (current constituents; USD; ~0.01B rounded)",
+            "TOTALDEFI_CG": "CoinGecko · global DeFi market cap observations, recorded from 7 Nov 2026",
         },
         "series": all_series,
         "interval": "Observed values only, no manufactured OHLC or historical highs/lows",
