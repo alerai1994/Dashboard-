@@ -8,6 +8,7 @@ This feed never invents OHLC candles or extrapolates missing market history.
 """
 import json
 import math
+import runpy
 import urllib.request
 import re
 from html.parser import HTMLParser
@@ -213,14 +214,28 @@ def main():
     previous, old_sources = old_history()
     now = datetime.now(timezone.utc)
     all_series = {key: normalize_points(previous.get(key, [])) for key in SANTIMENT_METRICS}
-    # Migration: the earlier TOTALDEFI history consisted of CoinGecko observations.
-    # Keep them separately to avoid combining two different DeFi taxonomies.
-    prior_cp = "CoinPaprika" in str(old_sources.get("TOTALDEFI", ""))
-    old_cg = previous.get("TOTALDEFI_CG", [])
-    if not prior_cp:
-        old_cg = old_cg + previous.get("TOTALDEFI", [])
-    all_series["TOTALDEFI_CG"] = normalize_points(old_cg)
-    all_series["TOTALDEFI"] = normalize_points(previous.get("TOTALDEFI", [])) if prior_cp else []
+    # Never mix data for different index methodologies.
+    # TradingView CRYPTOCAP:TOTALDEFI != CoinPaprika sector != CoinGecko DeFi.
+    old_method = str(old_sources.get("TOTALDEFI", ""))
+    is_tv = "CRYPTOCAP:TOTALDEFI" in old_method
+    is_cp = "CoinPaprika" in old_method
+    all_series["TOTALDEFI_CG"] = normalize_points(previous.get("TOTALDEFI_CG", []) +
+        (previous.get("TOTALDEFI", []) if not is_tv and not is_cp else []))
+    cp_prev = previous.get("TOTALDEFI_CP", [])
+    if is_cp:
+        cp_prev = cp_prev + previous.get("TOTALDEFI", [])
+    all_series["TOTALDEFI_CP"] = normalize_points(cp_prev)
+    all_series["TOTALDEFI"] = normalize_points(previous.get("TOTALDEFI", [])) if is_tv else []
+    prior_ohlc = {}
+    try:
+        old_payload = json.loads(OUTPUT.read_text(encoding="utf-8"))
+        prior_ohlc = old_payload.get("ohlc", {}) if isinstance(old_payload, dict) else {}
+    except (ValueError, OSError):
+        pass
+    if not isinstance(prior_ohlc, dict):
+        prior_ohlc = {}
+    if not is_tv:
+        prior_ohlc.pop("TOTALDEFI", None)
     # Subscription-dependent historical depth: never claim data earlier than returned.
     for name, metric in SANTIMENT_METRICS.items():
         old = all_series[name]
@@ -240,7 +255,27 @@ def main():
         print(name, len(all_series[name]), "observations")
     sector = coinpaprika_defi_history(now)
     if sector:
-        all_series["TOTALDEFI"] = normalize_points(all_series["TOTALDEFI"] + sector)
+        all_series["TOTALDEFI_CP"] = normalize_points(all_series["TOTALDEFI_CP"] + sector)
+    # Fetch genuine daily index OHLC, not an approximate basket or a DeFi TVL.
+    # We only switch to the TradingView series if it covers the requested decade.
+    bars = []
+    try:
+        source_path = ROOT / ".github/scripts/tv-totaldefi-ohlc.py"
+        bars = runpy.run_path(str(source_path))["get_totaldefi_ohlc"]()
+    except Exception as exc:
+        print("TOTALDEFI native index OHLC unavailable:", type(exc).__name__, str(exc)[:200])
+    earliest_required = int(datetime(2018, 1, 1, tzinfo=timezone.utc).timestamp() * 1000)
+    latest_required = int(datetime(2026, 10, 20, tzinfo=timezone.utc).timestamp() * 1000)
+    if len(bars) >= 2000 and bars[0][0] < earliest_required and bars[-1][0] > latest_required:
+        prior_ohlc["TOTALDEFI"] = bars
+        all_series["TOTALDEFI"] = normalize_points([[bar[0], bar[4]] for bar in bars])
+        print("Confirmed CRYPTOCAP:TOTALDEFI full index history:", len(bars))
+    elif bars:
+        print("TradingView supplied only partial index history; not replacing verified data.")
+    if not all_series["TOTALDEFI"]:
+        # For legacy clients keep the verified CoinPaprika sample but never
+        # label or merge it with the TradingView CRYPTOCAP index.
+        all_series["TOTALDEFI"] = all_series["TOTALDEFI_CP"][:]
     try:
         new_defi = read_defi_cap()
         all_series["TOTALDEFI_CG"] = normalize_points(all_series["TOTALDEFI_CG"] + [new_defi])
@@ -252,11 +287,15 @@ def main():
             "TOTAL": "Santiment · daily market cap observations",
             "TOTAL2": "Santiment · daily market cap observations",
             "TOTAL3": "Santiment · daily market cap observations",
-            "TOTALDEFI": "CoinPaprika · DeFi sector historical cap (current constituents; USD; ~0.01B rounded)",
+            "TOTALDEFI": ("TradingView CRYPTOCAP:TOTALDEFI · real daily index OHLC · top 125 DeFi assets"
+              if all_series["TOTALDEFI"] and "TOTALDEFI" in prior_ohlc
+              else "CoinPaprika · DeFi sector cap (not CRYPTOCAP TOTALDEFI; partial history)"),
+            "TOTALDEFI_CP": "CoinPaprika · independently calculated DeFi sector market cap",
             "TOTALDEFI_CG": "CoinGecko · global DeFi market cap observations, recorded from 7 Nov 2026",
         },
         "series": all_series,
-        "interval": "Observed values only, no manufactured OHLC or historical highs/lows",
+        "ohlc": prior_ohlc,
+        "interval": "Actual source OHLC when present; no manufactured candles",
     }
     old_valid = any(len(v) > 0 for v in all_series.values())
     if not old_valid:
