@@ -1244,7 +1244,10 @@ const GLOBAL_CAP_CHART_NAMES=Object.freeze({
  TOTAL:'Capitalizzazione complessiva delle criptovalute',
  TOTAL2:'Capitalizzazione senza Bitcoin',
  TOTAL3:'Capitalizzazione senza Bitcoin ed Ethereum',
- TOTALDEFI:'Capitalizzazione del settore DeFi'
+ TOTALDEFI:'Capitalizzazione del settore DeFi',
+ ALTCOIN:'Altcoin Index · CRYPTOCAP:OTHERS',
+ BTC_RAINBOW:'BTC · Rainbow Chart',
+ ETH_RAINBOW:'ETH · Rainbow Chart'
 });
 let currentGlobalCapChart=null;
 const nativeCapChart={
@@ -1253,7 +1256,7 @@ const nativeCapChart={
 };
 function globalCryptoHistoryPanel(){
  return '<section id="globalCryptoHistory" class="global-crypto-history panel" hidden>'+
- '<header class="global-crypto-history-header"><div><span class="eyebrow">VERTEX · HISTORICAL MARKET CAP</span>'+
+ '<header class="global-crypto-history-header"><div><span class="eyebrow" id="globalCapChartEyebrow">VERTEX · HISTORICAL MARKET CAP</span>'+
  '<h2 id="globalCryptoHistoryTitle">Storico capitalizzazione</h2>'+
  '<p id="globalCapFullRangeStatus" aria-live="polite">Grafico nativo · usa i tasti 1D, 1W e 1M per cambiare le candele</p></div>'+
  '<div class="global-crypto-history-actions"><button type="button" data-cap-zoom="in" aria-label="Ingrandisci">+</button>'+
@@ -1411,6 +1414,10 @@ function drawNativeCapChart(){
  canvas.style.width=w+'px';canvas.style.height=h+'px';
  const c=canvas.getContext('2d');if(!c)return;
  c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,w,h);
+ if(typeof isRainbowExtraChart==='function'&&isRainbowExtraChart(currentGlobalCapChart)){
+  if(typeof drawExtraRainbowChart==='function')drawExtraRainbowChart(c,w,h,host);
+  return;
+ }
  const {rows,all}=nativeCapWindow(),original=nativeCapChart.data[currentGlobalCapChart]||[];
  const verifiedDeFi=currentGlobalCapChart==='TOTALDEFI'&&nativeCapChart.ohlc.TOTALDEFI?.size>=2000;
  const realOHLC=(nativeCapChart.ohlc[currentGlobalCapChart]?.size||0)>=1500;
@@ -1541,7 +1548,9 @@ function nativeCapAttach(){
   nativeCapChart.hover=pos;drawNativeCapChart();
   if(tip){
    const p=view.rows[pos];
-   tip.innerHTML='<strong>'+nativeCapDate(p.t)+'</strong><span>Chiusura '+nativeCapUsd(p.c)+'</span>'+
+   tip.innerHTML=(typeof isRainbowExtraChart==='function'&&isRainbowExtraChart(currentGlobalCapChart)&&
+    typeof extraRainbowTooltip==='function')?extraRainbowTooltip(p,currentGlobalCapChart):
+    '<strong>'+nativeCapDate(p.t)+'</strong><span>Chiusura '+nativeCapUsd(p.c)+'</span>'+
     (nativeCapChart.timeframe==='1D'&&!p.verifiedOHLC?'':'<span>Apertura '+nativeCapUsd(p.o)+'</span><span>Massimo '+nativeCapUsd(p.h)+'</span><span>Minimo '+nativeCapUsd(p.l)+'</span>');
    tip.style.left=Math.max(5,Math.min(bounds.width-190,x+15))+'px';tip.hidden=false;
   }
@@ -1562,6 +1571,11 @@ function paintGlobalCapChart(){
  if(!show)return;
  const title=$('#globalCryptoHistoryTitle');
  if(title)title.textContent=id+' · '+GLOBAL_CAP_CHART_NAMES[id];
+ const eyebrow=$('#globalCapChartEyebrow');
+ if(eyebrow)eyebrow.textContent=(id==='BTC_RAINBOW'||id==='ETH_RAINBOW')?
+  'VERTEX · RAINBOW CHART · MODELLO STORICO':
+  id==='ALTCOIN'?'VERTEX · ALTCOIN INDEX · CRYPTOCAP:OTHERS':
+  'VERTEX · HISTORICAL MARKET CAP';
  panel.querySelectorAll('[data-cap-timeframe]').forEach(b=>{
   const active=b.dataset.capTimeframe===nativeCapChart.timeframe;
   b.classList.toggle('active',active);
@@ -1569,14 +1583,16 @@ function paintGlobalCapChart(){
  });
  panel.querySelectorAll('[data-cap-range]').forEach(b=>b.classList.toggle('active',b.dataset.capRange===nativeCapChart.range));
  nativeCapAttach();drawNativeCapChart();
- if(!nativeCapChart.loaded)loadNativeCapHistory();
+ if((id==='ALTCOIN'||id==='BTC_RAINBOW'||id==='ETH_RAINBOW')&&
+  typeof loadExtraGlobalCharts==='function')loadExtraGlobalCharts();
+ else if(!nativeCapChart.loaded)loadNativeCapHistory();
  else if(id!=='TOTALDEFI')loadRealNativeCapIndex(id);
 }
 function toggleGlobalCapChart(id){
  if(state.page!=='global'||!Object.hasOwn(GLOBAL_CAP_CHART_NAMES,id))return;
  currentGlobalCapChart=currentGlobalCapChart===id?null:id;
  // Use actual daily TOTALDEFI candles across the whole 2017–2026 span, as requested.
- nativeCapChart.timeframe=id==='TOTALDEFI'?'1D':'1W';
+ nativeCapChart.timeframe=(id==='TOTALDEFI'||id==='ALTCOIN')?'1D':'1W';
  nativeCapChart.range='ALL';nativeCapChart.visibleCount=null;nativeCapChart.shift=0;nativeCapChart.hover=null;
  paintGlobalCapChart();
  if(currentGlobalCapChart)$('#globalCryptoHistory')?.scrollIntoView({block:'nearest',behavior:'smooth'});
