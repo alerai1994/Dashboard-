@@ -12,11 +12,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Lora:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&family=Roboto:wght@400;500;600;700;800&family=Nunito+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261107-etf-multicharts-v146">
+<link rel="stylesheet" href="style.css?v=20261107-global-cap-pills-v147">
 <script id="fxSignalrLibrary" src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js" async crossorigin="anonymous"></script>
 <script src="crypto-orderbooks-data.js?v=20261101-all42-crypto-v35" defer></script>
 <script src="ore-orderbook-data.js?v=20261101-ore-backup-v34" defer></script>
-<script src="script.js?v=20261107-etf-multicharts-v146" defer></script>
+<script src="script.js?v=20261107-global-cap-pills-v147" defer></script>
 </head>
 <body class="theme-dark">
 <div class="vertex-boot-screen" id="vertexBootScreen" role="status" aria-live="polite" aria-label="Caricamento di Vertex">
@@ -100,7 +100,17 @@
   </aside>
   <main class="main-content" id="main">
     <header class="topbar">
-      <div class="page-heading"><div class="mobile-logo"><button type="button" id="menuToggle" aria-label="Apri o chiudi il menu"><svg class="icon"><use href="#ic-menu"/></svg></button><span>Vertex</span></div><h1 id="pageTitle">Global</h1><p id="pageSubtitle">Global market data across every region, market and asset class.</p></div>
+      <div class="page-heading"><div class="mobile-logo"><button type="button" id="menuToggle" aria-label="Apri o chiudi il menu"><svg class="icon"><use href="#ic-menu"/></svg></button><span>Vertex</span></div><h1 id="pageTitle">Global</h1><p id="pageSubtitle">Global market data across every region, market and asset class.</p>
+        <div class="global-crypto-caps" id="globalCryptoCaps" role="group" aria-label="Capitalizzazioni del mercato crypto" hidden>
+          <div class="global-crypto-cap-pills">
+            <div class="global-crypto-cap-pill" title="Capitalizzazione totale delle criptovalute"><span>TOTAL</span><strong data-global-cap="TOTAL">—</strong></div>
+            <div class="global-crypto-cap-pill" title="Capitalizzazione del mercato crypto, escluso Bitcoin"><span>TOTAL2</span><strong data-global-cap="TOTAL2">—</strong></div>
+            <div class="global-crypto-cap-pill" title="Capitalizzazione del mercato crypto, esclusi Bitcoin ed Ethereum"><span>TOTAL3</span><strong data-global-cap="TOTAL3">—</strong></div>
+            <div class="global-crypto-cap-pill" title="Capitalizzazione del settore DeFi"><span>TOTALDEFI</span><strong data-global-cap="TOTALDEFI">—</strong></div>
+          </div>
+          <div class="global-crypto-cap-source" id="globalCryptoCapsStatus" aria-live="polite">CoinGecko · caricamento dati reali…</div>
+        </div>
+      </div>
       <div class="top-actions">
         <div class="search-wrap">
           <svg class="icon"><use href="#ic-search"/></svg>
