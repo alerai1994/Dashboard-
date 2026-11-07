@@ -1247,18 +1247,16 @@ const GLOBAL_CAP_CHART_NAMES=Object.freeze({
  TOTALDEFI:'Capitalizzazione del settore DeFi'
 });
 let currentGlobalCapChart=null;
-const TOTALDEFI_START=Date.UTC(2017,4,8),TOTALDEFI_END=Date.UTC(2026,10,7,23,59,59);
-const defiLongRange=()=>currentGlobalCapChart==='TOTALDEFI'&&nativeCapChart.fullDeFiHistory&&nativeCapChart.range==='ALL';
 const nativeCapChart={
  data:Object.create(null),sources:{},loaded:false,loading:false,error:'',
- timeframe:'1W',range:'ALL',visibleCount:null,shift:0,hover:null,drag:null,fullDeFiHistory:false
+ timeframe:'1W',range:'ALL',visibleCount:null,shift:0,hover:null,drag:null
 };
 function globalCryptoHistoryPanel(){
  return '<section id="globalCryptoHistory" class="global-crypto-history panel" hidden>'+
  '<header class="global-crypto-history-header"><div><span class="eyebrow">VERTEX · HISTORICAL MARKET CAP</span>'+
  '<h2 id="globalCryptoHistoryTitle">Storico capitalizzazione</h2>'+
  '<p id="globalCapFullRangeStatus">Grafico nativo · dati osservati · usa la rotella per lo zoom e trascina per spostarti nel tempo</p></div>'+
- '<div class="global-crypto-history-actions"><button type="button" class="defi-native-focus" data-defi-focus="1">Vedi gli ultimi dati</button><button type="button" data-cap-zoom="in" aria-label="Ingrandisci">+</button>'+
+ '<div class="global-crypto-history-actions"><button type="button" data-cap-zoom="in" aria-label="Ingrandisci">+</button>'+
  '<button type="button" data-cap-zoom="out" aria-label="Riduci">−</button>'+
  '<button type="button" data-cap-reset="1" aria-label="Ripristina grafico">↺</button>'+
  '<button type="button" data-close-global-cap-chart="1" aria-label="Chiudi grafico">✕</button></div></header>'+
@@ -1328,8 +1326,7 @@ function nativeCapWindow(){
   const latest=rows[rows.length-1][0];
   selected=rows.filter(p=>p[0]>=latest-days*86400000);
  }
- const all=nativeCapBuckets(selected).filter(p=>!defiLongRange()||(p.t>=TOTALDEFI_START&&p.t<=TOTALDEFI_END)),total=all.length;
- if(defiLongRange())return {rows:all,all,first:0};
+ const all=nativeCapBuckets(selected),total=all.length;
  const maxPoints=Math.min(total,Math.max(5,nativeCapChart.visibleCount||total));
  nativeCapChart.shift=Math.min(Math.max(0,nativeCapChart.shift),Math.max(0,total-maxPoints));
  const first=Math.max(0,total-maxPoints-nativeCapChart.shift);
@@ -1348,16 +1345,16 @@ function drawNativeCapChart(){
  const c=canvas.getContext('2d');if(!c)return;
  c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,w,h);
  const {rows,all}=nativeCapWindow(),original=nativeCapChart.data[currentGlobalCapChart]||[];
- const fullDeFi=defiLongRange(),subtitle=$('#globalCapFullRangeStatus'),focus=$('[data-defi-focus]');
- if(subtitle)subtitle.textContent=fullDeFi?'Periodo richiesto: 08 mag 2017 – 07 nov 2026 · nessuna candela inventata per gli anni mancanti':'Grafico nativo · dati osservati · rotella e pulsanti per lo zoom';
- if(focus)focus.hidden=currentGlobalCapChart!=='TOTALDEFI';
+ const subtitle=$('#globalCapFullRangeStatus');
+ if(subtitle)subtitle.textContent=currentGlobalCapChart==='TOTALDEFI'?
+  'Grafico completo dei dati DeFi disponibili · vista a larghezza intera · zoom e trascinamento':
+  'Grafico nativo · dati osservati · rotella e pulsanti per lo zoom';
  const stats=$('#globalCapChartStats'),source=$('#globalCapHistorySource');
  if(stats){
   if(original.length){
    const first=original[0],last=original[original.length-1],prior=original[original.length-2];
    const difference=prior?(last[1]/prior[1]-1)*100:null;
-   stats.innerHTML=(currentGlobalCapChart==='TOTALDEFI'?'<div><small>Periodo richiesto</small><strong>08 mag 2017 – 07 nov 2026</strong></div>':'')+
-   '<div><small>Ultimo dato osservato</small><strong>'+nativeCapUsd(last[1])+'</strong></div>'+
+   stats.innerHTML='<div><small>Ultimo dato osservato</small><strong>'+nativeCapUsd(last[1])+'</strong></div>'+
    '<div><small>Variazione tra osservazioni</small><strong class="'+(difference>0?'color-up':difference<0?'color-down':'')+'">'+
    (difference===null?'—':(difference>=0?'+':'')+difference.toFixed(2)+'%')+'</strong></div>'+
    '<div><small>Periodo disponibile</small><strong>'+nativeCapDate(first[0])+' – '+nativeCapDate(last[0])+'</strong></div>';
@@ -1365,7 +1362,7 @@ function drawNativeCapChart(){
  }
  if(source)source.textContent=(nativeCapChart.sources[currentGlobalCapChart]||'Dati di mercato verificati')+
   ' · Il grafico usa solo le date realmente disponibili. 1D: andamento giornaliero; 1W/1M: candele OHLC dai valori osservati, non estremi intraday.'+
-  (currentGlobalCapChart==='TOTALDEFI'?' Lo storico CoinPaprika usa una composizione di token DeFi diversa dal valore globale CoinGecko nella pillola. Il periodo 2017–2026 è l’intervallo richiesto, non una copertura completa di dati.':'');
+  (currentGlobalCapChart==='TOTALDEFI'?' Il periodo 08 mag 2017 – 07 nov 2026 richiesto non è coperto dalla fonte. Il grafico mostra integralmente i dati verificati disponibili, senza inventare valori. CoinPaprika e CoinGecko usano panieri DeFi diversi.':'');
  const message=nativeCapChart.loading?'Caricamento dello storico verificato…':
  nativeCapChart.error||(!rows.length?'Nessuno storico verificato per questo indice; verranno mostrate le rilevazioni realmente archiviate.':'');
  if(empty){empty.textContent=message;empty.hidden=!message;}
@@ -1376,7 +1373,7 @@ function drawNativeCapChart(){
  const vals=rows.flatMap(x=>[x.l,x.h]);
  let lo=Math.min(...vals),hi=Math.max(...vals);
  const pad=Math.max((hi-lo)*.12,hi*.003);lo=Math.max(0,lo-pad);hi+=pad;
- const x=i=>fullDeFi?L+(rows[i].t-TOTALDEFI_START)/(TOTALDEFI_END-TOTALDEFI_START)*PW:L+(i+.5)*PW/rows.length;
+ const x=i=>L+(i+.5)*PW/rows.length;
  const y=v=>T+(hi-v)/(hi-lo)*PH;
  c.font='11px system-ui,sans-serif';c.textBaseline='middle';
  for(let k=0;k<=5;k++){
@@ -1387,33 +1384,27 @@ function drawNativeCapChart(){
  }
  c.textAlign='center';
  for(let k=0;k<6;k++){
-  if(fullDeFi){
-   const ts=TOTALDEFI_START+(TOTALDEFI_END-TOTALDEFI_START)*k/5;
-   c.fillStyle=colors.muted;c.fillText(String(new Date(ts).getUTCFullYear()),L+PW*k/5,h-17);
-  }else{
-   const pos=Math.min(rows.length-1,Math.floor((rows.length-1)*k/5));
-   c.fillStyle=colors.muted;c.fillText(new Date(rows[pos].t).toLocaleDateString('it-IT',{month:'short',year:'2-digit',timeZone:'UTC'}),x(pos),h-17);
-  }
+  const pos=Math.min(rows.length-1,Math.floor((rows.length-1)*k/5));
+  c.fillStyle=colors.muted;
+  c.fillText(new Date(rows[pos].t).toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:rows.length>50?'2-digit':'numeric',timeZone:'UTC'}),x(pos),h-17);
  }
  c.save();c.beginPath();c.rect(L,T,PW,PH);c.clip();
- if(fullDeFi){
-  const firstX=x(0),emptyW=Math.max(0,firstX-L);
-  c.fillStyle='rgba(129,148,174,.045)';c.fillRect(L,T,emptyW,PH);
-  c.strokeStyle=colors.muted;c.globalAlpha=.65;c.lineWidth=1;c.setLineDash([5,5]);
-  c.beginPath();c.moveTo(firstX,T);c.lineTo(firstX,T+PH);c.stroke();c.setLineDash([]);c.globalAlpha=1;
-  if(emptyW>170){
-   c.textAlign='center';c.fillStyle=colors.muted;c.font='12px system-ui,sans-serif';
-   c.fillText('NESSUNO STORICO VERIFICATO',L+emptyW/2,T+PH*.48);
-   c.font='11px system-ui,sans-serif';
-   c.fillText('08 mag 2017 – 07 ott 2026',L+emptyW/2,T+PH*.48+21);
-  }
- }
+
  if(nativeCapChart.timeframe==='1D'){
-  c.strokeStyle=colors.brand;c.lineWidth=2.2;c.lineJoin='round';
-  c.beginPath();rows.forEach((p,i)=>i===0?c.moveTo(x(i),y(p.c)):c.lineTo(x(i),y(p.c)));c.stroke();
-  if(rows.length===1){c.beginPath();c.arc(x(0),y(rows[0].c),3.5,0,Math.PI*2);c.fillStyle=colors.brand;c.fill();}
+  // Genuine daily observations: fill the native chart width, not the blank 2017–2026 domain.
+  const path=()=>{c.beginPath();rows.forEach((p,i)=>i===0?c.moveTo(x(i),y(p.c)):c.lineTo(x(i),y(p.c)));};
+  const gradient=c.createLinearGradient(0,T,0,T+PH);
+  gradient.addColorStop(0,'rgba(49,148,235,.27)');
+  gradient.addColorStop(1,'rgba(49,148,235,.015)');
+  path();c.lineTo(x(rows.length-1),T+PH);c.lineTo(x(0),T+PH);c.closePath();c.fillStyle=gradient;c.fill();
+  path();c.strokeStyle=colors.brand;c.lineWidth=2.4;c.lineJoin='round';c.lineCap='round';c.stroke();
+  if(rows.length){
+   const lastRow=rows[rows.length-1];
+   c.beginPath();c.arc(x(rows.length-1),y(lastRow.c),3.8,0,Math.PI*2);
+   c.fillStyle=colors.brand;c.fill();
+  }
  }else{
-  const bw=fullDeFi?2:Math.max(1.1,Math.min(17,PW/rows.length*.72));
+  const bw=Math.max(3,Math.min(22,PW/rows.length*.72));
   rows.forEach((p,i)=>{
    c.strokeStyle=c.fillStyle=p.c>=p.o?colors.up:colors.down;
    c.lineWidth=Math.max(.8,Math.min(1.3,bw*.2));
@@ -1424,28 +1415,7 @@ function drawNativeCapChart(){
  const last=rows[rows.length-1];
  c.strokeStyle=colors.brand;c.setLineDash([4,5]);c.lineWidth=.9;c.beginPath();
  c.moveTo(L,y(last.c));c.lineTo(L+PW,y(last.c));c.stroke();c.setLineDash([]);
- if(fullDeFi&&rows.length>1){
-  const iw=Math.min(345,PW*.56),ih=Math.min(195,PH*.48),ox=L+PW-iw-12,oy=T+11;
-  c.fillStyle=nativeCapPalette('--panel','#111d2d');c.fillRect(ox,oy,iw,ih);
-  c.strokeStyle=colors.line;c.lineWidth=1;c.strokeRect(ox,oy,iw,ih);
-  c.fillStyle=colors.text;c.font='bold 10px system-ui,sans-serif';c.textAlign='left';
-  c.fillText('INGRANDIMENTO DATI REALI',ox+12,oy+16);
-  c.fillStyle=colors.muted;c.font='10px system-ui,sans-serif';
-  c.fillText(nativeCapDate(rows[0].t)+' – '+nativeCapDate(rows[rows.length-1].t),ox+12,oy+30);
-  const x2=i=>ox+14+(i+.5)*(iw-28)/rows.length;
-  const y2=v=>oy+43+(hi-v)/(hi-lo)*(ih-63);
-  if(nativeCapChart.timeframe==='1D'){
-   c.beginPath();rows.forEach((p,i)=>i?c.lineTo(x2(i),y2(p.c)):c.moveTo(x2(i),y2(p.c)));
-   c.strokeStyle=colors.brand;c.lineWidth=2;c.stroke();
-  }else{
-   const cw=Math.max(2,Math.min(12,(iw-28)/rows.length*.66));
-   rows.forEach((p,i)=>{
-    c.strokeStyle=c.fillStyle=p.c>=p.o?colors.up:colors.down;
-    c.lineWidth=1;c.beginPath();c.moveTo(x2(i),y2(p.h));c.lineTo(x2(i),y2(p.l));c.stroke();
-    c.fillRect(x2(i)-cw/2,y2(Math.max(p.o,p.c)),cw,Math.max(1.4,Math.abs(y2(p.o)-y2(p.c))));
-   });
-  }
- }
+
  if(nativeCapChart.hover!==null&&nativeCapChart.hover<rows.length){
   const pos=nativeCapChart.hover,p=rows[pos];
   c.strokeStyle=colors.muted;c.lineWidth=.8;c.setLineDash([3,4]);c.beginPath();
@@ -1461,10 +1431,6 @@ function nativeCapAttach(){
  const tip=$('#globalCapChartTooltip');
  host.addEventListener('wheel',e=>{
   e.preventDefault();
-  if(defiLongRange()){
-   if(e.deltaY<0){nativeCapChart.fullDeFiHistory=false;nativeCapChart.range='30D';nativeCapChart.visibleCount=null;nativeCapChart.shift=0;paintGlobalCapChart();}
-   return;
-  }
   const total=nativeCapWindow().all.length;
   if(total<6)return;
   const existing=nativeCapChart.visibleCount||total;
@@ -1481,17 +1447,11 @@ function nativeCapAttach(){
   const view=nativeCapWindow(),count=view.rows.length,pw=Number(host.dataset.plotWidth)||bounds.width-100;
   if(!count)return;
   if(nativeCapChart.drag){
-   if(defiLongRange()){nativeCapChart.drag=null;return;}
    nativeCapChart.shift=Math.max(0,Math.round(nativeCapChart.drag.shift+(e.clientX-nativeCapChart.drag.x)*count/pw));
    nativeCapChart.hover=null;if(tip)tip.hidden=true;drawNativeCapChart();return;
   }
   const left=Number(host.dataset.plotLeft)||16;
-  let pos=Math.max(0,Math.min(count-1,Math.floor((x-left)/pw*count)));
-  if(defiLongRange()){
-   const when=TOTALDEFI_START+Math.max(0,Math.min(1,(x-left)/pw))*(TOTALDEFI_END-TOTALDEFI_START);
-   if(when<view.rows[0].t-86400000){nativeCapChart.hover=null;if(tip)tip.hidden=true;drawNativeCapChart();return;}
-   pos=view.rows.reduce((best,r,i)=>Math.abs(r.t-when)<Math.abs(view.rows[best].t-when)?i:best,0);
-  }
+  const pos=Math.max(0,Math.min(count-1,Math.floor((x-left)/pw*count)));
   nativeCapChart.hover=pos;drawNativeCapChart();
   if(tip){
    const p=view.rows[pos];
@@ -1523,9 +1483,8 @@ function paintGlobalCapChart(){
 function toggleGlobalCapChart(id){
  if(state.page!=='global'||!Object.hasOwn(GLOBAL_CAP_CHART_NAMES,id))return;
  currentGlobalCapChart=currentGlobalCapChart===id?null:id;
- nativeCapChart.timeframe='1W';
+ nativeCapChart.timeframe=id==='TOTALDEFI'?'1D':'1W';
  nativeCapChart.range='ALL';nativeCapChart.visibleCount=null;nativeCapChart.shift=0;nativeCapChart.hover=null;
- nativeCapChart.fullDeFiHistory=id==='TOTALDEFI';
  paintGlobalCapChart();
  if(currentGlobalCapChart)$('#globalCryptoHistory')?.scrollIntoView({block:'nearest',behavior:'smooth'});
 }
@@ -5499,25 +5458,16 @@ function setupEvents(){
   const range=e.target.closest('[data-cap-range]');
   if(range&&['30D','90D','1Y','ALL'].includes(range.dataset.capRange)){
    nativeCapChart.range=range.dataset.capRange;nativeCapChart.visibleCount=null;nativeCapChart.shift=0;
-   nativeCapChart.fullDeFiHistory=currentGlobalCapChart==='TOTALDEFI'&&range.dataset.capRange==='ALL';
    nativeCapChart.hover=null;paintGlobalCapChart();return;
-  }
-  if(e.target.closest('[data-defi-focus]')&&currentGlobalCapChart==='TOTALDEFI'){
-   nativeCapChart.fullDeFiHistory=false;nativeCapChart.range='30D';nativeCapChart.visibleCount=null;nativeCapChart.shift=0;nativeCapChart.hover=null;paintGlobalCapChart();return;
   }
   const zoom=e.target.closest('[data-cap-zoom]');
   if(zoom){
-   if(defiLongRange()){
-    if(zoom.dataset.capZoom==='in'){nativeCapChart.fullDeFiHistory=false;nativeCapChart.range='30D';nativeCapChart.visibleCount=null;nativeCapChart.shift=0;paintGlobalCapChart();}
-    return;
-   }
    const count=nativeCapWindow().all.length;
    nativeCapChart.visibleCount=Math.min(count,Math.max(5,Math.round((nativeCapChart.visibleCount||count)*(zoom.dataset.capZoom==='in'?.7:1.4))));
    nativeCapChart.hover=null;paintGlobalCapChart();return;
   }
   if(e.target.closest('[data-cap-reset]')){
    nativeCapChart.range='ALL';nativeCapChart.visibleCount=null;nativeCapChart.shift=0;nativeCapChart.hover=null;
-   nativeCapChart.fullDeFiHistory=currentGlobalCapChart==='TOTALDEFI';
    paintGlobalCapChart();return;
   }
  });
