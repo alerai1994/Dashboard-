@@ -2331,20 +2331,34 @@ body .topbar .live-clock strong{
 .crypto-etf-listing-note{margin:2px 0 0;font-size:10px;line-height:1.5;color:var(--muted);border-top:1px solid var(--line-soft);padding-top:9px}
 
 
-/* Expandable historical CRYPTOCAP market chart. */
+
+/* Original Vertex chart UI — no embedded TradingView graphics. */
 .global-crypto-cap-pill{font:inherit;cursor:pointer;transition:border-color .18s ease,background .18s ease}
-.global-crypto-cap-pill:hover,.global-crypto-cap-pill.is-active{background:var(--surface);border-color:var(--brand)}
+.global-crypto-cap-pill:hover,.global-crypto-cap-pill.is-active{border-color:var(--brand);background:var(--surface)}
 .global-crypto-cap-pill.is-active{box-shadow:inset 0 0 0 1px var(--brand)}
-.global-crypto-history{min-width:0;margin:0 0 14px;padding:15px;overflow:hidden}
-.global-crypto-history-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:12px}
-.global-crypto-history-header h2{font-size:18px;line-height:1.2;font-weight:750;margin:4px 0}
-.global-crypto-history-header p,.global-crypto-history-source{font-size:11px;color:var(--muted);line-height:1.5;margin:3px 0}
-.global-crypto-history-actions{display:flex;align-items:center;gap:9px}
-.global-crypto-history-actions a{font-size:11px;font-weight:700;color:var(--brand);text-decoration:none;padding:9px 11px;border-radius:8px;border:1px solid var(--line)}
-.global-crypto-history-actions a:hover{text-decoration:underline}
-.global-crypto-history-actions button{height:35px;width:35px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--text)}
-.global-crypto-history-chart{height:clamp(420px,50vw,600px);min-height:420px;width:100%;border-radius:10px;border:1px solid var(--line-soft);background:var(--panel);overflow:hidden}
-.global-crypto-history-chart tv-advanced-chart{display:block;height:100%;width:100%;min-height:420px}
-.global-crypto-history-chart>p{padding:18px;font-size:12px;color:var(--muted)}
-.global-crypto-history-source{margin-top:9px;font-size:10px}
-@media(max-width:650px){.global-crypto-history{padding:10px}.global-crypto-history-header h2{font-size:15px}.global-crypto-history-actions{width:100%;justify-content:space-between}.global-crypto-history-chart{height:465px}}
+.global-crypto-history{min-width:0;margin:0 0 15px;padding:16px;overflow:hidden}
+.global-crypto-history-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:13px}
+.global-crypto-history-header .eyebrow{font-size:10px;font-weight:800;letter-spacing:.12em;color:var(--brand)}
+.global-crypto-history-header h2{font-size:20px;font-weight:800;margin:6px 0 5px}
+.global-crypto-history-header p{font-size:11px;color:var(--muted);line-height:1.5;margin:0}
+.global-crypto-history-actions{display:flex;align-items:center;gap:5px}
+.global-crypto-history-actions button{height:34px;min-width:34px;background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:8px;font-size:14px;cursor:pointer}
+.global-crypto-history-actions button:hover{border-color:var(--brand)}
+.global-crypto-history-toolbar{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:9px 0 14px}
+.global-cap-chart-tabs{display:flex;gap:4px;background:var(--surface);padding:3px;border-radius:9px;border:1px solid var(--line-soft)}
+.global-cap-chart-tabs button{border:0;padding:6px 10px;background:transparent;color:var(--muted);font-size:11px;font-weight:780;border-radius:6px;cursor:pointer}
+.global-cap-chart-tabs button.active{background:var(--brand);color:#fff}
+.global-cap-chart-stats{display:flex;align-items:flex-end;gap:23px;flex-wrap:wrap;padding:5px 0 14px}
+.global-cap-chart-stats>div{display:grid;gap:5px}
+.global-cap-chart-stats small{font-size:10px;color:var(--muted)}
+.global-cap-chart-stats strong{font-size:14px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums}
+.global-cap-chart-stats .color-up{color:#19b891}
+.global-cap-chart-stats .color-down{color:#f06478}
+.global-crypto-history-chart{position:relative;height:clamp(380px,45vw,570px);width:100%;min-height:380px;background:var(--surface);border:1px solid var(--line-soft);border-radius:11px;overflow:hidden;touch-action:pan-y}
+.global-crypto-history-chart canvas{display:block;max-width:none;cursor:crosshair}
+.global-cap-chart-empty{position:absolute;inset:9px;display:grid;place-items:center;text-align:center;padding:25px;background:var(--surface);color:var(--muted);font-size:12px;line-height:1.5}
+.global-cap-chart-tooltip{position:absolute;z-index:4;display:grid;gap:5px;min-width:175px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--panel);box-shadow:0 12px 30px #0003;pointer-events:none}
+.global-cap-chart-tooltip strong{font-size:12px;color:var(--text)}
+.global-cap-chart-tooltip span{font-size:10px;color:var(--muted)}
+.global-crypto-history-source{font-size:10px;color:var(--muted);line-height:1.6;margin:10px 2px 0}
+@media(max-width:650px){.global-crypto-history{padding:10px}.global-crypto-history-header h2{font-size:16px}.global-cap-chart-tabs button{padding:6px 7px}.global-crypto-history-chart{height:430px}.global-cap-chart-stats{gap:13px}}
