@@ -1485,6 +1485,49 @@ function nativeCapWindow(){
 function nativeCapPalette(key,fallback){
  return getComputedStyle(document.body).getPropertyValue(key).trim()||fallback;
 }
+/* Fixed right-axis value flag: triangle pointing to the exact selected/latest
+   graph value. Used by all seven Global chart types and updated on hover/live. */
+function vertexDrawChartValueFlag(ctx,canvasWidth,chartRight,valueY,label,color){
+ if(!Number.isFinite(valueY)||typeof label!=='string'||!label.length)return;
+ const right=Math.max(10,Math.min(canvasWidth-12,chartRight));
+ const start=right+3;
+ const available=canvasWidth-start-5;
+ if(available<26)return;
+ const fontSize=available<73?9:10;
+ ctx.save();
+ ctx.font='700 '+fontSize+'px system-ui,sans-serif';
+ let text=label;
+ let measured=ctx.measureText(text).width;
+ if(measured>available-17){
+  while(text.length>2&&ctx.measureText(text+'…').width>available-17)
+   text=text.slice(0,-1);
+  text+='…';
+  measured=ctx.measureText(text).width;
+ }
+ const width=Math.min(available,Math.max(30,measured+14));
+ const height=23;
+ const y=Math.max(5,Math.min(valueY,canvasWidth===0?5:1e6));
+ const top=Math.max(5,Math.min(y-height/2,
+  Math.max(5,(ctx.canvas?.height||0)>0?(ctx.canvas.height/(window.devicePixelRatio||1))-height-5:y-height/2)));
+ const mid=top+height/2;
+ const x=start+7;
+ ctx.beginPath();
+ ctx.moveTo(start,mid);
+ ctx.lineTo(x,top+2);
+ ctx.lineTo(x+width-6,top+2);
+ ctx.quadraticCurveTo(x+width,top+2,x+width,top+8);
+ ctx.lineTo(x+width,top+height-8);
+ ctx.quadraticCurveTo(x+width,top+height-2,x+width-6,top+height-2);
+ ctx.lineTo(x,top+height-2);
+ ctx.closePath();
+ ctx.fillStyle=color||'#2387da';
+ ctx.fill();
+ ctx.fillStyle='#ffffff';
+ ctx.textAlign='left';ctx.textBaseline='middle';
+ ctx.fillText(text,x+5,mid);
+ ctx.restore();
+}
+window.__vertexDrawChartValueFlag=vertexDrawChartValueFlag;
 function drawNativeCapChart(){
  const canvas=$('#globalCapCanvas'),host=$('#globalCryptoHistoryChart'),empty=$('#globalCapChartEmpty');
  if(!canvas||!host||!currentGlobalCapChart||state.page!=='global')return;
@@ -1591,6 +1634,10 @@ function drawNativeCapChart(){
   c.moveTo(x(pos),T);c.lineTo(x(pos),T+PH);c.moveTo(L,y(p.c));c.lineTo(L+PW,y(p.c));c.stroke();c.setLineDash([]);
  }
  c.restore();c.fillStyle=colors.muted;c.textAlign='left';c.font='10px system-ui,sans-serif';c.fillText('USD · CAPITALIZZAZIONE',L,14);
+ const valueIndex=nativeCapChart.hover!==null&&nativeCapChart.hover>=0&&nativeCapChart.hover<rows.length?
+  nativeCapChart.hover:rows.length-1;
+ const valuePoint=rows[valueIndex];
+ vertexDrawChartValueFlag(c,w,L+PW,y(valuePoint.c),nativeCapUsd(valuePoint.c),colors.brand);
  host.dataset.plotWidth=String(PW);host.dataset.plotLeft=String(L);host.dataset.viewCount=String(rows.length);
 }
 function nativeCapAttach(){
