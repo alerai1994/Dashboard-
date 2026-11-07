@@ -112,11 +112,14 @@ def yahoo_fast(pair):
 def etf_fast(pair):
     row = yahoo_fast(pair)
     if pair[0] == "etf-ainj" and positive(row.get("value")) is None:
-        # Fall back to the Paris listing only when its price and EUR currency
-        # are actually returned by Yahoo.
         alternate = yahoo_fast(("etf-ainj", "AINJ.PA"))
         if positive(alternate.get("value")):
             return alternate
+    if pair[0] == "etf-ainj-paris" and positive(row.get("value")) is None:
+        # Public exchange quotes can be 15 minutes delayed, never call them live.
+        verified = BACKEND["ainj_paris_public_quote"]()
+        if verified is not None:
+            return verified
     return row
 
 
