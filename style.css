@@ -2652,3 +2652,14 @@ html[data-vertex-font] body .settings-font-grid .settings-font-option.font-previ
 html[data-vertex-font] body .settings-font-grid .settings-font-option.font-preview-lora *{font-family:'Lora',Georgia,serif!important}
 html[data-vertex-font] body .settings-font-grid .settings-font-option.font-preview-nunito,
 html[data-vertex-font] body .settings-font-grid .settings-font-option.font-preview-nunito *{font-family:'Nunito Sans',Arial,sans-serif!important}
+
+/* v189: Match Watchlist price/variation numerals to the selected Settings
+   font sample (600 weight). Original up/down colors remain unchanged. */
+html[data-vertex-font] .watchlist-data-table .watchlist-value.watchlist-price-number,
+html[data-vertex-font] .watchlist-data-table .watchlist-value.watchlist-change-number{
+ font-family:var(--vertex-font)!important;
+ font-weight:600!important;
+ font-variant-numeric:normal!important;
+ font-feature-settings:normal!important;
+ font-kerning:auto;
+}
