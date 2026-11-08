@@ -6202,9 +6202,8 @@ function vertexRomeDayKey(now=new Date()){
 function checkVertexRomeMidnight(){
  const next=vertexRomeDayKey();
  if(!vertexRomeMarketDay){vertexRomeMarketDay=next;return;}
- if(next===vertexRomeMarketDay)return;
+ if(next===vertexRomeMarketDay||document.hidden)return;
  vertexRomeMarketDay=next;
- if(document.hidden)return; // Will refresh when the page becomes visible again.
  refreshVertexMarketDay();
 }
 function refreshVertexMarketDay(){
@@ -6223,18 +6222,17 @@ function refreshVertexMarketDay(){
   loadChartHistory(true);
   scheduleDetailChartDraw();
  }
+ // Make every cached Global series eligible for fresh source observations.
+ capArchivePromise=null;
+ for(const id of ['TOTAL','TOTAL2','TOTAL3'])
+  nativeCapChart.indexRequested[id]=false;
  if(state.page==='global'){
-  // Re-fetch both source archives; the last real observation is preserved.
-  capArchivePromise=null;
   loadGlobalCapArchivedPills();
-  for(const id of ['TOTAL','TOTAL2','TOTAL3'])
-   nativeCapChart.indexRequested[id]=false;
   loadNativeCapHistory(true);
   refreshGlobalCryptoCaps(true);
-  if(typeof window.__vertexRefreshSpecialGlobal==='function')
-   window.__vertexRefreshSpecialGlobal();
-  paintGlobalCapChart();
- }
+ }else nativeCapChart.loaded=false; // Fetch current history when Global next opens.
+ if(typeof window.__vertexRefreshSpecialGlobal==='function')
+  window.__vertexRefreshSpecialGlobal(state.page==='global');
  if(state.page==='etf'){
   etfHistory.lastFetch=0;
   loadCryptoEtfHistory();
