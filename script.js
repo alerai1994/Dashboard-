@@ -4592,8 +4592,9 @@ function fibControls(){
   '<button type="button" data-fib-clear="1" class="chart-fib-button">Cancella</button>'+
   '</div>'+
   '<p id="chartFibStatus" class="chart-fib-status" role="status" aria-live="polite">'+esc(pickText)+
-  (active?' · Scala graduale non lineare: prezzi e livelli visibili senza comprimere le candele.':'')+
-  ' <span class="chart-fib-build" title="Versione del grafico">· Layout v196</span></p></section>';
+  (active?(fibNativeViewport()?' · Vista completa invariata: selezione senza zoom.':
+   ' · Scala graduale non lineare: prezzi e livelli visibili senza comprimere le candele.'):'')+
+  ' <span class="chart-fib-build" title="Versione del grafico">· Layout v199</span></p></section>';
 }
 /* Image-matched Fibonacci: colored levels, left-side price labels, translucent
    bands and logarithmic extensions. This is a visual overlay; source OHLC is
