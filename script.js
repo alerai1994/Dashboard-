@@ -4051,6 +4051,8 @@ function render(){
   console.error('Vertex page render failed:',err);
   main.innerHTML='<section class="panel" style="padding:24px"><h2>Impossibile mostrare questa sezione</h2><p>Riprova a ricaricare la pagina. I servizi dati sono indipendenti dalla dashboard.</p></section>';
  }
+ // Rows are re-created during navigation; apply the saved font to fresh quotes.
+ syncVertexPriceTypography(main);
  const globalCapHeader=$('#globalCryptoCaps');
  if(globalCapHeader){
   globalCapHeader.hidden=state.page!=='global';
@@ -4149,6 +4151,27 @@ const VERTEX_FONT_FAMILIES=Object.freeze({
  lora:'"Lora",Georgia,serif',
  nunito:'"Nunito Sans",Arial,sans-serif'
 });
+const VERTEX_PRICE_FONT_SELECTOR=[
+ '.watchlist-data-table .watchlist-price-cell',
+ '.watchlist-data-table .watchlist-change-cell',
+ '.watchlist-data-table .watchlist-price-number',
+ '.watchlist-data-table .watchlist-change-number',
+ '.asset-price','.asset-change','.mini-price','.mini-change',
+ '.tech-asset-value','.tech-asset-change',
+ '.quote-price','.market-chart-values','.region-change',
+ '[data-portfolio-price]','[data-portfolio-value]','#dialogPrice'
+].join(',');
+function syncVertexPriceTypography(root=document){
+ if(!root?.querySelectorAll)return;
+ const font=Object.hasOwn(VERTEX_FONT_FAMILIES,state.fontStyle)?state.fontStyle:'inter';
+ const family=VERTEX_FONT_FAMILIES[font];
+ root.querySelectorAll(VERTEX_PRICE_FONT_SELECTOR).forEach(node=>{
+  // Explicitly style the numbers, not only the label or their parent table.
+  node.style.setProperty('font-family',family,'important');
+  node.style.setProperty('font-variant-numeric','normal','important');
+  node.style.setProperty('font-feature-settings','normal','important');
+ });
+}
 function applyFontStyle(){
  const font=Object.hasOwn(VERTEX_FONT_FAMILIES,state.fontStyle)?
   state.fontStyle:'inter';
@@ -4162,6 +4185,7 @@ function applyFontStyle(){
   document.body.dataset.vertexFont=font;
   document.body.style.fontFamily=family;
  }
+ syncVertexPriceTypography();
 }
 function vertexCanvasFont(size=11,weight='normal'){
  const family=VERTEX_FONT_FAMILIES[state.fontStyle]||VERTEX_FONT_FAMILIES.inter;
