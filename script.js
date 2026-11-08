@@ -6287,6 +6287,20 @@ function startVertexApp(){
   }
  },5000);
  try{render()}finally{dismissVertexBoot()}
+ // Repaint live numbers and canvas labels when the user's saved font finishes loading.
+ // Without this, a cached chart can retain the fallback font until manually refreshed.
+ if(document.fonts&&typeof document.fonts.load==='function'){
+  const savedFont=state.fontStyle;
+  document.fonts.load('400 16px "'+VERTEX_FONTS[savedFont].name+'"',
+   'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 €%.,+-')
+   .then(()=>{
+    if(state.fontStyle!==savedFont)return;
+    applyFontStyle();
+    if(state.page==='global')paintGlobalCapChart();
+    if(state.page==='markets'||state.page==='workspace')updateMarketsSnapshotCharts();
+    if(state.dialogId)scheduleDetailChartDraw();
+   }).catch(()=>{});
+ }
  fetchQuotes();
  connectCryptoStream();
  const fxLibrary=$('#fxSignalrLibrary');
