@@ -2609,3 +2609,15 @@ html[data-vertex-font] body :is(
  min-width:0;
  margin:0;
 }
+
+/* v186: Restore font selection consistently across Vertex after refreshes.
+   The six font-choice cards intentionally keep their own preview typeface. */
+html[data-vertex-font] body :is(
+ h1,h2,h3,h4,h5,h6,p,span,strong,b,em,small,label,
+ button,input,select,textarea,option,summary,td,th,li,a,time,
+ .eyebrow,.asset-price,.asset-change,.quote-price,
+ .watchlist-value,.watchlist-price-number,.watchlist-change-number,
+ .global-crypto-cap-pill,.global-cap-chart-stats
+):not(.settings-font-grid):not(.settings-font-grid *){
+ font-family:var(--vertex-font)!important;
+}
