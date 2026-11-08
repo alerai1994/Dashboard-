@@ -2518,3 +2518,24 @@ html[data-vertex-font] .watchlist-data-table .watchlist-change-number{
  font-feature-settings:normal!important;
  font-kerning:auto;
 }
+
+/* Explicit font glyphs for Watchlist live price and percentage values.
+   The dedicated spans survive WebSocket and REST updates; matching the chosen
+   family is independent of numeric table defaults and fallback inheritance. */
+html[data-vertex-font] .watchlist-data-table .watchlist-value{
+ display:inline-block;
+ font-family:var(--vertex-font)!important;
+ font-weight:700;
+ font-size:1em;
+ font-variant-numeric:proportional-nums!important;
+ font-feature-settings:"pnum" 1!important;
+ letter-spacing:normal;
+ line-height:1.35;
+ white-space:nowrap;
+}
+html[data-vertex-font="inter"] .watchlist-data-table .watchlist-value{font-family:'Inter',Arial,sans-serif!important}
+html[data-vertex-font="roboto"] .watchlist-data-table .watchlist-value{font-family:'Roboto',Arial,sans-serif!important}
+html[data-vertex-font="poppins"] .watchlist-data-table .watchlist-value{font-family:'Poppins',Arial,sans-serif!important}
+html[data-vertex-font="montserrat"] .watchlist-data-table .watchlist-value{font-family:'Montserrat',Arial,sans-serif!important}
+html[data-vertex-font="lora"] .watchlist-data-table .watchlist-value{font-family:'Lora',Georgia,serif!important}
+html[data-vertex-font="nunito"] .watchlist-data-table .watchlist-value{font-family:'Nunito Sans',Arial,sans-serif!important}
