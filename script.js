@@ -4879,7 +4879,9 @@ function chartSupportsRanges(asset){
 function selectChartRange(range){
  const a=ASSET_BY_ID[state.dialogId];
  if(!chartSupportsRanges(a)||!CHART_PERIOD_BY_ID[range])return;
+ chartFib.mode='idle';chartFib.draft=null;chartFib.view=null;
  chartRange=range;
+ if(chartFib.enabled&&!fibEntry()){chartFib.anchors[fibKey()]={method:'auto'};fibSave();}
  state.chartShift=0;state.chartHover=null;
  document.querySelectorAll('#assetDialog [data-chart-range]').forEach(button=>{
   const active=button.dataset.chartRange===range;
@@ -5461,6 +5463,8 @@ function openAsset(id){
  chartRange='1D';chartHoverForex=false;
  chartSeries={id:null,range:null,candles:[],source:'',loading:false,error:'',partial:false};
  state.dialogId=id;state.chartShift=0;state.chartHover=null;
+ chartFib.mode='idle';chartFib.draft=null;chartFib.view=null;
+ if(chartFib.enabled&&!fibEntry()){chartFib.anchors[fibKey()]={method:'auto'};fibSave();}
  const dlg=$('#assetDialog');
  dlg.classList.toggle('market-fullscreen',chartSupportsRanges(a));
  refreshDialog();
@@ -5506,6 +5510,7 @@ function refreshDialog(){
  '<div class="chart-toolbar"><div class="chart-legend"><span><i style="background:#74b2ff"></i>EMA 12</span><span><i style="background:#f1ba55"></i>EMA 26</span><span><i style="background:#b382ee"></i>EMA 50</span><span><i style="background:#ef7192"></i>EMA 200</span></div><span class="badge"'+(isCrypto?' id="chartHistoryBadge" role="status"':'')+'>'+(isCrypto?'Periodo '+chartRange:(candleAvailable?'Candele OHLC · storico':'Candele OHLC non disponibili'))+'</span></div>'+
  '<div class="chart-coverage" id="chartHistoryDates" role="status" aria-live="polite" hidden></div>'+ 
   '<div class="chart-live-quote-status" id="chartLiveQuoteStatus" role="status" aria-live="off"></div>'+
+ fibControls()+
  '<div class="chart-frame"><canvas id="detailChart" width="900" height="470" role="img" aria-label="Grafico di '+esc(a.name)+', medie mobili e indicatori" tabindex="0"></canvas>'+ 
   '<div class="chart-candle-tooltip" id="chartCandleTooltip" role="status" aria-live="off" hidden></div></div>'+
  '<div class="chart-toolbar chart-time-toolbar"><div class="chart-legend"><span>RSI (14)</span><span>Stochastic RSI (14/14/3/3)</span><span>MACD (12/26/9)</span></div>'+
@@ -5781,6 +5786,7 @@ function drawChart(){
   text(p.label,left+3,p.top+11,'left',9);
  }
  if(!sample.length){
+  chartFib.view=null;
   const message=chartSeries.loading&&chartSeries.id===state.dialogId?
    'Caricamento storico '+chartRange+'…':'Candele OHLC non disponibili per il periodo selezionato.';
   text(message,width/2,Math.min(130,height/3),'center',13);
@@ -5828,6 +5834,9 @@ function drawChart(){
    if(!started){ctx.moveTo(x,y);started=true}else ctx.lineTo(x,y);
   }
   ctx.strokeStyle=a.color;ctx.lineWidth=1.6;ctx.stroke();
+ });
+ fibDraw(ctx,candles,start,end,{
+  width,height,left,right,top:regions[0].top,bottom:regions[0].bottom,min,max,start,end
  });
  for(let i=0;i<=4;i++){const v=min+(max-min)*i/4;text(v.toLocaleString('it-IT',{maximumFractionDigits:Math.abs(v)>=10?1:3}),width-right+(fxCandle?32:7),yPrice(v)+4,'left',10)}
  const drawIndicator=(values,yMap,stroke,widthLine=1.35)=>{
@@ -5930,6 +5939,13 @@ function setupCanvasInteractions(){
  dlg.addEventListener('pointerdown',e=>{
   if(e.target.id!=='detailChart')return;
   const canvas=e.target;
+  if(chartFib.mode==='picking'){
+   if(e.pointerType==='touch')e.preventDefault();
+   canvas.dataset.fibDownX=String(e.clientX);
+   canvas.dataset.fibDownY=String(e.clientY);
+   try{canvas.setPointerCapture(e.pointerId)}catch(_err){}
+   return;
+  }
   if(e.pointerType==='touch')e.preventDefault();
   try{canvas.setPointerCapture(e.pointerId)}catch(_err){}
   canvas.dataset.downX=String(e.clientX);
@@ -5939,6 +5955,7 @@ function setupCanvasInteractions(){
  dlg.addEventListener('pointermove',e=>{
   if(e.target.id!=='detailChart')return;
   const canvas=e.target;
+  if(chartFib.mode==='picking')return;
   if(canvas.hasPointerCapture?.(e.pointerId)&&canvas.dataset.downX!==undefined){
    const rect=canvas.getBoundingClientRect(),candles=getCandles(state.dialogId);
    const width=Math.max(360,Math.floor(rect.width));
@@ -5953,6 +5970,13 @@ function setupCanvasInteractions(){
  });
  dlg.addEventListener('pointerup',e=>{
   if(e.target.id!=='detailChart')return;
+  if(chartFib.mode==='picking'){
+   const x=Number(e.target.dataset.fibDownX),y=Number(e.target.dataset.fibDownY);
+   delete e.target.dataset.fibDownX;delete e.target.dataset.fibDownY;
+   if(Number.isFinite(x)&&Number.isFinite(y)&&Math.hypot(e.clientX-x,e.clientY-y)<12)
+    fibTap(e,e.target);
+   return;
+  }
   delete e.target.dataset.downX;
   delete e.target.dataset.startShift;
   // Releasing a finger or mouse button clears the floating candle box.
@@ -5960,12 +5984,16 @@ function setupCanvasInteractions(){
  });
  dlg.addEventListener('pointercancel',e=>{
   if(e.target.id!=='detailChart')return;
+  if(chartFib.mode==='picking'){
+   delete e.target.dataset.fibDownX;delete e.target.dataset.fibDownY;return;
+  }
   delete e.target.dataset.downX;
   delete e.target.dataset.startShift;
   state.chartHover=null;chartHoverForex=false;scheduleDetailChartDraw();
  });
  dlg.addEventListener('pointerleave',e=>{
   if(e.target.id!=='detailChart')return;
+  if(chartFib.mode==='picking')return;
   // No lingering box after the cursor leaves the candle area.
   if(e.target.hasPointerCapture?.(e.pointerId))return;
   state.chartHover=null;chartHoverForex=false;scheduleDetailChartDraw();
@@ -6380,6 +6408,10 @@ function setupEvents(){
   if(e.target===$('#assetDialog')){closeAsset();return;}
   const btn=e.target.closest('button');
   if(!btn)return;
+  if(btn.dataset.fibToggle!==undefined){fibEnable();return;}
+  if(btn.dataset.fibAuto!==undefined){fibAuto();return;}
+  if(btn.dataset.fibPick!==undefined){fibPick();return;}
+  if(btn.dataset.fibClear!==undefined){fibClear();return;}
   if(btn.dataset.chartRange){selectChartRange(btn.dataset.chartRange);return;}
   if(btn.dataset.chartRefresh){loadChartHistory(true);return;}
   if(btn.dataset.pan){
@@ -6395,6 +6427,47 @@ function setupEvents(){
   }
   $('#assetDialog').classList.remove('market-fullscreen');
   state.dialogId=null;state.chartHover=null;
+  chartFib.mode='idle';chartFib.draft=null;chartFib.view=null;
+ });
+
+ // Controls live on the detail dialog and preserve settings during price updates.
+ $('#assetDialog').addEventListener('toggle',e=>{
+  if(e.target.classList?.contains('chart-fib-settings'))
+   chartFib.settingsOpen=e.target.open;
+ },true);
+ $('#assetDialog').addEventListener('input',e=>{
+  const control=e.target;
+  if(control.dataset.fibColor!==undefined&&/^#[0-9a-f]{6}$/i.test(control.value)){
+   chartFib.color=control.value;fibSave();scheduleDetailChartDraw();return;
+  }
+  if(control.dataset.fibOpacity!==undefined){
+   const opacity=Number(control.value);
+   if(!Number.isFinite(opacity))return;
+   chartFib.opacity=Math.min(100,Math.max(15,opacity));
+   const output=$('#chartFibOpacityValue');
+   if(output)output.textContent=chartFib.opacity+'%';
+   fibSave();scheduleDetailChartDraw();return;
+  }
+ });
+ $('#assetDialog').addEventListener('change',e=>{
+  const control=e.target;
+  const attr=control.dataset;
+  if(attr.fibExtend!==undefined)chartFib.extend=control.checked;
+  else if(attr.fibLabels!==undefined)chartFib.labels=control.checked;
+  else if(attr.fibReverse!==undefined)chartFib.reverse=control.checked;
+  else if(attr.fibLevel!==undefined){
+   const ratio=Number(attr.fibLevel);
+   if(!FIB_LEVELS.includes(ratio))return;
+   chartFib.levels=control.checked?
+    FIB_LEVELS.filter(n=>chartFib.levels.includes(n)||n===ratio):
+    chartFib.levels.filter(n=>n!==ratio);
+  }else if(attr.fibPrice!==undefined){
+   const entry=fibEntry(),price=Number(control.value);
+   if(!entry||entry.method!=='manual'||!['a','b'].includes(attr.fibPrice)||
+      !Number.isFinite(price)||price<=0){toast('Inserisci un prezzo valido maggiore di zero.');return;}
+   entry[attr.fibPrice].p=price;
+  }else return;
+  fibSave();scheduleDetailChartDraw();
  });
  $('#dialogWatch').addEventListener('click',()=>state.dialogId&&toggleWatch(state.dialogId));
  setupCanvasInteractions();setupMiniCandleInteractions();
