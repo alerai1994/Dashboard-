@@ -2495,41 +2495,11 @@ html[data-vertex-font] .settings-font-grid .settings-font-option.font-preview-lo
 html[data-vertex-font] .settings-font-grid .settings-font-option.font-preview-nunito,
 html[data-vertex-font] .settings-font-grid .settings-font-option.font-preview-nunito *{font-family:'Nunito Sans',Arial,sans-serif}
 
-/* Live confirmation of the selected letterforms and numerals, using the
-   exact same font family as navigation, prices, tables and canvas labels. */
-.settings-font-active-preview{
- display:flex;flex-direction:column;gap:9px;min-width:0;
- margin-top:16px;padding:15px 17px;
- background:var(--surface);border:1px solid var(--brand);
- border-radius:12px;color:var(--text);
- font-family:var(--vertex-font);
-}
-.settings-font-active-preview .settings-font-active-label{
- font-size:12px;color:var(--muted);font-family:var(--vertex-font);
-}
-.settings-font-active-preview .settings-font-active-label strong{
- color:var(--text);font-size:13px;font-family:var(--vertex-font);
-}
-.settings-font-active-preview .settings-font-active-letters{
- font:600 18px/1.45 var(--vertex-font);
- overflow-wrap:anywhere;letter-spacing:normal;
-}
-.settings-font-active-preview .settings-font-active-numbers{
- font:600 19px/1.45 var(--vertex-font);
- font-variant-numeric:normal;font-feature-settings:normal;
- overflow-wrap:anywhere;letter-spacing:normal;
-}
-.settings-font-active-preview .settings-font-availability{
- font-family:var(--vertex-font);font-size:11px;color:var(--muted);
-}
+/* Distinct, natural numeral shapes in font choice tiles. */
 .settings-font-grid .settings-font-option .settings-font-demo{
- font-variant-numeric:normal;font-feature-settings:normal;
+ font-variant-numeric:normal;
+ font-feature-settings:normal;
  letter-spacing:normal;
-}
-@media(max-width:560px){
- .settings-font-active-preview{padding:13px}
- .settings-font-active-preview .settings-font-active-letters{font-size:15px}
- .settings-font-active-preview .settings-font-active-numbers{font-size:16px}
 }
 
 /* Watchlist numbers use the actual selected typeface, not forced tabular
