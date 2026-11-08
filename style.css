@@ -2631,3 +2631,24 @@ html[data-vertex-font] .watchlist-data-table td.watchlist-change-cell > .watchli
  font-feature-settings:normal!important;
  letter-spacing:normal;
 }
+
+/* v188: Apply the Settings font to EVERY Vertex UI element. */
+/* Match the entire page: navigation, charts' HTML labels, prices, tables,
+   dialogs, buttons, notifications and dynamically generated elements. */
+html[data-vertex-font] body,
+html[data-vertex-font] body *{
+ font-family:var(--vertex-font)!important;
+}
+/* Keep every Settings preview in its OWN typeface, for comparison. */
+html[data-vertex-font] body .settings-font-grid .settings-font-option.font-preview-inter,
+html[data-vertex-font] body .settings-font-grid .settings-font-option.font-preview-inter *{font-family:'Inter',Arial,sans-serif!important}
+html[data-vertex-font] body .settings-font-grid .settings-font-option.font-preview-roboto,
+html[data-vertex-font] body .settings-font-grid .settings-font-option.font-preview-roboto *{font-family:'Roboto',Arial,sans-serif!important}
+html[data-vertex-font] body .settings-font-grid .settings-font-option.font-preview-poppins,
+html[data-vertex-font] body .settings-font-grid .settings-font-option.font-preview-poppins *{font-family:'Poppins',Arial,sans-serif!important}
+html[data-vertex-font] body .settings-font-grid .settings-font-option.font-preview-montserrat,
+html[data-vertex-font] body .settings-font-grid .settings-font-option.font-preview-montserrat *{font-family:'Montserrat',Arial,sans-serif!important}
+html[data-vertex-font] body .settings-font-grid .settings-font-option.font-preview-lora,
+html[data-vertex-font] body .settings-font-grid .settings-font-option.font-preview-lora *{font-family:'Lora',Georgia,serif!important}
+html[data-vertex-font] body .settings-font-grid .settings-font-option.font-preview-nunito,
+html[data-vertex-font] body .settings-font-grid .settings-font-option.font-preview-nunito *{font-family:'Nunito Sans',Arial,sans-serif!important}
