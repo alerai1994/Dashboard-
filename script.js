@@ -4621,7 +4621,7 @@ function fibControls(){
   (active?(picking?' · Selezione punti senza zoom.':manual?
    ' · Livelli 0–4,236 completi · stessa finestra storica.':
    ' · Livelli Fibonacci completi.'):'')+
-  ' <span class="chart-fib-build" title="Versione del grafico">· Layout v201</span></p></section>';
+  ' <span class="chart-fib-build" title="Versione del grafico">· Layout v202</span></p></section>';
 }
 /* Image-matched Fibonacci: colored levels, left-side price labels, translucent
    bands and logarithmic extensions. This is a visual overlay; source OHLC is
@@ -4668,20 +4668,45 @@ function fibGradualScale(candles,start,end,focusLow,focusHigh,top,bottom){
  if(!chartFib.enabled||!(focusHigh>focusLow)||!(bottom>top+80))return null;
  const pair=fibCurrentAnchors(candles,start,end);
  if(!pair?.b)return null;
- const selected=fibCompleteLevels().map(level=>fibLevelPrice(pair,level))
-  .filter(value=>Number.isFinite(value)&&value>0);
+ // Each Fibonacci line gets its own vertical breathing room. The longer
+ // extension intervals receive a larger share of the pane, as in the
+ // reference chart. Price values stay exact; only visual spacing is nonlinear.
+ const selected=fibCompleteLevels()
+  .map(level=>({level,price:fibLevelPrice(pair,level)}))
+  .filter(row=>Number.isFinite(row.price)&&row.price>0)
+  .sort((a,b)=>a.price-b.price);
  if(selected.length<2)return null;
  const dataRange=focusHigh-focusLow;
  const nearLow=Math.max(1e-12,focusLow-dataRange*.045);
  const nearHigh=focusHigh+dataRange*.045;
  const epsilon=(a,b)=>Math.abs(a-b)<=Math.max(1e-18,Math.abs(a)*1e-12,Math.abs(b)*1e-12);
- const stops=[nearLow,nearHigh,...selected].sort((a,b)=>a-b)
+ const stops=[nearLow,nearHigh,...selected.map(row=>row.price)].sort((a,b)=>a-b)
   .filter((value,i,arr)=>i===0||!epsilon(value,arr[i-1]));
  if(stops.length<2)return null;
  const transform=chartFib.logarithmic?x=>Math.log(x):x=>x;
  const length=bottom-top,edgePadding=13;
- // Give each colored level room for its label, including small screens.
- const gap=Math.min(19,Math.max(12,Math.floor((length-2*edgePadding)/Math.max(12,selected.length+5)*.84)));
+ const usable=Math.max(60,length-2*edgePadding);
+ // Minimum spacing remains readable on smaller screens. Between 1.618,
+ // 2.618, 3.618 and 4.236, give the colored lines progressively wider gaps.
+ const levelWeight=(index)=>{
+  if(index<=0)return 1;
+  const prior=selected[index-1].level,current=selected[index].level;
+  const larger=Math.max(prior,current),delta=Math.abs(current-prior);
+  if(larger<=1)return 1;
+  if(larger<=1.272)return 2;
+  if(larger<=1.618)return 2.5;
+  if(larger<=2.618)return 3.4;
+  if(larger<=3.618)return 3.4;
+  return Math.max(2.5,Math.min(3.4,delta*4.5));
+ };
+ const weightAtPrice=price=>{
+  const index=selected.findIndex(row=>epsilon(row.price,price));
+  return index<0?0:levelWeight(index);
+ };
+ const weightSum=selected.reduce((sum,_,index)=>sum+levelWeight(index),0);
+ // Reserve up to 68% of the price pane for clearly separated Fibonacci
+ // levels. The remaining space retains genuine candle movements/EMA shape.
+ const gapUnit=Math.min(22,usable*.68/Math.max(1,weightSum));
  const segments=[];
  let sumFocus=0,sumOuter=0,sumGap=0;
  for(let i=0;i<stops.length-1;i++){
@@ -4691,13 +4716,13 @@ function fibGradualScale(candles,start,end,focusLow,focusHigh,top,bottom){
   const lo=Math.max(a,nearLow),hi=Math.min(b,nearHigh);
   const inside=hi>lo?Math.max(0,transform(hi)-transform(lo)):0;
   const outer=Math.max(0,lengthT-inside);
-  const marker=selected.some(price=>epsilon(price,b))?gap:0;
+  const marker=gapUnit*weightAtPrice(b);
   segments.push({a,b,inside,outer,marker});
   sumFocus+=inside;sumOuter+=outer;sumGap+=marker;
  }
  if(!segments.length)return null;
  const extra=Math.max(5,length-edgePadding*2-sumGap);
- const focusBudget=sumOuter>0?extra*.76:extra;
+ const focusBudget=sumOuter>0?extra*.74:extra;
  const outerBudget=sumOuter>0?extra-focusBudget:0;
  let pixels=0;
  for(const segment of segments){
