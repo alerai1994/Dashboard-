@@ -2663,3 +2663,65 @@ html[data-vertex-font] .watchlist-data-table .watchlist-value.watchlist-change-n
  font-feature-settings:normal!important;
  font-kerning:auto;
 }
+
+
+/* Fibonacci retracement drawing tool · detail candlestick charts. */
+.chart-fib-tools{
+ flex:0 0 auto;width:100%;min-width:0;
+ margin:5px 0 9px;padding:11px 12px;
+ border:1px solid var(--line);border-radius:11px;
+ background:var(--surface);color:var(--text);
+}
+.chart-fib-buttons{display:flex;flex-wrap:wrap;align-items:center;gap:7px}
+.chart-fib-button{
+ min-height:36px;padding:8px 11px;border:1px solid var(--line);
+ border-radius:8px;background:var(--panel);color:var(--text);
+ font-size:12px;font-weight:700;cursor:pointer;
+}
+.chart-fib-button:hover{border-color:var(--brand)}
+.chart-fib-button.is-active{
+ border-color:var(--brand);background:var(--brand);color:#fff;
+}
+.chart-fib-status{margin:7px 1px 0;color:var(--muted);font-size:11px;line-height:1.5}
+.chart-fib-settings{margin-top:8px;border-top:1px solid var(--line);padding-top:7px}
+.chart-fib-settings>summary{
+ display:list-item;width:max-content;max-width:100%;
+ color:var(--text);font-size:12px;font-weight:700;cursor:pointer;
+ padding:5px 2px;
+}
+.chart-fib-settings-body{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ align-items:center;gap:10px;padding:11px 2px 2px;
+ font-size:12px;
+}
+.chart-fib-settings-body>label:not(.chart-fib-check){
+ display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-width:0;
+}
+.chart-fib-settings-body input[type="color"]{
+ width:44px;height:34px;padding:2px;border-radius:6px;
+ border:1px solid var(--line);background:var(--panel);cursor:pointer;
+}
+.chart-fib-settings-body input[type="range"]{width:min(175px,100%);accent-color:var(--brand)}
+.chart-fib-settings-body input[type="checkbox"]{width:17px;height:17px;accent-color:var(--brand)}
+.chart-fib-check{display:flex;align-items:center;gap:7px;min-width:0;cursor:pointer}
+.chart-fib-levels{grid-column:1 / -1;display:grid;gap:7px}
+.chart-fib-levels>strong{font-size:12px}
+.chart-fib-level-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px 6px}
+.chart-fib-price-fields{
+ grid-column:1 / -1;display:grid;
+ grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;
+}
+.chart-fib-price-fields label{display:grid;gap:5px;min-width:0}
+.chart-fib-price-fields input{
+ width:100%;min-width:0;padding:9px 10px;border:1px solid var(--line);
+ border-radius:7px;background:var(--panel);color:var(--text);
+}
+.chart-fib-settings-body>small{grid-column:1 / -1;color:var(--muted);line-height:1.5}
+.chart-frame.fib-picking canvas{cursor:crosshair!important;touch-action:none!important}
+@media(max-width:650px){
+ .chart-fib-tools{padding:9px;margin:4px 0 8px}
+ .chart-fib-button{flex:1 1 auto;min-height:39px;padding:8px 9px}
+ .chart-fib-settings-body{grid-template-columns:1fr;gap:12px}
+ .chart-fib-level-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .chart-fib-price-fields{grid-template-columns:1fr}
+}
