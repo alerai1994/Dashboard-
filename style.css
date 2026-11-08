@@ -2341,9 +2341,40 @@ body .topbar .live-clock strong{
 .global-crypto-history-header .eyebrow{font-size:10px;font-weight:800;letter-spacing:.12em;color:var(--brand)}
 .global-crypto-history-header h2{font-size:20px;font-weight:800;margin:6px 0 5px}
 .global-crypto-history-header p{font-size:11px;color:var(--muted);line-height:1.5;margin:0}
-.global-crypto-history-actions{display:flex;align-items:center;justify-content:flex-end;gap:5px;margin-left:auto}
+.global-crypto-history-actions{display:flex;align-items:center;gap:5px}
 .global-crypto-history-actions button{height:34px;min-width:34px;background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:8px;font-size:14px;cursor:pointer}
 .global-crypto-history-actions button:hover{border-color:var(--brand)}
+/* v184: reliable far-right chart controls at every viewport width.
+   Grid prevents a wrapped chart title from pushing the controls left. */
+#globalCryptoHistory .global-crypto-history-header{
+ display:grid;
+ grid-template-columns:minmax(0,1fr) auto;
+ align-items:start;
+ gap:12px;
+}
+#globalCryptoHistory .global-crypto-history-header>div:first-child{min-width:0}
+#globalCryptoHistory .global-crypto-history-actions{
+ display:flex;
+ flex-wrap:nowrap;
+ justify-content:flex-end;
+ align-items:center;
+ justify-self:end;
+ width:max-content;
+ max-width:100%;
+ margin:0;
+}
+@media(max-width:760px){
+ #globalCryptoHistory .global-crypto-history-header{
+  grid-template-columns:minmax(0,1fr);
+ }
+ #globalCryptoHistory .global-crypto-history-actions{
+  grid-column:1;
+  justify-self:stretch;
+  justify-content:flex-end;
+  width:100%;
+ }
+}
+
 .global-crypto-history-toolbar{display:flex;justify-content:flex-start;align-items:center;flex-wrap:nowrap;gap:0;width:100%;min-width:0;max-width:100%;margin:9px 0 14px;overflow-x:auto;overflow-y:hidden;overscroll-behavior-inline:contain;scrollbar-width:thin}
 .global-cap-chart-tabs-all{margin-left:auto;flex:0 0 auto;white-space:nowrap;min-width:max-content;flex-wrap:nowrap;align-items:center;justify-content:flex-end}
 .global-cap-chart-tabs-all button{flex:0 0 auto;white-space:nowrap}
