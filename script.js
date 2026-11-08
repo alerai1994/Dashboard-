@@ -5879,8 +5879,9 @@ function drawChart(){
  if(useLog){
   const low=Math.max(1e-15,fit.low),high=Math.max(low*1.000001,fit.high);
   const logSpan=Math.log(high/low)||.15;
-  min=low*Math.exp(-logSpan*.025);
-  max=high*Math.exp(logSpan*.025);
+  // Leave visible room for 0 and 4,236 labels at the top/bottom edges.
+  min=low*Math.exp(-logSpan*.048);
+  max=high*Math.exp(logSpan*.048);
  }else{
   const pad=(fit.high-fit.low||Math.max(fit.high*.03,1))*.07;
   min=fit.low-pad;max=fit.high+pad;
