@@ -4550,45 +4550,23 @@ function fibCurrentAnchors(candles,start,end){
 }
 function fibControls(){
  const entry=fibEntry(),manual=entry?.method==='manual';
- const active=chartFib.enabled;
- const picking=chartFib.mode==='picking';
+ const active=chartFib.enabled,picking=chartFib.mode==='picking';
  const pickText=picking?(chartFib.draft?'Seleziona il secondo punto sul grafico':'Seleziona il primo punto sul grafico'):
   manual?'Fibonacci manuale · selezione salvata':entry?.method==='auto'?'Fibonacci automatico · massimo/minimo visibile':
-  'Attiva Fibonacci o scegli i due punti da tracciare.';
- const fmtPrice=x=>Number.isFinite(x)?String(Number(x)):'';
+  'Attiva Fibonacci o scegli due punti sul grafico.';
  return '<section class="chart-fib-tools" aria-label="Strumento Fibonacci">'+
   '<div class="chart-fib-buttons">'+
-  '<button type="button" data-fib-toggle="1" class="chart-fib-button'+(active?' is-active':'')+'" aria-pressed="'+active+'">◈ Fibonacci '+(active?'ON':'OFF')+'</button>'+
-  '<button type="button" data-fib-auto="1" class="chart-fib-button"'+(!active?'':'')+'>Auto · Max/Min</button>'+
-  '<button type="button" data-fib-pick="1" class="chart-fib-button'+(picking?' is-active':'')+'" aria-pressed="'+picking+'">✎ Seleziona 2 punti</button>'+
-  '<button type="button" data-fib-scale="1" class="chart-fib-button'+(chartFib.fitExtensions?' is-active':'')+
-  '" aria-pressed="'+chartFib.fitExtensions+'" title="Alterna tra grafico leggibile e tutte le estensioni">'+
-  (chartFib.fitExtensions?'↔ Scala completa':'↔ Scala prezzi')+'</button>'+
+  '<button type="button" data-fib-toggle="1" class="chart-fib-button'+(active?' is-active':'')+
+   '" aria-pressed="'+active+'">◈ Fibonacci '+(active?'ON':'OFF')+'</button>'+
+  '<button type="button" data-fib-auto="1" class="chart-fib-button">Auto · Max/Min</button>'+
+  '<button type="button" data-fib-pick="1" class="chart-fib-button'+(picking?' is-active':'')+
+   '" aria-pressed="'+picking+'">✎ Seleziona 2 punti</button>'+
   '<button type="button" data-fib-clear="1" class="chart-fib-button">Cancella</button>'+
   '</div>'+
-  '<p id="chartFibStatus" class="chart-fib-status" role="status" aria-live="polite">'+esc(pickText)+'</p>'+
-  '<details class="chart-fib-settings"'+(chartFib.settingsOpen?' open':'')+'><summary>⚙ Impostazioni Fibonacci</summary>'+
-  '<div class="chart-fib-settings-body">'+
-   '<label>Colore personalizzato <input type="color" data-fib-color="1" value="'+esc(chartFib.color)+'"></label>'+ 
-   '<label class="chart-fib-check"><input type="checkbox" data-fib-palette="1"'+(chartFib.palette?' checked':'')+'> Livelli multicolore come riferimento</label>'+ 
-   '<label class="chart-fib-check"><input type="checkbox" data-fib-bands="1"'+(chartFib.bands?' checked':'')+'> Fasce semitrasparenti fra i livelli</label>'+ 
-   '<label class="chart-fib-check"><input type="checkbox" data-fib-fit-extensions="1"'+(chartFib.fitExtensions?' checked':'')+'> Mostra tutte le estensioni sulla scala (riduce l’altezza delle candele)</label>'+  
-   '<label class="chart-fib-check"><input type="checkbox" data-fib-log="1"'+(chartFib.logarithmic?' checked':'')+'> Livelli e scala logaritmici (come nell’immagine)</label>'+
-   '<label>Trasparenza <span id="chartFibOpacityValue">'+chartFib.opacity+'%</span><input type="range" data-fib-opacity="1" min="15" max="100" step="5" value="'+chartFib.opacity+'"></label>'+
-   '<label class="chart-fib-check"><input type="checkbox" data-fib-extend="1"'+(chartFib.extend?' checked':'')+'> Estendi le linee a destra</label>'+
-   '<label class="chart-fib-check"><input type="checkbox" data-fib-labels="1"'+(chartFib.labels?' checked':'')+'> Mostra livelli e prezzi</label>'+
-   '<label class="chart-fib-check"><input type="checkbox" data-fib-reverse="1"'+(chartFib.reverse?' checked':'')+'> Inverti direzione (0 ↔ 1)</label>'+ 
-   '<div class="chart-fib-levels"><strong>Livelli da visualizzare</strong><div class="chart-fib-level-grid">'+
-   FIB_LEVELS.map(n=>'<label class="chart-fib-check"><input type="checkbox" data-fib-level="'+n+'"'+(chartFib.levels.includes(n)?' checked':'')+'>'+((n*100).toFixed(1).replace(/\.0$/,''))+'%</label>').join('')+
-   '</div></div>'+
-   (manual?'<div class="chart-fib-price-fields">'+
-    '<label>Prezzo punto A <input type="number" inputmode="decimal" step="any" min="0" data-fib-price="a" value="'+fmtPrice(entry.a.p)+'"></label>'+
-    '<label>Prezzo punto B <input type="number" inputmode="decimal" step="any" min="0" data-fib-price="b" value="'+fmtPrice(entry.b.p)+'"></label>'+
-   '</div>':'')+
-   '<small>Scala prezzi (consigliata): lascia leggibili le candele e mostra soltanto i livelli compresi nella scala visibile. Scala completa: visualizza anche le estensioni lontane, ma comprime le candele. I livelli rimangono selezionati e salvati. Per i punti manuali clicca due volte nella zona PREZZO.</small>'+ 
-  '</div></details></section>';
+  '<p id="chartFibStatus" class="chart-fib-status" role="status" aria-live="polite">'+esc(pickText)+
+  (active?' · Scala graduale non lineare: prezzi e livelli visibili senza comprimere le candele.':'')+
+  '</p></section>';
 }
-
 /* Image-matched Fibonacci: colored levels, left-side price labels, translucent
    bands and logarithmic extensions. This is a visual overlay; source OHLC is
    never modified. */
@@ -4626,6 +4604,82 @@ function fibScaleExtent(candles,start,end,low,high){
   if(Number.isFinite(price)&&price>0){lo=Math.min(lo,price);hi=Math.max(hi,price)}
  }
  return {low:lo,high:hi};
+}
+/* Adaptive focus-and-context mapping. All Fibonacci price levels remain
+   visible, while the real OHLC price region gets most of the vertical area.
+   This is intentionally a NON-LINEAR chart scale and is labelled as such.
+   The inverse is used for accurate two-point manual placement. */
+function fibGradualScale(candles,start,end,focusLow,focusHigh,top,bottom){
+ if(!chartFib.enabled||!(focusHigh>focusLow)||!(bottom>top+80))return null;
+ const pair=fibCurrentAnchors(candles,start,end);
+ if(!pair?.b)return null;
+ const selected=chartFib.levels.map(level=>fibLevelPrice(pair,level))
+  .filter(value=>Number.isFinite(value)&&value>0);
+ if(selected.length<2)return null;
+ const dataRange=focusHigh-focusLow;
+ const nearLow=Math.max(1e-12,focusLow-dataRange*.045);
+ const nearHigh=focusHigh+dataRange*.045;
+ const epsilon=(a,b)=>Math.abs(a-b)<=Math.max(1e-10,Math.abs(a)*1e-10,Math.abs(b)*1e-10);
+ const stops=[nearLow,nearHigh,...selected].sort((a,b)=>a-b)
+  .filter((value,i,arr)=>i===0||!epsilon(value,arr[i-1]));
+ if(stops.length<2)return null;
+ const transform=chartFib.logarithmic?x=>Math.log(x):x=>x;
+ const length=bottom-top,edgePadding=9;
+ const gap=Math.min(17,Math.max(9,Math.floor((length-2*edgePadding)/Math.max(12,selected.length+5)*.75)));
+ const segments=[];
+ let sumFocus=0,sumOuter=0,sumGap=0;
+ for(let i=0;i<stops.length-1;i++){
+  const a=stops[i],b=stops[i+1];
+  const lengthT=transform(b)-transform(a);
+  if(!(lengthT>0))continue;
+  const lo=Math.max(a,nearLow),hi=Math.min(b,nearHigh);
+  const inside=hi>lo?Math.max(0,transform(hi)-transform(lo)):0;
+  const outer=Math.max(0,lengthT-inside);
+  const marker=selected.some(price=>epsilon(price,b))?gap:0;
+  segments.push({a,b,inside,outer,marker});
+  sumFocus+=inside;sumOuter+=outer;sumGap+=marker;
+ }
+ if(!segments.length)return null;
+ const extra=Math.max(5,length-edgePadding*2-sumGap);
+ const focusBudget=sumOuter>0?extra*.76:extra;
+ const outerBudget=sumOuter>0?extra-focusBudget:0;
+ let pixels=0;
+ for(const segment of segments){
+  segment.start=pixels;
+  segment.size=segment.marker+
+   (sumFocus?focusBudget*segment.inside/sumFocus:0)+
+   (sumOuter?outerBudget*segment.outer/sumOuter:0);
+  pixels+=segment.size;
+ }
+ const distanceFromLow=value=>{
+  if(value<=stops[0])return 0;
+  if(value>=stops[stops.length-1])return pixels;
+  for(const segment of segments){
+   if(value<=segment.b){
+    const fraction=(transform(value)-transform(segment.a))/
+      (transform(segment.b)-transform(segment.a));
+    return segment.start+Math.max(0,Math.min(1,fraction))*segment.size;
+   }
+  }
+  return pixels;
+ };
+ const priceAtDistance=distance=>{
+  const target=Math.max(0,Math.min(pixels,distance));
+  for(const segment of segments){
+   if(target<=segment.start+segment.size){
+    const f=segment.size>0?Math.max(0,Math.min(1,(target-segment.start)/segment.size)):0;
+    const a=transform(segment.a),b=transform(segment.b);
+    return chartFib.logarithmic?Math.exp(a+(b-a)*f):segment.a+(segment.b-segment.a)*f;
+   }
+  }
+  return stops[stops.length-1];
+ };
+ return {
+  yPrice:value=>bottom-edgePadding-distanceFromLow(value),
+  priceAtY:y=>priceAtDistance(bottom-edgePadding-y),
+  low:stops[0],high:stops[stops.length-1],nonlinear:true,
+  focusLow:nearLow,focusHigh:nearHigh
+ };
 }
 function fibDraw(ctx,candles,start,end,layout,phase='lines'){
  chartFib.view=layout;
