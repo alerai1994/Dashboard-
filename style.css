@@ -2805,3 +2805,28 @@ html[data-vertex-font] .watchlist-data-table .watchlist-value.watchlist-change-n
  .chart-fib-scale-label{flex:0 0 100%;margin-bottom:1px}
  .chart-fib-scale .chart-fib-scale-button{flex:1 1 calc(50% - 7px)}
 }
+
+/* v202: Give Fibonacci extensions visibly separated horizontal bands.
+   Taller vertical canvas improves spacing without changing candle history. */
+#assetDialog .chart-frame.fib-gradual,
+#assetDialog.market-fullscreen .chart-frame.fib-gradual{
+ height:clamp(840px,90dvh,1060px);
+ min-height:840px;
+}
+#assetDialog .chart-frame.fib-gradual #detailChart,
+#assetDialog.market-fullscreen .chart-frame.fib-gradual #detailChart{
+ height:100%;
+ min-height:840px;
+}
+@media(max-width:760px){
+ #assetDialog .chart-frame.fib-gradual,
+ #assetDialog.market-fullscreen .chart-frame.fib-gradual{
+  height:740px;
+  min-height:740px;
+ }
+ #assetDialog .chart-frame.fib-gradual #detailChart,
+ #assetDialog.market-fullscreen .chart-frame.fib-gradual #detailChart{
+  height:100%;
+  min-height:740px;
+ }
+}
