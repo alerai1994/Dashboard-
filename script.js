@@ -1338,8 +1338,8 @@ function nativeCapUsd(v){
 function nativeCapDate(t){
  return new Date(t).toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});
 }
-async function loadNativeCapHistory(){
- if(nativeCapChart.loading||nativeCapChart.loaded)return;
+async function loadNativeCapHistory(force=false){
+ if(nativeCapChart.loading||(nativeCapChart.loaded&&!force))return;
  nativeCapChart.loading=true;drawNativeCapChart();
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);
  try{
@@ -1411,6 +1411,7 @@ async function loadRealNativeCapIndex(id){
   const ordered=[...candles.entries()].sort((a,b)=>a[0]-b[0]);
   nativeCapChart.ohlc[id]=new Map(ordered);
   nativeCapChart.data[id]=ordered.map(([t,bar])=>[t,bar[3]]);
+  nativeCapSyncLiveValues();
   nativeCapChart.sources[id]=payload.source||('CRYPTOCAP:'+id+' · OHLC giornalieri verificati');
  }catch(error){
   // Keep the previous Santiment close-only graph if an independent
@@ -3745,12 +3746,6 @@ function settingsPage(){
 
  '<section class="content-card panel settings-preferences settings-font-section" aria-label="Carattere della dashboard">'+
  '<h3>Caratteri dei testi e dei numeri</h3><p class="subnote">Tocca un font: lettere, numeri, prezzi e percentuali cambiano in tutta la dashboard.</p>'+
- '<div class="settings-font-active-preview" id="vertexFontActivePreview" aria-live="polite">'+
- '<span class="settings-font-active-label">Font selezionato: <strong>'+esc(VERTEX_FONTS[state.fontStyle]?.name||'Inter')+'</strong></span>'+
- '<strong class="settings-font-active-letters">Aa Bb Cc Dd Ee Ff · ABCDEFGHIJKLMNOPQRSTUVWXYZ</strong>'+
- '<span class="settings-font-active-numbers">0123456789 · 123.456,78 € · +12,45% · −0,67%</span>'+
- '<small id="vertexFontAvailability" class="settings-font-availability">La scelta si applica subito al sito e resta salvata.</small>'+
- '</div>'+
  '<div class="settings-font-grid" role="group" aria-label="Scegli il font dei testi">'+
  Object.entries(VERTEX_FONTS).map(([id,info])=>
   '<button type="button" data-font-style="'+id+'" class="settings-font-option font-preview-'+id+(state.fontStyle===id?' is-selected':'')+'" aria-pressed="'+(state.fontStyle===id)+'" aria-label="'+info.name+': '+info.description+'">'+
@@ -4191,26 +4186,18 @@ function setFontStyle(id){
    updateMarketsSnapshotCharts();
  };
  redraw();
- const status=message=>{
-  if(state.fontStyle!==id)return;
-  const node=document.querySelector('#vertexFontAvailability');
-  if(node)node.textContent=message;
- };
+
  // Request glyphs from the chosen family, including every digit.
  // A named fallback must not be silently represented as the exact selected face.
  if(document.fonts&&typeof document.fonts.load==='function'){
   const family=VERTEX_FONTS[id].name;
-  status('Caricamento del carattere '+family+'…');
   document.fonts.load('400 16px "'+family+'"',
    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 €%.,+-')
    .then(faces=>{
     if(state.fontStyle!==id)return;
-    status(faces.length?'Carattere '+family+' caricato · lettere e numeri':
-     'Font esterno non disponibile: è in uso un carattere alternativo.');
     redraw();
    })
    .catch(()=>{
-    status('Caricamento del font non riuscito: è in uso un carattere alternativo.');
     redraw();
    });
  }else redraw();
@@ -4264,13 +4251,13 @@ const snapshotFetch={busy:false,etag:null,age:null,fullAt:0,lightAt:0,fastRetryA
 // GitHub Actions creates a new verified market snapshot every ~5 minutes.
 // The compact feed is polled frequently; long OHLC history is refreshed less often.
 const FULL_FEED_INTERVAL=30*60*1000;
-async function fetchQuotes(isManual=false){
+async function fetchQuotes(isManual=false,forceFull=false){
  if(snapshotFetch.busy)return;
  snapshotFetch.busy=true;
  const wasLoading=state.loading,wasError=state.feedError;
  try{
-  let full=(isManual||!state.feedTime||Date.now()-snapshotFetch.fullAt>=FULL_FEED_INTERVAL)&&
-   (isManual||Date.now()>=snapshotFetch.fullRetryAfter);
+  let full=(forceFull||isManual||!state.feedTime||Date.now()-snapshotFetch.fullAt>=FULL_FEED_INTERVAL)&&
+   (forceFull||isManual||Date.now()>=snapshotFetch.fullRetryAfter);
   if(!full&&Date.now()<snapshotFetch.fastRetryAfter){
    updateLiveBadges();return;
   }
@@ -6203,6 +6190,58 @@ function dismissVertexBoot(){
   requestAnimationFrame(()=>requestAnimationFrame(afterPaint));
  }else afterPaint();
 }
+/* Europe/Rome midnight rollover: never mark a closed or stale market as LIVE.
+   Every day change refreshes each active data source and redraws the open charts.
+   The daily key also detects a wake-up after browser timers were suspended. */
+let vertexRomeMarketDay=null;
+function vertexRomeDayKey(now=new Date()){
+ const parts=VERTEX_ROME_ISO_DATE.formatToParts(now);
+ const part=id=>parts.find(x=>x.type===id)?.value||'';
+ return part('year')+'-'+part('month')+'-'+part('day');
+}
+function checkVertexRomeMidnight(){
+ const next=vertexRomeDayKey();
+ if(!vertexRomeMarketDay){vertexRomeMarketDay=next;return;}
+ if(next===vertexRomeMarketDay)return;
+ vertexRomeMarketDay=next;
+ if(document.hidden)return; // Will refresh when the page becomes visible again.
+ refreshVertexMarketDay();
+}
+function refreshVertexMarketDay(){
+ if(document.hidden)return;
+ // Fast feed continues polling all day; at midnight request full genuine history.
+ fetchQuotes(false,true);
+ pollCryptoPrices();
+ connectCryptoStream();connectForexStream();
+ refreshVisibleQuoteFreshness();
+ if(state.page==='markets'||state.page==='workspace'){
+  for(const asset of ASSETS)marketMiniDirty.add(asset.id);
+  updateMarketsSnapshotCharts();
+ }
+ if(state.dialogId){
+  chartFetchState.cache.clear();
+  loadChartHistory(true);
+  scheduleDetailChartDraw();
+ }
+ if(state.page==='global'){
+  // Re-fetch both source archives; the last real observation is preserved.
+  capArchivePromise=null;
+  loadGlobalCapArchivedPills();
+  for(const id of ['TOTAL','TOTAL2','TOTAL3'])
+   nativeCapChart.indexRequested[id]=false;
+  loadNativeCapHistory(true);
+  refreshGlobalCryptoCaps(true);
+  if(typeof window.__vertexRefreshSpecialGlobal==='function')
+   window.__vertexRefreshSpecialGlobal();
+  paintGlobalCapChart();
+ }
+ if(state.page==='etf'){
+  etfHistory.lastFetch=0;
+  loadCryptoEtfHistory();
+ }
+ if(orderBookViewActive()){refreshOrderBook(true);startOrderBookLive(true)}
+}
+
 function startVertexApp(){
  if(vertexAppStarted)return;
  vertexAppStarted=true;
@@ -6212,7 +6251,8 @@ function startVertexApp(){
   }).catch(()=>{});
  }
  setupEvents();updateVertexAppIcon();applyTheme();applyFontStyle();applyBrightness();updateClock();
- setInterval(updateClock,1000);
+ vertexRomeMarketDay=vertexRomeDayKey();
+ setInterval(()=>{updateClock();checkVertexRomeMidnight()},1000);
  setInterval(()=>{if(state.adaptiveBrightness&&!document.hidden)applyBrightness()},60000);
  setInterval(updateWorldSunlight,1000);
  setInterval(()=>{
@@ -6240,13 +6280,14 @@ function startVertexApp(){
    navigator.serviceWorker.controller.postMessage({type:'VERTEX_WIDGETS_REFRESH'});
   if(document.hidden){closeStream();disconnectForexStream();stopOrderBookLive()}
   else {
-   connectCryptoStream();connectForexStream();fetchQuotes();pollCryptoPrices();refreshVisibleQuoteFreshness();refreshVisibleQuoteFreshness();updateWorldSunlight(true);applyBrightness();
+   checkVertexRomeMidnight();
+   connectCryptoStream();connectForexStream();fetchQuotes();pollCryptoPrices();refreshVisibleQuoteFreshness();updateWorldSunlight(true);applyBrightness();
    if(orderBookViewActive()){startOrderBookLive();refreshOrderBook()}
     if(state.dialogId){scheduleDetailChartDraw();scheduleChartLiveRefresh()}
   }
  });
  window.addEventListener('online',()=>{
-  connectCryptoStream();connectForexStream();fetchQuotes();pollCryptoPrices();
+  checkVertexRomeMidnight();connectCryptoStream();connectForexStream();fetchQuotes();pollCryptoPrices();
   if(orderBookViewActive()){startOrderBookLive(true);refreshOrderBook(true)}
  });
  window.addEventListener('offline',()=>{
