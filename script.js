@@ -884,6 +884,8 @@ function updatePriceDom(){
      setQuotePriceMovement(cells[1],id);
      if(changeTarget.textContent!==shownChange)changeTarget.textContent=shownChange;
      setMovementClass(cells[2],q.change);
+     // Preserve the selected typeface after every WebSocket/REST price tick.
+     syncVertexPriceTypography(el);
     }
    }
    if(el.hasAttribute('data-trend')){
@@ -1853,11 +1855,16 @@ function homePage(){
  secHeader('Indici e criptovalute','Grafici e variazioni')+'<div class="market-index-strip">'+marketCards+'</div>'+
   feedStatus();
 }
+function watchlistSelectedFontAttribute(){
+ // Only known Settings font IDs can reach this HTML style attribute.
+ const font=Object.hasOwn(VERTEX_FONT_FAMILIES,state.fontStyle)?state.fontStyle:'inter';
+ return ' style="font-family:'+esc(VERTEX_FONT_FAMILIES[font])+' !important;font-variant-numeric:normal !important;font-feature-settings:normal !important"';
+}
 function tableForAssets(items,emptyTitle){
  if(!items.length)return '<div class="empty-state"><h3>'+esc(emptyTitle||'Nessun mercato da mostrare')+'</h3><p>Modifica la ricerca o aggiungi strumenti alla watchlist.</p></div>';
  return '<div class="data-table-scroll watchlist-data-table" data-watchlist-font="'+esc(state.fontStyle)+'"><table class="data-table watchlist-font-table"><thead><tr><th>Strumento</th><th>Ultimo prezzo</th><th>Variazione</th><th>Storico</th><th>Fonte</th></tr></thead><tbody>'+
  items.map(a=>'<tr tabindex="0" data-asset="'+a.id+'" aria-label="Dettagli '+esc(a.name)+'"><td><span class="market-table-asset">'+(showAssetLogo(a)?assetLogo(a):'')+'<span><strong>'+esc(a.name)+'</strong><small>'+esc(a.symbol)+'</small></span></span></td>'+
- '<td class="watchlist-price-cell '+quotePriceClass(a.id)+'"><span class="watchlist-value watchlist-price-number">'+assetValue(a)+'</span></td><td class="watchlist-change-cell '+classArrow(a.id)+'"><span class="watchlist-value watchlist-change-number">'+pct(change(a.id))+'</span></td>'+
+ '<td class="watchlist-price-cell '+quotePriceClass(a.id)+'"><span class="watchlist-value watchlist-price-number"'+watchlistSelectedFontAttribute()+'>'+assetValue(a)+'</span></td><td class="watchlist-change-cell '+classArrow(a.id)+'"><span class="watchlist-value watchlist-change-number"'+watchlistSelectedFontAttribute()+'>'+pct(change(a.id))+'</span></td>'+
  '<td class="'+classArrow(a.id)+'">'+sparkLine(a.id,90,26)+'</td><td><small>'+esc(a.group==='crypto'?'Binance/CoinGecko':a.group==='forex'?'Broker MT5/Yahoo':'Yahoo Finance')+'</small></td></tr>').join('')+
  '</tbody></table></div>';
 }
@@ -4165,6 +4172,10 @@ function syncVertexPriceTypography(root=document){
  if(!root?.querySelectorAll)return;
  const font=Object.hasOwn(VERTEX_FONT_FAMILIES,state.fontStyle)?state.fontStyle:'inter';
  const family=VERTEX_FONT_FAMILIES[font];
+ // Keep the visible Watchlist (including Workspace) in sync with Settings.
+ root.querySelectorAll('.watchlist-data-table').forEach(table=>{
+  table.dataset.watchlistFont=font;
+ });
  root.querySelectorAll(VERTEX_PRICE_FONT_SELECTOR).forEach(node=>{
   // Explicitly style the numbers, not only the label or their parent table.
   node.style.setProperty('font-family',family,'important');
