@@ -4487,7 +4487,7 @@ const chartFib={
  labels:fibSettings.labels!==false,
  reverse:fibSettings.reverse===true,
  levels:Array.isArray(fibSettings.levels)?
-  FIB_LEVELS.filter(n=>fibSettings.levels.includes(n)):FIB_DEFAULT_LEVELS.slice(),
+  FIB_LEVELS.filter(n=>fibSettings.levels.includes(n)||(!fibSettings.styleV2&&[1.618,2.618,3.618,4.236].includes(n))):FIB_DEFAULT_LEVELS.slice(),
  anchors:fibSettings.anchors&&typeof fibSettings.anchors==='object'?fibSettings.anchors:{},
  mode:'idle',draft:null,view:null,settingsOpen:false
 };
@@ -4495,7 +4495,7 @@ function fibKey(){return (state.dialogId||'')+'|'+chartRange;}
 function fibEntry(){return Object.hasOwn(chartFib.anchors,fibKey())?chartFib.anchors[fibKey()]:null;}
 function fibSave(){
  save('chartFibonacciV1',{
-  enabled:chartFib.enabled,palette:chartFib.palette,bands:chartFib.bands,
+  styleV2:true,enabled:chartFib.enabled,palette:chartFib.palette,bands:chartFib.bands,
   fitExtensions:chartFib.fitExtensions,logarithmic:chartFib.logarithmic,
   color:chartFib.color,opacity:chartFib.opacity,
   extend:chartFib.extend,labels:chartFib.labels,reverse:chartFib.reverse,
@@ -5837,7 +5837,7 @@ function drawChart(){
  // Theme-aware highlighted candle; avoids undefined dark on pointer hover.
  const dark=!['light','sand','ice'].includes(state.theme);
  ctx.fillStyle=chartColors.getPropertyValue('--panel').trim()||'#071523';ctx.fillRect(0,0,width,height);
- const left=19,right=detailChartRightMargin(!!fxCandle),chartW=width-left-right,visible=chartVisibleCandleCount(candles,width);
+ const left=fibPriceGutter(width),right=detailChartRightMargin(!!fxCandle),chartW=width-left-right,visible=chartVisibleCandleCount(candles,width);
  const maxShift=Math.max(0,candles.length-visible);
  state.chartShift=Math.max(0,Math.min(maxShift,state.chartShift));
  const start=Math.max(0,candles.length-visible-state.chartShift),end=Math.min(candles.length,start+visible),sample=candles.slice(start,end);
@@ -5870,9 +5870,24 @@ function drawChart(){
  if(fxCandle){lows.push(fxCandle.l);highs.push(fxCandle.h)}
  if(priceMarker?.fresh){lows.push(priceMarker.price);highs.push(priceMarker.price)}
  emaSets.forEach(a=>a.values.slice(start,end).forEach(v=>{if(num(v)){lows.push(v);highs.push(v)}}));
- const lo=Math.min(...lows),hi=Math.max(...highs),pad=(hi-lo||Math.max(hi*.03,1))*.07;
- const min=lo-pad,max=hi+pad;
- const yPrice=v=>regions[0].bottom-(v-min)/(max-min)*(regions[0].bottom-regions[0].top);
+ const lo=Math.min(...lows),hi=Math.max(...highs);
+ const fit=fibScaleExtent(candles,start,end,lo,hi);
+ const useLog=chartFib.enabled&&chartFib.logarithmic&&fit.low>0&&fit.high>0;
+ let min,max;
+ if(useLog){
+  const low=Math.max(1e-15,fit.low),high=Math.max(low*1.000001,fit.high);
+  const logSpan=Math.log(high/low)||.15;
+  min=low*Math.exp(-logSpan*.025);
+  max=high*Math.exp(logSpan*.025);
+ }else{
+  const pad=(fit.high-fit.low||Math.max(fit.high*.03,1))*.07;
+  min=fit.low-pad;max=fit.high+pad;
+ }
+ const yPrice=v=>regions[0].bottom-
+  (useLog&&v>0?Math.log(v/min)/Math.log(max/min):(v-min)/(max-min))*
+  (regions[0].bottom-regions[0].top);
+ const fibLayout={width,height,left,right,top:regions[0].top,bottom:regions[0].bottom,min,max,start,end,yPrice};
+ fibDraw(ctx,candles,start,end,fibLayout,'bands');
  const step=chartW/sample.length,cw=Math.max(chartRange==='MAX'?.65:2,Math.min(9,step*.58));
  sample.forEach((c,i)=>{
    const x=ix(start+i),up=c.c>=c.o;
@@ -5905,10 +5920,11 @@ function drawChart(){
   }
   ctx.strokeStyle=a.color;ctx.lineWidth=1.6;ctx.stroke();
  });
- fibDraw(ctx,candles,start,end,{
-  width,height,left,right,top:regions[0].top,bottom:regions[0].bottom,min,max,start,end
- });
- for(let i=0;i<=4;i++){const v=min+(max-min)*i/4;text(v.toLocaleString('it-IT',{maximumFractionDigits:Math.abs(v)>=10?1:3}),width-right+(fxCandle?32:7),yPrice(v)+4,'left',10)}
+ fibDraw(ctx,candles,start,end,fibLayout,'lines');
+ for(let i=0;i<=4;i++){
+  const v=useLog?min*Math.pow(max/min,i/4):min+(max-min)*i/4;
+  text(v.toLocaleString('it-IT',{maximumFractionDigits:Math.abs(v)>=10?1:3}),width-right+(fxCandle?32:7),yPrice(v)+4,'left',10);
+ }
  const drawIndicator=(values,yMap,stroke,widthLine=1.35)=>{
   ctx.beginPath();let started=false;
   for(let i=start;i<end;i++){
@@ -6001,7 +6017,8 @@ function setupCanvasInteractions(){
   chartHoverForex=false;
   const count=chartVisibleCandleCount(candles,width),size=Math.min(count,candles.length);
   const start=Math.max(0,candles.length-count-state.chartShift);
-  const scaled=(px-19)/(width-19-right);
+  const left=fibPriceGutter(width);
+  const scaled=(px-left)/(width-left-right);
   const offset=Math.max(0,Math.min(size-1,Math.floor(scaled*size)));
   state.chartHover=start+offset;
   scheduleDetailChartDraw();
