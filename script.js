@@ -4719,15 +4719,26 @@ function fibDraw(ctx,candles,start,end,layout,phase='lines'){
  }
  if(phase!=='lines')return;
  const xa=pointX(pair.a),xb=pair.b?pointX(pair.b):NaN;
- const startX=overlayLeft,endX=overlayRight;
+ const labelSize=width<550?10:width<860?11:12;
+ const priceDigits=value=>Math.abs(value)>=100?0:Math.abs(value)>=1?4:Math.abs(value)>=.001?7:10;
+ const fmtFibPrice=value=>value.toLocaleString('it-IT',{maximumFractionDigits:priceDigits(value)});
+ const fmtFibLevel=ratio=>ratio.toLocaleString('it-IT',{
+  minimumFractionDigits:ratio%1===0?0:3,maximumFractionDigits:3
+ });
+ const fmtFibLabel=p=>fmtFibLevel(p.ratio)+' ('+fmtFibPrice(p.price)+')';
  ctx.save();ctx.beginPath();ctx.rect(overlayLeft,top,overlayWidth,bottom-top);ctx.clip();
- if(pair.b&&endX>startX){
+ if(pair.b){
+  ctx.font=vertexCanvasFont(labelSize,'700');
   for(const p of coords){
    if(p.y<top||p.y>bottom)continue;
+   // Leave only a text-width gap at each edge, not a shaded label rectangle.
+   const lineStart=chartFib.labels?Math.min(width*.46,ctx.measureText(fmtFibLabel(p)).width+16):overlayLeft;
+   const lineEnd=chartFib.labels?Math.max(width*.54,width-ctx.measureText(fmtFibPrice(p.price)).width-16):overlayRight;
+   if(lineEnd<=lineStart)continue;
    ctx.globalAlpha=chartFib.opacity/100;
    ctx.strokeStyle=p.color;ctx.lineWidth=p.ratio>=1.618?2.15:1.7;
    ctx.setLineDash([]);
-   ctx.beginPath();ctx.moveTo(startX,p.y);ctx.lineTo(endX,p.y);ctx.stroke();
+   ctx.beginPath();ctx.moveTo(lineStart,p.y);ctx.lineTo(lineEnd,p.y);ctx.stroke();
   }
  }
  // Keep manual anchors visible even when the lines extend across the plot.
@@ -4739,23 +4750,21 @@ function fibDraw(ctx,candles,start,end,layout,phase='lines'){
  }
  ctx.restore();
  if(!chartFib.labels||!pair.b)return;
- // Keep labels readable without reserving an empty sidebar.
- // They are translucent floating tags on TOP of the candlestick plot.
- ctx.save();ctx.textAlign='left';ctx.textBaseline='middle';
- const size=width<550?9:width<860?10:11;
- ctx.font=vertexCanvasFont(size,'600');
+ // Color-coded Fibonacci values on the left and matching prices on the
+ // right: both are plain canvas text, with NO pill or boxed background.
+ const lightTheme=['light','sand','ice'].includes(state.theme);
+ const axisColor=getComputedStyle(document.body).getPropertyValue('--text').trim()||
+  (lightTheme?'#435065':'#d4e0ec');
+ ctx.save();ctx.textBaseline='middle';ctx.font=vertexCanvasFont(labelSize,'700');
+ ctx.globalAlpha=1;
  for(const p of coords){
-  if(p.y<top+size/2||p.y>bottom-size/2)continue;
-  const digits=Math.abs(p.price)>=100?0:Math.abs(p.price)>=1?4:Math.abs(p.price)>=.001?7:10;
-  const price=p.price.toLocaleString('it-IT',{maximumFractionDigits:digits});
-  const level=p.ratio.toLocaleString('it-IT',{minimumFractionDigits:p.ratio%1===0?0:3,maximumFractionDigits:3});
-  const label=level+' ('+price+')',labelX=8;
-  const textW=Math.min(width-20,ctx.measureText(label).width);
-  ctx.globalAlpha=.83;
-  ctx.fillStyle='rgba(7,21,35,.84)';
-  ctx.fillRect(labelX-4,p.y-9,textW+10,18);
-  ctx.globalAlpha=1;ctx.fillStyle=p.color;
-  ctx.fillText(label,labelX,p.y,width-20);
+  if(p.y<top+labelSize/2+1||p.y>bottom-labelSize/2-1)continue;
+  ctx.textAlign='left';
+  ctx.fillStyle=p.color;
+  ctx.fillText(fmtFibLabel(p),8,p.y,Math.max(20,width*.46-15));
+  ctx.textAlign='right';
+  ctx.fillStyle=axisColor;
+  ctx.fillText(fmtFibPrice(p.price),width-8,p.y,Math.max(20,width*.44-15));
  }
  ctx.restore();
 }
@@ -6021,13 +6030,12 @@ function drawChart(){
   const v=gradual?gradual.priceAtY(y):
    useLog?min*Math.pow(max/min,i/4):min+(max-min)*i/4;
   const label=v.toLocaleString('it-IT',{maximumFractionDigits:Math.abs(v)>=10?1:3});
+  if(chartFib.enabled&&chartFib.labels){
+   // Fibonacci already supplies precise, unboxed numbers on the right.
+   continue;
+  }
   if(chartFib.enabled&&!fxCandle){
-   // Price axis is overlaid at the right edge, no separate 67px strip.
-   ctx.save();ctx.font=vertexCanvasFont(10,'500');ctx.textAlign='right';
-   const w=Math.min(width*.34,ctx.measureText(label).width+10);
-   ctx.globalAlpha=.86;ctx.fillStyle='rgba(7,21,35,.84)';
-   ctx.fillRect(width-w-1,y-8,w,16);ctx.restore();
-   text(label,width-5,y+4,'right',10);
+   text(label,width-8,y+4,'right',11);
   }else{
    text(label,width-right+(fxCandle?32:7),y+4,'left',10);
   }
