@@ -4713,7 +4713,9 @@ function fibTap(event,canvas){
  const offset=Math.min(count-1,Math.max(0,Math.floor((x-view.left)/(view.width-view.left-view.right)*count)));
  const candle=candles[view.start+offset];
  if(!candle)return;
- const p=view.min+(view.bottom-y)/(view.bottom-view.top)*(view.max-view.min);
+ const amount=(view.bottom-y)/(view.bottom-view.top);
+ const p=view.useLog?view.min*Math.pow(view.max/view.min,amount):view.min+amount*(view.max-view.min);
+ if(!Number.isFinite(p)||p<=0)return;
  const picked={t:candle.t,p:Number(p.toPrecision(12))};
  if(!chartFib.draft){
   chartFib.draft=picked;
@@ -5886,7 +5888,7 @@ function drawChart(){
  const yPrice=v=>regions[0].bottom-
   (useLog&&v>0?Math.log(v/min)/Math.log(max/min):(v-min)/(max-min))*
   (regions[0].bottom-regions[0].top);
- const fibLayout={width,height,left,right,top:regions[0].top,bottom:regions[0].bottom,min,max,start,end,yPrice};
+ const fibLayout={width,height,left,right,top:regions[0].top,bottom:regions[0].bottom,min,max,start,end,yPrice,useLog};
  fibDraw(ctx,candles,start,end,fibLayout,'bands');
  const step=chartW/sample.length,cw=Math.max(chartRange==='MAX'?.65:2,Math.min(9,step*.58));
  sample.forEach((c,i)=>{
