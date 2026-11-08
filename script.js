@@ -4491,7 +4491,7 @@ const chartFib={
  levels:Array.isArray(fibSettings.levels)?
   FIB_LEVELS.filter(n=>fibSettings.levels.includes(n)||(!fibSettings.styleV2&&[1.618,2.618,3.618,4.236].includes(n))):FIB_DEFAULT_LEVELS.slice(),
  anchors:fibSettings.anchors&&typeof fibSettings.anchors==='object'?fibSettings.anchors:{},
- mode:'idle',draft:null,view:null,settingsOpen:false
+ mode:'idle',draft:null,view:null
 };
 function fibKey(){return (state.dialogId||'')+'|'+chartRange;}
 function fibEntry(){return Object.hasOwn(chartFib.anchors,fibKey())?chartFib.anchors[fibKey()]:null;}
@@ -4619,7 +4619,7 @@ function fibGradualScale(candles,start,end,focusLow,focusHigh,top,bottom){
  const dataRange=focusHigh-focusLow;
  const nearLow=Math.max(1e-12,focusLow-dataRange*.045);
  const nearHigh=focusHigh+dataRange*.045;
- const epsilon=(a,b)=>Math.abs(a-b)<=Math.max(1e-10,Math.abs(a)*1e-10,Math.abs(b)*1e-10);
+ const epsilon=(a,b)=>Math.abs(a-b)<=Math.max(1e-18,Math.abs(a)*1e-12,Math.abs(b)*1e-12);
  const stops=[nearLow,nearHigh,...selected].sort((a,b)=>a-b)
   .filter((value,i,arr)=>i===0||!epsilon(value,arr[i-1]));
  if(stops.length<2)return null;
@@ -6597,49 +6597,6 @@ function setupEvents(){
   chartFib.mode='idle';chartFib.draft=null;chartFib.view=null;
  });
 
- // Controls live on the detail dialog and preserve settings during price updates.
- $('#assetDialog').addEventListener('toggle',e=>{
-  if(e.target.classList?.contains('chart-fib-settings'))
-   chartFib.settingsOpen=e.target.open;
- },true);
- $('#assetDialog').addEventListener('input',e=>{
-  const control=e.target;
-  if(control.dataset.fibColor!==undefined&&/^#[0-9a-f]{6}$/i.test(control.value)){
-   chartFib.color=control.value;fibSave();scheduleDetailChartDraw();return;
-  }
-  if(control.dataset.fibOpacity!==undefined){
-   const opacity=Number(control.value);
-   if(!Number.isFinite(opacity))return;
-   chartFib.opacity=Math.min(100,Math.max(15,opacity));
-   const output=$('#chartFibOpacityValue');
-   if(output)output.textContent=chartFib.opacity+'%';
-   fibSave();scheduleDetailChartDraw();return;
-  }
- });
- $('#assetDialog').addEventListener('change',e=>{
-  const control=e.target;
-  const attr=control.dataset;
-  if(attr.fibPalette!==undefined)chartFib.palette=control.checked;
-  else if(attr.fibBands!==undefined)chartFib.bands=control.checked;
-  else if(attr.fibFitExtensions!==undefined)chartFib.fitExtensions=control.checked;
-  else if(attr.fibLog!==undefined)chartFib.logarithmic=control.checked;
-  else if(attr.fibExtend!==undefined)chartFib.extend=control.checked;
-  else if(attr.fibLabels!==undefined)chartFib.labels=control.checked;
-  else if(attr.fibReverse!==undefined)chartFib.reverse=control.checked;
-  else if(attr.fibLevel!==undefined){
-   const ratio=Number(attr.fibLevel);
-   if(!FIB_LEVELS.includes(ratio))return;
-   chartFib.levels=control.checked?
-    FIB_LEVELS.filter(n=>chartFib.levels.includes(n)||n===ratio):
-    chartFib.levels.filter(n=>n!==ratio);
-  }else if(attr.fibPrice!==undefined){
-   const entry=fibEntry(),price=Number(control.value);
-   if(!entry||entry.method!=='manual'||!['a','b'].includes(attr.fibPrice)||
-      !Number.isFinite(price)||price<=0){toast('Inserisci un prezzo valido maggiore di zero.');return;}
-   entry[attr.fibPrice].p=price;
-  }else return;
-  fibSave();scheduleDetailChartDraw();
- });
  $('#dialogWatch').addEventListener('click',()=>state.dialogId&&toggleWatch(state.dialogId));
  setupCanvasInteractions();setupMiniCandleInteractions();
  window.addEventListener('scroll',()=>scheduleMarketMiniPaint(),{passive:true});
