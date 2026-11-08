@@ -3744,12 +3744,18 @@ function settingsPage(){
  '<p class="subnote">'+(state.adaptiveBrightness?'Luminosità adattiva attiva: la pagina cambia automaticamente tra giorno, sera e notte. Disattivala per riprendere il controllo manuale.':'Regola la luminosità della pagina, non quella fisica dello schermo. Al minimo resta leggibile per poterla aumentare di nuovo.')+'</p></div></section>'+
 
  '<section class="content-card panel settings-preferences settings-font-section" aria-label="Carattere della dashboard">'+
- '<h3>Caratteri dei testi</h3><p class="subnote">Scegli uno dei sei font: viene applicato subito a tutta la dashboard e resta salvato su questo dispositivo.</p>'+
+ '<h3>Caratteri dei testi e dei numeri</h3><p class="subnote">Tocca un font: lettere, numeri, prezzi e percentuali cambiano in tutta la dashboard.</p>'+
+ '<div class="settings-font-active-preview" id="vertexFontActivePreview" aria-live="polite">'+
+ '<span class="settings-font-active-label">Font selezionato: <strong>'+esc(VERTEX_FONTS[state.fontStyle]?.name||'Inter')+'</strong></span>'+
+ '<strong class="settings-font-active-letters">Aa Bb Cc Dd Ee Ff · ABCDEFGHIJKLMNOPQRSTUVWXYZ</strong>'+
+ '<span class="settings-font-active-numbers">0123456789 · 123.456,78 € · +12,45% · −0,67%</span>'+
+ '<small id="vertexFontAvailability" class="settings-font-availability">La scelta si applica subito al sito e resta salvata.</small>'+
+ '</div>'+
  '<div class="settings-font-grid" role="group" aria-label="Scegli il font dei testi">'+
  Object.entries(VERTEX_FONTS).map(([id,info])=>
   '<button type="button" data-font-style="'+id+'" class="settings-font-option font-preview-'+id+(state.fontStyle===id?' is-selected':'')+'" aria-pressed="'+(state.fontStyle===id)+'" aria-label="'+info.name+': '+info.description+'">'+
   '<span class="settings-font-option-head"><strong>'+info.name+'</strong><span class="settings-font-check" aria-hidden="true">'+(state.fontStyle===id?'✓':'')+'</span></span>'+
-  '<span class="settings-font-demo" aria-hidden="true">Mercati e criptovalute · 123,45</span>'+
+  '<span class="settings-font-demo" aria-hidden="true">Aa Bb Cc XYZ · 0123456789 · 123,45 €</span>'+
   '<small>'+info.description+'</small></button>').join('')+
  '</div><p class="subnote settings-font-footnote">Se un font non è disponibile offline, il sistema utilizza un carattere alternativo leggibile.</p></section>'+
  '<section class="content-card panel settings-preferences settings-app-icon-section">'+
@@ -4168,7 +4174,6 @@ function setFontStyle(id){
  state.fontStyle=id;
  applyFontStyle();
  save('fontStyle',id);
- // The selected preview must visibly match the chosen typeface immediately.
  document.querySelectorAll('[data-font-style]').forEach(button=>{
   const selected=button.dataset.fontStyle===id;
   button.classList.toggle('is-selected',selected);
@@ -4176,16 +4181,41 @@ function setFontStyle(id){
   const check=button.querySelector('.settings-font-check');
   if(check)check.textContent=selected?'✓':'';
  });
- // Refresh all native graph labels after a typeface change.
- if(state.dialogId)scheduleDetailChartDraw();
  if(state.page==='settings'||(state.page==='workspace'&&workspaceShown('settings')))render();
- if(state.page==='global')paintGlobalCapChart();
- if(document.fonts?.ready)document.fonts.ready.then(()=>{
+ const redraw=()=>{
   if(state.fontStyle!==id)return;
+  applyFontStyle();
   if(state.dialogId)scheduleDetailChartDraw();
   if(state.page==='global')paintGlobalCapChart();
- }).catch(()=>{});
+  if(state.page==='markets'||state.page==='workspace')
+   updateMarketsSnapshotCharts();
+ };
+ redraw();
+ const status=message=>{
+  if(state.fontStyle!==id)return;
+  const node=document.querySelector('#vertexFontAvailability');
+  if(node)node.textContent=message;
+ };
+ // Request glyphs from the chosen family, including every digit.
+ // A named fallback must not be silently represented as the exact selected face.
+ if(document.fonts&&typeof document.fonts.load==='function'){
+  const family=VERTEX_FONTS[id].name;
+  status('Caricamento del carattere '+family+'…');
+  document.fonts.load('400 16px "'+family+'"',
+   'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 €%.,+-')
+   .then(faces=>{
+    if(state.fontStyle!==id)return;
+    status(faces.length?'Carattere '+family+' caricato · lettere e numeri':
+     'Font esterno non disponibile: è in uso un carattere alternativo.');
+    redraw();
+   })
+   .catch(()=>{
+    status('Caricamento del font non riuscito: è in uso un carattere alternativo.');
+    redraw();
+   });
+ }else redraw();
 }
+
 function setTheme(mode){
  state.themeMode=(mode==='auto'||Object.hasOwn(THEME_NAMES,mode))?mode:'dark';
  applyTheme();
@@ -5482,7 +5512,7 @@ function drawDetailRightPriceMarker(ctx,marker,layout){
  const centerY=Math.max(top+tagHeight/2+2,Math.min(bottom-tagHeight/2-2,y));
  const label=marker.label; // Compact: price only, no arrows or redundant labels.
  ctx.save();
- ctx.font='700 10px Inter, sans-serif';
+ ctx.font=vertexCanvasFont(10,'700');
  const measured=Math.ceil(ctx.measureText(label).width);
  const tagWidth=Math.max(43,measured+10);
  // Place the badge over the axis's existing price text, not in an extra gutter.
