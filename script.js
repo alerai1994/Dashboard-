@@ -1316,7 +1316,7 @@ function globalCryptoHistoryPanel(){
  '<header class="global-crypto-history-header"><div><span class="eyebrow" id="globalCapChartEyebrow">VERTEX · HISTORICAL MARKET CAP</span>'+
  '<h2 id="globalCryptoHistoryTitle">Storico capitalizzazione</h2>'+
  '<p id="globalCapFullRangeStatus" aria-live="polite">Seleziona 1D, 1W, 1M, 30D, 90D, 1Y oppure TUTTO</p></div>'+
- '<div class="global-crypto-history-actions"><button type="button" data-cap-zoom="in" aria-label="Ingrandisci">+</button>'+
+ '<div class="global-crypto-history-actions" style="display:flex;flex-wrap:nowrap;align-items:center;justify-content:flex-end;justify-self:stretch;align-self:stretch;grid-column:1 / -1;width:100%;max-width:100%;margin:0"><button type="button" data-cap-zoom="in" aria-label="Ingrandisci">+</button>'+
  '<button type="button" data-cap-zoom="out" aria-label="Riduci">−</button>'+
  '<button type="button" data-cap-reset="1" aria-label="Ripristina grafico">↺</button>'+
  '<button type="button" data-close-global-cap-chart="1" aria-label="Chiudi grafico">✕</button></div></header>'+
