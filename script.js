@@ -4467,6 +4467,194 @@ const CHART_PERIODS=[
 const CHART_PERIOD_BY_ID=Object.fromEntries(CHART_PERIODS.map(p=>[p.id,p]));
 let chartRange='1D';
 let chartSeries={id:null,range:null,candles:[],source:'',loading:false,error:'',partial:false};
+
+/* Native Fibonacci retracement on the real detail candlestick chart.
+   All chosen levels are calculated from actual candles or two user-picked
+   chart points. Nothing is added to, or interpolated into, OHLC history. */
+const FIB_LEVELS=Object.freeze([0,.236,.382,.5,.618,.786,1,1.272,1.618]);
+const FIB_DEFAULT_LEVELS=[0,.236,.382,.5,.618,.786,1];
+const fibStored=load('chartFibonacciV1',{});
+const fibSettings=fibStored&&typeof fibStored==='object'?fibStored:{};
+const chartFib={
+ enabled:fibSettings.enabled===true,
+ color:/^#[0-9a-f]{6}$/i.test(fibSettings.color||'')?fibSettings.color:'#c99bff',
+ opacity:Number.isFinite(Number(fibSettings.opacity))?Math.max(15,Math.min(100,Number(fibSettings.opacity))):78,
+ extend:fibSettings.extend!==false,
+ labels:fibSettings.labels!==false,
+ reverse:fibSettings.reverse===true,
+ levels:Array.isArray(fibSettings.levels)?
+  FIB_LEVELS.filter(n=>fibSettings.levels.includes(n)):FIB_DEFAULT_LEVELS.slice(),
+ anchors:fibSettings.anchors&&typeof fibSettings.anchors==='object'?fibSettings.anchors:{},
+ mode:'idle',draft:null,view:null,settingsOpen:false
+};
+function fibKey(){return (state.dialogId||'')+'|'+chartRange;}
+function fibEntry(){return Object.hasOwn(chartFib.anchors,fibKey())?chartFib.anchors[fibKey()]:null;}
+function fibSave(){
+ save('chartFibonacciV1',{
+  enabled:chartFib.enabled,color:chartFib.color,opacity:chartFib.opacity,
+  extend:chartFib.extend,labels:chartFib.labels,reverse:chartFib.reverse,
+  levels:chartFib.levels,anchors:chartFib.anchors
+ });
+}
+function fibEnable(){
+ chartFib.enabled=!chartFib.enabled;
+ chartFib.mode='idle';chartFib.draft=null;
+ if(chartFib.enabled&&!fibEntry())chartFib.anchors[fibKey()]={method:'auto'};
+ fibSave();refreshDialog();
+}
+function fibAuto(){
+ chartFib.enabled=true;chartFib.mode='idle';chartFib.draft=null;
+ chartFib.anchors[fibKey()]={method:'auto'};
+ fibSave();refreshDialog();
+}
+function fibPick(){
+ chartFib.enabled=true;chartFib.mode='picking';chartFib.draft=null;
+ fibSave();refreshDialog();
+}
+function fibClear(){
+ delete chartFib.anchors[fibKey()];
+ chartFib.mode='idle';chartFib.draft=null;chartFib.enabled=false;
+ fibSave();refreshDialog();
+}
+function fibCurrentAnchors(candles,start,end){
+ if(chartFib.mode==='picking'&&chartFib.draft)return {a:chartFib.draft,b:null};
+ const entry=fibEntry();
+ if(!entry||!chartFib.enabled)return null;
+ if(entry.method==='manual'){
+  const a=entry.a,b=entry.b;
+  if(a&&b&&Number.isFinite(a.p)&&Number.isFinite(b.p)&&Number.isFinite(a.t)&&Number.isFinite(b.t))
+   return {a,b};
+  return null;
+ }
+ if(entry.method==='auto'){
+  const rows=candles.slice(start,end);
+  if(rows.length<2)return null;
+  let low=0,high=0;
+  for(let i=1;i<rows.length;i++){
+   if(rows[i].l<rows[low].l)low=i;
+   if(rows[i].h>rows[high].h)high=i;
+  }
+  const lower={t:rows[low].t,p:rows[low].l};
+  const upper={t:rows[high].t,p:rows[high].h};
+  return low<=high?{a:lower,b:upper}:{a:upper,b:lower};
+ }
+ return null;
+}
+function fibControls(){
+ const entry=fibEntry(),manual=entry?.method==='manual';
+ const active=chartFib.enabled;
+ const picking=chartFib.mode==='picking';
+ const pickText=picking?(chartFib.draft?'Seleziona il secondo punto sul grafico':'Seleziona il primo punto sul grafico'):
+  manual?'Fibonacci manuale · selezione salvata':entry?.method==='auto'?'Fibonacci automatico · massimo/minimo visibile':
+  'Attiva Fibonacci o scegli i due punti da tracciare.';
+ const fmtPrice=x=>Number.isFinite(x)?String(Number(x)):'';
+ return '<section class="chart-fib-tools" aria-label="Strumento Fibonacci">'+
+  '<div class="chart-fib-buttons">'+
+  '<button type="button" data-fib-toggle="1" class="chart-fib-button'+(active?' is-active':'')+'" aria-pressed="'+active+'">◈ Fibonacci '+(active?'ON':'OFF')+'</button>'+
+  '<button type="button" data-fib-auto="1" class="chart-fib-button"'+(!active?'':'')+'>Auto · Max/Min</button>'+
+  '<button type="button" data-fib-pick="1" class="chart-fib-button'+(picking?' is-active':'')+'" aria-pressed="'+picking+'">✎ Seleziona 2 punti</button>'+
+  '<button type="button" data-fib-clear="1" class="chart-fib-button">Cancella</button>'+
+  '</div>'+
+  '<p id="chartFibStatus" class="chart-fib-status" role="status" aria-live="polite">'+esc(pickText)+'</p>'+
+  '<details class="chart-fib-settings"'+(chartFib.settingsOpen?' open':'')+'><summary>⚙ Impostazioni Fibonacci</summary>'+
+  '<div class="chart-fib-settings-body">'+
+   '<label>Colore delle linee <input type="color" data-fib-color="1" value="'+esc(chartFib.color)+'"></label>'+
+   '<label>Trasparenza <span id="chartFibOpacityValue">'+chartFib.opacity+'%</span><input type="range" data-fib-opacity="1" min="15" max="100" step="5" value="'+chartFib.opacity+'"></label>'+
+   '<label class="chart-fib-check"><input type="checkbox" data-fib-extend="1"'+(chartFib.extend?' checked':'')+'> Estendi le linee a destra</label>'+
+   '<label class="chart-fib-check"><input type="checkbox" data-fib-labels="1"'+(chartFib.labels?' checked':'')+'> Mostra livelli e prezzi</label>'+
+   '<label class="chart-fib-check"><input type="checkbox" data-fib-reverse="1"'+(chartFib.reverse?' checked':'')+'> Inverti direzione (0% ↔ 100%)</label>'+
+   '<div class="chart-fib-levels"><strong>Livelli da visualizzare</strong><div class="chart-fib-level-grid">'+
+   FIB_LEVELS.map(n=>'<label class="chart-fib-check"><input type="checkbox" data-fib-level="'+n+'"'+(chartFib.levels.includes(n)?' checked':'')+'>'+((n*100).toFixed(1).replace(/\.0$/,''))+'%</label>').join('')+
+   '</div></div>'+
+   (manual?'<div class="chart-fib-price-fields">'+
+    '<label>Prezzo punto A <input type="number" inputmode="decimal" step="any" min="0" data-fib-price="a" value="'+fmtPrice(entry.a.p)+'"></label>'+
+    '<label>Prezzo punto B <input type="number" inputmode="decimal" step="any" min="0" data-fib-price="b" value="'+fmtPrice(entry.b.p)+'"></label>'+
+   '</div>':'')+
+   '<small>Modalità manuale: scegli due punti nella zona PREZZO delle candele. Puoi poi modificare il prezzo dei punti qui sopra. Impostazioni salvate in questo browser.</small>'+
+  '</div></details></section>';
+}
+function fibDraw(ctx,candles,start,end,layout){
+ chartFib.view=layout;
+ if(!chartFib.enabled||!candles.length)return;
+ const pair=fibCurrentAnchors(candles,start,end);
+ if(!pair)return;
+ const {left,right,width,top,bottom,min,max}=layout;
+ const plotWidth=width-left-right;
+ if(plotWidth<=0||!(max>min))return;
+ const xFor=a=>{
+  const i=candles.findIndex(c=>c.t===a.t);
+  return i<0?NaN:left+(i-start+.5)*plotWidth/Math.max(1,end-start);
+ };
+ const yFor=p=>bottom-(p-min)/(max-min)*(bottom-top);
+ const a=chartFib.reverse&&pair.b?pair.b:pair.a;
+ const b=chartFib.reverse&&pair.b?pair.a:pair.b;
+ const xa=xFor(a),xb=b?xFor(b):NaN;
+ const color=chartFib.color;
+ ctx.save();ctx.beginPath();ctx.rect(left,top,plotWidth,bottom-top);ctx.clip();
+ const anchorDot=(p,x)=>{
+  const y=yFor(p.p);
+  if(!Number.isFinite(x)||!Number.isFinite(y))return;
+  ctx.globalAlpha=1;ctx.strokeStyle=color;ctx.fillStyle='#ffffff';
+  ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fill();ctx.stroke();
+ };
+ if(b&&Number.isFinite(xa)&&Number.isFinite(xb)){
+  const x1=Math.max(left,Math.min(xa,xb));
+  const x2=chartFib.extend?width-right:Math.min(width-right,Math.max(xa,xb));
+  if(x2>x1){
+   for(const ratio of chartFib.levels){
+    const value=b.p+(a.p-b.p)*ratio;
+    const y=yFor(value);
+    if(!Number.isFinite(y)||y<top||y>bottom)continue;
+    ctx.globalAlpha=chartFib.opacity/100;
+    ctx.strokeStyle=color;ctx.lineWidth=ratio===0||ratio===1?1.7:1.05;
+    ctx.setLineDash(ratio===0||ratio===1?[]:[5,4]);
+    ctx.beginPath();ctx.moveTo(x1,y);ctx.lineTo(x2,y);ctx.stroke();
+    ctx.setLineDash([]);
+    if(chartFib.labels){
+     const pctLabel=(ratio*100).toFixed(1).replace(/\.0$/,'')+'%';
+     const digits=Math.abs(value)<.001?10:Math.abs(value)<1?7:Math.abs(value)<100?4:2;
+     const label=pctLabel+' · '+value.toLocaleString('it-IT',{maximumFractionDigits:digits});
+     ctx.font=vertexCanvasFont(10,'600');ctx.textBaseline='middle';
+     const textW=ctx.measureText(label).width;
+     const labelX=Math.max(left+2,Math.min(x2-textW-8,width-right-textW-9));
+     ctx.globalAlpha=.86;ctx.fillStyle='rgba(6,16,29,.82)';
+     ctx.fillRect(labelX-3,y-8,textW+7,16);
+     ctx.fillStyle='#fff';ctx.globalAlpha=1;ctx.fillText(label,labelX,y);
+    }
+   }
+  }
+ }
+ anchorDot(a,xa);if(b)anchorDot(b,xb);
+ ctx.restore();
+}
+function fibTap(event,canvas){
+ const view=chartFib.view,candles=getCandles(state.dialogId);
+ if(!view||!candles.length)return;
+ const rect=canvas.getBoundingClientRect();
+ if(!rect.width||!rect.height)return;
+ const x=(event.clientX-rect.left)*view.width/rect.width;
+ const y=(event.clientY-rect.top)*view.height/rect.height;
+ if(x<view.left||x>view.width-view.right||y<view.top||y>view.bottom){
+  const status=$('#chartFibStatus');
+  if(status)status.textContent='Tocca o clicca all’interno della zona PREZZO del grafico.';
+  return;
+ }
+ const count=Math.max(1,view.end-view.start);
+ const offset=Math.min(count-1,Math.max(0,Math.floor((x-view.left)/(view.width-view.left-view.right)*count)));
+ const candle=candles[view.start+offset];
+ if(!candle)return;
+ const p=view.min+(view.bottom-y)/(view.bottom-view.top)*(view.max-view.min);
+ const picked={t:candle.t,p:Number(p.toPrecision(12))};
+ if(!chartFib.draft){
+  chartFib.draft=picked;
+  const status=$('#chartFibStatus');
+  if(status)status.textContent='Primo punto salvato. Scegli il secondo punto sul grafico.';
+  scheduleDetailChartDraw();return;
+ }
+ chartFib.anchors[fibKey()]={method:'manual',a:chartFib.draft,b:picked};
+ chartFib.draft=null;chartFib.mode='idle';fibSave();refreshDialog();
+}
+
 /* Keep observed prices separate from verified historical OHLC. A current candle
    built from quotes is partial, and no missing ticks/bars are fabricated. */
 const chartObservedQuotes=new Map();
