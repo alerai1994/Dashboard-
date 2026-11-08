@@ -2586,3 +2586,26 @@ html[data-vertex-font] body :is(
  font-variant-numeric:normal!important;
  font-feature-settings:normal!important;
 }
+
+/* v185: Always put the native historical-chart controls at the far right,
+   on their own full-width row, including small/mobile viewports. */
+#globalCryptoHistory .global-crypto-history-header{
+ display:flex;
+ flex-direction:column;
+ align-items:stretch;
+ width:100%;
+}
+#globalCryptoHistory .global-crypto-history-header>div:first-child{
+ width:100%;
+ min-width:0;
+}
+#globalCryptoHistory .global-crypto-history-header>.global-crypto-history-actions{
+ display:flex;
+ flex:0 0 auto;
+ align-self:stretch;
+ justify-content:flex-end;
+ flex-wrap:nowrap;
+ width:100%;
+ min-width:0;
+ margin:0;
+}
