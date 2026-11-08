@@ -2621,3 +2621,13 @@ html[data-vertex-font] body :is(
 ):not(.settings-font-grid):not(.settings-font-grid *){
  font-family:var(--vertex-font)!important;
 }
+
+/* v187: Prices and daily variations in Watchlist and Workspace always use
+   the exact font selected under Settings, with original color semantics. */
+html[data-vertex-font] .watchlist-data-table td.watchlist-price-cell > .watchlist-price-number,
+html[data-vertex-font] .watchlist-data-table td.watchlist-change-cell > .watchlist-change-number{
+ font-family:var(--vertex-font)!important;
+ font-variant-numeric:normal!important;
+ font-feature-settings:normal!important;
+ letter-spacing:normal;
+}
