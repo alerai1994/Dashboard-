@@ -877,9 +877,12 @@ function updatePriceDom(){
    if(el.matches('tr[data-asset]')){
     const cells=el.querySelectorAll('td');
     if(cells.length>=3){
-     if(cells[1].textContent!==shownPrice)cells[1].textContent=shownPrice;
+     // Preserve the Watchlist's selected-font spans across every live tick.
+     const priceTarget=cells[1].querySelector('.watchlist-price-number')||cells[1];
+     const changeTarget=cells[2].querySelector('.watchlist-change-number')||cells[2];
+     if(priceTarget.textContent!==shownPrice)priceTarget.textContent=shownPrice;
      setQuotePriceMovement(cells[1],id);
-     if(cells[2].textContent!==shownChange)cells[2].textContent=shownChange;
+     if(changeTarget.textContent!==shownChange)changeTarget.textContent=shownChange;
      setMovementClass(cells[2],q.change);
     }
    }
@@ -1854,7 +1857,7 @@ function tableForAssets(items,emptyTitle){
  if(!items.length)return '<div class="empty-state"><h3>'+esc(emptyTitle||'Nessun mercato da mostrare')+'</h3><p>Modifica la ricerca o aggiungi strumenti alla watchlist.</p></div>';
  return '<div class="data-table-scroll watchlist-data-table" data-watchlist-font="'+esc(state.fontStyle)+'"><table class="data-table watchlist-font-table"><thead><tr><th>Strumento</th><th>Ultimo prezzo</th><th>Variazione</th><th>Storico</th><th>Fonte</th></tr></thead><tbody>'+
  items.map(a=>'<tr tabindex="0" data-asset="'+a.id+'" aria-label="Dettagli '+esc(a.name)+'"><td><span class="market-table-asset">'+(showAssetLogo(a)?assetLogo(a):'')+'<span><strong>'+esc(a.name)+'</strong><small>'+esc(a.symbol)+'</small></span></span></td>'+
- '<td class="watchlist-price-number '+quotePriceClass(a.id)+'">'+assetValue(a)+'</td><td class="watchlist-change-number '+classArrow(a.id)+'">'+pct(change(a.id))+'</td>'+
+ '<td class="watchlist-price-cell '+quotePriceClass(a.id)+'"><span class="watchlist-value watchlist-price-number">'+assetValue(a)+'</span></td><td class="watchlist-change-cell '+classArrow(a.id)+'"><span class="watchlist-value watchlist-change-number">'+pct(change(a.id))+'</span></td>'+
  '<td class="'+classArrow(a.id)+'">'+sparkLine(a.id,90,26)+'</td><td><small>'+esc(a.group==='crypto'?'Binance/CoinGecko':a.group==='forex'?'Broker MT5/Yahoo':'Yahoo Finance')+'</small></td></tr>').join('')+
  '</tbody></table></div>';
 }
