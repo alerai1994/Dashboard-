@@ -6061,7 +6061,7 @@ function drawChart(){
  const extra=height-470;
  const regions=chartFib.enabled&&chartFib.mode!=='picking'?(()=>{
   // Allocate a generous price canvas; preserve three real indicator panes.
-  const priceBottom=Math.max(290,Math.round(height*.65));
+  const priceBottom=Math.max(300,Math.round(height*.70));
   const gap=11,last=height-17;
   const each=Math.max(33,(last-priceBottom-3*gap)/3);
   const rsiTop=priceBottom+gap,stochTop=rsiTop+each+gap,macdTop=stochTop+each+gap;
