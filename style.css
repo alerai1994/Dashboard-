@@ -2791,3 +2791,17 @@ html[data-vertex-font] .watchlist-data-table .watchlist-value.watchlist-change-n
  opacity:.68;
  font-size:10px;
 }
+
+/* v201: Explicit choice of Fibonacci arithmetic or logarithmic price scale. */
+.chart-fib-scale{
+ display:flex;align-items:center;flex-wrap:wrap;gap:7px;
+ margin-top:9px;padding-top:9px;border-top:1px solid var(--line);
+}
+.chart-fib-scale-label{
+ font-size:12px;font-weight:700;color:var(--muted);margin-right:3px;
+}
+.chart-fib-scale-button{min-width:96px}
+@media(max-width:650px){
+ .chart-fib-scale-label{flex:0 0 100%;margin-bottom:1px}
+ .chart-fib-scale .chart-fib-scale-button{flex:1 1 calc(50% - 7px)}
+}
