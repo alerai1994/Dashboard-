@@ -107,8 +107,18 @@ function updateExtraGlobalPillData(){
  }
 }
 
-async function loadExtraGlobalCharts(){
- if(extraGlobalState.loading||extraGlobalState.loaded)return;
+/* A refreshed daily archive must not erase a newer verified live tick. */
+function extraKeepLastObserved(id,archive){
+ if(!archive.length)return archive;
+ const newest=nativeCapChart.data[id]?.at(-1),live=extraGlobalState.live[id];
+ if(!newest||!live||newest[0]!==live.timestamp||
+    newest[0]<=archive.at(-1)[0]||newest[0]>Date.now()+300000)return archive;
+ const day=Math.floor(newest[0]/86400000);
+ return [...archive.filter(([t])=>Math.floor(t/86400000)!==day),newest]
+  .sort((a,b)=>a[0]-b[0]);
+}
+async function loadExtraGlobalCharts(force=false){
+ if(extraGlobalState.loading||(extraGlobalState.loaded&&!force))return;
  extraGlobalState.loading=true;
  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),16000);
  try{
@@ -120,7 +130,7 @@ async function loadExtraGlobalCharts(){
   const alt=payload?.altcoin||{};
   const altPoints=extraCleanPoints(alt.points,true).filter(([t,v])=>v>=0&&v<=100);
   if(altPoints.length){
-   nativeCapChart.data.ALTCOIN=altPoints;
+   nativeCapChart.data.ALTCOIN=extraKeepLastObserved('ALTCOIN',altPoints);
    nativeCapChart.ohlc.ALTCOIN=null;
    nativeCapChart.sources.ALTCOIN=alt.source||'CoinMarketCap · Altcoin Season Index';
    extraGlobalState.meta.ALTCOIN={frequency:alt.frequency||'1D',source:alt.source,updatedAt:payload.updatedAt};
@@ -129,7 +139,7 @@ async function loadExtraGlobalCharts(){
    const quote=payload?.rainbow?.[asset]||{};
    const rows=extraCleanPoints(quote.points);
    if(!rows.length)continue;
-   nativeCapChart.data[id]=rows;
+   nativeCapChart.data[id]=extraKeepLastObserved(id,rows);
    nativeCapChart.sources[id]=quote.source||('Prezzi storici '+asset+'/USD');
    extraGlobalState.meta[id]={frequency:quote.frequency||'1D',source:quote.source};
    extraGlobalState.model[id]=extraLogFit(rows);
@@ -277,6 +287,20 @@ function syncExtraRainbowWithCryptoStream(){
   extraApplyLive(id,quote.value,t,'Binance WebSocket · '+asset+'/USDT',quote.change,true);
  }
 }
+/* Called by the midnight watcher in the main dashboard. When Global is
+   inactive, invalidate the archive and lazily refresh on the next visit. */
+window.__vertexRefreshSpecialGlobal=function(active=true){
+ if(!active){
+  extraGlobalState.loaded=false;
+  return;
+ }
+ updateExtraGlobalPillData();
+ loadExtraGlobalCharts(true);
+ syncExtraRainbowWithCryptoStream();
+ refreshExtraLiveQuotes();
+ refreshExtraLiveAltcoin();
+ refreshExtraLiveSnapshot();
+};
 function startExtraLivePolling(){
  if(extraLiveStarted)return;extraLiveStarted=true;
  setInterval(refreshExtraLiveQuotes,EXTRA_BTC_ETH_MS);
