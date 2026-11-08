@@ -4479,7 +4479,9 @@ const chartFib={
  enabled:fibSettings.enabled===true,
  palette:fibSettings.palette!==false,
  bands:fibSettings.bands!==false,
- fitExtensions:fibSettings.fitExtensions!==false,
+ // v192: migrate the old full-extension scale to a readable price-focused
+ // view. Users can explicitly re-enable full extension scaling afterwards.
+ fitExtensions:fibSettings.styleV3===true&&fibSettings.fitExtensions===true,
  logarithmic:fibSettings.logarithmic!==false,
  color:/^#[0-9a-f]{6}$/i.test(fibSettings.color||'')?fibSettings.color:'#c99bff',
  opacity:Number.isFinite(Number(fibSettings.opacity))?Math.max(15,Math.min(100,Number(fibSettings.opacity))):78,
@@ -4495,7 +4497,7 @@ function fibKey(){return (state.dialogId||'')+'|'+chartRange;}
 function fibEntry(){return Object.hasOwn(chartFib.anchors,fibKey())?chartFib.anchors[fibKey()]:null;}
 function fibSave(){
  save('chartFibonacciV1',{
-  styleV2:true,enabled:chartFib.enabled,palette:chartFib.palette,bands:chartFib.bands,
+  styleV2:true,styleV3:true,enabled:chartFib.enabled,palette:chartFib.palette,bands:chartFib.bands,
   fitExtensions:chartFib.fitExtensions,logarithmic:chartFib.logarithmic,
   color:chartFib.color,opacity:chartFib.opacity,
   extend:chartFib.extend,labels:chartFib.labels,reverse:chartFib.reverse,
@@ -4559,6 +4561,9 @@ function fibControls(){
   '<button type="button" data-fib-toggle="1" class="chart-fib-button'+(active?' is-active':'')+'" aria-pressed="'+active+'">◈ Fibonacci '+(active?'ON':'OFF')+'</button>'+
   '<button type="button" data-fib-auto="1" class="chart-fib-button"'+(!active?'':'')+'>Auto · Max/Min</button>'+
   '<button type="button" data-fib-pick="1" class="chart-fib-button'+(picking?' is-active':'')+'" aria-pressed="'+picking+'">✎ Seleziona 2 punti</button>'+
+  '<button type="button" data-fib-scale="1" class="chart-fib-button'+(chartFib.fitExtensions?' is-active':'')+
+  '" aria-pressed="'+chartFib.fitExtensions+'" title="Alterna tra grafico leggibile e tutte le estensioni">'+
+  (chartFib.fitExtensions?'↔ Scala completa':'↔ Scala prezzi')+'</button>'+
   '<button type="button" data-fib-clear="1" class="chart-fib-button">Cancella</button>'+
   '</div>'+
   '<p id="chartFibStatus" class="chart-fib-status" role="status" aria-live="polite">'+esc(pickText)+'</p>'+
@@ -4567,7 +4572,7 @@ function fibControls(){
    '<label>Colore personalizzato <input type="color" data-fib-color="1" value="'+esc(chartFib.color)+'"></label>'+ 
    '<label class="chart-fib-check"><input type="checkbox" data-fib-palette="1"'+(chartFib.palette?' checked':'')+'> Livelli multicolore come riferimento</label>'+ 
    '<label class="chart-fib-check"><input type="checkbox" data-fib-bands="1"'+(chartFib.bands?' checked':'')+'> Fasce semitrasparenti fra i livelli</label>'+ 
-   '<label class="chart-fib-check"><input type="checkbox" data-fib-fit-extensions="1"'+(chartFib.fitExtensions?' checked':'')+'> Adatta la scala alle estensioni</label>'+ 
+   '<label class="chart-fib-check"><input type="checkbox" data-fib-fit-extensions="1"'+(chartFib.fitExtensions?' checked':'')+'> Mostra tutte le estensioni sulla scala (riduce l’altezza delle candele)</label>'+  
    '<label class="chart-fib-check"><input type="checkbox" data-fib-log="1"'+(chartFib.logarithmic?' checked':'')+'> Livelli e scala logaritmici (come nell’immagine)</label>'+
    '<label>Trasparenza <span id="chartFibOpacityValue">'+chartFib.opacity+'%</span><input type="range" data-fib-opacity="1" min="15" max="100" step="5" value="'+chartFib.opacity+'"></label>'+
    '<label class="chart-fib-check"><input type="checkbox" data-fib-extend="1"'+(chartFib.extend?' checked':'')+'> Estendi le linee a destra</label>'+
@@ -4580,7 +4585,7 @@ function fibControls(){
     '<label>Prezzo punto A <input type="number" inputmode="decimal" step="any" min="0" data-fib-price="a" value="'+fmtPrice(entry.a.p)+'"></label>'+
     '<label>Prezzo punto B <input type="number" inputmode="decimal" step="any" min="0" data-fib-price="b" value="'+fmtPrice(entry.b.p)+'"></label>'+
    '</div>':'')+
-   '<small>Livelli nello stile del riferimento: etichette colorate a sinistra, linee a tutta larghezza ed estensioni 1,618 / 2,618 / 3,618 / 4,236. In modalità manuale seleziona due punti sulla zona PREZZO. Modifiche salvate in questo browser.</small>'+ 
+   '<small>Scala prezzi (consigliata): lascia leggibili le candele e mostra soltanto i livelli compresi nella scala visibile. Scala completa: visualizza anche le estensioni lontane, ma comprime le candele. I livelli rimangono selezionati e salvati. Per i punti manuali clicca due volte nella zona PREZZO.</small>'+ 
   '</div></details></section>';
 }
 
@@ -6502,6 +6507,7 @@ function setupEvents(){
   if(btn.dataset.fibAuto!==undefined){fibAuto();return;}
   if(btn.dataset.fibPick!==undefined){fibPick();return;}
   if(btn.dataset.fibClear!==undefined){fibClear();return;}
+  if(btn.dataset.fibScale!==undefined){chartFib.fitExtensions=!chartFib.fitExtensions;fibSave();refreshDialog();return;}
   if(btn.dataset.chartRange){selectChartRange(btn.dataset.chartRange);return;}
   if(btn.dataset.chartRefresh){loadChartHistory(true);return;}
   if(btn.dataset.pan){
