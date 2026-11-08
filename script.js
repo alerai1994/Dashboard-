@@ -4565,7 +4565,7 @@ function fibControls(){
   '</div>'+
   '<p id="chartFibStatus" class="chart-fib-status" role="status" aria-live="polite">'+esc(pickText)+
   (active?' · Scala graduale non lineare: prezzi e livelli visibili senza comprimere le candele.':'')+
-  '</p></section>';
+  ' <span class="chart-fib-build" title="Versione del grafico">· Layout v196</span></p></section>';
 }
 /* Image-matched Fibonacci: colored levels, left-side price labels, translucent
    bands and logarithmic extensions. This is a visual overlay; source OHLC is
@@ -5889,8 +5889,17 @@ function drawChart(){
  const canvas=$('#detailChart');if(!canvas||!canvas.isConnected)return;
  const candles=getCandles(state.dialogId),ctx=canvas.getContext('2d');if(!ctx)return;
  const fxCandle=forexBrokerObservedCandle(state.dialogId);
+ // Force the canvas to follow the actual chart frame; otherwise old CSS and
+ // cached inline canvas dimensions can leave large blank side gutters.
+ const frame=canvas.closest('.chart-frame');
+ if(chartFib.enabled&&frame){
+  canvas.style.setProperty('width','100%','important');
+  canvas.style.setProperty('max-width','none','important');
+  canvas.style.setProperty('margin','0','important');
+  frame.dataset.chartLayout='fullwidth-v196';
+ }
  const rect=canvas.getBoundingClientRect();
- const width=Math.max(360,Math.floor(rect.width)),height=Math.max(470,Math.floor(rect.height||470)),dpr=Math.min(2,window.devicePixelRatio||1);
+ const width=Math.max(320,Math.floor(rect.width||frame?.clientWidth||360)),height=Math.max(470,Math.floor(rect.height||470)),dpr=Math.min(2,window.devicePixelRatio||1);
  const pixelWidth=Math.floor(width*dpr),pixelHeight=Math.floor(height*dpr);
  if(canvas.width!==pixelWidth)canvas.width=pixelWidth;
  if(canvas.height!==pixelHeight)canvas.height=pixelHeight;
