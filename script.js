@@ -1851,9 +1851,9 @@ function homePage(){
 }
 function tableForAssets(items,emptyTitle){
  if(!items.length)return '<div class="empty-state"><h3>'+esc(emptyTitle||'Nessun mercato da mostrare')+'</h3><p>Modifica la ricerca o aggiungi strumenti alla watchlist.</p></div>';
- return '<div class="data-table-scroll"><table class="data-table"><thead><tr><th>Strumento</th><th>Ultimo prezzo</th><th>Variazione</th><th>Storico</th><th>Fonte</th></tr></thead><tbody>'+
+ return '<div class="data-table-scroll watchlist-data-table" data-watchlist-font="'+esc(state.fontStyle)+'"><table class="data-table watchlist-font-table"><thead><tr><th>Strumento</th><th>Ultimo prezzo</th><th>Variazione</th><th>Storico</th><th>Fonte</th></tr></thead><tbody>'+
  items.map(a=>'<tr tabindex="0" data-asset="'+a.id+'" aria-label="Dettagli '+esc(a.name)+'"><td><span class="market-table-asset">'+(showAssetLogo(a)?assetLogo(a):'')+'<span><strong>'+esc(a.name)+'</strong><small>'+esc(a.symbol)+'</small></span></span></td>'+
- '<td class="'+quotePriceClass(a.id)+'">'+assetValue(a)+'</td><td class="'+classArrow(a.id)+'">'+pct(change(a.id))+'</td>'+
+ '<td class="watchlist-price-number '+quotePriceClass(a.id)+'">'+assetValue(a)+'</td><td class="watchlist-change-number '+classArrow(a.id)+'">'+pct(change(a.id))+'</td>'+
  '<td class="'+classArrow(a.id)+'">'+sparkLine(a.id,90,26)+'</td><td><small>'+esc(a.group==='crypto'?'Binance/CoinGecko':a.group==='forex'?'Broker MT5/Yahoo':'Yahoo Finance')+'</small></td></tr>').join('')+
  '</tbody></table></div>';
 }
