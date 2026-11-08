@@ -4507,7 +4507,14 @@ function fibSave(){
 // Manual Fibonacci is strictly an overlay: no automatic zoom, scale fit,
 // timeframe changes, candle window changes, or chart-height reflow.
 function fibNativeViewport(){
+ // Preserve the horizontal candle window throughout manual Fibonacci.
  return chartFib.enabled&&(chartFib.mode==='picking'||fibEntry()?.method==='manual');
+}
+function fibCompleteLevels(){
+ // All classic levels and extensions must be visible after manual selection,
+ // including 1.272, 1.618, 2.618, 3.618 and 4.236.
+ return chartFib.enabled&&fibEntry()?.method==='manual'&&chartFib.mode!=='picking'?
+  FIB_LEVELS:chartFib.levels;
 }
 function fibRefreshSelection(){
  const node=document.querySelector('#assetDialog .chart-fib-tools');
@@ -4515,7 +4522,7 @@ function fibRefreshSelection(){
  const frame=document.querySelector('#assetDialog .chart-frame');
  if(frame){
   frame.classList.toggle('fib-picking',chartFib.mode==='picking');
-  frame.classList.toggle('fib-gradual',chartFib.enabled&&!fibNativeViewport());
+  frame.classList.toggle('fib-gradual',chartFib.enabled&&chartFib.mode!=='picking');
  }
  scheduleDetailChartDraw();
 }
@@ -4592,9 +4599,10 @@ function fibControls(){
   '<button type="button" data-fib-clear="1" class="chart-fib-button">Cancella</button>'+
   '</div>'+
   '<p id="chartFibStatus" class="chart-fib-status" role="status" aria-live="polite">'+esc(pickText)+
-  (active?(fibNativeViewport()?' · Vista completa invariata: selezione senza zoom.':
-   ' · Scala graduale non lineare: prezzi e livelli visibili senza comprimere le candele.'):'')+
-  ' <span class="chart-fib-build" title="Versione del grafico">· Layout v199</span></p></section>';
+  (active?(picking?' · Selezione punti senza zoom.':manual?
+   ' · Tutti i livelli 0–4,236 visibili · stessa finestra storica · scala prezzi non lineare.':
+   ' · Scala graduale non lineare: tutti i livelli visibili.'):'')+
+  ' <span class="chart-fib-build" title="Versione del grafico">· Layout v200</span></p></section>';
 }
 /* Image-matched Fibonacci: colored levels, left-side price labels, translucent
    bands and logarithmic extensions. This is a visual overlay; source OHLC is
@@ -4641,7 +4649,7 @@ function fibGradualScale(candles,start,end,focusLow,focusHigh,top,bottom){
  if(!chartFib.enabled||!(focusHigh>focusLow)||!(bottom>top+80))return null;
  const pair=fibCurrentAnchors(candles,start,end);
  if(!pair?.b)return null;
- const selected=chartFib.levels.map(level=>fibLevelPrice(pair,level))
+ const selected=fibCompleteLevels().map(level=>fibLevelPrice(pair,level))
   .filter(value=>Number.isFinite(value)&&value>0);
  if(selected.length<2)return null;
  const dataRange=focusHigh-focusLow;
@@ -4652,8 +4660,9 @@ function fibGradualScale(candles,start,end,focusLow,focusHigh,top,bottom){
   .filter((value,i,arr)=>i===0||!epsilon(value,arr[i-1]));
  if(stops.length<2)return null;
  const transform=chartFib.logarithmic?x=>Math.log(x):x=>x;
- const length=bottom-top,edgePadding=9;
- const gap=Math.min(17,Math.max(9,Math.floor((length-2*edgePadding)/Math.max(12,selected.length+5)*.75)));
+ const length=bottom-top,edgePadding=13;
+ // Give each colored level room for its label, including small screens.
+ const gap=Math.min(19,Math.max(12,Math.floor((length-2*edgePadding)/Math.max(12,selected.length+5)*.84)));
  const segments=[];
  let sumFocus=0,sumOuter=0,sumGap=0;
  for(let i=0;i<stops.length-1;i++){
@@ -4725,7 +4734,7 @@ function fibDraw(ctx,candles,start,end,layout,phase='lines'){
   return i<0?NaN:left+(i-start+.5)*plotW/Math.max(1,end-start);
  };
  const yPrice=layout.yPrice || (p=>bottom-(p-min)/(max-min)*(bottom-top));
- const coords=chartFib.levels
+ const coords=fibCompleteLevels()
   .map(ratio=>({ratio,price:fibLevelPrice(pair,ratio)}))
   .filter(p=>Number.isFinite(p.price)&&p.price>0)
   .map(p=>({...p,y:yPrice(p.price),color:chartFib.palette?
@@ -5679,7 +5688,7 @@ function refreshDialog(){
  '<div class="chart-coverage" id="chartHistoryDates" role="status" aria-live="polite" hidden></div>'+ 
   '<div class="chart-live-quote-status" id="chartLiveQuoteStatus" role="status" aria-live="off"></div>'+
  fibControls()+
- '<div class="chart-frame'+(chartFib.enabled&&!fibNativeViewport()?' fib-gradual':'')+(chartFib.mode==='picking'?' fib-picking':'')+'"><canvas id="detailChart" width="900" height="470" role="img" aria-label="Grafico di '+esc(a.name)+', medie mobili e indicatori" tabindex="0"></canvas>'+ 
+ '<div class="chart-frame'+(chartFib.enabled&&chartFib.mode!=='picking'?' fib-gradual':'')+(chartFib.mode==='picking'?' fib-picking':'')+'"><canvas id="detailChart" width="900" height="470" role="img" aria-label="Grafico di '+esc(a.name)+', medie mobili e indicatori" tabindex="0"></canvas>'+ 
   '<div class="chart-candle-tooltip" id="chartCandleTooltip" role="status" aria-live="off" hidden></div></div>'+
  '<div class="chart-toolbar chart-time-toolbar"><div class="chart-legend"><span>RSI (14)</span><span>Stochastic RSI (14/14/3/3)</span><span>MACD (12/26/9)</span></div>'+
  (isCrypto?'<div class="chart-periods" role="group" aria-label="Periodo storico del grafico">'+
@@ -6006,7 +6015,7 @@ function drawChart(){
  state.chartShift=Math.max(0,Math.min(maxShift,state.chartShift));
  const start=Math.max(0,candles.length-visible-state.chartShift),end=Math.min(candles.length,start+visible),sample=candles.slice(start,end);
  const extra=height-470;
- const regions=chartFib.enabled&&!fibNativeViewport()?(()=>{
+ const regions=chartFib.enabled&&chartFib.mode!=='picking'?(()=>{
   // Allocate a generous price canvas; preserve three real indicator panes.
   const priceBottom=Math.max(290,Math.round(height*.65));
   const gap=11,last=height-17;
@@ -6049,7 +6058,11 @@ function drawChart(){
  emaSets.forEach(a=>a.values.slice(start,end).forEach(v=>{if(num(v)){lows.push(v);highs.push(v)}}));
  const lo=Math.min(...lows),hi=Math.max(...highs);
  const manualOverlay=fibNativeViewport();
- const gradual=manualOverlay?null:fibGradualScale(candles,start,end,lo,hi,regions[0].top,regions[0].bottom);
+ // Picking uses the untouched native price map; after the second point,
+ // gently expand the VERTICAL axis to fit all Fibonacci levels. Horizontal
+ // candle count, chartShift and historical timeframe stay unchanged.
+ const gradual=chartFib.enabled&&chartFib.mode!=='picking'?
+  fibGradualScale(candles,start,end,lo,hi,regions[0].top,regions[0].bottom):null;
  const fit=gradual||manualOverlay?{low:lo,high:hi}:fibScaleExtent(candles,start,end,lo,hi);
  const useLog=!gradual&&!manualOverlay&&chartFib.enabled&&chartFib.logarithmic&&fit.low>0&&fit.high>0;
  let min,max;
