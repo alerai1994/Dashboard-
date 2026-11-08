@@ -4516,6 +4516,16 @@ function fibCompleteLevels(){
  return chartFib.enabled&&fibEntry()?.method==='manual'&&chartFib.mode!=='picking'?
   FIB_LEVELS:chartFib.levels;
 }
+function fibSetScale(mode){
+ if(mode!=='normal'&&mode!=='logarithmic')return;
+ const useLog=mode==='logarithmic';
+ if(chartFib.logarithmic===useLog)return;
+ // The anchors, timeframe, horizontal candle window and selected history
+ // stay untouched; only the Fibonacci price interpolation is recalculated.
+ chartFib.logarithmic=useLog;
+ fibSave();
+ fibRefreshSelection();
+}
 function fibRefreshSelection(){
  const node=document.querySelector('#assetDialog .chart-fib-tools');
  if(node)node.outerHTML=fibControls();
@@ -4598,11 +4608,20 @@ function fibControls(){
    '" aria-pressed="'+picking+'">✎ Seleziona 2 punti</button>'+
   '<button type="button" data-fib-clear="1" class="chart-fib-button">Cancella</button>'+
   '</div>'+
+  '<div class="chart-fib-scale" role="group" aria-label="Scala Fibonacci">'+
+   '<span class="chart-fib-scale-label">Scala Fibonacci</span>'+
+   '<button type="button" data-fib-scale="normal" class="chart-fib-button chart-fib-scale-button'+
+    (!chartFib.logarithmic?' is-active':'')+
+    '" aria-pressed="'+!chartFib.logarithmic+'">Normale</button>'+
+   '<button type="button" data-fib-scale="logarithmic" class="chart-fib-button chart-fib-scale-button'+
+    (chartFib.logarithmic?' is-active':'')+
+    '" aria-pressed="'+chartFib.logarithmic+'">Logaritmica</button>'+
+  '</div>'+
   '<p id="chartFibStatus" class="chart-fib-status" role="status" aria-live="polite">'+esc(pickText)+
   (active?(picking?' · Selezione punti senza zoom.':manual?
-   ' · Tutti i livelli 0–4,236 visibili · stessa finestra storica · scala prezzi non lineare.':
-   ' · Scala graduale non lineare: tutti i livelli visibili.'):'')+
-  ' <span class="chart-fib-build" title="Versione del grafico">· Layout v200</span></p></section>';
+   ' · Livelli 0–4,236 completi · stessa finestra storica.':
+   ' · Livelli Fibonacci completi.'):'')+
+  ' <span class="chart-fib-build" title="Versione del grafico">· Layout v201</span></p></section>';
 }
 /* Image-matched Fibonacci: colored levels, left-side price labels, translucent
    bands and logarithmic extensions. This is a visual overlay; source OHLC is
@@ -6706,6 +6725,7 @@ function setupEvents(){
   if(btn.dataset.fibAuto!==undefined){fibAuto();return;}
   if(btn.dataset.fibPick!==undefined){fibPick();return;}
   if(btn.dataset.fibClear!==undefined){fibClear();return;}
+  if(btn.dataset.fibScale!==undefined){fibSetScale(btn.dataset.fibScale);return;}
   if(btn.dataset.chartRange){selectChartRange(btn.dataset.chartRange);return;}
   if(btn.dataset.chartRefresh){loadChartHistory(true);return;}
   if(btn.dataset.pan){
