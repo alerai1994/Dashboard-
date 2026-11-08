@@ -2764,3 +2764,30 @@ html[data-vertex-font] .watchlist-data-table .watchlist-value.watchlist-change-n
   min-height:640px;
  }
 }
+
+/* v196: prevent inherited max-width, align-self or canvas intrinsic dimensions
+   from narrowing the interactive Fibonacci viewport. */
+#assetDialog .chart-frame.fib-gradual,
+#assetDialog.market-fullscreen .chart-frame.fib-gradual{
+ display:block!important;
+ width:100%!important;
+ max-width:none!important;
+ min-width:0!important;
+ box-sizing:border-box!important;
+ margin-inline:0!important;
+ overflow:hidden!important;
+}
+#assetDialog .chart-frame.fib-gradual #detailChart{
+ display:block!important;
+ width:100%!important;
+ max-width:none!important;
+ min-width:0!important;
+ margin:0!important;
+ padding:0!important;
+ box-sizing:border-box!important;
+}
+#assetDialog .chart-fib-build{
+ white-space:nowrap;
+ opacity:.68;
+ font-size:10px;
+}
