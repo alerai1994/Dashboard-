@@ -4773,7 +4773,8 @@ function fibTap(event,canvas){
  const candle=candles[view.start+offset];
  if(!candle)return;
  const amount=(view.bottom-y)/(view.bottom-view.top);
- const p=view.useLog?view.min*Math.pow(view.max/view.min,amount):view.min+amount*(view.max-view.min);
+ const p=typeof view.priceAtY==='function'?view.priceAtY(y):
+  view.useLog?view.min*Math.pow(view.max/view.min,amount):view.min+amount*(view.max-view.min);
  if(!Number.isFinite(p)||p<=0)return;
  const picked={t:candle.t,p:Number(p.toPrecision(12))};
  if(!chartFib.draft){
@@ -5642,7 +5643,7 @@ function refreshDialog(){
  '<div class="chart-coverage" id="chartHistoryDates" role="status" aria-live="polite" hidden></div>'+ 
   '<div class="chart-live-quote-status" id="chartLiveQuoteStatus" role="status" aria-live="off"></div>'+
  fibControls()+
- '<div class="chart-frame'+(chartFib.mode==='picking'?' fib-picking':'')+'"><canvas id="detailChart" width="900" height="470" role="img" aria-label="Grafico di '+esc(a.name)+', medie mobili e indicatori" tabindex="0"></canvas>'+ 
+ '<div class="chart-frame'+(chartFib.enabled?' fib-gradual':'')+(chartFib.mode==='picking'?' fib-picking':'')+'"><canvas id="detailChart" width="900" height="470" role="img" aria-label="Grafico di '+esc(a.name)+', medie mobili e indicatori" tabindex="0"></canvas>'+ 
   '<div class="chart-candle-tooltip" id="chartCandleTooltip" role="status" aria-live="off" hidden></div></div>'+
  '<div class="chart-toolbar chart-time-toolbar"><div class="chart-legend"><span>RSI (14)</span><span>Stochastic RSI (14/14/3/3)</span><span>MACD (12/26/9)</span></div>'+
  (isCrypto?'<div class="chart-periods" role="group" aria-label="Periodo storico del grafico">'+
@@ -5903,7 +5904,19 @@ function drawChart(){
  state.chartShift=Math.max(0,Math.min(maxShift,state.chartShift));
  const start=Math.max(0,candles.length-visible-state.chartShift),end=Math.min(candles.length,start+visible),sample=candles.slice(start,end);
  const extra=height-470;
- const regions=[
+ const regions=chartFib.enabled?(()=>{
+  // Allocate a generous price canvas; preserve three real indicator panes.
+  const priceBottom=Math.max(290,Math.round(height*.65));
+  const gap=11,last=height-17;
+  const each=Math.max(33,(last-priceBottom-3*gap)/3);
+  const rsiTop=priceBottom+gap,stochTop=rsiTop+each+gap,macdTop=stochTop+each+gap;
+  return [
+   {top:13,bottom:priceBottom,label:'PRICE'},
+   {top:rsiTop,bottom:rsiTop+each,label:'RSI (14)'},
+   {top:stochTop,bottom:stochTop+each,label:'STOCH RSI'},
+   {top:macdTop,bottom:last,label:'MACD'}
+  ];
+ })():[
   {top:13,bottom:221+extra*.55,label:'PRICE'},
   {top:237+extra*.55,bottom:305+extra*.7,label:'RSI (14)'},
   {top:317+extra*.7,bottom:385+extra*.85,label:'STOCH RSI'},
@@ -5932,8 +5945,9 @@ function drawChart(){
  if(priceMarker?.fresh){lows.push(priceMarker.price);highs.push(priceMarker.price)}
  emaSets.forEach(a=>a.values.slice(start,end).forEach(v=>{if(num(v)){lows.push(v);highs.push(v)}}));
  const lo=Math.min(...lows),hi=Math.max(...highs);
- const fit=fibScaleExtent(candles,start,end,lo,hi);
- const useLog=chartFib.enabled&&chartFib.logarithmic&&fit.low>0&&fit.high>0;
+ const gradual=fibGradualScale(candles,start,end,lo,hi,regions[0].top,regions[0].bottom);
+ const fit=gradual?{low:lo,high:hi}:fibScaleExtent(candles,start,end,lo,hi);
+ const useLog=!gradual&&chartFib.enabled&&chartFib.logarithmic&&fit.low>0&&fit.high>0;
  let min,max;
  if(useLog){
   const low=Math.max(1e-15,fit.low),high=Math.max(low*1.000001,fit.high);
@@ -5945,10 +5959,12 @@ function drawChart(){
   const pad=(fit.high-fit.low||Math.max(fit.high*.03,1))*.07;
   min=fit.low-pad;max=fit.high+pad;
  }
- const yPrice=v=>regions[0].bottom-
+ const normalYPrice=v=>regions[0].bottom-
   (useLog&&v>0?Math.log(v/min)/Math.log(max/min):(v-min)/(max-min))*
   (regions[0].bottom-regions[0].top);
- const fibLayout={width,height,left,right,top:regions[0].top,bottom:regions[0].bottom,min,max,start,end,yPrice,useLog};
+ const yPrice=gradual?gradual.yPrice:normalYPrice;
+ const fibLayout={width,height,left,right,top:regions[0].top,bottom:regions[0].bottom,
+  min,max,start,end,yPrice,useLog,priceAtY:gradual?.priceAtY,gradual:!!gradual};
  fibDraw(ctx,candles,start,end,fibLayout,'bands');
  const step=chartW/sample.length,cw=Math.max(chartRange==='MAX'?.65:2,Math.min(9,step*.58));
  sample.forEach((c,i)=>{
@@ -5984,8 +6000,10 @@ function drawChart(){
  });
  fibDraw(ctx,candles,start,end,fibLayout,'lines');
  for(let i=0;i<=4;i++){
-  const v=useLog?min*Math.pow(max/min,i/4):min+(max-min)*i/4;
-  text(v.toLocaleString('it-IT',{maximumFractionDigits:Math.abs(v)>=10?1:3}),width-right+(fxCandle?32:7),yPrice(v)+4,'left',10);
+  const y=regions[0].bottom-i*(regions[0].bottom-regions[0].top)/4;
+  const v=gradual?gradual.priceAtY(y):
+   useLog?min*Math.pow(max/min,i/4):min+(max-min)*i/4;
+  text(v.toLocaleString('it-IT',{maximumFractionDigits:Math.abs(v)>=10?1:3}),width-right+(fxCandle?32:7),y+4,'left',10);
  }
  const drawIndicator=(values,yMap,stroke,widthLine=1.35)=>{
   ctx.beginPath();let started=false;
@@ -6561,7 +6579,6 @@ function setupEvents(){
   if(btn.dataset.fibAuto!==undefined){fibAuto();return;}
   if(btn.dataset.fibPick!==undefined){fibPick();return;}
   if(btn.dataset.fibClear!==undefined){fibClear();return;}
-  if(btn.dataset.fibScale!==undefined){chartFib.fitExtensions=!chartFib.fitExtensions;fibSave();refreshDialog();return;}
   if(btn.dataset.chartRange){selectChartRange(btn.dataset.chartRange);return;}
   if(btn.dataset.chartRefresh){loadChartHistory(true);return;}
   if(btn.dataset.pan){
