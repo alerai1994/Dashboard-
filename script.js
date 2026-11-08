@@ -1858,7 +1858,7 @@ function homePage(){
 function watchlistSelectedFontAttribute(){
  // Only known Settings font IDs can reach this HTML style attribute.
  const font=Object.hasOwn(VERTEX_FONT_FAMILIES,state.fontStyle)?state.fontStyle:'inter';
- return ' style="font-family:'+esc(VERTEX_FONT_FAMILIES[font])+' !important;font-variant-numeric:normal !important;font-feature-settings:normal !important"';
+ return ' style="font-family:'+esc(VERTEX_FONT_FAMILIES[font])+' !important;font-weight:600 !important;font-variant-numeric:normal !important;font-feature-settings:normal !important"';
 }
 function tableForAssets(items,emptyTitle){
  if(!items.length)return '<div class="empty-state"><h3>'+esc(emptyTitle||'Nessun mercato da mostrare')+'</h3><p>Modifica la ricerca o aggiungi strumenti alla watchlist.</p></div>';
@@ -4179,6 +4179,9 @@ function syncVertexPriceTypography(root=document){
  root.querySelectorAll(VERTEX_PRICE_FONT_SELECTOR).forEach(node=>{
   // Explicitly style the numbers, not only the label or their parent table.
   node.style.setProperty('font-family',family,'important');
+  // The number glyphs use the selected 600-weight face, just like the Settings sample.
+  if(node.classList.contains('watchlist-price-number')||node.classList.contains('watchlist-change-number'))
+   node.style.setProperty('font-weight','600','important');
   node.style.setProperty('font-variant-numeric','normal','important');
   node.style.setProperty('font-feature-settings','normal','important');
  });
@@ -4229,9 +4232,10 @@ function setFontStyle(id){
  // A named fallback must not be silently represented as the exact selected face.
  if(document.fonts&&typeof document.fonts.load==='function'){
   const family=VERTEX_FONTS[id].name;
-  document.fonts.load('400 16px "'+family+'"',
-   'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 €%.,+-')
-   .then(faces=>{
+  Promise.all(['400','600'].map(weight=>document.fonts.load(
+   weight+' 16px "'+family+'"',
+   'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 €%.,+-')))
+   .then(()=>{
     if(state.fontStyle!==id)return;
     redraw();
    })
@@ -6302,8 +6306,9 @@ function startVertexApp(){
  // Without this, a cached chart can retain the fallback font until manually refreshed.
  if(document.fonts&&typeof document.fonts.load==='function'){
   const savedFont=state.fontStyle;
-  document.fonts.load('400 16px "'+VERTEX_FONTS[savedFont].name+'"',
-   'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 €%.,+-')
+  Promise.all(['400','600'].map(weight=>document.fonts.load(
+   weight+' 16px "'+VERTEX_FONTS[savedFont].name+'"',
+   'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 €%.,+-')))
    .then(()=>{
     if(state.fontStyle!==savedFont)return;
     applyFontStyle();
