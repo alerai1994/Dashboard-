@@ -4590,9 +4590,8 @@ function fibLevelPrice(pair,ratio){
  return p+(q-p)*ratio;
 }
 function fibPriceGutter(width){
- if(!chartFib.enabled||!chartFib.labels)return 19;
- return width<550?Math.max(87,Math.round(width*.245)):
-  Math.min(215,Math.max(125,Math.round(width*.15)));
+ // Fibonacci labels are drawn OVER the plot; no reserved left column.
+ return chartFib.enabled?10:19;
 }
 function fibScaleExtent(candles,start,end,low,high){
  if(!chartFib.enabled||!chartFib.fitExtensions)return {low,high};
@@ -4687,8 +4686,11 @@ function fibDraw(ctx,candles,start,end,layout,phase='lines'){
  const pair=fibCurrentAnchors(candles,start,end);
  if(!pair?.a)return;
  const {left,right,width,top,bottom,min,max}=layout;
+ // Candle coordinates retain their exact plot geometry. Fibonacci shading
+ // and horizontal rules cover the ENTIRE canvas, including side axis areas.
  const xMax=width-right,plotW=xMax-left;
- if(plotW<=0||!(max>min))return;
+ const overlayLeft=2,overlayRight=width-2,overlayWidth=overlayRight-overlayLeft;
+ if(plotW<=0||overlayWidth<=0||!(max>min))return;
  const pointX=p=>{
   const i=candles.findIndex(c=>c.t===p.t);
   return i<0?NaN:left+(i-start+.5)*plotW/Math.max(1,end-start);
@@ -4703,7 +4705,7 @@ function fibDraw(ctx,candles,start,end,layout,phase='lines'){
   .sort((a,b)=>a.y-b.y);
  if(phase==='bands'){
   if(!chartFib.bands||coords.length<2||!pair.b)return;
-  ctx.save();ctx.beginPath();ctx.rect(left,top,plotW,bottom-top);ctx.clip();
+  ctx.save();ctx.beginPath();ctx.rect(overlayLeft,top,overlayWidth,bottom-top);ctx.clip();
   for(let i=0;i<coords.length-1;i++){
    const upper=coords[i],lower=coords[i+1];
    const y1=Math.max(top,upper.y),y2=Math.min(bottom,lower.y);
@@ -4717,11 +4719,8 @@ function fibDraw(ctx,candles,start,end,layout,phase='lines'){
  }
  if(phase!=='lines')return;
  const xa=pointX(pair.a),xb=pair.b?pointX(pair.b):NaN;
- const startX=!chartFib.extend&&Number.isFinite(xa)&&Number.isFinite(xb)?
-  Math.max(left,Math.min(xa,xb)):left;
- const endX=!chartFib.extend&&Number.isFinite(xa)&&Number.isFinite(xb)?
-  Math.min(xMax,Math.max(xa,xb)):xMax;
- ctx.save();ctx.beginPath();ctx.rect(left,top,plotW,bottom-top);ctx.clip();
+ const startX=overlayLeft,endX=overlayRight;
+ ctx.save();ctx.beginPath();ctx.rect(overlayLeft,top,overlayWidth,bottom-top);ctx.clip();
  if(pair.b&&endX>startX){
   for(const p of coords){
    if(p.y<top||p.y>bottom)continue;
@@ -4740,19 +4739,23 @@ function fibDraw(ctx,candles,start,end,layout,phase='lines'){
  }
  ctx.restore();
  if(!chartFib.labels||!pair.b)return;
- // Labels sit in the left gutter, not on top of candlesticks.
- ctx.save();ctx.textAlign='right';ctx.textBaseline='middle';
+ // Keep labels readable without reserving an empty sidebar.
+ // They are translucent floating tags on TOP of the candlestick plot.
+ ctx.save();ctx.textAlign='left';ctx.textBaseline='middle';
  const size=width<550?9:width<860?10:11;
  ctx.font=vertexCanvasFont(size,'600');
- const gutter=Math.max(0,left-11);
  for(const p of coords){
   if(p.y<top+size/2||p.y>bottom-size/2)continue;
   const digits=Math.abs(p.price)>=100?0:Math.abs(p.price)>=1?4:Math.abs(p.price)>=.001?7:10;
   const price=p.price.toLocaleString('it-IT',{maximumFractionDigits:digits});
   const level=p.ratio.toLocaleString('it-IT',{minimumFractionDigits:p.ratio%1===0?0:3,maximumFractionDigits:3});
-  ctx.globalAlpha=chartFib.opacity/100;
-  ctx.fillStyle=p.color;
-  ctx.fillText(level+' ('+price+')',left-9,p.y,gutter);
+  const label=level+' ('+price+')',labelX=8;
+  const textW=Math.min(width-20,ctx.measureText(label).width);
+  ctx.globalAlpha=.83;
+  ctx.fillStyle='rgba(7,21,35,.84)';
+  ctx.fillRect(labelX-4,p.y-9,textW+10,18);
+  ctx.globalAlpha=1;ctx.fillStyle=p.color;
+  ctx.fillText(label,labelX,p.y,width-20);
  }
  ctx.restore();
 }
@@ -5899,7 +5902,11 @@ function drawChart(){
  // Theme-aware highlighted candle; avoids undefined dark on pointer hover.
  const dark=!['light','sand','ice'].includes(state.theme);
  ctx.fillStyle=chartColors.getPropertyValue('--panel').trim()||'#071523';ctx.fillRect(0,0,width,height);
- const left=fibPriceGutter(width),right=detailChartRightMargin(!!fxCandle),chartW=width-left-right,visible=chartVisibleCandleCount(candles,width);
+ // Full-width Fibonacci candles. Keep space only for the isolated MT5 broker
+ // candle when forex data requires it; no empty left/right chart gutters.
+ const left=fibPriceGutter(width);
+ const right=chartFib.enabled&&!fxCandle?10:detailChartRightMargin(!!fxCandle);
+ const chartW=width-left-right,visible=chartVisibleCandleCount(candles,width);
  const maxShift=Math.max(0,candles.length-visible);
  state.chartShift=Math.max(0,Math.min(maxShift,state.chartShift));
  const start=Math.max(0,candles.length-visible-state.chartShift),end=Math.min(candles.length,start+visible),sample=candles.slice(start,end);
@@ -5927,7 +5934,8 @@ function drawChart(){
  function text(value,x,y,align='left',size=10){ctx.fillStyle=color;ctx.font=size+'px '+detailChartFont;ctx.textAlign=align;ctx.fillText(value,x,y);}
  for(const p of regions){
   for(let k=0;k<=3;k++){const y=p.top+(p.bottom-p.top)*k/3;line(left,y,width-right+4,y,grid,.6)}
-  text(p.label,left+3,p.top+11,'left',9);
+  text(p.label,chartFib.enabled&&p.label==='PRICE'?width/2:left+3,p.top+11,
+   chartFib.enabled&&p.label==='PRICE'?'center':'left',9);
  }
  if(!sample.length){
   chartFib.view=null;
@@ -6003,7 +6011,17 @@ function drawChart(){
   const y=regions[0].bottom-i*(regions[0].bottom-regions[0].top)/4;
   const v=gradual?gradual.priceAtY(y):
    useLog?min*Math.pow(max/min,i/4):min+(max-min)*i/4;
-  text(v.toLocaleString('it-IT',{maximumFractionDigits:Math.abs(v)>=10?1:3}),width-right+(fxCandle?32:7),y+4,'left',10);
+  const label=v.toLocaleString('it-IT',{maximumFractionDigits:Math.abs(v)>=10?1:3});
+  if(chartFib.enabled&&!fxCandle){
+   // Price axis is overlaid at the right edge, no separate 67px strip.
+   ctx.save();ctx.font=vertexCanvasFont(10,'500');ctx.textAlign='right';
+   const w=Math.min(width*.34,ctx.measureText(label).width+10);
+   ctx.globalAlpha=.86;ctx.fillStyle='rgba(7,21,35,.84)';
+   ctx.fillRect(width-w-1,y-8,w,16);ctx.restore();
+   text(label,width-5,y+4,'right',10);
+  }else{
+   text(label,width-right+(fxCandle?32:7),y+4,'left',10);
+  }
  }
  const drawIndicator=(values,yMap,stroke,widthLine=1.35)=>{
   ctx.beginPath();let started=false;
