@@ -4491,7 +4491,7 @@ const chartFib={
  levels:Array.isArray(fibSettings.levels)?
   FIB_LEVELS.filter(n=>fibSettings.levels.includes(n)||(!fibSettings.styleV2&&[1.618,2.618,3.618,4.236].includes(n))):FIB_DEFAULT_LEVELS.slice(),
  anchors:fibSettings.anchors&&typeof fibSettings.anchors==='object'?fibSettings.anchors:{},
- mode:'idle',draft:null,view:null
+ mode:'idle',draft:null,view:null,manualView:null
 };
 function fibKey(){return (state.dialogId||'')+'|'+chartRange;}
 function fibEntry(){return Object.hasOwn(chartFib.anchors,fibKey())?chartFib.anchors[fibKey()]:null;}
@@ -4504,28 +4504,56 @@ function fibSave(){
   levels:chartFib.levels,anchors:chartFib.anchors
  });
 }
+// Manual Fibonacci is strictly an overlay: no automatic zoom, scale fit,
+// timeframe changes, candle window changes, or chart-height reflow.
+function fibNativeViewport(){
+ return chartFib.enabled&&(chartFib.mode==='picking'||fibEntry()?.method==='manual');
+}
+function fibRefreshSelection(){
+ const node=document.querySelector('#assetDialog .chart-fib-tools');
+ if(node)node.outerHTML=fibControls();
+ const frame=document.querySelector('#assetDialog .chart-frame');
+ if(frame){
+  frame.classList.toggle('fib-picking',chartFib.mode==='picking');
+  frame.classList.toggle('fib-gradual',chartFib.enabled&&!fibNativeViewport());
+ }
+ scheduleDetailChartDraw();
+}
 function fibEnable(){
+ chartFib.manualView=null;
  chartFib.enabled=!chartFib.enabled;
  chartFib.mode='idle';chartFib.draft=null;
  if(chartFib.enabled&&!fibEntry())chartFib.anchors[fibKey()]={method:'auto'};
  fibSave();refreshDialog();
 }
 function fibAuto(){
+ chartFib.manualView=null;
  chartFib.enabled=true;chartFib.mode='idle';chartFib.draft=null;
  chartFib.anchors[fibKey()]={method:'auto'};
  fibSave();refreshDialog();
 }
 function fibPick(){
+ // Snapshot the currently displayed historical candle window BEFORE
+ // enabling the tool. Changing the tool must not zoom the time axis.
+ const canvas=document.querySelector('#detailChart');
+ const rect=canvas?.getBoundingClientRect();
+ const width=Math.max(360,Math.floor(rect?.width||360));
+ const candles=getCandles(state.dialogId);
+ chartFib.manualView={
+  key:fibKey(),visible:chartVisibleCandleCount(candles,width),
+  shift:state.chartShift
+ };
  chartFib.enabled=true;chartFib.mode='picking';chartFib.draft=null;
- fibSave();refreshDialog();
+ fibSave();fibRefreshSelection();
 }
 function fibClear(){
+ chartFib.manualView=null;
  delete chartFib.anchors[fibKey()];
  chartFib.mode='idle';chartFib.draft=null;chartFib.enabled=false;
  fibSave();refreshDialog();
 }
 function fibCurrentAnchors(candles,start,end){
- if(chartFib.mode==='picking'&&chartFib.draft)return {a:chartFib.draft,b:null};
+ if(chartFib.mode==='picking')return chartFib.draft?{a:chartFib.draft,b:null}:null;
  const entry=fibEntry();
  if(!entry||!chartFib.enabled)return null;
  if(entry.method==='manual'){
@@ -4591,7 +4619,7 @@ function fibLevelPrice(pair,ratio){
 }
 function fibPriceGutter(width){
  // Fibonacci labels are drawn OVER the plot; no reserved left column.
- return chartFib.enabled?10:19;
+ return chartFib.enabled&&!fibNativeViewport()?10:19;
 }
 function fibScaleExtent(candles,start,end,low,high){
  if(!chartFib.enabled||!chartFib.fitExtensions)return {low,high};
@@ -4791,7 +4819,7 @@ function fibTap(event,canvas){
   scheduleDetailChartDraw();return;
  }
  chartFib.anchors[fibKey()]={method:'manual',a:chartFib.draft,b:picked};
- chartFib.draft=null;chartFib.mode='idle';fibSave();refreshDialog();
+ chartFib.draft=null;chartFib.mode='idle';fibSave();fibRefreshSelection();
 }
 
 /* Keep observed prices separate from verified historical OHLC. A current candle
@@ -5018,7 +5046,7 @@ function chartSupportsRanges(asset){
 function selectChartRange(range){
  const a=ASSET_BY_ID[state.dialogId];
  if(!chartSupportsRanges(a)||!CHART_PERIOD_BY_ID[range])return;
- chartFib.mode='idle';chartFib.draft=null;chartFib.view=null;
+ chartFib.mode='idle';chartFib.draft=null;chartFib.view=null;chartFib.manualView=null;
  chartRange=range;
  if(chartFib.enabled&&!fibEntry()){chartFib.anchors[fibKey()]={method:'auto'};fibSave();}
  state.chartShift=0;state.chartHover=null;
@@ -5602,7 +5630,7 @@ function openAsset(id){
  chartRange='1D';chartHoverForex=false;
  chartSeries={id:null,range:null,candles:[],source:'',loading:false,error:'',partial:false};
  state.dialogId=id;state.chartShift=0;state.chartHover=null;
- chartFib.mode='idle';chartFib.draft=null;chartFib.view=null;
+ chartFib.mode='idle';chartFib.draft=null;chartFib.view=null;chartFib.manualView=null;
  if(chartFib.enabled&&!fibEntry()){chartFib.anchors[fibKey()]={method:'auto'};fibSave();}
  const dlg=$('#assetDialog');
  dlg.classList.toggle('market-fullscreen',chartSupportsRanges(a));
@@ -5650,7 +5678,7 @@ function refreshDialog(){
  '<div class="chart-coverage" id="chartHistoryDates" role="status" aria-live="polite" hidden></div>'+ 
   '<div class="chart-live-quote-status" id="chartLiveQuoteStatus" role="status" aria-live="off"></div>'+
  fibControls()+
- '<div class="chart-frame'+(chartFib.enabled?' fib-gradual':'')+(chartFib.mode==='picking'?' fib-picking':'')+'"><canvas id="detailChart" width="900" height="470" role="img" aria-label="Grafico di '+esc(a.name)+', medie mobili e indicatori" tabindex="0"></canvas>'+ 
+ '<div class="chart-frame'+(chartFib.enabled&&!fibNativeViewport()?' fib-gradual':'')+(chartFib.mode==='picking'?' fib-picking':'')+'"><canvas id="detailChart" width="900" height="470" role="img" aria-label="Grafico di '+esc(a.name)+', medie mobili e indicatori" tabindex="0"></canvas>'+ 
   '<div class="chart-candle-tooltip" id="chartCandleTooltip" role="status" aria-live="off" hidden></div></div>'+
  '<div class="chart-toolbar chart-time-toolbar"><div class="chart-legend"><span>RSI (14)</span><span>Stochastic RSI (14/14/3/3)</span><span>MACD (12/26/9)</span></div>'+
  (isCrypto?'<div class="chart-periods" role="group" aria-label="Periodo storico del grafico">'+
@@ -5825,6 +5853,10 @@ function updateDetailCandleTooltip(candles,start,end,fxCandle,anchor){
  }
 }
 function chartVisibleCandleCount(candles,width){
+ const frozen=chartFib.manualView;
+ if(fibNativeViewport()&&frozen?.key===fibKey()&&
+    Number.isFinite(frozen.visible)&&frozen.visible>=2)
+  return Math.min(candles.length,Math.max(2,Math.round(frozen.visible)));
  const same=chartSeries.id===state.dialogId&&chartSeries.range===chartRange;
  const count=same?Number(chartSeries.visibleCount):NaN;
  if(Number.isFinite(count)&&count>=2){
@@ -5965,7 +5997,7 @@ function drawChart(){
  // candle when forex data requires it; no empty left/right chart gutters.
  const left=fibPriceGutter(width);
  // Reserve a slim genuine market-price axis on the far right, as on normal charts.
- const right=chartFib.enabled&&!fxCandle?
+ const right=chartFib.enabled&&!fxCandle&&!fibNativeViewport()?
   Math.min(105,Math.max(70,Math.round(width*.115))):
   detailChartRightMargin(!!fxCandle);
  const chartW=width-left-right,visible=chartVisibleCandleCount(candles,width);
@@ -5973,7 +6005,7 @@ function drawChart(){
  state.chartShift=Math.max(0,Math.min(maxShift,state.chartShift));
  const start=Math.max(0,candles.length-visible-state.chartShift),end=Math.min(candles.length,start+visible),sample=candles.slice(start,end);
  const extra=height-470;
- const regions=chartFib.enabled?(()=>{
+ const regions=chartFib.enabled&&!fibNativeViewport()?(()=>{
   // Allocate a generous price canvas; preserve three real indicator panes.
   const priceBottom=Math.max(290,Math.round(height*.65));
   const gap=11,last=height-17;
@@ -6015,9 +6047,10 @@ function drawChart(){
  if(priceMarker?.fresh){lows.push(priceMarker.price);highs.push(priceMarker.price)}
  emaSets.forEach(a=>a.values.slice(start,end).forEach(v=>{if(num(v)){lows.push(v);highs.push(v)}}));
  const lo=Math.min(...lows),hi=Math.max(...highs);
- const gradual=fibGradualScale(candles,start,end,lo,hi,regions[0].top,regions[0].bottom);
- const fit=gradual?{low:lo,high:hi}:fibScaleExtent(candles,start,end,lo,hi);
- const useLog=!gradual&&chartFib.enabled&&chartFib.logarithmic&&fit.low>0&&fit.high>0;
+ const manualOverlay=fibNativeViewport();
+ const gradual=manualOverlay?null:fibGradualScale(candles,start,end,lo,hi,regions[0].top,regions[0].bottom);
+ const fit=gradual||manualOverlay?{low:lo,high:hi}:fibScaleExtent(candles,start,end,lo,hi);
+ const useLog=!gradual&&!manualOverlay&&chartFib.enabled&&chartFib.logarithmic&&fit.low>0&&fit.high>0;
  let min,max;
  if(useLog){
   const low=Math.max(1e-15,fit.low),high=Math.max(low*1.000001,fit.high);
