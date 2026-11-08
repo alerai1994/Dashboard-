@@ -2525,10 +2525,9 @@ html[data-vertex-font] .watchlist-data-table .watchlist-change-number{
 html[data-vertex-font] .watchlist-data-table .watchlist-value{
  display:inline-block;
  font-family:var(--vertex-font)!important;
- font-weight:700;
  font-size:1em;
- font-variant-numeric:proportional-nums!important;
- font-feature-settings:"pnum" 1!important;
+ font-variant-numeric:normal!important;
+ font-feature-settings:normal!important;
  letter-spacing:normal;
  line-height:1.35;
  white-space:nowrap;
@@ -2539,3 +2538,20 @@ html[data-vertex-font="poppins"] .watchlist-data-table .watchlist-value{font-fam
 html[data-vertex-font="montserrat"] .watchlist-data-table .watchlist-value{font-family:'Montserrat',Arial,sans-serif!important}
 html[data-vertex-font="lora"] .watchlist-data-table .watchlist-value{font-family:'Lora',Georgia,serif!important}
 html[data-vertex-font="nunito"] .watchlist-data-table .watchlist-value{font-family:'Nunito Sans',Arial,sans-serif!important}
+
+/* v182: Prices, changes and decimal figures follow the same chosen font as
+   the rest of Vertex, including after live market data refreshes. */
+html[data-vertex-font] body :is(
+ .watchlist-data-table .watchlist-price-cell,
+ .watchlist-data-table .watchlist-change-cell,
+ .watchlist-data-table .watchlist-price-number,
+ .watchlist-data-table .watchlist-change-number,
+ .asset-price,.asset-change,.mini-price,.mini-change,
+ .tech-asset-value,.tech-asset-change,
+ .quote-price,.market-chart-values,.region-change,
+ [data-portfolio-price],[data-portfolio-value],#dialogPrice
+){
+ font-family:var(--vertex-font)!important;
+ font-variant-numeric:normal!important;
+ font-feature-settings:normal!important;
+}
