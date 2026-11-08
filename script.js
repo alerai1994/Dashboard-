@@ -4583,58 +4583,118 @@ function fibControls(){
    '<small>Livelli nello stile del riferimento: etichette colorate a sinistra, linee a tutta larghezza ed estensioni 1,618 / 2,618 / 3,618 / 4,236. In modalità manuale seleziona due punti sulla zona PREZZO. Modifiche salvate in questo browser.</small>'+ 
   '</div></details></section>';
 }
-function fibDraw(ctx,candles,start,end,layout){
+
+/* Image-matched Fibonacci: colored levels, left-side price labels, translucent
+   bands and logarithmic extensions. This is a visual overlay; source OHLC is
+   never modified. */
+const FIB_LEVEL_COLORS=Object.freeze({
+ '0':'#7e838f','0.236':'#ff8294','0.382':'#eadb00','0.5':'#36aa57',
+ '0.618':'#19c285','0.786':'#2acddd','1':'#858995',
+ '1.272':'#6797ff','1.618':'#316dff','2.618':'#ff414f',
+ '3.618':'#b837d4','4.236':'#ff7783'
+});
+function fibLevelPrice(pair,ratio){
+ if(!pair?.a||!pair?.b)return NaN;
+ const a=chartFib.reverse?pair.b:pair.a;
+ const b=chartFib.reverse?pair.a:pair.b;
+ const p=Number(a.p),q=Number(b.p);
+ if(!Number.isFinite(p)||!Number.isFinite(q))return NaN;
+ if(chartFib.logarithmic&&p>0&&q>0){
+  const exponent=Math.log(q/p)*ratio;
+  if(exponent>680||exponent< -680)return NaN;
+  return p*Math.exp(exponent);
+ }
+ return p+(q-p)*ratio;
+}
+function fibPriceGutter(width){
+ if(!chartFib.enabled||!chartFib.labels)return 19;
+ return width<550?Math.max(87,Math.round(width*.245)):
+  Math.min(215,Math.max(125,Math.round(width*.15)));
+}
+function fibScaleExtent(candles,start,end,low,high){
+ if(!chartFib.enabled||!chartFib.fitExtensions)return {low,high};
+ const pair=fibCurrentAnchors(candles,start,end);
+ if(!pair?.b)return {low,high};
+ let lo=low,hi=high;
+ for(const level of chartFib.levels){
+  const price=fibLevelPrice(pair,level);
+  if(Number.isFinite(price)&&price>0){lo=Math.min(lo,price);hi=Math.max(hi,price)}
+ }
+ return {low:lo,high:hi};
+}
+function fibDraw(ctx,candles,start,end,layout,phase='lines'){
  chartFib.view=layout;
  if(!chartFib.enabled||!candles.length)return;
  const pair=fibCurrentAnchors(candles,start,end);
- if(!pair)return;
+ if(!pair?.a)return;
  const {left,right,width,top,bottom,min,max}=layout;
- const plotWidth=width-left-right;
- if(plotWidth<=0||!(max>min))return;
- const xFor=a=>{
-  const i=candles.findIndex(c=>c.t===a.t);
-  return i<0?NaN:left+(i-start+.5)*plotWidth/Math.max(1,end-start);
+ const xMax=width-right,plotW=xMax-left;
+ if(plotW<=0||!(max>min))return;
+ const pointX=p=>{
+  const i=candles.findIndex(c=>c.t===p.t);
+  return i<0?NaN:left+(i-start+.5)*plotW/Math.max(1,end-start);
  };
- const yFor=p=>bottom-(p-min)/(max-min)*(bottom-top);
- const a=chartFib.reverse&&pair.b?pair.b:pair.a;
- const b=chartFib.reverse&&pair.b?pair.a:pair.b;
- const xa=xFor(a),xb=b?xFor(b):NaN;
- const color=chartFib.color;
- ctx.save();ctx.beginPath();ctx.rect(left,top,plotWidth,bottom-top);ctx.clip();
- const anchorDot=(p,x)=>{
-  const y=yFor(p.p);
-  if(!Number.isFinite(x)||!Number.isFinite(y))return;
-  ctx.globalAlpha=1;ctx.strokeStyle=color;ctx.fillStyle='#ffffff';
-  ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fill();ctx.stroke();
- };
- if(b&&Number.isFinite(xa)&&Number.isFinite(xb)){
-  const x1=Math.max(left,Math.min(xa,xb));
-  const x2=chartFib.extend?width-right:Math.min(width-right,Math.max(xa,xb));
-  if(x2>x1){
-   for(const ratio of chartFib.levels){
-    const value=b.p+(a.p-b.p)*ratio;
-    const y=yFor(value);
-    if(!Number.isFinite(y)||y<top||y>bottom)continue;
-    ctx.globalAlpha=chartFib.opacity/100;
-    ctx.strokeStyle=color;ctx.lineWidth=ratio===0||ratio===1?1.7:1.05;
-    ctx.setLineDash(ratio===0||ratio===1?[]:[5,4]);
-    ctx.beginPath();ctx.moveTo(x1,y);ctx.lineTo(x2,y);ctx.stroke();
-    ctx.setLineDash([]);
-    if(chartFib.labels){
-     const pctLabel=(ratio*100).toFixed(1).replace(/\.0$/,'')+'%';
-     const digits=Math.abs(value)<.001?10:Math.abs(value)<1?7:Math.abs(value)<100?4:2;
-     const label=pctLabel+' · '+value.toLocaleString('it-IT',{maximumFractionDigits:digits});
-     ctx.font=vertexCanvasFont(10,'600');ctx.textBaseline='middle';
-     const textW=ctx.measureText(label).width;
-     const labelX=Math.max(left+2,Math.min(x2-textW-8,width-right-textW-9));
-     ctx.globalAlpha=.86;ctx.fillStyle='rgba(6,16,29,.82)';
-     ctx.fillRect(labelX-3,y-8,textW+7,16);
-     ctx.fillStyle='#fff';ctx.globalAlpha=1;ctx.fillText(label,labelX,y);
-    }
-   }
+ const yPrice=layout.yPrice || (p=>bottom-(p-min)/(max-min)*(bottom-top));
+ const coords=chartFib.levels
+  .map(ratio=>({ratio,price:fibLevelPrice(pair,ratio)}))
+  .filter(p=>Number.isFinite(p.price)&&p.price>0)
+  .map(p=>({...p,y:yPrice(p.price),color:chartFib.palette?
+   (FIB_LEVEL_COLORS[String(p.ratio)]||chartFib.color):chartFib.color}))
+  .filter(p=>Number.isFinite(p.y))
+  .sort((a,b)=>a.y-b.y);
+ if(phase==='bands'){
+  if(!chartFib.bands||coords.length<2||!pair.b)return;
+  ctx.save();ctx.beginPath();ctx.rect(left,top,plotW,bottom-top);ctx.clip();
+  for(let i=0;i<coords.length-1;i++){
+   const upper=coords[i],lower=coords[i+1];
+   const y1=Math.max(top,upper.y),y2=Math.min(bottom,lower.y);
+   if(y2<=y1)continue;
+   // Gentle colored translucent regions as on the supplied reference.
+   ctx.globalAlpha=Math.min(.19,(chartFib.opacity/100)*.15);
+   ctx.fillStyle=chartFib.palette?(i%2?'#8392a9':'#99a0b6'):chartFib.color;
+   ctx.fillRect(left,y1,plotW,y2-y1);
+  }
+  ctx.restore();return;
+ }
+ if(phase!=='lines')return;
+ const xa=pointX(pair.a),xb=pair.b?pointX(pair.b):NaN;
+ const startX=!chartFib.extend&&Number.isFinite(xa)&&Number.isFinite(xb)?
+  Math.max(left,Math.min(xa,xb)):left;
+ const endX=!chartFib.extend&&Number.isFinite(xa)&&Number.isFinite(xb)?
+  Math.min(xMax,Math.max(xa,xb)):xMax;
+ ctx.save();ctx.beginPath();ctx.rect(left,top,plotW,bottom-top);ctx.clip();
+ if(pair.b&&endX>startX){
+  for(const p of coords){
+   if(p.y<top||p.y>bottom)continue;
+   ctx.globalAlpha=chartFib.opacity/100;
+   ctx.strokeStyle=p.color;ctx.lineWidth=p.ratio>=1.618?2.15:1.7;
+   ctx.setLineDash([]);
+   ctx.beginPath();ctx.moveTo(startX,p.y);ctx.lineTo(endX,p.y);ctx.stroke();
   }
  }
- anchorDot(a,xa);if(b)anchorDot(b,xb);
+ // Keep manual anchors visible even when the lines extend across the plot.
+ for(const a of [pair.a,pair.b].filter(Boolean)){
+  const x=pointX(a),y=yPrice(a.p);
+  if(!Number.isFinite(x)||!Number.isFinite(y)||x<left||x>xMax||y<top||y>bottom)continue;
+  ctx.globalAlpha=.95;ctx.strokeStyle=chartFib.color;ctx.fillStyle='#fff';
+  ctx.lineWidth=1.6;ctx.beginPath();ctx.arc(x,y,3.5,0,Math.PI*2);ctx.fill();ctx.stroke();
+ }
+ ctx.restore();
+ if(!chartFib.labels||!pair.b)return;
+ // Labels sit in the left gutter, not on top of candlesticks.
+ ctx.save();ctx.textAlign='right';ctx.textBaseline='middle';
+ const size=width<550?9:width<860?10:11;
+ ctx.font=vertexCanvasFont(size,'600');
+ const gutter=Math.max(0,left-11);
+ for(const p of coords){
+  if(p.y<top+size/2||p.y>bottom-size/2)continue;
+  const digits=Math.abs(p.price)>=100?0:Math.abs(p.price)>=1?4:Math.abs(p.price)>=.001?7:10;
+  const price=p.price.toLocaleString('it-IT',{maximumFractionDigits:digits});
+  const level=p.ratio.toLocaleString('it-IT',{minimumFractionDigits:p.ratio%1===0?0:3,maximumFractionDigits:3});
+  ctx.globalAlpha=chartFib.opacity/100;
+  ctx.fillStyle=p.color;
+  ctx.fillText(level+' ('+price+')',left-9,p.y,gutter);
+ }
  ctx.restore();
 }
 function fibTap(event,canvas){
