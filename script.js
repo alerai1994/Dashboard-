@@ -4471,12 +4471,16 @@ let chartSeries={id:null,range:null,candles:[],source:'',loading:false,error:'',
 /* Native Fibonacci retracement on the real detail candlestick chart.
    All chosen levels are calculated from actual candles or two user-picked
    chart points. Nothing is added to, or interpolated into, OHLC history. */
-const FIB_LEVELS=Object.freeze([0,.236,.382,.5,.618,.786,1,1.272,1.618]);
-const FIB_DEFAULT_LEVELS=[0,.236,.382,.5,.618,.786,1];
+const FIB_LEVELS=Object.freeze([0,.236,.382,.5,.618,.786,1,1.272,1.618,2.618,3.618,4.236]);
+const FIB_DEFAULT_LEVELS=[0,.236,.382,.5,.618,.786,1,1.618,2.618,3.618,4.236];
 const fibStored=load('chartFibonacciV1',{});
 const fibSettings=fibStored&&typeof fibStored==='object'?fibStored:{};
 const chartFib={
  enabled:fibSettings.enabled===true,
+ palette:fibSettings.palette!==false,
+ bands:fibSettings.bands!==false,
+ fitExtensions:fibSettings.fitExtensions!==false,
+ logarithmic:fibSettings.logarithmic!==false,
  color:/^#[0-9a-f]{6}$/i.test(fibSettings.color||'')?fibSettings.color:'#c99bff',
  opacity:Number.isFinite(Number(fibSettings.opacity))?Math.max(15,Math.min(100,Number(fibSettings.opacity))):78,
  extend:fibSettings.extend!==false,
@@ -4491,7 +4495,9 @@ function fibKey(){return (state.dialogId||'')+'|'+chartRange;}
 function fibEntry(){return Object.hasOwn(chartFib.anchors,fibKey())?chartFib.anchors[fibKey()]:null;}
 function fibSave(){
  save('chartFibonacciV1',{
-  enabled:chartFib.enabled,color:chartFib.color,opacity:chartFib.opacity,
+  enabled:chartFib.enabled,palette:chartFib.palette,bands:chartFib.bands,
+  fitExtensions:chartFib.fitExtensions,logarithmic:chartFib.logarithmic,
+  color:chartFib.color,opacity:chartFib.opacity,
   extend:chartFib.extend,labels:chartFib.labels,reverse:chartFib.reverse,
   levels:chartFib.levels,anchors:chartFib.anchors
  });
@@ -4536,7 +4542,7 @@ function fibCurrentAnchors(candles,start,end){
   }
   const lower={t:rows[low].t,p:rows[low].l};
   const upper={t:rows[high].t,p:rows[high].h};
-  return low<=high?{a:lower,b:upper}:{a:upper,b:lower};
+  return {a:lower,b:upper}; // 0 = minimo, 1 = massimo, estensioni sopra il massimo
  }
  return null;
 }
@@ -4558,11 +4564,15 @@ function fibControls(){
   '<p id="chartFibStatus" class="chart-fib-status" role="status" aria-live="polite">'+esc(pickText)+'</p>'+
   '<details class="chart-fib-settings"'+(chartFib.settingsOpen?' open':'')+'><summary>⚙ Impostazioni Fibonacci</summary>'+
   '<div class="chart-fib-settings-body">'+
-   '<label>Colore delle linee <input type="color" data-fib-color="1" value="'+esc(chartFib.color)+'"></label>'+
+   '<label>Colore personalizzato <input type="color" data-fib-color="1" value="'+esc(chartFib.color)+'"></label>'+ 
+   '<label class="chart-fib-check"><input type="checkbox" data-fib-palette="1"'+(chartFib.palette?' checked':'')+'> Livelli multicolore come riferimento</label>'+ 
+   '<label class="chart-fib-check"><input type="checkbox" data-fib-bands="1"'+(chartFib.bands?' checked':'')+'> Fasce semitrasparenti fra i livelli</label>'+ 
+   '<label class="chart-fib-check"><input type="checkbox" data-fib-fit-extensions="1"'+(chartFib.fitExtensions?' checked':'')+'> Adatta la scala alle estensioni</label>'+ 
+   '<label class="chart-fib-check"><input type="checkbox" data-fib-log="1"'+(chartFib.logarithmic?' checked':'')+'> Livelli e scala logaritmici (come nell’immagine)</label>'+
    '<label>Trasparenza <span id="chartFibOpacityValue">'+chartFib.opacity+'%</span><input type="range" data-fib-opacity="1" min="15" max="100" step="5" value="'+chartFib.opacity+'"></label>'+
    '<label class="chart-fib-check"><input type="checkbox" data-fib-extend="1"'+(chartFib.extend?' checked':'')+'> Estendi le linee a destra</label>'+
    '<label class="chart-fib-check"><input type="checkbox" data-fib-labels="1"'+(chartFib.labels?' checked':'')+'> Mostra livelli e prezzi</label>'+
-   '<label class="chart-fib-check"><input type="checkbox" data-fib-reverse="1"'+(chartFib.reverse?' checked':'')+'> Inverti direzione (0% ↔ 100%)</label>'+
+   '<label class="chart-fib-check"><input type="checkbox" data-fib-reverse="1"'+(chartFib.reverse?' checked':'')+'> Inverti direzione (0 ↔ 1)</label>'+ 
    '<div class="chart-fib-levels"><strong>Livelli da visualizzare</strong><div class="chart-fib-level-grid">'+
    FIB_LEVELS.map(n=>'<label class="chart-fib-check"><input type="checkbox" data-fib-level="'+n+'"'+(chartFib.levels.includes(n)?' checked':'')+'>'+((n*100).toFixed(1).replace(/\.0$/,''))+'%</label>').join('')+
    '</div></div>'+
@@ -4570,7 +4580,7 @@ function fibControls(){
     '<label>Prezzo punto A <input type="number" inputmode="decimal" step="any" min="0" data-fib-price="a" value="'+fmtPrice(entry.a.p)+'"></label>'+
     '<label>Prezzo punto B <input type="number" inputmode="decimal" step="any" min="0" data-fib-price="b" value="'+fmtPrice(entry.b.p)+'"></label>'+
    '</div>':'')+
-   '<small>Modalità manuale: scegli due punti nella zona PREZZO delle candele. Puoi poi modificare il prezzo dei punti qui sopra. Impostazioni salvate in questo browser.</small>'+
+   '<small>Livelli nello stile del riferimento: etichette colorate a sinistra, linee a tutta larghezza ed estensioni 1,618 / 2,618 / 3,618 / 4,236. In modalità manuale seleziona due punti sulla zona PREZZO. Modifiche salvate in questo browser.</small>'+ 
   '</div></details></section>';
 }
 function fibDraw(ctx,candles,start,end,layout){
@@ -6452,7 +6462,11 @@ function setupEvents(){
  $('#assetDialog').addEventListener('change',e=>{
   const control=e.target;
   const attr=control.dataset;
-  if(attr.fibExtend!==undefined)chartFib.extend=control.checked;
+  if(attr.fibPalette!==undefined)chartFib.palette=control.checked;
+  else if(attr.fibBands!==undefined)chartFib.bands=control.checked;
+  else if(attr.fibFitExtensions!==undefined)chartFib.fitExtensions=control.checked;
+  else if(attr.fibLog!==undefined)chartFib.logarithmic=control.checked;
+  else if(attr.fibExtend!==undefined)chartFib.extend=control.checked;
   else if(attr.fibLabels!==undefined)chartFib.labels=control.checked;
   else if(attr.fibReverse!==undefined)chartFib.reverse=control.checked;
   else if(attr.fibLevel!==undefined){
