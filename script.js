@@ -4733,7 +4733,8 @@ function fibDraw(ctx,candles,start,end,layout,phase='lines'){
    if(p.y<top||p.y>bottom)continue;
    // Leave only a text-width gap at each edge, not a shaded label rectangle.
    const lineStart=chartFib.labels?Math.min(width*.46,ctx.measureText(fmtFibLabel(p)).width+16):overlayLeft;
-   const lineEnd=chartFib.labels?Math.max(width*.54,width-ctx.measureText(fmtFibPrice(p.price)).width-16):overlayRight;
+   // Fibonacci lines stop at the OHLC axis, not at a duplicate Fib-price label.
+   const lineEnd=xMax-4;
    if(lineEnd<=lineStart)continue;
    ctx.globalAlpha=chartFib.opacity/100;
    ctx.strokeStyle=p.color;ctx.lineWidth=p.ratio>=1.618?2.15:1.7;
@@ -4750,21 +4751,15 @@ function fibDraw(ctx,candles,start,end,layout,phase='lines'){
  }
  ctx.restore();
  if(!chartFib.labels||!pair.b)return;
- // Color-coded Fibonacci values on the left and matching prices on the
- // right: both are plain canvas text, with NO pill or boxed background.
- const lightTheme=['light','sand','ice'].includes(state.theme);
- const axisColor=getComputedStyle(document.body).getPropertyValue('--text').trim()||
-  (lightTheme?'#435065':'#d4e0ec');
- ctx.save();ctx.textBaseline='middle';ctx.font=vertexCanvasFont(labelSize,'700');
+ // Fibonacci ratios and prices stay on the LEFT. The RIGHT axis is
+ // reserved for the real OHLC market-price scale, not Fibonacci extensions.
+ ctx.save();ctx.textAlign='left';ctx.textBaseline='middle';
+ ctx.font=vertexCanvasFont(labelSize,'700');
  ctx.globalAlpha=1;
  for(const p of coords){
   if(p.y<top+labelSize/2+1||p.y>bottom-labelSize/2-1)continue;
-  ctx.textAlign='left';
   ctx.fillStyle=p.color;
   ctx.fillText(fmtFibLabel(p),8,p.y,Math.max(20,width*.46-15));
-  ctx.textAlign='right';
-  ctx.fillStyle=axisColor;
-  ctx.fillText(fmtFibPrice(p.price),width-8,p.y,Math.max(20,width*.44-15));
  }
  ctx.restore();
 }
@@ -5869,6 +5864,52 @@ function detailChartPriceMarker(id,candles,end,broker){
  return {price,direction:price>baseline?1:price<baseline?-1:0,
   label:formatValue(price,asset),fresh};
 }
+
+/* Real OHLC scale beside the Fibonacci plot. Values come exclusively from
+   the visible market high/low and the exact candle y mapping. Do not label
+   Fibonacci projections as market price ticks. */
+function drawDetailMarketPriceAxis(ctx,options){
+ const {width,left,right,top,bottom,low,high,yPrice,priceAtY,markerPrice,dark}=options;
+ if(!(Number.isFinite(low)&&Number.isFinite(high)&&high>low))return;
+ const topY=yPrice(high),bottomY=yPrice(low);
+ if(!Number.isFinite(topY)||!Number.isFinite(bottomY))return;
+ const upper=Math.max(top+10,Math.min(topY,bottomY)+1);
+ const lower=Math.min(bottom-10,Math.max(topY,bottomY)-1);
+ if(lower-upper<35)return;
+ const axisX=width-right+3;
+ const fontSize=width<550?10:11;
+ const format=v=>{
+  const n=Math.abs(v);
+  const digits=n>=1000?1:n>=1?2:n>=.01?4:n>=.0001?6:10;
+  return v.toLocaleString('it-IT',{maximumFractionDigits:digits});
+ };
+ const labelColor=getComputedStyle(document.body).getPropertyValue('--text').trim()||
+  (dark?'#dbe5f1':'#3d4a5c');
+ const tickColor=getComputedStyle(document.body).getPropertyValue('--line').trim()||
+  (dark?'#456071':'#c8d3db');
+ ctx.save();
+ ctx.font=vertexCanvasFont(fontSize,'500');
+ ctx.textAlign='right';ctx.textBaseline='middle';
+ ctx.strokeStyle=tickColor;ctx.lineWidth=.85;ctx.globalAlpha=.7;
+ ctx.beginPath();ctx.moveTo(axisX,top);ctx.lineTo(axisX,bottom);ctx.stroke();
+ const count=Math.max(3,Math.min(6,Math.floor((lower-upper)/37)+1));
+ let lastY=-Infinity;
+ for(let i=0;i<count;i++){
+  const y=upper+(lower-upper)*i/(count-1);
+  if(y-lastY<28)continue;
+  if(Number.isFinite(markerPrice)&&Math.abs(y-yPrice(markerPrice))<21)continue;
+  const value=typeof priceAtY==='function'?
+   priceAtY(y):
+   low+(high-low)*(1-(y-topY)/(bottomY-topY));
+  if(!Number.isFinite(value)||value<low-1e-8||value>high+1e-8)continue;
+  ctx.globalAlpha=.8;ctx.strokeStyle=tickColor;
+  ctx.beginPath();ctx.moveTo(axisX,y);ctx.lineTo(axisX+5,y);ctx.stroke();
+  ctx.globalAlpha=1;ctx.fillStyle=labelColor;
+  ctx.fillText(format(value),width-6,y,Math.max(35,right-15));
+  lastY=y;
+ }
+ ctx.restore();
+}
 function drawDetailRightPriceMarker(ctx,marker,layout){
  if(!marker||!Number.isFinite(marker.price))return;
  const {width,left,right,top,bottom,y,broker}=layout;
@@ -5923,7 +5964,10 @@ function drawChart(){
  // Full-width Fibonacci candles. Keep space only for the isolated MT5 broker
  // candle when forex data requires it; no empty left/right chart gutters.
  const left=fibPriceGutter(width);
- const right=chartFib.enabled&&!fxCandle?10:detailChartRightMargin(!!fxCandle);
+ // Reserve a slim genuine market-price axis on the far right, as on normal charts.
+ const right=chartFib.enabled&&!fxCandle?
+  Math.min(105,Math.max(70,Math.round(width*.115))):
+  detailChartRightMargin(!!fxCandle);
  const chartW=width-left-right,visible=chartVisibleCandleCount(candles,width);
  const maxShift=Math.max(0,candles.length-visible);
  state.chartShift=Math.max(0,Math.min(maxShift,state.chartShift));
@@ -6025,19 +6069,20 @@ function drawChart(){
   ctx.strokeStyle=a.color;ctx.lineWidth=1.6;ctx.stroke();
  });
  fibDraw(ctx,candles,start,end,fibLayout,'lines');
- for(let i=0;i<=4;i++){
-  const y=regions[0].bottom-i*(regions[0].bottom-regions[0].top)/4;
-  const v=gradual?gradual.priceAtY(y):
-   useLog?min*Math.pow(max/min,i/4):min+(max-min)*i/4;
-  const label=v.toLocaleString('it-IT',{maximumFractionDigits:Math.abs(v)>=10?1:3});
-  if(chartFib.enabled&&chartFib.labels){
-   // Fibonacci already supplies precise, unboxed numbers on the right.
-   continue;
-  }
-  if(chartFib.enabled&&!fxCandle){
-   text(label,width-8,y+4,'right',11);
-  }else{
-   text(label,width-right+(fxCandle?32:7),y+4,'left',10);
+ if(chartFib.enabled&&!fxCandle){
+  drawDetailMarketPriceAxis(ctx,{
+   width,left,right,top:regions[0].top,bottom:regions[0].bottom,
+   low:lo,high:hi,yPrice,
+   priceAtY:gradual?.priceAtY,
+   markerPrice:priceMarker?.price,dark
+  });
+ }else{
+  for(let i=0;i<=4;i++){
+   const y=regions[0].bottom-i*(regions[0].bottom-regions[0].top)/4;
+   const v=gradual?gradual.priceAtY(y):
+    useLog?min*Math.pow(max/min,i/4):min+(max-min)*i/4;
+   text(v.toLocaleString('it-IT',{maximumFractionDigits:Math.abs(v)>=10?1:3}),
+    width-right+(fxCandle?32:7),y+4,'left',10);
   }
  }
  const drawIndicator=(values,yMap,stroke,widthLine=1.35)=>{
