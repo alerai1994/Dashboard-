@@ -1,6 +1,6 @@
 {
   "source": "U.S. Securities and Exchange Commission",
-  "updated_at": "2026-11-09T07:51:51Z",
+  "updated_at": "2026-11-09T18:41:31Z",
   "seed_date": "2026-10-31T12:00:00Z",
   "feeds_updated": [
     "press",
@@ -8,6 +8,20 @@
     "testimony"
   ],
   "items": [
+    {
+      "category": "speeches",
+      "title": "Machine-Understandable Data in the Age of Super Intelligence",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/white-remarks-super-intelligence-110926",
+      "date": "2026-11-09T14:31:30Z",
+      "summary": "Joshua White, Chief Economist and Director, Division of Economic and Risk Analysis"
+    },
+    {
+      "category": "speeches",
+      "title": "Opening Remarks at the Roundtable on Machine-Understandable Data in the Age of Super Intelligence",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/uyeda-remarks-super-intelligence-110926",
+      "date": "2026-11-09T14:30:12Z",
+      "summary": "Commissioner Mark T. Uyeda"
+    },
     {
       "category": "press",
       "title": "SEC Adopts Amendments to Update Definitions of Small Entity for Investment Companies and Investment Advisers",
