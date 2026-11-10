@@ -2834,3 +2834,86 @@ html[data-vertex-font] .watchlist-data-table .watchlist-value.watchlist-change-n
   min-height:740px;
  }
 }
+
+
+/* v204 — Eye-comfort Light / Night palettes.
+   Muted neutrals and desaturated blue accents; retain readable market
+   up/down contrasts. Only the two core themes are changed. */
+body.theme-light{
+ color-scheme:light;
+ --bg:#edf1f0;
+ --shell:#e8eeec;
+ --panel:#f3f5f2;
+ --panel-2:#e7ece9;
+ --surface:#e0e7e4;
+ --line:#c2cfcb;
+ --line-soft:#d3ddd9;
+ --text:#243a41;
+ --muted:#50676d;
+ --subtle:#667e84;
+ --brand:#457384;
+ --green:#26745f;
+ --red:#a4515c;
+ --yellow:#856b36;
+ --theme-map-deep:#486872;
+ --theme-map-mid:#6e939d;
+ --theme-map-bright:#a1c1c6;
+ --theme-image-overlay:#e1eae8;
+ --theme-card-outline:#c2cfcb;
+ --button-top-glint:rgba(255,255,255,.42);
+ --button-ridge:rgba(68,95,100,.17);
+ --button-soft-shadow:rgba(56,81,83,.09);
+ --button-press-inset:rgba(56,81,83,.10);
+ --shadow:0 5px 18px rgba(48,70,72,.06);
+ background:linear-gradient(155deg,#edf1f0 0%,#e8eeeb 58%,#e4eae8 100%);
+}
+body.theme-dark{
+ color-scheme:dark;
+ --bg:#18252e;
+ --shell:#1c2b34;
+ --panel:#23343e;
+ --panel-2:#293b44;
+ --surface:#30424b;
+ --line:#3b515b;
+ --line-soft:#334751;
+ --text:#d9e4e5;
+ --muted:#a5babf;
+ --subtle:#8fa7ad;
+ --brand:#89b3c5;
+ --green:#72c4a7;
+ --red:#dc959a;
+ --yellow:#d2b982;
+ --theme-map-deep:#1a313a;
+ --theme-map-mid:#2c4851;
+ --theme-map-bright:#416672;
+ --theme-image-overlay:#223a43;
+ --theme-card-outline:#3b515b;
+ --button-top-glint:rgba(255,255,255,.09);
+ --button-ridge:rgba(7,22,29,.17);
+ --button-soft-shadow:rgba(5,17,24,.12);
+ --button-press-inset:rgba(5,17,24,.13);
+ --shadow:0 5px 20px rgba(7,18,24,.12);
+ background:linear-gradient(155deg,#1c2b34 0%,#18272f 56%,#17242c 100%);
+}
+/* Update the actual theme previews rather than leaving the harsh old swatches. */
+.theme-swatch-light{
+ background:linear-gradient(135deg,#edf1f0 0 45%,#d3e1df 45% 75%,#457384 75%);
+ color:#335d6c;
+}
+.theme-swatch-dark{
+ background:linear-gradient(135deg,#18252e 0 45%,#304650 45% 75%,#89b3c5 75%);
+ color:#c0d8df;
+}
+/* Reduce decorative glare on tactile controls without flattening states. */
+body.theme-light :is(.btn,.outline-button,.sidebar-theme-button,.tab-filters button,
+ .settings-theme-option,.settings-auto-theme,.settings-sound-toggle,
+ .settings-app-icon-option,.settings-app-icon-copy,.crypto-expand-btn,
+ .icon-button,.avatar-button,.crypto-etf-link){
+ background-image:linear-gradient(165deg,rgba(255,255,255,.25),rgba(255,255,255,.04) 53%,rgba(69,115,132,.035));
+}
+body.theme-dark :is(.btn,.outline-button,.sidebar-theme-button,.tab-filters button,
+ .settings-theme-option,.settings-auto-theme,.settings-sound-toggle,
+ .settings-app-icon-option,.settings-app-icon-copy,.crypto-expand-btn,
+ .icon-button,.avatar-button,.crypto-etf-link){
+ background-image:linear-gradient(165deg,rgba(255,255,255,.055),transparent 55%,rgba(0,0,0,.035));
+}
