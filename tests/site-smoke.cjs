@@ -79,8 +79,20 @@ const priceBoardHtml=app.PAGE_RENDERERS.priceboard();
 for(const label of ['Indici ed ETF','Azioni','Materie prime','Forex','Criptovalute'])
  assert(priceBoardHtml.includes('label="'+label+'"'),'Price board missing '+label);
 assert(priceBoardHtml.includes('id="priceBoardStage"'),'Missing price board fullscreen stage');
-assert.equal(Object.keys(app.PAGE_RENDERERS).length,12);
+assert.equal(Object.keys(app.PAGE_RENDERERS).length,13);
 assert.equal(typeof app.PAGE_RENDERERS.workspace,'function','Workspace route missing');
+const globalMarketForce=app.PAGE_RENDERERS.global();
+const dedicatedMarketForce=app.PAGE_RENDERERS.marketforce();
+assert(html.includes('data-page="marketforce"'),'Forza mercato navigation missing');
+for(const page of [globalMarketForce,dedicatedMarketForce]){
+ assert(page.includes('id="marketForceTitle"'),'Market force panel missing');
+ for(const key of ['up','flat','down']){
+  assert(page.includes('data-force-count="'+key+'"'),'Missing market force '+key);
+  assert(css.includes('.market-force-'+key+'{'),'Missing market force palette '+key);
+ }
+}
+assert(source.includes('function patchMarketForce()'),'Market force automatic updates missing');
+console.log('PASS Market force navigation, counts and live update hook');
 const workspace=app.PAGE_RENDERERS.workspace();
 for(const id of ['summary','global','markets','crypto','tech','bigtech','forex','commodities',
  'charts','watchlist','portfolio','analytics','orderbook','etf','news','settings']){
@@ -95,7 +107,7 @@ for(const [name,fn] of Object.entries(app.PAGE_RENDERERS)){
  const page=fn();
  assert.equal(typeof page,'string');
  assert(page.length>250,'Empty page: '+name);
- const ids=[...page.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
+ const ids=[...page.matchAll(/\sid="([^"]+)"/g)].map(m=>m[1]);
  assert.equal(new Set(ids).size,ids.length,'Duplicate HTML ids in '+name);
  console.log('PASS',name);
 }
