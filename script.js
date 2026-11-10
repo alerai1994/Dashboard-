@@ -1884,11 +1884,11 @@ function patchMarketForce(){
 }
 
 function globalPage(){
- return marketForceSection()+globalCryptoHistoryPanel()+'<section class="market-index-strip">'+TOP_IDS.map(indexCard).join('')+'</section>'+
+ return globalCryptoHistoryPanel()+'<section class="market-index-strip">'+TOP_IDS.map(indexCard).join('')+'</section>'+
   '<div class="global-grid">'+regionList()+mapPanel()+
  '<aside class="aside-stack">'+QUOTE_GROUPS.map(sidePanel).join('')+'</aside>'+
  '<div class="region-photo-grid" aria-label="Panoramica fotografica delle regioni">'+REGIONS.map(photoCard).join('')+'</div></div>'+
- feedStatus();
+ marketForceSection()+feedStatus();
 }
 function marketForcePage(){
  return secHeader('Forza del mercato','Tre indicatori circolari per rialzi, neutralità e ribassi.')+marketForceSection()+feedStatus();
