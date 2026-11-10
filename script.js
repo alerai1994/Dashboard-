@@ -3741,7 +3741,7 @@ function evaluateCryptoAlerts(){
 function settingsPage(){
  const choices=[['light','☀','Chiaro','Grigio perla e azzurro tenue'],['dark','☾','Scuro','Blu ardesia riposante'],['ocean','◈','Oceano','Blu e turchese'],['emerald','❖','Smeraldo','Verde elegante'],['violet','✦','Viola','Viola moderno'],['sand','☼','Sabbia','Crema e terracotta'],['ice','❅','Ghiaccio','Bianco e azzurro ghiaccio'],['sunset','◒','Tramonto','Corallo e prugna'],['graphite','◆','Grafite','Grigio e oro'],['ruby','♦','Rubino','Bordeaux e rosa']];
  return secHeader('Impostazioni','Personalizza aspetto, icona e suoni della dashboard')+
- '<section class="content-card panel settings-preferences"><h3>Temi della dashboard</h3><p class="subnote">Scegli fra dieci stili. Il tema cambia subito in tutte le sezioni e la tua preferenza rimane salvata.</p>'+
+ '<section class="content-card panel settings-preferences"><h3>Temi della dashboard</h3><p class="subnote">Scegli fra dieci stili. Il tema cambia subito in tutte le sezioni e la tua preferenza rimane salvata. <span class="theme-contrast-version">Light: testo nero morbido · Night: testo bianco morbido · v206</span></p>'+
  '<div class="settings-theme-options" role="group" aria-label="Scegli uno dei dieci temi">'+
  choices.map(([mode,icon,label,description])=>'<button type="button" data-theme-mode="'+mode+'" class="settings-theme-option'+(state.themeMode===mode?' is-selected':'')+'" aria-label="'+label+': '+description+'" aria-pressed="'+(state.themeMode===mode)+'"><span class="settings-theme-swatch theme-swatch-'+mode+'" aria-hidden="true"><span>'+icon+'</span></span><span class="settings-theme-caption"><strong>'+label+'</strong><small>'+description+'</small></span></button>').join('')+
  '</div>'+
@@ -4143,6 +4143,22 @@ function applyBrightness(){
 function applyTheme(){
  state.theme=resolvedTheme(state.themeMode);
  for(const theme of Object.keys(THEME_NAMES))document.body.classList.toggle('theme-'+theme,state.theme===theme);
+ // Consistent on every screen: inline text-color tokens win over obsolete
+ // component palettes. Remove overrides on all other eight themes.
+ document.documentElement.dataset.vertexActiveTheme=state.theme;
+ const accessibleText=state.theme==='dark'?'#e9edf0':
+  state.theme==='light'?'#1f2427':null;
+ const secondaryText=state.theme==='dark'?'#b4c1c7':
+  state.theme==='light'?'#515b60':null;
+ if(accessibleText){
+  document.body.style.setProperty('--text',accessibleText);
+  document.body.style.setProperty('--muted',secondaryText);
+  document.body.style.color=accessibleText;
+ }else{
+  document.body.style.removeProperty('--text');
+  document.body.style.removeProperty('--muted');
+  document.body.style.removeProperty('color');
+ }
  if(state.adaptiveBrightness)applyBrightness();
  document.querySelectorAll('.sidebar-theme-button[data-fixed-theme]').forEach(button=>{
   const selected=state.theme===button.dataset.fixedTheme;
