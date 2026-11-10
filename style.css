@@ -2984,15 +2984,44 @@ body.theme-dark .theme-contrast-version{
 .market-force-flat{--force-accent:var(--yellow)}
 .market-force-down{--force-accent:var(--red)}
 .market-force-circle{
+ position:relative;isolation:isolate;
  display:flex;align-items:center;justify-content:center;flex:none;
  width:clamp(84px,10.4vw,128px);aspect-ratio:1;border-radius:50%;
- border:7px solid var(--force-accent);
- background:color-mix(in srgb,var(--force-accent) 13%,var(--panel));
- box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--force-accent) 14%,transparent),0 7px 22px #00000018;
+ background:color-mix(in srgb,var(--force-accent) 9%,var(--panel));
+ box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--force-accent) 13%,transparent),0 7px 22px #00000018;
+}
+.market-force-circle::before{
+ content:"";position:absolute;inset:-4px;border-radius:50%;pointer-events:none;
+ box-shadow:0 0 14px 2px color-mix(in srgb,var(--force-accent) 36%,transparent);
+ animation:market-force-halo 4s ease-in-out infinite;
+}
+.market-force-ring{
+ position:absolute;inset:0;width:100%;height:100%;overflow:visible;
+ transform:rotate(-90deg);pointer-events:none;
+}
+.market-force-ring circle{
+ fill:none;stroke-width:8;vector-effect:non-scaling-stroke;
+}
+.market-force-ring-track{
+ stroke:color-mix(in srgb,var(--force-accent) 17%,var(--line));
+}
+.market-force-ring-progress{
+ stroke:var(--force-accent);stroke-linecap:round;
+ transition:stroke-dashoffset 1.45s cubic-bezier(.16,1,.3,1);
+ filter:drop-shadow(0 0 3px color-mix(in srgb,var(--force-accent) 43%,transparent));
 }
 .market-force-circle strong{
+ position:relative;z-index:1;
  font-size:clamp(28px,3vw,44px);line-height:1;font-weight:800;
  color:var(--text);font-variant-numeric:tabular-nums;letter-spacing:-.045em;
+}
+@keyframes market-force-halo{
+ 0%,100%{opacity:.28;transform:scale(.95)}
+ 50%{opacity:.65;transform:scale(1.055)}
+}
+@media(prefers-reduced-motion:reduce){
+ .market-force-circle::before{animation:none;opacity:.35;transform:none}
+ .market-force-ring-progress{transition:none}
 }
 .market-force-label{color:var(--text);font-size:clamp(12px,1.12vw,16px);font-weight:730;line-height:1.3}
 .market-force-item small{color:var(--muted);font-size:11px;line-height:1.4;font-variant-numeric:tabular-nums}
@@ -3002,7 +3031,8 @@ body.theme-dark .theme-contrast-version{
  .market-force-heading p{font-size:11px}
  .market-force-grid{gap:7px}
  .market-force-item{border-radius:11px;padding:13px 4px 11px;gap:7px}
- .market-force-circle{width:clamp(65px,19vw,95px);border-width:5px}
+ .market-force-circle{width:clamp(65px,19vw,95px)}
+ .market-force-ring circle{stroke-width:7}
  .market-force-circle strong{font-size:clamp(25px,7vw,34px)}
  .market-force-label{font-size:11px}
  .market-force-item small{font-size:10px}
