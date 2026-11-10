@@ -62,19 +62,23 @@ class MockAudioContext{
 const persisted={};
 const emptyStorage={getItem:key=>persisted[key]??null,setItem:(key,value)=>{persisted[key]=value},removeItem:key=>{delete persisted[key]}};
 const document={readyState:'loading',body:{className:''},querySelector:()=>null,querySelectorAll:()=>[],addEventListener(){}};
+const appWindow={matchMedia:()=>({matches:true,addEventListener(){}}),addEventListener(){},AudioContext:MockAudioContext,__VERTEX_CRYPTO_BOOKS__:books,__VERTEX_ORE_BOOK__:ore};
 const app=new Function('window','document','location','localStorage','sessionStorage','navigator','URLSearchParams',adapted)(
- {matchMedia:()=>({matches:true,addEventListener(){}}),addEventListener(){},AudioContext:MockAudioContext,__VERTEX_CRYPTO_BOOKS__:books,__VERTEX_ORE_BOOK__:ore},
+ appWindow,
  document,{hash:'#global',search:'',origin:'https://example.test',hostname:'example.test'},
  emptyStorage,emptyStorage,{onLine:false},URLSearchParams);
 app.state.quotes=Object.fromEntries(rows.map(row=>[row.id,row]));
 app.state.feedTime=quotes.generatedAt;
 app.state.loading=false;
 // Load the actual fullscreen viewer against the instrument catalog and mocked market feed.
-const priceBoardWindow={__vertexPriceBoardBackend:{assets:rows,getQuote:id=>app.state.quotes[id]||null,formatValue:(value)=>String(value),getStatus:()=> 'Ultima quotazione verificata',pct:value=>String(value)+'%'},addEventListener(){}};
-new Function('window','document','localStorage',read('price-board.js'))(priceBoardWindow,document,emptyStorage);
-assert.equal(typeof priceBoardWindow.VertexPriceBoard.page,'function');
+new Function('window','document','localStorage',read('price-board.js'))(appWindow,document,emptyStorage);
+assert.equal(typeof appWindow.VertexPriceBoard.page,'function');
 // The app route is normally served by the viewer loaded through index.html.
-app.PAGE_RENDERERS.priceboard=()=>priceBoardWindow.VertexPriceBoard.page();
+app.PAGE_RENDERERS.priceboard=()=>appWindow.VertexPriceBoard.page();
+const priceBoardHtml=app.PAGE_RENDERERS.priceboard();
+for(const label of ['Indici ed ETF','Azioni','Materie prime','Forex','Criptovalute'])
+ assert(priceBoardHtml.includes('label="'+label+'"'),'Price board missing '+label);
+assert(priceBoardHtml.includes('id="priceBoardStage"'),'Missing price board fullscreen stage');
 assert.equal(Object.keys(app.PAGE_RENDERERS).length,12);
 assert.equal(typeof app.PAGE_RENDERERS.workspace,'function','Workspace route missing');
 const workspace=app.PAGE_RENDERERS.workspace();
