@@ -5,7 +5,10 @@ const assert=require('node:assert/strict');
 const read=path=>fs.readFileSync(path,'utf8');
 const source=read('script.js'),html=read('index.html'),css=read('style.css');
 new Function(source);
+new Function(read('price-board.js'));
 new Function(read('vertex-widget-sw.js'));
+assert.match(html,/src="price-board\.js\?v=/);
+assert.match(html,/href="price-board\.css\?v=/);
 assert.match(html,/id="pageContainer"/);
 assert.match(html,/src="script\.js\?v=/);
 assert.match(html,/href="style\.css\?v=/);
@@ -60,13 +63,19 @@ const persisted={};
 const emptyStorage={getItem:key=>persisted[key]??null,setItem:(key,value)=>{persisted[key]=value},removeItem:key=>{delete persisted[key]}};
 const document={readyState:'loading',body:{className:''},querySelector:()=>null,querySelectorAll:()=>[],addEventListener(){}};
 const app=new Function('window','document','location','localStorage','sessionStorage','navigator','URLSearchParams',adapted)(
- {matchMedia:()=>({matches:true,addEventListener(){}}),AudioContext:MockAudioContext,__VERTEX_CRYPTO_BOOKS__:books,__VERTEX_ORE_BOOK__:ore},
+ {matchMedia:()=>({matches:true,addEventListener(){}}),addEventListener(){},AudioContext:MockAudioContext,__VERTEX_CRYPTO_BOOKS__:books,__VERTEX_ORE_BOOK__:ore},
  document,{hash:'#global',search:'',origin:'https://example.test',hostname:'example.test'},
  emptyStorage,emptyStorage,{onLine:false},URLSearchParams);
 app.state.quotes=Object.fromEntries(rows.map(row=>[row.id,row]));
 app.state.feedTime=quotes.generatedAt;
 app.state.loading=false;
-assert.equal(Object.keys(app.PAGE_RENDERERS).length,11);
+// Load the actual fullscreen viewer against the instrument catalog and mocked market feed.
+const priceBoardWindow={__vertexPriceBoardBackend:{assets:rows,getQuote:id=>app.state.quotes[id]||null,formatValue:(value)=>String(value),getStatus:()=> 'Ultima quotazione verificata',pct:value=>String(value)+'%'},addEventListener(){}};
+new Function('window','document','localStorage',read('price-board.js'))(priceBoardWindow,document,emptyStorage);
+assert.equal(typeof priceBoardWindow.VertexPriceBoard.page,'function');
+// The app route is normally served by the viewer loaded through index.html.
+app.PAGE_RENDERERS.priceboard=()=>priceBoardWindow.VertexPriceBoard.page();
+assert.equal(Object.keys(app.PAGE_RENDERERS).length,12);
 assert.equal(typeof app.PAGE_RENDERERS.workspace,'function','Workspace route missing');
 const workspace=app.PAGE_RENDERERS.workspace();
 for(const id of ['summary','global','markets','crypto','tech','bigtech','forex','commodities',
