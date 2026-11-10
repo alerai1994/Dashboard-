@@ -1835,6 +1835,11 @@ function toggleGlobalCapChart(id){
 
 /* Market breadth is a count of real instruments by reported percentage change,
    not a predictive strength score or a technical trading recommendation. */
+const MARKET_FORCE_RING_LENGTH=2*Math.PI*50;
+function marketForceRingOffset(mood,key){
+ const ratio=mood.total?Math.max(0,Math.min(1,mood[key]/mood.total)):0;
+ return (MARKET_FORCE_RING_LENGTH*(1-ratio)).toFixed(2);
+}
 function marketForceSection(){
  const mood=countMarketMood();
  const groups=[
@@ -1843,7 +1848,11 @@ function marketForceSection(){
  const blocks=groups.map(([key,label])=>{
   const amount=mood[key],share=mood.total?Math.round(amount/mood.total*100)+'%':'—';
   return '<article class="market-force-item market-force-'+key+'">'+
-   '<div class="market-force-circle"><strong data-force-count="'+key+'">'+amount+'</strong></div>'+
+   '<div class="market-force-circle">'+
+   '<svg class="market-force-ring" viewBox="0 0 120 120" aria-hidden="true" focusable="false">'+
+   '<circle class="market-force-ring-track" cx="60" cy="60" r="50"></circle>'+
+   '<circle class="market-force-ring-progress" data-force-ring="'+key+'" cx="60" cy="60" r="50" stroke-dasharray="'+MARKET_FORCE_RING_LENGTH.toFixed(2)+'" stroke-dashoffset="'+MARKET_FORCE_RING_LENGTH.toFixed(2)+'"></circle>'+
+   '</svg><strong data-force-count="'+key+'">'+amount+'</strong></div>'+
    '<span class="market-force-label">'+label+'</span>'+
    '<small data-force-share="'+key+'">'+share+' dei mercati</small></article>';
  }).join('');
@@ -1863,6 +1872,11 @@ function patchMarketForce(){
   if(count&&count.textContent!==String(mood[key]))count.textContent=String(mood[key]);
   const proportion=(mood.total?Math.round(mood[key]/mood.total*100)+'%':'—')+' dei mercati';
   if(share&&share.textContent!==proportion)share.textContent=proportion;
+  const ring=panel.querySelector('[data-force-ring="'+key+'"]');
+  if(ring){
+   const offset=marketForceRingOffset(mood,key);
+   if(ring.style.strokeDashoffset!==offset)ring.style.strokeDashoffset=offset;
+  }
  }
  const coverage=panel.querySelector('#marketForceCoverage');
  const label='Analizzati: '+mood.total+' / '+ASSETS.length;
@@ -4104,6 +4118,9 @@ function render(){
   main.innerHTML='<section class="panel" style="padding:24px"><h2>Impossibile mostrare questa sezione</h2><p>Riprova a ricaricare la pagina. I servizi dati sono indipendenti dalla dashboard.</p></section>';
  }
  if(state.page==='priceboard')window.VertexPriceBoard?.paint();
+ // Start each visible force circle at zero, then animate the verified percentage.
+ if(state.page==='global'||state.page==='marketforce')
+  requestAnimationFrame(()=>requestAnimationFrame(()=>patchMarketForce()));
  // Rows are re-created during navigation; apply the saved font to fresh quotes.
  syncVertexPriceTypography(main);
  const globalCapHeader=$('#globalCryptoCaps');
