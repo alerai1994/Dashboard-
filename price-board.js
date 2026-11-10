@@ -7,20 +7,14 @@ const api=()=>window.__vertexPriceBoardBackend;
 const assets=()=>api()?.assets||[];
 const byId=id=>assets().find(a=>a.id===id);
 const escapeHtml=value=>String(value==null?'':value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
-let id='btc',search='';
+let id='btc';
 try{const saved=JSON.parse(localStorage.getItem(store));if(typeof saved==='string')id=saved;}catch(_e){}
 function active(){return byId(id)||byId('btc')||assets()[0];}
-function matching(){
- const query=search.trim().toLocaleLowerCase('it-IT');
- return assets().filter(a=>!query||(a.name+' '+a.short+' '+a.symbol+' '+a.group+' '+(a.country||'')).toLocaleLowerCase('it-IT').includes(query));
-}
 function options(){
- const found=matching(),selected=active();
+ const selected=active();
  let html='';
- if(selected&&!found.some(a=>a.id===selected.id))
-  html+='<optgroup label="Mercato selezionato"><option value="'+escapeHtml(selected.id)+'" selected>'+escapeHtml(selected.name)+'</option></optgroup>';
  for(const [key,label] of groups){
-  const group=found.filter(a=>a.group===key);
+  const group=assets().filter(a=>a.group===key);
   if(group.length)html+='<optgroup label="'+label+'">'+group.map(a=>
    '<option value="'+escapeHtml(a.id)+'"'+(a.id===selected?.id?' selected':'')+'>'+escapeHtml(a.name+' · '+a.symbol)+'</option>').join('')+'</optgroup>';
  }
@@ -29,9 +23,6 @@ function options(){
 function page(){
  if(!active())return '<section class="panel" style="padding:20px">Catalogo mercati non disponibile.</section>';
  return '<div class="price-board-page">'+
- '<section class="price-board-search-panel panel"><label for="priceBoardSearch">Cerca su tutti i mercati'+
- '<input type="search" id="priceBoardSearch" autocomplete="off" placeholder="Bitcoin, Apple, EUR/USD, oro…" value="'+escapeHtml(search)+'"></label>'+
- '<p class="price-board-help"><span id="priceBoardMatchCount">'+matching().length+' mercati trovati</span><br>Scegli un asset e usa “Schermo intero”.</p></section>'+
  '<section class="price-board-stage" id="priceBoardStage" aria-label="Prezzo ingrandito del mercato selezionato">'+
  '<div class="price-board-stage-top"><div class="price-board-field">'+
  '<label for="priceBoardAsset">Seleziona il mercato</label><select id="priceBoardAsset" aria-label="Mercato">'+options()+'</select></div>'+
@@ -81,12 +72,9 @@ function paint(){
 }
 function choose(next){
  if(!byId(next))return;
- id=next;search='';
+ id=next;
  try{localStorage.setItem(store,JSON.stringify(id));}catch(_e){}
- const input=document.getElementById('priceBoardSearch');if(input)input.value='';
  const select=document.getElementById('priceBoardAsset');if(select)select.innerHTML=options();
- const counter=document.getElementById('priceBoardMatchCount');
- if(counter)counter.textContent=matching().length+' mercati trovati';
  paint();
 }
 function step(delta){
@@ -121,13 +109,6 @@ document.addEventListener('click',event=>{
 });
 document.addEventListener('change',event=>{
  if(event.target.id==='priceBoardAsset')choose(event.target.value);
-});
-document.addEventListener('input',event=>{
- if(event.target.id!=='priceBoardSearch')return;
- search=event.target.value;
- const select=document.getElementById('priceBoardAsset');if(select)select.innerHTML=options();
- const count=document.getElementById('priceBoardMatchCount');
- if(count)count.textContent=matching().length+' mercati trovati';
 });
 document.addEventListener('fullscreenchange',syncFullscreen);
 document.addEventListener('keydown',event=>{
