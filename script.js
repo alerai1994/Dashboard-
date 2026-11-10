@@ -3739,7 +3739,7 @@ function evaluateCryptoAlerts(){
  paintCryptoPriceHighlights();
 }
 function settingsPage(){
- const choices=[['light','☀','Chiaro','Bianco e azzurro'],['dark','☾','Scuro','Blu notte'],['ocean','◈','Oceano','Blu e turchese'],['emerald','❖','Smeraldo','Verde elegante'],['violet','✦','Viola','Viola moderno'],['sand','☼','Sabbia','Crema e terracotta'],['ice','❅','Ghiaccio','Bianco e azzurro ghiaccio'],['sunset','◒','Tramonto','Corallo e prugna'],['graphite','◆','Grafite','Grigio e oro'],['ruby','♦','Rubino','Bordeaux e rosa']];
+ const choices=[['light','☀','Chiaro','Grigio perla e azzurro tenue'],['dark','☾','Scuro','Blu ardesia riposante'],['ocean','◈','Oceano','Blu e turchese'],['emerald','❖','Smeraldo','Verde elegante'],['violet','✦','Viola','Viola moderno'],['sand','☼','Sabbia','Crema e terracotta'],['ice','❅','Ghiaccio','Bianco e azzurro ghiaccio'],['sunset','◒','Tramonto','Corallo e prugna'],['graphite','◆','Grafite','Grigio e oro'],['ruby','♦','Rubino','Bordeaux e rosa']];
  return secHeader('Impostazioni','Personalizza aspetto, icona e suoni della dashboard')+
  '<section class="content-card panel settings-preferences"><h3>Temi della dashboard</h3><p class="subnote">Scegli fra dieci stili. Il tema cambia subito in tutte le sezioni e la tua preferenza rimane salvata.</p>'+
  '<div class="settings-theme-options" role="group" aria-label="Scegli uno dei dieci temi">'+
