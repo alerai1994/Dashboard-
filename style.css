@@ -2917,3 +2917,49 @@ body.theme-dark :is(.btn,.outline-button,.sidebar-theme-button,.tab-filters butt
  .icon-button,.avatar-button,.crypto-etf-link){
  background-image:linear-gradient(165deg,rgba(255,255,255,.055),transparent 55%,rgba(0,0,0,.035));
 }
+
+
+/* v206 — Reliable gentle Light/Night text contrasts.
+   Overrides component-specific hardcoded headings without affecting
+   semantic up/down colors, charts or the other eight themes. */
+body.theme-light{
+ --text:#1f2427;
+ --muted:#515b60;
+ color:#1f2427;
+}
+body.theme-dark{
+ --text:#e9edf0;
+ --muted:#b4c1c7;
+ color:#e9edf0;
+}
+body:is(.theme-light,.theme-dark) :is(
+ .page-heading h1,.page-heading h2,.page-heading h3,
+ .content-heading h2,.content-heading h3,
+ .content-card h2,.content-card h3,
+ .section-topline h2,.section-topline h3,
+ .settings-preferences h3,.settings-theme-caption strong,
+ .settings-theme-caption small,.dialog-header h2,
+ .dialog-header h3,.chart-source,.sidebar-version,
+ .instrument-row .instrument-name,
+ .watchlist-data-table th,.data-table th
+){
+ color:var(--text)!important;
+}
+body:is(.theme-light,.theme-dark) :is(
+ .page-heading p,.subnote,.settings-theme-caption small,
+ .data-footnote,.sidebar-version
+){
+ color:var(--muted)!important;
+}
+body:is(.theme-light,.theme-dark) :is(
+ input,select,textarea,button:not(.btn-primary):not(.color-up):not(.color-down),
+ .side-link,.search-wrap
+){
+ color:var(--text);
+}
+body.theme-light .theme-contrast-version,
+body.theme-dark .theme-contrast-version{
+ display:inline-block;margin-left:5px;
+ color:var(--muted);
+ font-size:11px;font-weight:600;
+}
