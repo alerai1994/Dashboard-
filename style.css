@@ -2476,7 +2476,11 @@ body.page-global .global-crypto-cap-pill:focus-visible{outline:2px solid var(--b
 #globalCryptoHistoryChart canvas{touch-action:none;cursor:crosshair}
 #globalCryptoHistoryChart .global-cap-chart-tooltip:not([hidden]){
  display:flex!important;visibility:visible!important;opacity:1!important;
- background:var(--panel)!important;color:var(--text)!important;
+ /* 50% background transparency, not 50% text opacity. Uses the
+    active theme's panel color, so light and dark themes both work. */
+ background:rgba(12,26,42,.5)!important;
+ background:color-mix(in srgb,var(--panel) 50%,transparent)!important;
+ color:var(--text)!important;
  border:1px solid var(--brand)!important;box-shadow:0 10px 32px #0007;
  z-index:30!important;pointer-events:none!important;
 }
