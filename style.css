@@ -2848,9 +2848,9 @@ body.theme-light{
  --surface:#e0e7e4;
  --line:#c2cfcb;
  --line-soft:#d3ddd9;
- --text:#243a41;
- --muted:#50676d;
- --subtle:#667e84;
+ --text:#25282b;
+ --muted:#515b60;
+ --subtle:#69747b;
  --brand:#457384;
  --green:#26745f;
  --red:#a4515c;
@@ -2876,9 +2876,9 @@ body.theme-dark{
  --surface:#30424b;
  --line:#3b515b;
  --line-soft:#334751;
- --text:#d9e4e5;
- --muted:#a5babf;
- --subtle:#8fa7ad;
+ --text:#e6ebed;
+ --muted:#b4c1c7;
+ --subtle:#9caeb5;
  --brand:#89b3c5;
  --green:#72c4a7;
  --red:#dc959a;
