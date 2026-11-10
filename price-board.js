@@ -29,7 +29,6 @@ function page(){
  '<div class="price-board-buttons" role="group" aria-label="Controlli">'+
  '<button type="button" data-price-board-step="-1" aria-label="Mercato precedente">←</button>'+
  '<button type="button" data-price-board-step="1" aria-label="Mercato successivo">→</button>'+
- '<button type="button" class="price-board-fs" id="priceBoardFullscreen" data-price-board-fullscreen>⛶ Schermo intero</button>'+
  '</div></div>'+
  '<div class="price-board-hero"><h2 class="price-board-market" id="priceBoardName"></h2>'+
  '<div class="price-board-symbol" id="priceBoardSymbol"></div>'+
@@ -38,15 +37,6 @@ function page(){
  '<div class="price-board-meta"><span id="priceBoardStatus">Caricamento quotazioni…</span>'+
  '<span class="price-board-source" id="priceBoardSource"></span></div></section>'+
  '<p class="price-board-note">Prezzo LIVE solo con streaming effettivamente attivo. Per gli altri mercati è mostrata l’ultima quotazione pubblicata, che può essere ritardata.</p></div>';
-}
-function fullscreenActive(){
- return document.fullscreenElement===document.getElementById('priceBoardStage')||document.body.classList.contains('price-board-fallback');
-}
-function syncFullscreen(){
- const button=document.getElementById('priceBoardFullscreen');if(!button)return;
- const expanded=fullscreenActive();
- button.textContent=expanded?'✕ Esci dallo schermo intero':'⛶ Schermo intero';
- button.setAttribute('aria-pressed',String(expanded));
 }
 function paint(){
  const stage=document.getElementById('priceBoardStage'),a=active(),backend=api();
@@ -68,7 +58,6 @@ function paint(){
  }
  document.getElementById('priceBoardStatus').textContent=backend.getStatus(a.id);
  document.getElementById('priceBoardSource').textContent=q?.source?'Fonte: '+q.source:'Dati verificati non ancora disponibili';
- syncFullscreen();
 }
 function choose(next){
  if(!byId(next))return;
@@ -81,38 +70,22 @@ function step(delta){
  const list=assets(),index=list.findIndex(a=>a.id===active()?.id);
  if(list.length)choose(list[(index+delta+list.length)%list.length].id);
 }
+// Keep this cleanup hook for existing navigation calls and older open sessions.
 function closeFullscreen(){
- const stage=document.getElementById('priceBoardStage');
  document.body.classList.remove('price-board-fallback');
+ const stage=document.getElementById('priceBoardStage');
  if(stage&&document.fullscreenElement===stage&&document.exitFullscreen){
   try{const p=document.exitFullscreen();if(p&&p.catch)p.catch(()=>{});}catch(_e){}
  }
- syncFullscreen();
-}
-function toggleFullscreen(){
- const stage=document.getElementById('priceBoardStage');if(!stage)return;
- if(fullscreenActive()){closeFullscreen();return;}
- const fallback=()=>{document.body.classList.add('price-board-fallback');syncFullscreen();};
- if(typeof stage.requestFullscreen!=='function'){fallback();return;}
- try{
-  const result=stage.requestFullscreen({navigationUI:'hide'});
-  if(result&&typeof result.then==='function')result.then(syncFullscreen,fallback);
-  else syncFullscreen();
- }catch(_e){fallback();}
 }
 document.addEventListener('click',event=>{
  const button=event.target.closest('button');
  if(!button)return;
- if(button.matches('[data-price-board-fullscreen]')){toggleFullscreen();return;}
  if(button.matches('[data-price-board-step]')){step(Number(button.dataset.priceBoardStep));return;}
  if(button.matches('.side-link[data-page]')&&button.dataset.page!=='priceboard')closeFullscreen();
 });
 document.addEventListener('change',event=>{
  if(event.target.id==='priceBoardAsset')choose(event.target.value);
-});
-document.addEventListener('fullscreenchange',syncFullscreen);
-document.addEventListener('keydown',event=>{
- if(event.key==='Escape'&&document.body.classList.contains('price-board-fallback'))closeFullscreen();
 });
 window.addEventListener('hashchange',()=>{
  if(location.hash!=='#priceboard')closeFullscreen();
