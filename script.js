@@ -157,7 +157,7 @@ analytics:['Analytics','Indicatori e andamento dei principali mercati mondiali.'
 orderbook:['Order Book','Ordini Spot di acquisto e vendita delle criptovalute.'],
 workspace:['Workspace','Tutti i moduli Vertex in uno spazio personalizzabile.'],
 etf:['ETF','ETF ed ETP su Bitcoin, Ethereum, Solana e Injective.'],
-priceboard:['Prezzo grande','Prezzi a schermo intero per tutti i mercati.'],
+priceboard:['Prezzo grande','Quotazioni grandi e leggibili per tutti i mercati.'],
 settings:['Settings','Aspetto, origini dei dati e accesso al terminale originale.']
 };
 const REGIONS=[
