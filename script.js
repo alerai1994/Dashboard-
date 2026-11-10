@@ -760,6 +760,7 @@ function updateLiveBadges(){
  document.querySelectorAll('.feed-summary-text').forEach(n=>n.textContent=feedSummaryLabel());
  document.querySelectorAll('.data-status').forEach(n=>n.classList.toggle('error',state.feedError));
  if(state.page==='priceboard')window.VertexPriceBoard?.paint();
+ if(state.page==='global')patchMarketForce();
 }
 
 function setMovementClass(element,value){
@@ -1830,8 +1831,45 @@ function toggleGlobalCapChart(id){
  if(currentGlobalCapChart)$('#globalCryptoHistory')?.scrollIntoView({block:'nearest',behavior:'smooth'});
 }
 
+
+/* Market breadth is a count of real instruments by reported percentage change,
+   not a predictive strength score or a technical trading recommendation. */
+function marketForceSection(){
+ const mood=countMarketMood();
+ const groups=[
+  ['up','Forza rialzista'],['flat','Neutro'],['down','Forza ribassista']
+ ];
+ const blocks=groups.map(([key,label])=>{
+  const amount=mood[key],share=mood.total?Math.round(amount/mood.total*100)+'%':'—';
+  return '<article class="market-force-item market-force-'+key+'">'+
+   '<div class="market-force-circle"><strong data-force-count="'+key+'">'+amount+'</strong></div>'+
+   '<span class="market-force-label">'+label+'</span>'+
+   '<small data-force-share="'+key+'">'+share+' dei mercati</small></article>';
+ }).join('');
+ return '<section class="market-force-section panel" aria-labelledby="marketForceTitle">'+
+ '<div class="market-force-heading"><div><h2 id="marketForceTitle">Forza del mercato</h2>'+
+ '<p>Strumenti in rialzo, invariati e in ribasso in base alle variazioni disponibili.</p></div>'+
+ '<span class="market-force-coverage" id="marketForceCoverage">Analizzati: '+mood.total+' / '+ASSETS.length+'</span></div>'+
+ '<div class="market-force-grid">'+blocks+'</div></section>';
+}
+function patchMarketForce(){
+ const panel=document.querySelector('#pageContainer .market-force-section');
+ if(!panel)return;
+ const mood=countMarketMood();
+ for(const key of ['up','flat','down']){
+  const count=panel.querySelector('[data-force-count="'+key+'"]');
+  const share=panel.querySelector('[data-force-share="'+key+'"]');
+  if(count&&count.textContent!==String(mood[key]))count.textContent=String(mood[key]);
+  const proportion=(mood.total?Math.round(mood[key]/mood.total*100)+'%':'—')+' dei mercati';
+  if(share&&share.textContent!==proportion)share.textContent=proportion;
+ }
+ const coverage=panel.querySelector('#marketForceCoverage');
+ const label='Analizzati: '+mood.total+' / '+ASSETS.length;
+ if(coverage&&coverage.textContent!==label)coverage.textContent=label;
+}
+
 function globalPage(){
- return globalCryptoHistoryPanel()+'<section class="market-index-strip">'+TOP_IDS.map(indexCard).join('')+'</section>'+
+ return globalCryptoHistoryPanel()+'<section class="market-index-strip">'+TOP_IDS.map(indexCard).join('')+'</section>'+marketForceSection()+
   '<div class="global-grid">'+regionList()+mapPanel()+
  '<aside class="aside-stack">'+QUOTE_GROUPS.map(sidePanel).join('')+'</aside>'+
  '<div class="region-photo-grid" aria-label="Panoramica fotografica delle regioni">'+REGIONS.map(photoCard).join('')+'</div></div>'+
