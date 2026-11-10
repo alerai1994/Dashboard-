@@ -1,0 +1,57 @@
+
+/* Price Board: legible quote-only display across all Vertex instruments. */
+.price-board-page{display:grid;gap:16px;min-width:0}
+.price-board-search-panel{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:16px;padding:17px 19px}
+.price-board-search-panel label{display:grid;gap:7px;color:var(--muted);font-size:13px;font-weight:620;flex:1 1 260px;max-width:540px}
+.price-board-search-panel input{width:100%;height:46px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--text);padding:0 14px;font-size:16px}
+.price-board-search-panel .price-board-help{color:var(--muted);font-size:12px;line-height:1.6;margin:0;max-width:380px}
+.price-board-stage{position:relative;display:flex;flex-direction:column;justify-content:space-between;gap:14px;min-height:min(69vh,730px);padding:clamp(17px,3vw,34px);border:1px solid var(--line);border-radius:22px;background:radial-gradient(ellipse 80% 64% at 50% 44%,var(--surface) 0%,var(--panel) 74%);color:var(--text);box-shadow:0 10px 35px #0002;isolation:isolate;overflow:auto}
+.price-board-stage-top{display:flex;align-items:end;justify-content:space-between;flex-wrap:wrap;gap:14px}
+.price-board-field{display:grid;gap:8px;min-width:220px;max-width:min(100%,490px);flex:1}
+.price-board-field label{font-size:12px;color:var(--muted);font-weight:680}
+.price-board-field select{width:100%;max-width:100%;height:44px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--text);padding:0 12px;font-size:clamp(13px,1.1vw,16px);font-weight:670;text-overflow:ellipsis}
+.price-board-buttons{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.price-board-buttons button{min-height:43px;border:1px solid var(--line);border-radius:10px;padding:9px 13px;background:var(--surface);color:var(--text);font-weight:700}
+.price-board-buttons button:hover{border-color:var(--brand)}
+.price-board-buttons .price-board-fs{background:var(--brand);border-color:var(--brand);color:#fff}
+.price-board-hero{flex:1;min-height:250px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:clamp(13px,2vh,25px);width:100%;padding:24px 4px}
+.price-board-market{max-width:100%;margin:0;font-size:clamp(23px,3vw,45px);line-height:1.18;letter-spacing:-.025em;font-weight:760;overflow-wrap:anywhere}
+.price-board-symbol{font-size:clamp(13px,1.55vw,20px);font-weight:630;letter-spacing:.05em;color:var(--muted);overflow-wrap:anywhere}
+.price-board-value{display:block;max-width:100%;font-size:clamp(50px,8.7vw,155px);line-height:1.09;letter-spacing:-.065em;font-weight:800;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;color:var(--text)}
+.price-board-value[data-length="long"]{font-size:clamp(38px,6.65vw,115px)}
+.price-board-value[data-length="extra"]{font-size:clamp(30px,5.1vw,90px)}
+.price-board-change{font-weight:760;font-size:clamp(22px,3.3vw,48px);line-height:1.3;letter-spacing:-.025em}
+.price-board-change[data-trend="up"]{color:var(--green)}
+.price-board-change[data-trend="down"]{color:var(--red)}
+.price-board-change[data-trend="flat"],.price-board-change[data-trend="unknown"]{color:var(--muted)}
+.price-board-meta{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px 22px;align-items:center;border-top:1px solid var(--line);padding-top:17px;color:var(--muted);font-size:clamp(12px,1.2vw,17px);font-weight:550;line-height:1.5}
+.price-board-meta span{overflow-wrap:anywhere}
+.price-board-source{text-align:right}
+.price-board-note{font-size:13px;line-height:1.5;color:var(--muted);margin:0 3px 16px}
+.price-board-stage:fullscreen,.price-board-stage:-webkit-full-screen,
+body.price-board-fallback .price-board-stage{width:100vw!important;height:100dvh!important;max-width:none!important;max-height:none!important;min-height:100vh!important;margin:0!important;border:0!important;border-radius:0!important;padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))!important;box-shadow:none!important;background:radial-gradient(ellipse at center,var(--surface),var(--panel) 75%)!important}
+body.price-board-fallback .price-board-stage{position:fixed!important;inset:0!important;z-index:99999!important}
+body.price-board-fallback{overflow:hidden!important}
+.price-board-stage:fullscreen .price-board-value,body.price-board-fallback .price-board-value{font-size:clamp(55px,11vw,210px)}
+.price-board-stage:fullscreen .price-board-value[data-length="long"],body.price-board-fallback .price-board-value[data-length="long"]{font-size:clamp(42px,8vw,160px)}
+.price-board-stage:fullscreen .price-board-value[data-length="extra"],body.price-board-fallback .price-board-value[data-length="extra"]{font-size:clamp(32px,6vw,120px)}
+.price-board-stage:fullscreen .price-board-market,body.price-board-fallback .price-board-market{font-size:clamp(24px,4vw,66px)}
+.price-board-stage:fullscreen .price-board-symbol,body.price-board-fallback .price-board-symbol{font-size:clamp(15px,2vw,27px)}
+.price-board-stage:fullscreen .price-board-change,body.price-board-fallback .price-board-change{font-size:clamp(26px,4vw,62px)}
+@media(max-width:640px){
+ .price-board-search-panel{padding:15px}
+ .price-board-stage{min-height:clamp(430px,66dvh,650px);border-radius:15px}
+ .price-board-field{flex:1 1 100%;min-width:0}
+ .price-board-stage-top{align-items:stretch}
+ .price-board-buttons{width:100%;justify-content:space-between}
+ .price-board-buttons button{flex:1;font-size:12px}
+ .price-board-value{font-size:clamp(40px,10.5vw,80px)}
+ .price-board-value[data-length="long"]{font-size:clamp(30px,8vw,70px)}
+ .price-board-value[data-length="extra"]{font-size:clamp(26px,6.7vw,54px)}
+ .price-board-source{text-align:left}
+ .price-board-meta{flex-direction:column;align-items:flex-start}
+ .price-board-stage:fullscreen .price-board-value,body.price-board-fallback .price-board-value{font-size:clamp(45px,12vw,85px)}
+ .price-board-stage:fullscreen .price-board-value[data-length="long"],body.price-board-fallback .price-board-value[data-length="long"]{font-size:clamp(33px,8.5vw,70px)}
+ .price-board-stage:fullscreen .price-board-value[data-length="extra"],body.price-board-fallback .price-board-value[data-length="extra"]{font-size:clamp(26px,6.3vw,56px)}
+}
+@media(prefers-reduced-motion:reduce){.price-board-stage,.price-board-value{transition:none!important}}
