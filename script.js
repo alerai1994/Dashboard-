@@ -156,6 +156,7 @@ analytics:['Analytics','Indicatori e andamento dei principali mercati mondiali.'
 orderbook:['Order Book','Ordini Spot di acquisto e vendita delle criptovalute.'],
 workspace:['Workspace','Tutti i moduli Vertex in uno spazio personalizzabile.'],
 etf:['ETF','ETF ed ETP su Bitcoin, Ethereum, Solana e Injective.'],
+priceboard:['Prezzo grande','Prezzi a schermo intero per tutti i mercati.'],
 settings:['Settings','Aspetto, origini dei dati e accesso al terminale originale.']
 };
 const REGIONS=[
@@ -758,6 +759,7 @@ function updateLiveBadges(){
  });
  document.querySelectorAll('.feed-summary-text').forEach(n=>n.textContent=feedSummaryLabel());
  document.querySelectorAll('.data-status').forEach(n=>n.classList.toggle('error',state.feedError));
+ if(state.page==='priceboard')window.VertexPriceBoard?.paint();
 }
 
 function setMovementClass(element,value){
@@ -4032,7 +4034,8 @@ function workspacePage(){
  feedStatus()+'</section>';
 }
 
-const PAGE_RENDERERS={home:homePage,global:globalPage,markets:marketsPage,watchlist:watchlistPage,portfolio:portfolioPage,news:newsPage,analytics:analyticsPage,orderbook:orderBookPage,workspace:workspacePage,etf:etfPage,settings:settingsPage};
+window.__vertexPriceBoardBackend=Object.freeze({assets:ASSETS,getQuote:quote,formatValue,getStatus:instrumentQuoteStatus,pct});
+const PAGE_RENDERERS={home:homePage,global:globalPage,markets:marketsPage,watchlist:watchlistPage,portfolio:portfolioPage,news:newsPage,analytics:analyticsPage,orderbook:orderBookPage,workspace:workspacePage,etf:etfPage,priceboard:()=>window.VertexPriceBoard?.page()||'<section class="panel">Display non disponibile.</section>',settings:settingsPage};
 function updateNav(){
  $$('.side-link[data-page]').forEach(b=>{const sel=b.dataset.page===state.page;b.classList.toggle('active',sel);if(sel)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
  updateCryptoAlertIndicator();
@@ -4058,6 +4061,7 @@ function render(){
   console.error('Vertex page render failed:',err);
   main.innerHTML='<section class="panel" style="padding:24px"><h2>Impossibile mostrare questa sezione</h2><p>Riprova a ricaricare la pagina. I servizi dati sono indipendenti dalla dashboard.</p></section>';
  }
+ if(state.page==='priceboard')window.VertexPriceBoard?.paint();
  // Rows are re-created during navigation; apply the saved font to fresh quotes.
  syncVertexPriceTypography(main);
  const globalCapHeader=$('#globalCryptoCaps');
@@ -4098,6 +4102,7 @@ function render(){
 }
 function navigate(page){
  if(!SECTIONS[page])page='global';
+ if(page!=='priceboard')window.VertexPriceBoard?.closeFullscreen();
  if(orderBookViewActive()&&page!=='orderbook'&&!(page==='workspace'&&workspaceShown('orderbook'))){stopOrderBookLive();cancelOrderBookFetch()}
  state.page=page;
  if(location.hash!=='#'+page)history.replaceState(null,'','#'+page);
