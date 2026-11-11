@@ -1879,8 +1879,59 @@ function marketForceRingOffset(mood,key){
  const ratio=mood.total?Math.max(0,Math.min(1,mood[key]/mood.total)):0;
  return (MARKET_FORCE_RING_LENGTH*(1-ratio)).toFixed(2);
 }
+
+const savedForceAssets=load('marketForceSelectedAssets',{});
+let marketForceSelectedAssets=savedForceAssets&&typeof savedForceAssets==='object'&&!Array.isArray(savedForceAssets)?{...savedForceAssets}:{};
+let marketForceAssetSearch='';
+const MARKET_FORCE_GROUPS={crypto:'Criptovalute',bigtech:'Azioni',forex:'Forex',markets:'Indici ed ETF',commodities:'Materie prime'};
 function marketForceLeadId(){
- return {all:'btc',crypto:'btc',stocks:'nvda',forex:'eurusd',indices:'sp500'}[marketForceFilter]||'btc';
+ const candidates=marketForceAssets();
+ const saved=marketForceSelectedAssets[marketForceFilter];
+ if(candidates.some(a=>a.id===saved))return saved;
+ const defaults={all:'btc',crypto:'btc',stocks:'nvda',forex:'eurusd',indices:'sp500'};
+ return candidates.some(a=>a.id===defaults[marketForceFilter])?defaults[marketForceFilter]:candidates[0]?.id||'btc';
+}
+function marketForceMatchedAssets(){
+ const term=marketForceAssetSearch.trim().toLocaleLowerCase('it-IT');
+ const candidates=marketForceAssets();
+ return !term?candidates:candidates.filter(a=>(a.name+' '+a.short+' '+a.symbol+' '+(a.country||'')).toLocaleLowerCase('it-IT').includes(term));
+}
+function marketForceAssetOptions(){
+ const id=marketForceLeadId(),selected=ASSET_BY_ID[id],found=marketForceMatchedAssets();
+ const groups=[...new Set(found.map(a=>a.group))];
+ let html='';
+ if(selected&&!found.some(a=>a.id===id))
+  html+='<optgroup label="Selezionato"><option value="'+esc(id)+'" selected>'+esc(selected.name+' · '+selected.symbol)+'</option></optgroup>';
+ for(const group of groups){
+  html+='<optgroup label="'+esc(MARKET_FORCE_GROUPS[group]||group)+'">'+
+   found.filter(a=>a.group===group).map(a=>
+    '<option value="'+esc(a.id)+'"'+(a.id===id?' selected':'')+'>'+esc(a.name+' · '+a.symbol)+'</option>'
+   ).join('')+'</optgroup>';
+ }
+ return html;
+}
+function marketForceChooseAsset(id){
+ if(!marketForceAssets().some(a=>a.id===id))return;
+ marketForceSelectedAssets[marketForceFilter]=id;
+ save('marketForceSelectedAssets',marketForceSelectedAssets);
+ marketForceAssetSearch='';
+ const panel=document.querySelector('#pageContainer .market-force-section');
+ if(!panel)return;
+ panel.outerHTML=marketForceSection();
+ requestAnimationFrame(()=>requestAnimationFrame(()=>patchMarketForce()));
+}
+function marketForceStepAsset(step){
+ const candidates=marketForceAssets(),i=candidates.findIndex(a=>a.id===marketForceLeadId());
+ if(!candidates.length)return;
+ marketForceChooseAsset(candidates[(i+step+candidates.length)%candidates.length].id);
+}
+function marketForceSearchOptions(){
+ const panel=document.querySelector('#pageContainer .market-force-section');
+ if(!panel)return;
+ const select=panel.querySelector('#marketForceAssetSelect');
+ if(select)select.innerHTML=marketForceAssetOptions();
+ const count=panel.querySelector('[data-force-asset-count]');
+ if(count)count.textContent=marketForceMatchedAssets().length+' / '+marketForceAssets().length+' strumenti';
 }
 function marketForceLeadLabel(a,q){
  if(a.id==='btc')return q?.currency==='USDT'?'BTC/USDT':'BTC/USD';
@@ -1959,6 +2010,15 @@ function marketForceSection(){
   ).join('')+'</div>'+
   '<div class="market-force-coverage" id="marketForceCoverage" aria-label="Mercati analizzati: '+mood.total+' su '+mood.universe+'">Analizzati: '+mood.total+' / '+mood.universe+'</div>'+
   '<div class="market-force-grid">'+circles+'</div>'+
+  '<div class="market-force-picker">'+
+  '<div class="market-force-picker-heading"><label for="marketForceAssetSelect">Scegli il mercato</label>'+
+  '<span data-force-asset-count>'+marketForceMatchedAssets().length+' / '+marketForceAssets().length+' strumenti</span></div>'+
+  '<div class="market-force-picker-controls">'+
+  '<input type="search" id="marketForceAssetSearch" value="'+esc(marketForceAssetSearch)+'" placeholder="Cerca nome o ticker…" autocomplete="off" aria-label="Cerca strumenti">'+
+  '<select id="marketForceAssetSelect" aria-label="Seleziona crypto, azione, Forex o indice">'+marketForceAssetOptions()+'</select>'+
+  '<div class="market-force-step" role="group" aria-label="Scorri strumenti">'+
+  '<button type="button" data-force-step="-1" aria-label="Strumento precedente">‹</button>'+
+  '<button type="button" data-force-step="1" aria-label="Strumento successivo">›</button></div></div></div>'+
   feature+'</section>';
 }
 function patchMarketForce(){
@@ -2014,6 +2074,7 @@ function patchMarketForce(){
 function setMarketForceFilter(key){
  if(!MARKET_FORCE_FILTERS.some(([id])=>id===key)||key===marketForceFilter)return;
  marketForceFilter=key;
+ marketForceAssetSearch='';
  save('marketForceFilter',key);
  const panel=document.querySelector('#pageContainer .market-force-section');
  if(!panel)return;
@@ -6748,6 +6809,7 @@ function setupEvents(){
   const btn=e.target.closest('button,a,tr[data-asset]');
   if(!btn)return;
                    if(btn.dataset.forceFilter){setMarketForceFilter(btn.dataset.forceFilter);return;}
+   if(btn.dataset.forceStep){marketForceStepAsset(Number(btn.dataset.forceStep));return;}
    if(btn.dataset.secCategory){secNewsState.selected=btn.dataset.secCategory;secNewsState.visible=20;render();return;}
   if(btn.dataset.secMore){secNewsState.visible+=20;render();return;}
   if(btn.dataset.secRefresh){loadSecNews(true);return;}
@@ -6876,6 +6938,7 @@ function setupEvents(){
  });
  $('#pageContainer').addEventListener('keydown',e=>{if(e.key==='Enter'){const tr=e.target.closest('tr[data-asset]');if(tr)openAsset(tr.dataset.asset)}});
  $('#pageContainer').addEventListener('change',e=>{
+  if(e.target.id==='marketForceAssetSelect'){marketForceChooseAsset(e.target.value);return;}
   if(state.page==='etf'&&(e.target.id==='cryptoCapA'||e.target.id==='cryptoCapB')){
    const id=e.target.value;
    if(cryptoCapCoins.some(coin=>coin.id===id)){
@@ -6894,6 +6957,11 @@ function setupEvents(){
   }
  });
  $('#pageContainer').addEventListener('input',e=>{
+  if(e.target.id==='marketForceAssetSearch'){
+   marketForceAssetSearch=e.target.value;
+   marketForceSearchOptions();
+   return;
+  }
   if(e.target.closest('#portfolioForm')){
    e.target.removeAttribute('aria-invalid');
    const message=$('#portfolioFormFeedback');
