@@ -2010,6 +2010,38 @@ function marketForceDatedCandles(id,period){
  if(coverage<duration*.65)return [];
  return candidates;
 }
+/* Real-time status always belongs to the selected instrument, never an unrelated stream. */
+function marketForceBullishFeedState(id){
+ const a=ASSET_BY_ID[id],q=quote(id);
+ if(!a||!q||!num(q.value)||q.value<=0)return {kind:'unavailable',label:'DATI N/D',description:'Prezzo non disponibile'};
+ if(marketForceLiveAsset(a)){
+  return {kind:'live',label:'LIVE',description:'Streaming '+(a.group==='forex'?'Forex MT5':'Binance Spot')};
+ }
+ const received=Number(q.received),age=Date.now()-received;
+ if(a.group==='crypto'&&q.polled===true&&Number.isFinite(received)&&age>=0&&age<45000)
+  return {kind:'poll',label:'REST ~15 S',description:'Binance REST, aggiornamento automatico'};
+ const timestamp=Date.parse(q.time||'');
+ const delay=Number.isFinite(timestamp)?Date.now()-timestamp:Infinity;
+ if(Number.isFinite(delay)&&delay>=0&&delay<=20*60*1000)
+  return {kind:'delayed',label:'QUOTAZIONE',description:'Feed periodico, possibili ritardi'};
+ return {kind:'stale',label:'ULTIMO DATO',description:'Ultima quotazione disponibile (non in diretta)'};
+}
+/* Observed prices have real timestamps and matching feed venues; never interpolate. */
+function marketForceBullishObserved(id,period){
+ const q=quote(id),venue=chartQuoteVenue(q);
+ const source=chartObservedQuotes.get(id)||[];
+ const milliseconds={'1H':3600000,'4H':14400000,'1D':86400000,'1W':604800000}[period]||86400000;
+ const now=Date.now();
+ if(!venue)return [];
+ return source.filter(p=>p.venue===venue&&num(p.price)&&p.price>0&&
+  num(p.ts)&&p.ts<=now+60000&&p.ts>=now-milliseconds)
+  .map(p=>({t:p.ts,v:p.price}));
+}
+function marketForceBullishChartSignature(m){
+ const q=quote(m.id);
+ return [m.id,marketForceBullishPeriod,chartObservedVersions.get(m.id)||0,
+  marketForceLeadSeriesKey(m.id),q?.time||'',q?.candleSource||''].join(':');
+}
 function marketForceBullishMetrics(){
  const id=marketForceLeadId(),q=quote(id);
  let delta=null,series=[];
@@ -2020,7 +2052,12 @@ function marketForceBullishMetrics(){
   series=marketForceDatedCandles(id,'1D');
  }else{
   series=marketForceDatedCandles(id,marketForceBullishPeriod);
-  if(series.length>=2)delta=(series[series.length-1].v/series[0].v-1)*100;
+  if(series.length<2){
+   const observed=marketForceBullishObserved(id,marketForceBullishPeriod);
+   const span={'1H':3600000,'4H':14400000,'1W':604800000}[marketForceBullishPeriod]||86400000;
+   if(observed.length>=2&&observed.at(-1).t-observed[0].t>=span*.65)series=observed;
+  }
+  if(series.length>=2)delta=(series.at(-1).v/series[0].v-1)*100;
  }
  const valid=delta!==null&&num(delta);
  const intensity=valid?Math.round(100*Math.abs(delta)/(Math.abs(delta)+2)):0;
@@ -2032,29 +2069,44 @@ function marketForceBullishMetrics(){
  };
 }
 function marketForceBullishPlot(m){
- if(marketForceBullishPeriod==='1D'){
-  const id=m.id,q=quote(id);
-  const hasHistory=Array.isArray(q?.candles)&&q.candles.length>1||
-    Array.isArray(q?.history)&&q.history.length>1;
-  return hasHistory?marketForceLeadChart(id):
-   '<div class="bullish-detail-unavailable">Grafico storico non disponibile per questo asset</div>';
+ const id=m.id,q=quote(id),period=marketForceBullishPeriod;
+ let values=[],source='';
+ const observed=marketForceBullishObserved(id,period);
+ if(m.series?.length>=2){
+  values=m.series.map(row=>row.v);source='Candele / prezzi verificati · '+period;
+ }else if(observed.length>=2){
+  values=observed.slice(-100).map(row=>row.v);
+  source='Tick reali osservati · storico parziale';
+ }else if(period==='1D'){
+  if(Array.isArray(q?.candles)&&q.candles.length>=2){
+   values=q.candles.slice(-100).map(row=>Number(row?.c));
+   source='Storico disponibile · intervallo da verificare';
+  }else if(Array.isArray(q?.history)&&q.history.length>=2){
+   values=q.history.slice(-100).map(row=>Number(row));
+   source='Storico disponibile · intervallo da verificare';
+  }
  }
- if(m.series.length<2)return '<div class="bullish-detail-unavailable">Storico '+marketForceBullishPeriod+' non disponibile</div>';
- const values=m.series.map(r=>r.v),w=460,h=130,margin=10;
- const low=Math.min(...values),high=Math.max(...values);
+ values=values.filter(x=>num(x)&&x>0);
+ if(values.length<2)return '<div class="bullish-detail-unavailable">Storico '+period+' non disponibile</div>';
+ const w=460,h=130,margin=10,low=Math.min(...values),high=Math.max(...values);
  const spread=Math.max(high-low,Math.abs(high)*.0001,1e-8);
- const pts=values.map((v,i)=>({
+ const points=values.map((v,i)=>({
   x:margin+i*(w-margin*2)/(values.length-1),
   y:h-margin-(v-low)/spread*(h-margin*2)
  }));
- const line=pts.map((p,i)=>(i?'L':'M')+p.x.toFixed(2)+' '+p.y.toFixed(2)).join(' ');
- const last=pts[pts.length-1],fill=line+' L'+last.x.toFixed(2)+' '+h+' L'+margin+' '+h+' Z';
- const color=m.delta<0?'var(--red)':'var(--green)';
- return '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" role="img" aria-label="Prezzi osservati nel periodo '+marketForceBullishPeriod+'">'+
- '<defs><linearGradient id="bullishPriceFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+color+'" stop-opacity=".35"/><stop offset="1" stop-color="'+color+'" stop-opacity="0"/></linearGradient></defs>'+
- '<path fill="url(#bullishPriceFill)" d="'+fill+'"/>'+
+ const line=points.map((p,i)=>(i?'L':'M')+p.x.toFixed(2)+' '+p.y.toFixed(2)).join(' ');
+ const last=points[points.length-1];
+ const area=line+' L'+last.x.toFixed(2)+' '+h+' L'+margin+' '+h+' Z';
+ const delta=values.at(-1)-values[0],color=delta<0?'var(--red)':'var(--green)';
+ return '<div class="bullish-live-chart-content">'+
+ '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" role="img" aria-label="Andamento dei prezzi realmente rilevati per '+esc(ASSET_BY_ID[id]?.name||id)+'">'+
+ '<defs><linearGradient id="bullishPriceFill" x1="0" y1="0" x2="0" y2="1">'+
+ '<stop offset="0" stop-color="'+color+'" stop-opacity=".35"/>'+
+ '<stop offset="1" stop-color="'+color+'" stop-opacity="0"/></linearGradient></defs>'+
+ '<path fill="url(#bullishPriceFill)" d="'+area+'"/>'+
  '<path d="'+line+'" fill="none" stroke="'+color+'" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>'+
- '<circle cx="'+last.x.toFixed(2)+'" cy="'+last.y.toFixed(2)+'" r="3.5" fill="'+color+'"/></svg>';
+ '<circle cx="'+last.x.toFixed(2)+'" cy="'+last.y.toFixed(2)+'" r="3.5" fill="'+color+'"/></svg>'+
+ '<span class="bullish-detail-chart-note">'+esc(source)+'</span></div>';
 }
 function marketForceBullishMessage(m){
  if(!m.valid)return ['Dati insufficienti','Nessuna variazione verificabile per il periodo selezionato'];
@@ -2087,6 +2139,7 @@ function bullishSymbolIcon(type){
 }
 function marketForceBullishPanel(){
  const m=marketForceBullishMetrics(),asset=ASSET_BY_ID[m.id],q=quote(m.id);
+ const feed=marketForceBullishFeedState(m.id);
  const message=marketForceBullishMessage(m);
  const selectedCategory=BULLISH_CATEGORY_CHOICES.find(row=>row[0]===marketForceFilter)||BULLISH_CATEGORY_CHOICES[0];
  const ring=MARKET_FORCE_BULLISH_CIRCUMFERENCE.toFixed(2);
@@ -2114,7 +2167,9 @@ function marketForceBullishPanel(){
  '<span class="bullish-detail-arrow" aria-hidden="true">'+iconTrend+'</span><div>'+
  '<h2 id="marketForceTitle">Forza rialzista</h2>'+
  '<p>Analisi della forza rialzista del prezzo sul mercato</p></div></div>'+
- '<div class="bullish-detail-heading-right"><span class="bullish-detail-state" data-bullish-state data-direction="'+(m.up?'up':m.down?'down':'flat')+'">'+
+ '<div class="bullish-detail-heading-right"><span class="bullish-detail-feed" data-bullish-feed data-feed-kind="'+feed.kind+'" title="'+esc(feed.description)+'">'+
+ '<i aria-hidden="true"></i><span data-bullish-feed-text>'+esc(feed.label)+'</span></span>'+
+ '<span class="bullish-detail-state" data-bullish-state data-direction="'+(m.up?'up':m.down?'down':'flat')+'">'+
  '<i class="bullish-state-dot" aria-hidden="true"></i><span data-bullish-state-text>'+(m.up?'Bullish':m.down?'Bearish':m.valid?'Neutro':'Dati N/D')+'</span></span>'+
  '</div></div>'+
  '<div class="bullish-detail-toolbar">'+
@@ -2146,12 +2201,16 @@ function marketForceBullishPanel(){
  '</svg>'+
  '<div class="bullish-detail-gauge-inner"><span class="bullish-detail-bull-icon" aria-hidden="true">'+bullIcon+'</span>'+
  '<strong data-bullish-gauge-value>'+(m.valid?m.up+'%':'—')+'</strong><small>FORZA<br>RIALZISTA</small></div></div></div>'+
- '<div class="bullish-detail-right"><div class="bullish-detail-assessment">'+
+ '<div class="bullish-detail-right">'+
+ '<div class="bullish-live-quote" data-bullish-quote><span>'+esc(marketForceLeadLabel(asset,q))+'</span>'+
+ '<strong data-bullish-price>'+esc(assetValue(asset))+'</strong>'+
+ '<em data-bullish-delta data-trend="'+trend(q?.change)+'">'+esc(pct(q?.change))+'</em></div>'+
+ '<div class="bullish-detail-assessment">'+
  '<strong data-bullish-assessment>'+esc(message[0])+'</strong>'+
  '<p data-bullish-description>'+esc(message[1])+'</p></div>'+
  '<div class="bullish-detail-metrics">'+metricCard('up','Rialzista',iconTrend)+
  metricCard('flat','Neutro','=')+metricCard('down','Ribassista','↘')+'</div>'+
- '<div class="bullish-detail-chart" data-bullish-chart data-bullish-chart-key="">'+marketForceBullishPlot(m)+'</div>'+
+ '<div class="bullish-detail-chart" data-bullish-chart data-bullish-chart-key="'+esc(marketForceBullishChartSignature(m))+'">'+marketForceBullishPlot(m)+'</div>'+
  '<div class="bullish-detail-source" data-bullish-source>'+esc(instrumentQuoteStatus(m.id))+'</div></div></div>'+
  '<div class="bullish-detail-footnote"><span><i aria-hidden="true"></i> Indicatore sintetico dal movimento del prezzo; non misura gli ordini di acquisto.</span>'+
  '<span>Quotazioni disponibili · nessun dato simulato</span></div>'+
@@ -2161,6 +2220,22 @@ function patchMarketForceBullish(){
  const panel=document.querySelector('#pageContainer [data-force-bullish-panel]');
  if(!panel)return;
  const m=marketForceBullishMetrics(),messages=marketForceBullishMessage(m);
+ const q=quote(m.id),asset=ASSET_BY_ID[m.id],feed=marketForceBullishFeedState(m.id);
+ const badge=panel.querySelector('[data-bullish-feed]');
+ if(badge){
+  if(badge.dataset.feedKind!==feed.kind)badge.dataset.feedKind=feed.kind;
+  if(badge.title!==feed.description)badge.title=feed.description;
+  const label=badge.querySelector('[data-bullish-feed-text]');
+  if(label&&label.textContent!==feed.label)label.textContent=feed.label;
+ }
+ const livePrice=panel.querySelector('[data-bullish-price]'),
+       liveDelta=panel.querySelector('[data-bullish-delta]');
+ if(livePrice&&livePrice.textContent!==assetValue(asset))livePrice.textContent=assetValue(asset);
+ if(liveDelta){
+  const value=pct(q?.change);
+  if(liveDelta.textContent!==value)liveDelta.textContent=value;
+  liveDelta.dataset.trend=trend(q?.change);
+ }
  const value=panel.querySelector('[data-bullish-gauge-value]');
  const text=m.valid?m.up+'%':'—';
  if(value&&value.textContent!==text)value.textContent=text;
@@ -2191,7 +2266,7 @@ function patchMarketForceBullish(){
  if(source)source.textContent=instrumentQuoteStatus(m.id);
  const chart=panel.querySelector('[data-bullish-chart]');
  if(chart){
-  const stamp=marketForceBullishPeriod+':'+marketForceLeadSeriesKey(m.id)+':'+(m.delta??'na');
+  const stamp=marketForceBullishChartSignature(m);
   if(chart.dataset.bullishChartKey!==stamp){
    chart.dataset.bullishChartKey=stamp;
    chart.innerHTML=marketForceBullishPlot(m);
