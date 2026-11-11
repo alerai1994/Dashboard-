@@ -1850,17 +1850,20 @@ function marketForceAssets(){
   (marketForceFilter==='indices'&&a.group==='markets'&&a.symbol?.startsWith('^'))
  );
 }
+/* A transparent per-instrument momentum score, computed only from the selected
+   quote's published percentage change. Not a prediction or trade signal.
+   Intensity = abs(change)/(abs(change)+2). Missing data yields no score. */
 function marketForceMood(){
- const universe=marketForceAssets();
- const available=universe.filter(a=>{
-  const q=quote(a.id);
-  return q&&num(q.value)&&q.value>0&&num(q.change);
- });
+ const id=marketForceLeadId(),q=quote(id);
+ const valid=q&&num(q.value)&&q.value>0&&num(q.change);
+ if(!valid)return {up:0,down:0,flat:0,total:0,universe:1,valid:false,id};
+ const delta=q.change;
+ const intensity=Math.min(100,Math.max(0,Math.round(100*Math.abs(delta)/(Math.abs(delta)+2))));
  return {
-  up:available.filter(a=>change(a.id)>0).length,
-  down:available.filter(a=>change(a.id)<0).length,
-  flat:available.filter(a=>change(a.id)===0).length,
-  total:available.length,universe:universe.length
+  up:delta>0?intensity:0,
+  down:delta<0?intensity:0,
+  flat:100-intensity,
+  total:100,universe:100,valid:true,id,delta
  };
 }
 function marketForceLiveAsset(a){
@@ -1873,7 +1876,8 @@ function marketForceLiveAsset(a){
  return false;
 }
 function marketForceHasLive(){
- return marketForceAssets().some(marketForceLiveAsset);
+ const asset=ASSET_BY_ID[marketForceLeadId()];
+ return !!asset&&marketForceLiveAsset(asset);
 }
 function marketForceRingOffset(mood,key){
  const ratio=mood.total?Math.max(0,Math.min(1,mood[key]/mood.total)):0;
@@ -1972,11 +1976,16 @@ function marketForceLeadSeriesKey(id){
  const first=arr[0],last=arr[arr.length-1];
  return [id,arr.length,typeof first==='object'?first?.c:first,typeof last==='object'?last?.c:last].join(':');
 }
+function marketForceCoverageText(mood){
+ const a=ASSET_BY_ID[mood.id];
+ if(!a)return 'Strumento non disponibile';
+ return mood.valid?'Forza '+a.short+' · variazione '+pct(mood.delta):'Forza '+a.short+' · quotazione non disponibile';
+}
 function marketForceSection(){
  const mood=marketForceMood(),live=marketForceHasLive();
  const items=[['up','Forza rialzista'],['flat','Neutro'],['down','Forza ribassista']];
  const circles=items.map(([key,label])=>{
-  const amount=mood[key],percentage=mood.total?Math.round(amount/mood.total*100)+'%':'—';
+  const amount=mood.total?mood[key]:'—',percentage=mood.total?mood[key]+'%':'—';
   return '<article class="market-force-item market-force-'+key+'">'+
    '<div class="market-force-circle">'+
    '<svg class="market-force-ring" viewBox="0 0 120 120" aria-hidden="true" focusable="false">'+
@@ -2004,13 +2013,14 @@ function marketForceSection(){
   '<h2 id="marketForceTitle">Forza del mercato</h2>'+
   '<p>Analisi della forza dei mercati selezionati.</p></div>'+
   '<span class="market-force-status'+(live?' is-live':'')+'" data-force-live aria-label="'+(live?'Streaming attivo':'Ultime quotazioni disponibili')+'">'+
-  '<i aria-hidden="true"></i><span>'+(live?'LIVE':mood.total?'QUOTAZIONI':'DATI N/D')+'</span></span></div>'+
+  '<i aria-hidden="true"></i><span>'+(live?'LIVE':mood.valid?'QUOTAZIONI':'DATI N/D')+'</span></span></div>'+
   '<div class="market-force-filters" role="group" aria-label="Filtra la forza per mercato">'+
   MARKET_FORCE_FILTERS.map(([key,label])=>
     '<button type="button" data-force-filter="'+key+'" aria-pressed="'+String(key===marketForceFilter)+'" class="market-force-filter'+(key===marketForceFilter?' active':'')+'">'+label+'</button>'
   ).join('')+'</div>'+
-  '<div class="market-force-coverage" id="marketForceCoverage" aria-label="Mercati analizzati: '+mood.total+' su '+mood.universe+'">Analizzati: '+mood.total+' / '+mood.universe+'</div>'+
+  '<div class="market-force-coverage" id="marketForceCoverage" aria-label="'+esc(marketForceCoverageText(mood))+'">'+esc(marketForceCoverageText(mood))+'</div>'+
   '<div class="market-force-grid">'+circles+'</div>'+
+  '<p class="market-force-method" id="marketForceMethod">Punteggio 0–100 calcolato sulla variazione dell’asset selezionato. Non è un segnale di trading.</p>'+
   '<div class="market-force-picker">'+
   '<div class="market-force-picker-heading"><label for="marketForceAssetSelect">Scegli il mercato</label>'+
   '<span data-force-asset-count>'+marketForceMatchedAssets().length+' / '+marketForceAssets().length+' strumenti</span></div>'+
@@ -2029,8 +2039,9 @@ function patchMarketForce(){
  for(const key of ['up','flat','down']){
   const count=panel.querySelector('[data-force-count="'+key+'"]');
   const share=panel.querySelector('[data-force-share="'+key+'"]');
-  if(count&&count.textContent!==String(mood[key]))count.textContent=String(mood[key]);
-  const ratio=mood.total?Math.round(mood[key]/mood.total*100)+'%':'—';
+  const value=mood.total?String(mood[key]):'—';
+  if(count&&count.textContent!==value)count.textContent=value;
+  const ratio=mood.total?mood[key]+'%':'—';
   if(share&&share.textContent!==ratio)share.textContent=ratio;
   const ring=panel.querySelector('[data-force-ring="'+key+'"]');
   if(ring){
@@ -2039,15 +2050,15 @@ function patchMarketForce(){
   }
  }
  const coverage=panel.querySelector('#marketForceCoverage');
- const label='Analizzati: '+mood.total+' / '+mood.universe;
+ const label=marketForceCoverageText(mood);
  if(coverage&&coverage.textContent!==label)coverage.textContent=label;
- if(coverage)coverage.setAttribute('aria-label','Mercati analizzati: '+mood.total+' su '+mood.universe);
+ if(coverage)coverage.setAttribute('aria-label',label);
  const live=marketForceHasLive(),status=panel.querySelector('[data-force-live]');
  if(status){
   status.classList.toggle('is-live',live);
   status.setAttribute('aria-label',live?'Streaming attivo':'Ultime quotazioni disponibili');
   const labelEl=status.querySelector('span');
-  const text=live?'LIVE':mood.total?'QUOTAZIONI':'DATI N/D';
+  const text=live?'LIVE':mood.valid?'QUOTAZIONI':'DATI N/D';
   if(labelEl&&labelEl.textContent!==text)labelEl.textContent=text;
  }
  const id=marketForceLeadId(),a=ASSET_BY_ID[id],q=quote(id);
