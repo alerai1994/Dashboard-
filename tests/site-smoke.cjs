@@ -44,7 +44,7 @@ assert(ore.bids?.length>0&&ore.asks?.length>0,'ORE orderbook missing bids or ask
 const adapted=source.replace('function render(){','function render(){return;')
  .replace('function toast(message){','function toast(message){return;')
  .replace('(function () {','return (function () {')
- .replace(/\}\)\(\);\s*$/,'return {PAGE_RENDERERS,state,portfolioPage,portfolioRow,edit:i=>portfolioEditIndex=i,unlockVertexAudio,playClickSound,playCryptoAlertSound,workspaceChange,workspacePage,workspaceShown,getWorkspaceLayout:()=>workspaceLayout,getWorkspaceEdit:()=>workspaceEditMode};})();');
+ .replace(/\}\)\(\);\s*$/,'return {PAGE_RENDERERS,state,marketForceMood,marketForceChooseAsset,marketForceLeadId,portfolioPage,portfolioRow,edit:i=>portfolioEditIndex=i,unlockVertexAudio,playClickSound,playCryptoAlertSound,workspaceChange,workspacePage,workspaceShown,getWorkspaceLayout:()=>workspaceLayout,getWorkspaceEdit:()=>workspaceEditMode};})();');
 assert(adapted.includes('edit:i=>'),'Cannot instrument app for smoke test');
 /* Simulated WebAudio: exercise sound scheduling without playing real audio in CI. */
 const audioEvents={created:0,resumes:0,notes:[]};
@@ -81,6 +81,24 @@ for(const label of ['Indici ed ETF','Azioni','Materie prime','Forex','Criptovalu
 assert(priceBoardHtml.includes('id="priceBoardStage"'),'Missing price board fullscreen stage');
 assert.equal(Object.keys(app.PAGE_RENDERERS).length,13);
 assert.equal(typeof app.PAGE_RENDERERS.workspace,'function','Workspace route missing');
+// Regression: choosing another asset must recalculate all three force values.
+app.marketForceChooseAsset('btc');
+const btcStrength=app.marketForceMood();
+app.marketForceChooseAsset('inj');
+const injStrength=app.marketForceMood();
+app.marketForceChooseAsset('sp500');
+const sp500Strength=app.marketForceMood();
+for(const entry of [btcStrength,injStrength,sp500Strength]){
+ assert.equal(entry.total,100,'Valid instrument score must have a 100-point scale');
+ assert.equal(entry.up+entry.flat+entry.down,100,'Force scores must sum to 100');
+}
+assert.notDeepEqual([btcStrength.up,btcStrength.flat,btcStrength.down],
+ [injStrength.up,injStrength.flat,injStrength.down],
+ 'Selecting BTC versus INJ did not update bullish/neutral/bearish force');
+assert(sp500Strength.up>0&&sp500Strength.down===0,'Positive instrument must have bullish force');
+assert(injStrength.down>0&&injStrength.up===0,'Negative instrument must have bearish force');
+assert.equal(app.marketForceLeadId(),'sp500','Selected instrument was not persisted');
+console.log('PASS selection-driven bullish/neutral/bearish scores for BTC, INJ, S&P 500');
 const globalMarketForce=app.PAGE_RENDERERS.global();
 const dedicatedMarketForce=app.PAGE_RENDERERS.marketforce();
 assert(html.includes('data-page="marketforce"'),'Forza mercato navigation missing');
