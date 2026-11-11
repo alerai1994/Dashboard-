@@ -3411,3 +3411,13 @@ body.theme-dark .theme-contrast-version{
 @media(prefers-reduced-motion:reduce){
  .market-force-open-bullish,.bullish-detail-dial-progress{transition:none}
 }
+
+/* Direction badge remains truthful when the selected asset is not bullish. */
+.bullish-detail-state[data-direction="down"]{
+ color:var(--red);border-color:color-mix(in srgb,var(--red) 35%,var(--line));
+ background:color-mix(in srgb,var(--red) 9%,var(--panel));
+}
+.bullish-detail-state[data-direction="flat"]{
+ color:var(--muted);border-color:var(--line);
+ background:var(--surface);
+}
