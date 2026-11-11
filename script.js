@@ -1934,8 +1934,9 @@ function marketForceSearchOptions(){
  if(count)count.textContent=marketForceMatchedAssets().length+' / '+marketForceAssets().length+' strumenti';
 }
 function marketForceLeadLabel(a,q){
- if(a.id==='btc')return q?.currency==='USDT'?'BTC/USDT':'BTC/USD';
- if(a.id==='eurusd')return 'EUR/USD';
+ if(a.group==='crypto'&&typeof a.symbol==='string')
+  return a.symbol.replace(/-USD$/,q?.currency==='USDT'?'/USDT':'/USD');
+ if(a.group==='forex')return (a.short||a.symbol).replace(/\s+/g,'');
  return a.short||a.symbol;
 }
 function marketForceLeadChart(id){
