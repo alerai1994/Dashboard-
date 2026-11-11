@@ -44,7 +44,7 @@ assert(ore.bids?.length>0&&ore.asks?.length>0,'ORE orderbook missing bids or ask
 const adapted=source.replace('function render(){','function render(){return;')
  .replace('function toast(message){','function toast(message){return;')
  .replace('(function () {','return (function () {')
- .replace(/\}\)\(\);\s*$/,'return {PAGE_RENDERERS,state,marketForceMood,marketForceChooseAsset,marketForceLeadId,portfolioPage,portfolioRow,edit:i=>portfolioEditIndex=i,unlockVertexAudio,playClickSound,playCryptoAlertSound,workspaceChange,workspacePage,workspaceShown,getWorkspaceLayout:()=>workspaceLayout,getWorkspaceEdit:()=>workspaceEditMode};})();');
+ .replace(/\}\)\(\);\s*$/,'return {PAGE_RENDERERS,state,marketForceMood,marketForceChooseAsset,marketForceLeadId,marketForceOpenBullish,marketForceSetBullishPeriod,marketForceBullishMetrics,portfolioPage,portfolioRow,edit:i=>portfolioEditIndex=i,unlockVertexAudio,playClickSound,playCryptoAlertSound,workspaceChange,workspacePage,workspaceShown,getWorkspaceLayout:()=>workspaceLayout,getWorkspaceEdit:()=>workspaceEditMode};})();');
 assert(adapted.includes('edit:i=>'),'Cannot instrument app for smoke test');
 /* Simulated WebAudio: exercise sound scheduling without playing real audio in CI. */
 const audioEvents={created:0,resumes:0,notes:[]};
@@ -104,6 +104,40 @@ assert(injStrength.down>0&&injStrength.up===0,'Negative instrument must have bea
 assert.equal(app.marketForceLeadId(),'sp500','Selected instrument was not persisted');
 Object.assign(app.state.quotes,savedForceQuotes);
 console.log('PASS selection-driven bullish/neutral/bearish scores for BTC, INJ, S&P 500');
+// The green force circle opens the user's requested animated bullish-detail design.
+app.marketForceChooseAsset('btc');
+const beforeBullishPanel=app.PAGE_RENDERERS.marketforce();
+assert(beforeBullishPanel.includes('data-bullish-open'),'Clickable bullish circle missing');
+app.marketForceOpenBullish(true);
+const bullishPanel=app.PAGE_RENDERERS.marketforce();
+assert(bullishPanel.includes('data-force-bullish-panel'),'Bullish analysis panel did not open');
+for(const id of ['bullishGroup','bullishAsset']){
+ assert(bullishPanel.includes('id="'+id+'"'),'Bullish detail selector missing: '+id);
+}
+for(const period of ['1H','4H','1D','1W']){
+ assert(bullishPanel.includes('data-bullish-period="'+period+'"'),'Bullish detail period missing: '+period);
+}
+for(const item of ['up','flat','down']){
+ assert(bullishPanel.includes('data-bullish-stat="'+item+'"'),'Bullish indicator missing: '+item);
+}
+assert(bullishPanel.includes('data-bullish-gauge'),'Large circular gauge missing');
+assert(bullishPanel.includes('data-bullish-close'),'Return from bullish detail missing');
+const dayMetrics=app.marketForceBullishMetrics();
+assert(dayMetrics.valid,'Existing quote change should support the default 1D metric');
+assert.equal(dayMetrics.up+dayMetrics.flat+dayMetrics.down,100,
+ 'Bullish, neutral and bearish must total 100');
+app.marketForceSetBullishPeriod('1H');
+const hourly=app.marketForceBullishMetrics();
+if(!hourly.valid){
+ assert(app.PAGE_RENDERERS.marketforce().includes('Storico 1H non disponibile'),
+ 'Missing period history must not generate fake prices');
+}
+app.marketForceSetBullishPeriod('1D');
+app.marketForceOpenBullish(false);
+assert(app.PAGE_RENDERERS.marketforce().includes('data-bullish-open'),
+ 'Closing bullish details must restore the original market force view');
+console.log('PASS interactive bullish analysis, period controls, truthful missing history and close navigation');
+
 const globalMarketForce=app.PAGE_RENDERERS.global();
 const dedicatedMarketForce=app.PAGE_RENDERERS.marketforce();
 assert(html.includes('data-page="marketforce"'),'Forza mercato navigation missing');
