@@ -3199,3 +3199,10 @@ body.theme-dark .theme-contrast-version{
 @media(prefers-reduced-motion:reduce){
  .market-force-filter.active{transition:none}
 }
+
+/* Selected-instrument momentum clarification */
+.market-force-method{
+ margin:-6px 3px 0;text-align:center;color:var(--muted);
+ font-size:11px;line-height:1.5;
+}
+@media(max-width:640px){.market-force-method{font-size:10px;line-height:1.45}}
