@@ -2965,75 +2965,163 @@ body.theme-dark .theme-contrast-version{
 }
 
 
-/* Market force circles - Global. Counts use verified dashboard quote variations. */
+/* Minimal animated Market Force. Same palettes across Light/Night and mobile. */
 .market-force-section{
- display:grid;gap:18px;padding:18px 20px 20px;margin:0 0 15px;min-width:0;
+ display:grid;gap:15px;min-width:0;padding:clamp(14px,2vw,22px);
+ margin:0 0 15px;border:1px solid var(--line);border-radius:16px;
+ background:var(--panel);box-shadow:0 6px 30px #00000012;
 }
-.market-force-heading{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 20px}
-.market-force-heading h2{font-size:clamp(16px,1.55vw,21px);font-weight:780;letter-spacing:-.025em;color:var(--text);margin:0 0 5px}
-.market-force-heading p{font-size:12px;line-height:1.55;color:var(--muted);margin:0}
-.market-force-coverage{font-size:11px;color:var(--muted);white-space:nowrap;border:1px solid var(--line);background:var(--surface);border-radius:50px;padding:7px 12px}
-.market-force-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;min-width:0}
+.market-force-heading{
+ display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+}
+.market-force-heading h2{
+ color:var(--text);font-size:clamp(17px,1.7vw,23px);font-weight:760;
+ line-height:1.2;letter-spacing:-.032em;margin:0 0 5px;
+}
+.market-force-heading p{color:var(--muted);margin:0;line-height:1.45;font-size:clamp(11px,1vw,13px)}
+.market-force-status{
+ display:inline-flex;align-items:center;justify-content:center;gap:7px;flex:none;
+ padding:6px 8px;border:1px solid var(--line);border-radius:30px;
+ color:var(--muted);background:var(--surface);font-size:10px;letter-spacing:.03em;
+ font-weight:760;white-space:nowrap;
+}
+.market-force-status i{
+ display:block;flex:none;width:7px;height:7px;border-radius:50%;
+ background:var(--muted);opacity:.75;
+}
+.market-force-status.is-live{color:var(--text)}
+.market-force-status.is-live i{
+ background:var(--green);opacity:1;box-shadow:0 0 9px color-mix(in srgb,var(--green) 55%,transparent);
+ animation:market-force-live 2.2s ease-in-out infinite;
+}
+.market-force-filters{
+ display:flex;align-items:center;gap:5px;min-width:0;overflow-x:auto;max-width:100%;
+ scrollbar-width:none;-ms-overflow-style:none;padding:2px 0 3px;
+}
+.market-force-filters::-webkit-scrollbar{display:none}
+.market-force-filter{
+ flex:none;min-height:32px;padding:7px 12px;
+ background:var(--surface);border:1px solid var(--line);border-radius:24px;
+ color:var(--text);font-size:12px;font-weight:650;line-height:1;
+ transition:background .2s,border-color .2s,color .2s;
+}
+.market-force-filter:hover{border-color:var(--brand)}
+.market-force-filter.active{
+ color:#fff;background:#138c7c;border-color:#138c7c;
+ box-shadow:0 3px 11px #138c7c20;
+}
+.market-force-coverage{
+ justify-self:start;font-variant-numeric:tabular-nums;
+ color:var(--muted);font-size:11px;line-height:1.3;
+ padding:8px 13px;border:1px solid var(--line-soft);border-radius:24px;
+ background:var(--surface);
+}
+.market-force-grid{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:clamp(5px,1.4vw,16px);align-items:start;
+ padding:6px 0 8px;
+}
 .market-force-item{
  --force-accent:var(--muted);
- min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;
- padding:17px 8px 15px;border:1px solid var(--line-soft);border-radius:15px;
- background:var(--panel-2);text-align:center;
+ min-width:0;display:flex;flex-direction:column;align-items:center;gap:7px;
+ padding:5px 2px 4px;text-align:center;background:transparent;border:0;
 }
 .market-force-up{--force-accent:var(--green)}
 .market-force-flat{--force-accent:var(--yellow)}
 .market-force-down{--force-accent:var(--red)}
 .market-force-circle{
- position:relative;isolation:isolate;
- display:flex;align-items:center;justify-content:center;flex:none;
- width:clamp(84px,10.4vw,128px);aspect-ratio:1;border-radius:50%;
- background:color-mix(in srgb,var(--force-accent) 9%,var(--panel));
- box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--force-accent) 13%,transparent),0 7px 22px #00000018;
-}
-.market-force-circle::before{
- content:"";position:absolute;inset:-4px;border-radius:50%;pointer-events:none;
- box-shadow:0 0 8px 1px color-mix(in srgb,var(--force-accent) 22%,transparent);
- animation:market-force-halo 4s ease-in-out infinite;
+ position:relative;isolation:isolate;display:flex;align-items:center;justify-content:center;
+ flex:none;width:clamp(72px,8vw,110px);aspect-ratio:1;
+ border-radius:50%;background:color-mix(in srgb,var(--panel) 86%,var(--surface));
 }
 .market-force-ring{
  position:absolute;inset:0;width:100%;height:100%;overflow:visible;
  transform:rotate(-90deg);pointer-events:none;
 }
-.market-force-ring circle{
- fill:none;stroke-width:2;vector-effect:non-scaling-stroke;
-}
-.market-force-ring-track{
- stroke:color-mix(in srgb,var(--force-accent) 17%,var(--line));
-}
+.market-force-ring circle{fill:none;stroke-width:3;vector-effect:non-scaling-stroke}
+.market-force-ring-track{stroke:color-mix(in srgb,var(--text) 15%,var(--surface))}
 .market-force-ring-progress{
  stroke:var(--force-accent);stroke-linecap:round;
- transition:stroke-dashoffset 1.45s cubic-bezier(.16,1,.3,1);
- filter:drop-shadow(0 0 1px color-mix(in srgb,var(--force-accent) 28%,transparent));
+ transition:stroke-dashoffset 1.3s cubic-bezier(.2,.85,.25,1);
+ filter:drop-shadow(0 0 1.5px color-mix(in srgb,var(--force-accent) 40%,transparent));
 }
 .market-force-circle strong{
- position:relative;z-index:1;
- font-size:clamp(28px,3vw,44px);line-height:1;font-weight:800;
- color:var(--text);font-variant-numeric:tabular-nums;letter-spacing:-.045em;
+ position:relative;z-index:1;font-size:clamp(25px,2.9vw,37px);font-weight:780;
+ line-height:1;color:var(--text);letter-spacing:-.04em;font-variant-numeric:tabular-nums;
 }
-@keyframes market-force-halo{
- 0%,100%{opacity:.28;transform:scale(.95)}
- 50%{opacity:.65;transform:scale(1.055)}
+.market-force-label{font-size:clamp(11px,1.15vw,15px);line-height:1.25;color:var(--text);font-weight:720}
+.market-force-item small{font-size:clamp(11px,.95vw,13px);color:var(--muted);font-variant-numeric:tabular-nums;line-height:1.25}
+.market-force-feature{
+ display:grid;gap:6px;min-width:0;
+ background:var(--panel-2);border:1px solid var(--line);border-radius:13px;
+ padding:13px 14px 11px;
+}
+.market-force-feature-link{
+ display:flex;align-items:center;gap:9px;min-width:0;width:100%;
+ border:0;color:var(--text);background:transparent;text-align:left;padding:0;
+}
+.market-force-feature-glyph{
+ display:grid;place-items:center;flex:none;width:25px;height:25px;
+ border-radius:50%;background:#e99119;color:white;font-size:17px;font-weight:800;
+}
+.market-force-feature-symbol{
+ font-weight:740;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+ min-width:0;
+}
+.market-force-feature-price{
+ margin-left:auto;font-size:clamp(13px,1.3vw,18px);
+ font-weight:780;white-space:nowrap;font-variant-numeric:tabular-nums;
+}
+.market-force-feature-change{
+ font-size:clamp(12px,1.2vw,17px);font-weight:760;
+ white-space:nowrap;font-variant-numeric:tabular-nums;margin-left:5px;
+}
+.market-force-feature-change[data-trend="up"]{color:var(--green)}
+.market-force-feature-change[data-trend="down"]{color:var(--red)}
+.market-force-feature-change[data-trend="flat"],.market-force-feature-change[data-trend="unknown"]{color:var(--muted)}
+.market-force-feature-chart{min-height:55px;display:flex;align-items:center;color:var(--green);overflow:hidden}
+.market-force-feature-chart[data-trend="down"]{color:var(--red)}
+.market-force-feature-chart[data-trend="flat"],.market-force-feature-chart[data-trend="unknown"]{color:var(--muted)}
+.market-force-feature-chart svg{width:100%;height:54px;max-width:100%;overflow:visible;display:block}
+.market-force-feature-chart .spark path{
+ filter:drop-shadow(0 0 3px color-mix(in srgb,currentColor 40%,transparent));
+}
+.market-force-no-history{
+ display:flex;align-items:center;justify-content:center;
+ color:var(--muted);font-size:11px;min-height:54px;width:100%;
+}
+.market-force-feature-source{color:var(--muted);font-size:10px;line-height:1.35}
+@keyframes market-force-live{
+ 0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--green) 25%,transparent);opacity:.7}
+ 50%{box-shadow:0 0 0 5px color-mix(in srgb,var(--green) 0%,transparent);opacity:1}
+}
+@media(max-width:640px){
+ .market-force-section{padding:13px 12px;gap:13px;border-radius:13px}
+ .market-force-heading h2{font-size:18px}
+ .market-force-heading p{font-size:11px;max-width:240px}
+ .market-force-status{font-size:9px;padding:5px 7px}
+ .market-force-filter{font-size:11px;padding:7px 11px;min-height:31px}
+ .market-force-coverage{font-size:11px;padding:7px 12px}
+ .market-force-grid{gap:3px;padding:1px 0 5px}
+ .market-force-circle{width:clamp(70px,20vw,92px)}
+ .market-force-ring circle{stroke-width:2.5}
+ .market-force-circle strong{font-size:clamp(24px,7.8vw,33px)}
+ .market-force-label{font-size:11px;max-width:98px}
+ .market-force-item small{font-size:11px}
+ .market-force-feature{padding:11px 10px 9px}
+ .market-force-feature-symbol{font-size:12px}
+ .market-force-feature-price{font-size:13px}
+ .market-force-feature-change{font-size:12px;margin-left:1px}
+ .market-force-feature-chart svg{height:49px}
+}
+@media(max-width:350px){
+ .market-force-circle{width:65px}
+ .market-force-feature-link{gap:5px}
+ .market-force-feature-glyph{width:22px;height:22px}
+ .market-force-feature-symbol{font-size:11px}
+ .market-force-feature-price,.market-force-feature-change{font-size:11px}
 }
 @media(prefers-reduced-motion:reduce){
- .market-force-circle::before{animation:none;opacity:.35;transform:none}
- .market-force-ring-progress{transition:none}
-}
-.market-force-label{color:var(--text);font-size:clamp(12px,1.12vw,16px);font-weight:730;line-height:1.3}
-.market-force-item small{color:var(--muted);font-size:11px;line-height:1.4;font-variant-numeric:tabular-nums}
-@media(max-width:640px){
- .market-force-section{padding:14px 12px;gap:14px}
- .market-force-heading h2{font-size:17px}
- .market-force-heading p{font-size:11px}
- .market-force-grid{gap:7px}
- .market-force-item{border-radius:11px;padding:13px 4px 11px;gap:7px}
- .market-force-circle{width:clamp(65px,19vw,95px)}
- .market-force-ring circle{stroke-width:1.8}
- .market-force-circle strong{font-size:clamp(25px,7vw,34px)}
- .market-force-label{font-size:11px}
- .market-force-item small{font-size:10px}
+ .market-force-status.is-live i{animation:none}
+ .market-force-ring-progress,.market-force-filter{transition:none}
 }
