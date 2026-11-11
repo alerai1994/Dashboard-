@@ -92,6 +92,18 @@ for(const page of [globalMarketForce,dedicatedMarketForce]){
  }
 }
 assert(source.includes('function patchMarketForce()'),'Market force automatic updates missing');
+for(const page of [globalMarketForce,dedicatedMarketForce]){
+ assert(page.includes('id="marketForceAssetSearch"'),'Market search missing');
+ assert(page.includes('id="marketForceAssetSelect"'),'Market selector missing');
+ assert(page.includes('data-force-step="-1"')&&page.includes('data-force-step="1"'),'Market browsing arrows missing');
+ for(const category of ['all','crypto','stocks','forex','indices'])
+  assert(page.includes('data-force-filter="'+category+'"'),'Missing market category '+category);
+ for(const ticker of ['BTC-USD','INJ-USD','NVDA','AAPL','EURUSD=X','^GSPC'])
+  assert(page.includes(ticker),'Market selector missing instrument '+ticker);
+}
+assert(source.includes('marketForceSelectedAssets'),'Per-category selected asset persistence missing');
+assert(source.includes('marketForceSearchOptions()'),'Market search handling missing');
+console.log('PASS searchable Market Force selector, multiple instruments and category persistence');
 console.log('PASS Market force navigation, counts and live update hook');
 const workspace=app.PAGE_RENDERERS.workspace();
 for(const id of ['summary','global','markets','crypto','tech','bigtech','forex','commodities',
