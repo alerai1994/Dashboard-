@@ -3727,3 +3727,87 @@ body.theme-dark .theme-contrast-version{
  .bullish-detail-segment.is-active{animation:none}
  .bullish-detail-segment{transition:none}
 }
+
+
+/* Truthful selected-instrument streaming state and observed live quote chart. */
+.bullish-detail-feed{
+ display:inline-flex;align-items:center;justify-content:center;gap:9px;flex:none;
+ min-height:42px;padding:9px 15px;
+ color:#acc8e1;border:1px solid #32607f;border-radius:28px;
+ background:#102c46;
+ font-size:clamp(11px,1.1vw,16px);font-weight:760;letter-spacing:.02em;
+ white-space:nowrap;
+}
+.bullish-detail-feed>i{
+ display:block;flex:none;width:10px;height:10px;border-radius:50%;
+ background:currentColor;opacity:.65;
+}
+.bullish-detail-feed[data-feed-kind="live"]{
+ color:#50ffd1;background:#06392d;border-color:#05bd85;
+ box-shadow:0 0 18px #0dc48b1a;
+}
+.bullish-detail-feed[data-feed-kind="live"]>i{
+ opacity:1;box-shadow:0 0 10px currentColor;
+ animation:bullish-feed-pulse 2s ease-in-out infinite;
+}
+.bullish-detail-feed[data-feed-kind="poll"]{
+ color:#9adafc;border-color:#3983b1;background:#0b314a;
+}
+.bullish-detail-feed[data-feed-kind="delayed"]{
+ color:#d8d2b6;border-color:#817446;background:#2a2b25;
+}
+.bullish-detail-feed[data-feed-kind="stale"],
+.bullish-detail-feed[data-feed-kind="unavailable"]{
+ color:#a8b1c4;border-color:#556174;background:#222d3b;
+}
+.bullish-live-quote{
+ display:flex;align-items:baseline;justify-content:flex-start;flex-wrap:wrap;
+ gap:9px 18px;min-width:0;
+ padding:0 0 5px;border-bottom:1px solid #244963;
+}
+.bullish-live-quote>span{
+ color:#c5e1f5;font-size:clamp(13px,1.1vw,17px);font-weight:760;
+ white-space:nowrap;
+}
+.bullish-live-quote>strong{
+ color:#f1fcff;font-size:clamp(17px,1.8vw,27px);font-weight:790;
+ letter-spacing:-.02em;font-variant-numeric:tabular-nums;
+ white-space:nowrap;
+}
+.bullish-live-quote>em{
+ font-size:clamp(14px,1.45vw,22px);font-weight:800;font-style:normal;
+ font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+.bullish-live-quote>em[data-trend="up"]{color:#34edb1}
+.bullish-live-quote>em[data-trend="down"]{color:#ff8c9d}
+.bullish-live-quote>em[data-trend="flat"],
+.bullish-live-quote>em[data-trend="unknown"]{color:#b2c4d8}
+.bullish-detail-chart .bullish-live-chart-content{
+ display:flex;flex-direction:column;gap:5px;
+ width:100%;min-width:0;
+}
+.bullish-detail-chart .bullish-live-chart-content svg{
+ width:100%;height:clamp(110px,9.5vw,155px);
+}
+.bullish-detail-chart-note{
+ color:#8db2cd;font-size:11px;line-height:1.3;
+ text-align:right;white-space:normal;
+}
+@keyframes bullish-feed-pulse{
+ 0%,100%{opacity:.72;box-shadow:0 0 4px currentColor}
+ 50%{opacity:1;box-shadow:0 0 15px currentColor}
+}
+@media(max-width:740px){
+ .bullish-detail-heading-right{width:100%;justify-content:flex-end}
+ .bullish-detail-feed{min-height:34px;font-size:11px;padding:6px 11px}
+ .bullish-detail-feed>i{width:8px;height:8px}
+ .bullish-live-quote{gap:7px 12px}
+ .bullish-live-quote>span{font-size:13px}
+ .bullish-live-quote>strong{font-size:19px}
+ .bullish-live-quote>em{font-size:15px}
+ .bullish-detail-chart .bullish-live-chart-content svg{height:115px}
+ .bullish-detail-chart-note{font-size:10px}
+}
+@media(prefers-reduced-motion:reduce){
+ .bullish-detail-feed[data-feed-kind="live"]>i{animation:none}
+}
