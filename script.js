@@ -6969,6 +6969,15 @@ function savePortfolioForm(formElement){
     editing?'Posizione aggiornata e salvata.':'Posizione aggiunta e salvata.');
 }
 function setupEvents(){
+ document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&bullishCategoryMenuOpen){
+   bullishCategoryMenuOpen=false;
+   const menu=$('#bullishCategoryList'),trigger=$('#bullishGroup');
+   if(menu)menu.hidden=true;
+   if(trigger)trigger.setAttribute('aria-expanded','false');
+   trigger?.focus();
+  }
+ });
  window.addEventListener('resize',()=>{if(state.page==='global'&&currentGlobalCapChart)drawNativeCapChart();});
 
  $('#globalCryptoCaps').addEventListener('click',e=>{
@@ -6976,6 +6985,12 @@ function setupEvents(){
   if(button)toggleGlobalCapChart(button.dataset.globalCapChart);
  });
  $('#pageContainer').addEventListener('click',e=>{
+  if(bullishCategoryMenuOpen&&!e.target.closest('.bullish-detail-category-picker')){
+   bullishCategoryMenuOpen=false;
+   const menu=$('#bullishCategoryList'),trigger=$('#bullishGroup');
+   if(menu)menu.hidden=true;
+   if(trigger)trigger.setAttribute('aria-expanded','false');
+  }
   if(e.target.closest('[data-close-global-cap-chart]')){currentGlobalCapChart=null;paintGlobalCapChart();return;}
   const range=e.target.closest('[data-cap-range]');
   if(range&&['1D','1W','1M','30D','90D','1Y','ALL'].includes(range.dataset.capRange)){
