@@ -81,7 +81,11 @@ for(const label of ['Indici ed ETF','Azioni','Materie prime','Forex','Criptovalu
 assert(priceBoardHtml.includes('id="priceBoardStage"'),'Missing price board fullscreen stage');
 assert.equal(Object.keys(app.PAGE_RENDERERS).length,13);
 assert.equal(typeof app.PAGE_RENDERERS.workspace,'function','Workspace route missing');
-// Regression: choosing another asset must recalculate all three force values.
+// Regression uses controlled fixture changes so it does not depend on live market direction.
+const savedForceQuotes=Object.fromEntries(['btc','inj','sp500'].map(id=>[id,app.state.quotes[id]]));
+app.state.quotes.btc={...app.state.quotes.btc,change:-0.8};
+app.state.quotes.inj={...app.state.quotes.inj,change:-3.5};
+app.state.quotes.sp500={...app.state.quotes.sp500,change:1.3};
 app.marketForceChooseAsset('btc');
 const btcStrength=app.marketForceMood();
 app.marketForceChooseAsset('inj');
@@ -98,6 +102,7 @@ assert.notDeepEqual([btcStrength.up,btcStrength.flat,btcStrength.down],
 assert(sp500Strength.up>0&&sp500Strength.down===0,'Positive instrument must have bullish force');
 assert(injStrength.down>0&&injStrength.up===0,'Negative instrument must have bearish force');
 assert.equal(app.marketForceLeadId(),'sp500','Selected instrument was not persisted');
+Object.assign(app.state.quotes,savedForceQuotes);
 console.log('PASS selection-driven bullish/neutral/bearish scores for BTC, INJ, S&P 500');
 const globalMarketForce=app.PAGE_RENDERERS.global();
 const dedicatedMarketForce=app.PAGE_RENDERERS.marketforce();
