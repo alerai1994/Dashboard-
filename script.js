@@ -2068,7 +2068,7 @@ function marketForceBullishMessage(m){
 function marketForceBullishPanel(){
  const m=marketForceBullishMetrics(),a=ASSET_BY_ID[m.id],q=quote(m.id);
  const messages=marketForceBullishMessage(m);
- const groups=[['crypto','Criptovaluta'],['stocks','Azione'],['indices','Indice'],['forex','Coppia Forex']];
+ const groups=[['all','Tutti i mercati'],['crypto','Criptovaluta'],['stocks','Azione'],['indices','Indice'],['forex','Coppia Forex']];
  const ring=MARKET_FORCE_BULLISH_CIRCUMFERENCE.toFixed(2);
  const ticks=Array.from({length:40},(_,i)=>{
   const a=i*2*Math.PI/40,x1=170+112*Math.sin(a),y1=170-112*Math.cos(a),
@@ -2086,7 +2086,7 @@ function marketForceBullishPanel(){
  '<span class="bullish-detail-arrow" aria-hidden="true">↗</span><div>'+
  '<h2 id="marketForceTitle">Forza rialzista</h2>'+
  '<p>Analisi della variazione di prezzo dell’asset selezionato</p></div></div>'+
- '<div class="bullish-detail-heading-right"><span class="bullish-detail-state" data-bullish-state>● '+(m.valid?'ANALISI':'N/D')+'</span>'+
+ '<div class="bullish-detail-heading-right"><span class="bullish-detail-state" data-bullish-state data-direction="'+(m.up?'up':m.down?'down':'flat')+'">● '+(m.up?'Bullish':m.down?'Bearish':m.valid?'Neutro':'N/D')+'</span>'+
  '<button type="button" class="bullish-detail-close" data-bullish-close aria-label="Torna a Forza del mercato">✕ Chiudi</button></div></div>'+
  '<div class="bullish-detail-toolbar">'+
  '<div class="bullish-detail-field"><label for="bullishGroup">Asset</label><select id="bullishGroup">'+
@@ -2113,7 +2113,7 @@ function marketForceBullishPanel(){
  metricCard('flat','Neutro','=')+metricCard('down','Ribassista','↘')+'</div>'+
  '<div class="bullish-detail-chart" data-bullish-chart data-bullish-chart-key="">'+marketForceBullishPlot(m)+'</div>'+
  '<div class="bullish-detail-source" data-bullish-source>'+esc(instrumentQuoteStatus(m.id))+'</div></div></div>'+
- '<div class="bullish-detail-footnote">Indicatore sintetico 0–100 dalla variazione del prezzo, non dal book ordini. Per 1H, 4H e 1W servono candele con date sufficienti; in assenza di dati non vengono stimati valori.</div>'+
+ '<div class="bullish-detail-footnote">Indicatore sintetico 0–100 dalla variazione del prezzo, non dal book ordini. Il grafico 1D mostra lo storico disponibile (che può avere un intervallo diverso). Per 1H, 4H e 1W servono candele datate; in loro assenza non vengono stimati valori.</div>'+
  '</section>';
 }
 function patchMarketForceBullish(){
@@ -2136,7 +2136,10 @@ function patchMarketForceBullish(){
  if(head&&head.textContent!==messages[0])head.textContent=messages[0];
  if(description&&description.textContent!==messages[1])description.textContent=messages[1];
  const status=panel.querySelector('[data-bullish-state]');
- if(status)status.textContent=m.valid?'● ANALISI':'● N/D';
+ if(status){
+  status.textContent=m.up?'● Bullish':m.down?'● Bearish':m.valid?'● Neutro':'● N/D';
+  status.dataset.direction=m.up?'up':m.down?'down':'flat';
+ }
  const source=panel.querySelector('[data-bullish-source]');
  if(source)source.textContent=instrumentQuoteStatus(m.id);
  const chart=panel.querySelector('[data-bullish-chart]');
@@ -2150,9 +2153,7 @@ function patchMarketForceBullish(){
 }
 function marketForceOpenBullish(visible){
  marketForceBullishOpen=visible;
- if(visible&&marketForceFilter==='all'){
-  marketForceFilter='crypto';save('marketForceFilter',marketForceFilter);
- }
+ marketForceAssetSearch='';
  const panel=document.querySelector('#pageContainer .market-force-section');
  if(!panel)return;
  panel.outerHTML=marketForceSection();
