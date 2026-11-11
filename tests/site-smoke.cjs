@@ -121,6 +121,19 @@ for(const item of ['up','flat','down']){
  assert(bullishPanel.includes('data-bullish-stat="'+item+'"'),'Bullish indicator missing: '+item);
 }
 assert(bullishPanel.includes('data-bullish-gauge'),'Large circular gauge missing');
+assert.equal((bullishPanel.match(/data-bullish-segment="/g)||[]).length,56,
+ 'Bullish dial must have 56 animated segments like the reference');
+assert(bullishPanel.includes('data-bullish-category-toggle'),'Custom category dropdown missing');
+assert(bullishPanel.includes('id="bullishCategoryList"'),'Dropdown menu overlay missing');
+for(const category of ['crypto','stocks','indices','forex']){
+ assert(bullishPanel.includes('data-bullish-category="'+category+'"'),
+ 'Category dropdown option missing: '+category);
+}
+assert(bullishPanel.includes('bullish-detail-bull-icon'),'Bull icon missing inside central gauge');
+assert(bullishPanel.includes('bullish-detail-footnote'),'Analysis explanation footer missing');
+assert(css.includes('.bullish-detail-segment.is-active'),'Animated segments CSS missing');
+assert(css.includes('.bullish-detail-category-list'),'Custom category menu CSS missing');
+assert(source.includes('bullishCategoryMenuOpen'),'Bullish category menu open state missing');
 assert(bullishPanel.includes('data-bullish-close'),'Return from bullish detail missing');
 const dayMetrics=app.marketForceBullishMetrics();
 assert(dayMetrics.valid,'Existing quote change should support the default 1D metric');
