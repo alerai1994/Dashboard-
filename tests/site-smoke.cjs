@@ -44,7 +44,7 @@ assert(ore.bids?.length>0&&ore.asks?.length>0,'ORE orderbook missing bids or ask
 const adapted=source.replace('function render(){','function render(){return;')
  .replace('function toast(message){','function toast(message){return;')
  .replace('(function () {','return (function () {')
- .replace(/\}\)\(\);\s*$/,'return {PAGE_RENDERERS,state,marketForceMood,marketForceChooseAsset,marketForceLeadId,marketForceSetBullishPeriod,marketForceBullishMetrics,portfolioPage,portfolioRow,edit:i=>portfolioEditIndex=i,unlockVertexAudio,playClickSound,playCryptoAlertSound,workspaceChange,workspacePage,workspaceShown,getWorkspaceLayout:()=>workspaceLayout,getWorkspaceEdit:()=>workspaceEditMode};})();');
+ .replace(/\}\)\(\);\s*$/,'return {PAGE_RENDERERS,state,marketForceMood,marketForceChooseAsset,marketForceLeadId,marketForceSetBullishPeriod,marketForceBullishMetrics,marketForceBullishFeedState,marketForceBullishPlot,marketForceBullishObserved,streamStatus,fxStatus,chartObservedQuotes,chartObservedVersions,portfolioPage,portfolioRow,edit:i=>portfolioEditIndex=i,unlockVertexAudio,playClickSound,playCryptoAlertSound,workspaceChange,workspacePage,workspaceShown,getWorkspaceLayout:()=>workspaceLayout,getWorkspaceEdit:()=>workspaceEditMode};})();');
 assert(adapted.includes('edit:i=>'),'Cannot instrument app for smoke test');
 /* Simulated WebAudio: exercise sound scheduling without playing real audio in CI. */
 const audioEvents={created:0,resumes:0,notes:[]};
@@ -152,6 +152,54 @@ app.marketForceSetBullishPeriod('1D');
 assert(app.PAGE_RENDERERS.marketforce().includes('data-force-bullish-panel'),
  'Switching timeframes must not restore the old panel');
 console.log('PASS direct bullish force view replaces old overview on Global and dedicated page');
+
+// Selected feed health must reflect the actual instrument, not another active stream.
+const originalLiveQuotes={btc:app.state.quotes.btc,sp500:app.state.quotes.sp500,eurusd:app.state.quotes.eurusd};
+const originalStream={connected:app.streamStatus.connected,last:app.streamStatus.last};
+const originalForex={connected:app.fxStatus.connected,last:app.fxStatus.last};
+app.marketForceChooseAsset('btc');
+app.streamStatus.connected=true;
+app.streamStatus.last=Date.now();
+app.state.quotes.btc={...app.state.quotes.btc,source:'Binance Spot (USDT)',live:true,polled:false,
+ received:Date.now(),time:new Date().toISOString()};
+assert.equal(app.marketForceBullishFeedState('btc').label,'LIVE','Fresh connected BTC stream must be LIVE');
+let livePanel=app.PAGE_RENDERERS.marketforce();
+assert(livePanel.includes('data-feed-kind="live"'),'LIVE badge missing for actual BTC streaming');
+assert(livePanel.includes('data-bullish-price'),'Live price number not displayed');
+assert(livePanel.includes('data-bullish-delta'),'Live price variation not displayed');
+app.marketForceChooseAsset('sp500');
+assert.notEqual(app.marketForceBullishFeedState('sp500').label,'LIVE',
+ 'S&P 500 must not be called LIVE merely because BTC stream is connected');
+app.marketForceChooseAsset('btc');
+app.state.quotes.btc={...app.state.quotes.btc,live:false,polled:true,received:Date.now()};
+assert.equal(app.marketForceBullishFeedState('btc').label,'REST ~15 S',
+ 'Binance REST price fallback must not be labeled LIVE');
+app.state.quotes.btc={...app.state.quotes.btc,live:true,polled:false,received:Date.now()-40000};
+assert.notEqual(app.marketForceBullishFeedState('btc').label,'LIVE',
+ 'Expired BTC stream must not be labeled LIVE');
+app.state.quotes.btc={...app.state.quotes.btc,source:'Binance Spot (USDT)',live:true,received:Date.now(),time:new Date().toISOString()};
+const now=Date.now();
+app.chartObservedQuotes.set('btc',[
+ {ts:now-30000,price:97000,venue:'binance'},
+ {ts:now-15000,price:97050,venue:'binance'},
+ {ts:now,price:97100,venue:'binance'}
+]);
+app.chartObservedVersions.set('btc',3);
+assert.equal(app.marketForceBullishObserved('btc','1H').length,3,
+ 'Real 1H observed BTC ticks not exposed to bullish chart');
+const observedPlot=app.marketForceBullishPlot(app.marketForceBullishMetrics());
+assert(observedPlot.includes('Tick reali osservati')&&observedPlot.includes('<svg'),
+ 'Bullish chart must render actual observed prices, not a fake line');
+assert(css.includes('.bullish-detail-feed[data-feed-kind="live"]'),
+ 'True LIVE feed badge animation styles missing');
+assert(css.includes('.bullish-live-quote'),
+ 'Realtime price readout styles missing');
+app.chartObservedQuotes.delete('btc');
+app.chartObservedVersions.delete('btc');
+Object.assign(app.state.quotes,originalLiveQuotes);
+Object.assign(app.streamStatus,originalStream);
+Object.assign(app.fxStatus,originalForex);
+console.log('PASS selected-asset LIVE status, REST fallback, tick chart, and no false LIVE badge');
 
 const workspace=app.PAGE_RENDERERS.workspace();
 for(const id of ['summary','global','markets','crypto','tech','bigtech','forex','commodities',
