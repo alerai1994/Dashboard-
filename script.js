@@ -1986,7 +1986,6 @@ function marketForceCoverageText(mood){
    Pressure cards are a transparent price-change proxy, never order-flow metrics. */
 const MARKET_FORCE_BULLISH_PERIODS=['1H','4H','1D','1W'];
 const MARKET_FORCE_BULLISH_CIRCUMFERENCE=2*Math.PI*132;
-let marketForceBullishOpen=false;
 let marketForceBullishPeriod='1D';
 function marketForceDatedCandles(id,period){
  const q=quote(id),raw=Array.isArray(q?.candles)?q.candles:[];
@@ -2117,7 +2116,7 @@ function marketForceBullishPanel(){
  '<p>Analisi della forza rialzista del prezzo sul mercato</p></div></div>'+
  '<div class="bullish-detail-heading-right"><span class="bullish-detail-state" data-bullish-state data-direction="'+(m.up?'up':m.down?'down':'flat')+'">'+
  '<i class="bullish-state-dot" aria-hidden="true"></i><span data-bullish-state-text>'+(m.up?'Bullish':m.down?'Bearish':m.valid?'Neutro':'Dati N/D')+'</span></span>'+
- '<button type="button" class="bullish-detail-close" data-bullish-close aria-label="Torna a Forza del mercato">✕ Chiudi</button></div></div>'+
+ '</div></div>'+
  '<div class="bullish-detail-toolbar">'+
  '<div class="bullish-detail-field bullish-detail-category-field"><label for="bullishGroup">'+marketIcon+'<span>Asset</span></label>'+
  '<div class="bullish-detail-category-picker">'+
@@ -2199,15 +2198,6 @@ function patchMarketForceBullish(){
   }
  }
 }
-function marketForceOpenBullish(visible){
- marketForceBullishOpen=visible;
- bullishCategoryMenuOpen=false;
- marketForceAssetSearch='';
- const panel=document.querySelector('#pageContainer .market-force-section');
- if(!panel)return;
- panel.outerHTML=marketForceSection();
- requestAnimationFrame(()=>requestAnimationFrame(()=>patchMarketForce()));
-}
 function marketForceSetBullishPeriod(period){
  if(!MARKET_FORCE_BULLISH_PERIODS.includes(period))return;
  marketForceBullishPeriod=period;
@@ -2217,111 +2207,12 @@ function marketForceSetBullishPeriod(period){
  requestAnimationFrame(()=>requestAnimationFrame(()=>patchMarketForce()));
 }
 
+/* The selected reference design is the only Market Force view. */
 function marketForceSection(){
- if(marketForceBullishOpen)return marketForceBullishPanel();
- const mood=marketForceMood(),live=marketForceHasLive();
- const items=[['up','Forza rialzista'],['flat','Neutro'],['down','Forza ribassista']];
- const circles=items.map(([key,label])=>{
-  const amount=mood.total?mood[key]:'—',percentage=mood.total?mood[key]+'%':'—';
-  return (key==='up'?'<button type="button" class="market-force-item market-force-up market-force-open-bullish" data-bullish-open aria-label="Apri analisi dettagliata della forza rialzista">':
-   '<article class="market-force-item market-force-'+key+'">')+
-   '<div class="market-force-circle">'+
-   '<svg class="market-force-ring" viewBox="0 0 120 120" aria-hidden="true" focusable="false">'+
-   '<circle class="market-force-ring-track" cx="60" cy="60" r="50"></circle>'+
-   '<circle class="market-force-ring-progress" data-force-ring="'+key+'" cx="60" cy="60" r="50" stroke-dasharray="'+MARKET_FORCE_RING_LENGTH.toFixed(2)+'" stroke-dashoffset="'+MARKET_FORCE_RING_LENGTH.toFixed(2)+'"></circle>'+
-   '</svg><strong data-force-count="'+key+'">'+amount+'</strong></div>'+
-   '<span class="market-force-label">'+label+'</span>'+
-   '<small data-force-share="'+key+'">'+percentage+'</small>'+
-   (key==='up'?'<span class="market-force-open-hint">Apri dettagli</span></button>':'</article>');
- }).join('');
- const id=marketForceLeadId(),a=ASSET_BY_ID[id],q=quote(id);
- const value=assetValue(a),movement=pct(q?.change),direction=trend(q?.change);
- const icon=a.id==='btc'?'₿':a.id==='eth'?'Ξ':a.id==='eurusd'?'€':a.group==='markets'?'↗':a.group==='bigtech'?'◆':a.short?.slice(0,1)||'•';
- const feature='<div class="market-force-feature">'+
-  '<button type="button" class="market-force-feature-link" data-asset="'+esc(id)+'" aria-label="Apri dettagli '+esc(a.name)+'">'+
-  '<span class="market-force-feature-glyph" aria-hidden="true">'+esc(icon)+'</span>'+
-  '<span class="market-force-feature-symbol">'+esc(marketForceLeadLabel(a,q))+'</span>'+
-  '<strong class="market-force-feature-price" data-force-price>'+esc(value)+'</strong>'+
-  '<span class="market-force-feature-change" data-force-change data-trend="'+direction+'">'+esc(movement)+'</span>'+
-  '</button><div class="market-force-feature-chart" data-force-spark data-series-key="'+esc(marketForceLeadSeriesKey(id))+'" data-trend="'+direction+'">'+marketForceLeadChart(id)+'</div>'+
-  '<small class="market-force-feature-source" data-force-source>'+esc(instrumentQuoteStatus(id))+'</small>'+
-  '</div>';
- return '<section class="market-force-section panel" aria-labelledby="marketForceTitle">'+
-  '<div class="market-force-heading"><div class="market-force-heading-copy">'+
-  '<span class="market-force-mark" aria-hidden="true"><b></b><b></b><b></b></span>'+
-  '<h2 id="marketForceTitle">Forza del mercato</h2>'+
-  '<p>Analisi della forza dei mercati selezionati.</p></div>'+
-  '<span class="market-force-status'+(live?' is-live':'')+'" data-force-live aria-label="'+(live?'Streaming attivo':'Ultime quotazioni disponibili')+'">'+
-  '<i aria-hidden="true"></i><span>'+(live?'LIVE':mood.valid?'QUOTAZIONI':'DATI N/D')+'</span></span></div>'+
-  '<div class="market-force-filters" role="group" aria-label="Filtra la forza per mercato">'+
-  MARKET_FORCE_FILTERS.map(([key,label])=>
-    '<button type="button" data-force-filter="'+key+'" aria-pressed="'+String(key===marketForceFilter)+'" class="market-force-filter'+(key===marketForceFilter?' active':'')+'">'+label+'</button>'
-  ).join('')+'</div>'+
-  '<div class="market-force-coverage" id="marketForceCoverage" aria-label="'+esc(marketForceCoverageText(mood))+'">'+esc(marketForceCoverageText(mood))+'</div>'+
-  '<div class="market-force-grid">'+circles+'</div>'+
-  '<p class="market-force-method" id="marketForceMethod">Punteggio 0–100 calcolato sulla variazione dell’asset selezionato. Non è un segnale di trading.</p>'+
-  '<div class="market-force-picker">'+
-  '<div class="market-force-picker-heading"><label for="marketForceAssetSelect">Scegli il mercato</label>'+
-  '<span data-force-asset-count>'+marketForceMatchedAssets().length+' / '+marketForceAssets().length+' strumenti</span></div>'+
-  '<div class="market-force-picker-controls">'+
-  '<input type="search" id="marketForceAssetSearch" value="'+esc(marketForceAssetSearch)+'" placeholder="Cerca nome o ticker…" autocomplete="off" aria-label="Cerca strumenti">'+
-  '<select id="marketForceAssetSelect" aria-label="Seleziona crypto, azione, Forex o indice">'+marketForceAssetOptions()+'</select>'+
-  '<div class="market-force-step" role="group" aria-label="Scorri strumenti">'+
-  '<button type="button" data-force-step="-1" aria-label="Strumento precedente">‹</button>'+
-  '<button type="button" data-force-step="1" aria-label="Strumento successivo">›</button></div></div></div>'+
-  feature+'</section>';
+ return marketForceBullishPanel();
 }
 function patchMarketForce(){
- const panel=document.querySelector('#pageContainer .market-force-section');
- if(!panel)return;
- if(panel.hasAttribute('data-force-bullish-panel')){patchMarketForceBullish();return;}
- const mood=marketForceMood();
- for(const key of ['up','flat','down']){
-  const count=panel.querySelector('[data-force-count="'+key+'"]');
-  const share=panel.querySelector('[data-force-share="'+key+'"]');
-  const value=mood.total?String(mood[key]):'—';
-  if(count&&count.textContent!==value)count.textContent=value;
-  const ratio=mood.total?mood[key]+'%':'—';
-  if(share&&share.textContent!==ratio)share.textContent=ratio;
-  const ring=panel.querySelector('[data-force-ring="'+key+'"]');
-  if(ring){
-   const offset=marketForceRingOffset(mood,key);
-   if(ring.style.strokeDashoffset!==offset)ring.style.strokeDashoffset=offset;
-  }
- }
- const coverage=panel.querySelector('#marketForceCoverage');
- const label=marketForceCoverageText(mood);
- if(coverage&&coverage.textContent!==label)coverage.textContent=label;
- if(coverage)coverage.setAttribute('aria-label',label);
- const live=marketForceHasLive(),status=panel.querySelector('[data-force-live]');
- if(status){
-  status.classList.toggle('is-live',live);
-  status.setAttribute('aria-label',live?'Streaming attivo':'Ultime quotazioni disponibili');
-  const labelEl=status.querySelector('span');
-  const text=live?'LIVE':mood.valid?'QUOTAZIONI':'DATI N/D';
-  if(labelEl&&labelEl.textContent!==text)labelEl.textContent=text;
- }
- const id=marketForceLeadId(),a=ASSET_BY_ID[id],q=quote(id);
- const price=panel.querySelector('[data-force-price]');
- const changed=panel.querySelector('[data-force-change]');
- const textPrice=assetValue(a),textChange=pct(q?.change),direction=trend(q?.change);
- if(price&&price.textContent!==textPrice)price.textContent=textPrice;
- if(changed){
-  if(changed.textContent!==textChange)changed.textContent=textChange;
-  if(changed.dataset.trend!==direction)changed.dataset.trend=direction;
- }
- const symbol=panel.querySelector('.market-force-feature-symbol');
- if(symbol)symbol.textContent=marketForceLeadLabel(a,q);
- const source=panel.querySelector('[data-force-source]');
- if(source)source.textContent=instrumentQuoteStatus(id);
- const chart=panel.querySelector('[data-force-spark]');
- if(chart){
-  chart.dataset.trend=direction;
-  const stamp=marketForceLeadSeriesKey(id);
-  if(chart.dataset.seriesKey!==stamp){
-   chart.dataset.seriesKey=stamp;chart.innerHTML=marketForceLeadChart(id);
-  }
- }
+ patchMarketForceBullish();
 }
 function setMarketForceFilter(key){
  if(!MARKET_FORCE_FILTERS.some(([id])=>id===key)||key===marketForceFilter)return;
@@ -2343,7 +2234,7 @@ function globalPage(){
  marketForceSection()+feedStatus();
 }
 function marketForcePage(){
- return secHeader('Forza del mercato','Tre indicatori circolari per rialzi, neutralità e ribassi.')+marketForceSection()+feedStatus();
+ return marketForceSection()+feedStatus();
 }
 function secHeader(title,subtitle,actions){return '<div class="content-heading"><div><h2>'+esc(title)+'</h2><p>'+esc(subtitle||'')+'</p></div>'+(actions?'<div class="btn-group">'+actions+'</div>':'')+'</div>';}
 function countMarketMood(){
@@ -7084,8 +6975,6 @@ function setupEvents(){
     return;
    }
    if(btn.dataset.bullishCategory){setMarketForceFilter(btn.dataset.bullishCategory);return;}
-   if(btn.dataset.bullishOpen!==undefined){marketForceOpenBullish(true);return;}
-   if(btn.dataset.bullishClose!==undefined){marketForceOpenBullish(false);return;}
    if(btn.dataset.bullishPeriod){marketForceSetBullishPeriod(btn.dataset.bullishPeriod);return;}
    if(btn.dataset.forceFilter){setMarketForceFilter(btn.dataset.forceFilter);return;}
    if(btn.dataset.forceStep){marketForceStepAsset(Number(btn.dataset.forceStep));return;}
