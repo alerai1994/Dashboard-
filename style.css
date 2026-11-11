@@ -3125,3 +3125,77 @@ body.theme-dark .theme-contrast-version{
  .market-force-status.is-live i{animation:none}
  .market-force-ring-progress,.market-force-filter{transition:none}
 }
+
+
+/* Market Force instrument chooser: 85 real catalog instruments, no synthetic quotes. */
+.market-force-picker{
+ display:grid;gap:9px;min-width:0;
+ padding:11px 12px 12px;
+ background:color-mix(in srgb,var(--panel-2) 88%,var(--surface));
+ border:1px solid var(--line-soft);border-radius:12px;
+}
+.market-force-picker-heading{
+ display:flex;align-items:center;justify-content:space-between;gap:8px;
+ font-size:12px;font-weight:720;color:var(--text);
+}
+.market-force-picker-heading span{
+ color:var(--muted);font-weight:520;font-size:11px;font-variant-numeric:tabular-nums;
+}
+.market-force-picker-controls{
+ display:grid;grid-template-columns:minmax(140px,.85fr) minmax(170px,1.5fr) auto;
+ align-items:center;gap:7px;min-width:0;
+}
+.market-force-picker-controls input,
+.market-force-picker-controls select{
+ display:block;min-width:0;width:100%;min-height:38px;max-width:100%;
+ background:var(--surface);border:1px solid var(--line);
+ border-radius:9px;color:var(--text);font-size:12px;
+ padding:9px 11px;outline:none;
+}
+.market-force-picker-controls input::placeholder{color:var(--muted)}
+.market-force-picker-controls input:focus-visible,
+.market-force-picker-controls select:focus-visible{
+ outline:2px solid var(--brand);outline-offset:1px;
+}
+.market-force-picker-controls select{font-weight:670;cursor:pointer}
+.market-force-picker-controls select optgroup{background:var(--panel);color:var(--text)}
+.market-force-step{display:flex;align-items:center;gap:5px}
+.market-force-step button{
+ display:grid;place-items:center;flex:none;width:37px;height:38px;
+ border:1px solid var(--line);border-radius:9px;
+ background:var(--surface);color:var(--text);
+ font-size:25px;font-weight:500;line-height:1;
+}
+.market-force-step button:hover{border-color:var(--brand);color:var(--brand)}
+/* Slight mint/rose accent matching the selected neon preview. */
+.market-force-section{
+ border-color:color-mix(in srgb,var(--brand) 24%,var(--line));
+}
+.market-force-filter.active{
+ background:#009f88;border-color:#1db79d;box-shadow:0 0 13px #00caa221;
+}
+.market-force-ring-progress{
+ filter:drop-shadow(0 0 2px color-mix(in srgb,var(--force-accent) 56%,transparent));
+}
+.market-force-feature{
+ border-color:color-mix(in srgb,var(--green) 26%,var(--line));
+}
+.market-force-feature .market-force-spark{
+ filter:drop-shadow(0 0 4px color-mix(in srgb,var(--green) 25%,transparent));
+}
+@media(max-width:640px){
+ .market-force-picker{padding:10px 9px;gap:8px}
+ .market-force-picker-controls{grid-template-columns:minmax(0,1fr) auto;gap:7px}
+ .market-force-picker-controls input{grid-column:1 / -1}
+ .market-force-picker-controls input,
+ .market-force-picker-controls select{font-size:12px;min-height:37px}
+ .market-force-step button{width:32px;height:37px;font-size:24px}
+}
+@media(max-width:350px){
+ .market-force-picker-heading span{font-size:10px}
+ .market-force-picker-controls select{font-size:11px}
+ .market-force-step button{width:28px;height:36px}
+}
+@media(prefers-reduced-motion:reduce){
+ .market-force-filter.active{transition:none}
+}
