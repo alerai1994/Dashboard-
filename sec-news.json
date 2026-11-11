@@ -1,6 +1,6 @@
 {
   "source": "U.S. Securities and Exchange Commission",
-  "updated_at": "2026-11-10T22:30:20Z",
+  "updated_at": "2026-11-11T02:11:13Z",
   "seed_date": "2026-10-31T12:00:00Z",
   "feeds_updated": [
     "press",
@@ -8,6 +8,13 @@
     "testimony"
   ],
   "items": [
+    {
+      "category": "speeches",
+      "title": "Remarks at the 26th Annual A.A. Sommer Lecture",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/woodcock-remarks-aa-sommer-lecture-111026",
+      "date": "2026-11-10T18:58:02Z",
+      "summary": "David Woodcock, Director, Division of Enforcement"
+    },
     {
       "category": "press",
       "title": "SEC Announces Enforcement Annual Results for Fiscal Year 2026",
