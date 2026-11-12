@@ -125,8 +125,8 @@ for(const page of [directForcePanel,globalForcePanel]){
  }
  assert(page.includes('<label for="bullishGroup">'),'Category label must remain');
  assert(page.includes('bullish-detail-instrument-field'),'Aligned instrument selector missing');
- assert(page.includes('<span class="bullish-detail-instrument-spacer" aria-hidden="true"></span>'),
-  'Hidden spacer required for vertical alignment without instrument heading');
+ assert(!page.includes('bullish-detail-instrument-spacer'),
+  'No fake label/spacer should be used for market selector alignment');
  assert(!page.includes('<label for="bullishAsset">'),'Unwanted Seleziona asset heading must be absent');
  for(const period of ['1H','4H','1D','1W']){
   assert(page.includes('data-bullish-period="'+period+'"'),'Missing timeframe: '+period);
@@ -162,9 +162,9 @@ assert(!source.includes('id="bullishPriceFill"'),'Old line/area force graph is s
 assert(css.includes('.force-ohlc-candle.down rect'),'Red candlesticks missing');
 assert(source.includes('panel.dataset.forceTone'),'Live dial colour changes missing');
 assert(css.includes('.bullish-detail-category-list'),'Category menu not styled');
-assert(css.includes('grid-template-rows:30px minmax(0,auto)'),'Desktop menu alignment missing');
-assert(css.includes('grid-template-rows:24px minmax(0,auto)'),'Mobile menu alignment missing');
-assert(css.includes('.bullish-detail-instrument-spacer'),'Invisible label spacer styling missing');
+assert(css.includes('justify-content:flex-end'),'Market selector must align by bottom edge');
+assert(css.includes('margin-top:auto'),'Category dropdown must share instrument bottom edge');
+assert(!css.includes('.bullish-detail-instrument-spacer'),'Obsolete spacer CSS must be removed');
 const dayMetrics=app.marketForceBullishMetrics();
 assert(dayMetrics.valid,'Default 1D quote should be valid');
 assert.equal(dayMetrics.up+dayMetrics.flat+dayMetrics.down,100,'1D force values must total 100');
