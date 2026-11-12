@@ -4029,3 +4029,34 @@ body.theme-dark .theme-contrast-version{
 @media(prefers-reduced-motion:reduce){
  #pageContainer .bullish-detail-orbit,#pageContainer .bullish-detail-bull-icon{animation:none}
 }
+
+/* Market Force OHLC: true opens/highs/lows/closes; no connected line graphs. */
+#pageContainer .bullish-detail-chart{min-height:168px}
+#pageContainer .force-ohlc-chart{width:100%;min-width:0;display:flex;flex-direction:column;gap:6px}
+#pageContainer .bullish-detail-chart .bullish-live-chart-content svg.force-ohlc-svg{
+ width:100%;height:clamp(150px,13vw,195px);min-height:150px;display:block;overflow:visible;
+}
+#pageContainer .force-ohlc-legend{
+ display:flex;align-items:center;gap:12px;min-width:0;
+ color:#b9d6ed;font-size:11px;
+}
+#pageContainer .force-ohlc-legend span{display:flex;align-items:center;gap:5px;white-space:nowrap}
+#pageContainer .force-ohlc-legend b{margin-left:auto;color:#9bbcd2}
+#pageContainer .force-ohlc-legend i{width:9px;height:9px;border-radius:2px;display:inline-block}
+#pageContainer .force-ohlc-legend i.up{background:#26dbab}
+#pageContainer .force-ohlc-legend i.down{background:#fb839e}
+#pageContainer .force-ohlc-grid{stroke:#395b77;stroke-width:.85;stroke-dasharray:3 4;opacity:.8}
+#pageContainer .force-ohlc-axis{fill:#a8c7df;font-family:Inter,system-ui,sans-serif;font-size:12px;font-weight:650}
+#pageContainer .force-ohlc-candle.up line{stroke:#26dbab;stroke-width:1.5}
+#pageContainer .force-ohlc-candle.up rect{fill:#26dbab}
+#pageContainer .force-ohlc-candle.down line{stroke:#fb839e;stroke-width:1.5}
+#pageContainer .force-ohlc-candle.down rect{fill:#fb839e}
+@media(max-width:740px){
+ #pageContainer .bullish-detail-chart{min-height:145px}
+ #pageContainer .bullish-detail-chart .bullish-live-chart-content svg.force-ohlc-svg{
+  height:142px;min-height:142px;
+ }
+ #pageContainer .force-ohlc-legend{gap:5px;font-size:9px;flex-wrap:wrap}
+ #pageContainer .force-ohlc-legend b{font-size:9px}
+ #pageContainer .bullish-detail-chart-note{font-size:9px;line-height:1.35}
+}
