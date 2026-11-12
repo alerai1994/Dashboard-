@@ -4101,3 +4101,41 @@ body.theme-dark .theme-contrast-version{
   grid-template-rows:minmax(22px,auto) auto;
  }
 }
+
+/* Force Market: the two adjacent dropdowns have precisely matching vertical
+   geometry on mobile and desktop, with no search icon in the instrument label. */
+#pageContainer .bullish-detail-toolbar>.bullish-detail-category-field,
+#pageContainer .bullish-detail-toolbar>.bullish-detail-instrument-field{
+ display:grid;
+ grid-template-rows:30px minmax(0,auto);
+ align-content:start;
+ gap:11px;
+ min-width:0;
+}
+#pageContainer .bullish-detail-toolbar>.bullish-detail-category-field>label,
+#pageContainer .bullish-detail-toolbar>.bullish-detail-instrument-field>label{
+ display:flex;align-items:center;min-height:30px;line-height:1.25;
+ margin:0;
+}
+#pageContainer .bullish-detail-toolbar>.bullish-detail-category-field .bullish-detail-category-trigger,
+#pageContainer .bullish-detail-toolbar>.bullish-detail-instrument-field .bullish-detail-asset-select{
+ height:clamp(48px,4.2vw,68px);
+ min-height:0;
+ align-self:start;
+ box-sizing:border-box;
+}
+@media(max-width:740px){
+ #pageContainer .bullish-detail-toolbar>.bullish-detail-category-field,
+ #pageContainer .bullish-detail-toolbar>.bullish-detail-instrument-field{
+  grid-template-rows:24px minmax(0,auto);
+  gap:7px;
+ }
+ #pageContainer .bullish-detail-toolbar>.bullish-detail-category-field>label,
+ #pageContainer .bullish-detail-toolbar>.bullish-detail-instrument-field>label{
+  min-height:24px;
+ }
+ #pageContainer .bullish-detail-toolbar>.bullish-detail-category-field .bullish-detail-category-trigger,
+ #pageContainer .bullish-detail-toolbar>.bullish-detail-instrument-field .bullish-detail-asset-select{
+  height:47px;
+ }
+}
