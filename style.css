@@ -4208,3 +4208,42 @@ body.page-global .topbar>#globalCryptoCaps[hidden]{display:none!important}
   max-height:53px;
  }
 }
+
+
+/* Global: fully opaque dashboard containers over the page wallpaper.
+   Use theme variables so light, night and custom themes retain readable text.
+   Preserve the globe SVG, regional photos, candle charts and progress visuals. */
+body.page-global :is(
+ .panel,
+ .index-mini,
+ .photo-card,
+ .global-crypto-cap-pill
+){
+ background:var(--panel)!important;
+ background-image:none!important;
+ backdrop-filter:none!important;
+ -webkit-backdrop-filter:none!important;
+}
+body.page-global :is(.global-regions,.market-panel,.aside-stack>.panel){
+ background-color:var(--panel)!important;
+}
+body.page-global :is(.map-callout,.region-insight){
+ background:#0b2638!important;
+ background-image:none!important;
+ backdrop-filter:none!important;
+ -webkit-backdrop-filter:none!important;
+ opacity:1;
+}
+/* The world map retains its artwork and fully opaque backdrop; remove glass
+   effects without placing a solid overlay on top of the continents. */
+body.page-global .world-map-panel{
+ backdrop-filter:none!important;
+ -webkit-backdrop-filter:none!important;
+}
+body .sidebar{
+ background:var(--shell)!important;
+ background-image:none!important;
+ backdrop-filter:none!important;
+ -webkit-backdrop-filter:none!important;
+}
+
