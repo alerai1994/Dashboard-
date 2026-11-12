@@ -352,4 +352,19 @@ assert(css.includes('background:var(--panel)!important'),'Card backgrounds must 
 assert(css.includes('body.page-global :is(.map-callout,.region-insight)'),'Map callouts must be opaque');
 assert(css.includes('body.page-global .world-map-panel'),'Map backdrop should remain visible');
 assert(css.includes('body .sidebar{'),'Sidebar should have solid theme background');
-assert(html.includes('style.css?v=20261112-opaque-cards-v240'),'Updated styles must bypass browser cache');
+assert(html.includes('style.css?v=20261112-force-opaque-v241'),'Updated styles must bypass browser cache');
+assert(css.includes('Market Force: fully opaque, theme-aware surfaces'),'Opaque Force Market override missing');
+for(const selector of [
+ '.market-force-section.bullish-detail-panel',
+ '.bullish-detail-toolbar',
+ '.bullish-detail-category-trigger',
+ '.bullish-detail-asset-select',
+ '.bullish-detail-chart',
+ '.bullish-detail-metric',
+ '.bullish-detail-state'
+]){
+ assert(css.includes(selector),'Missing opaque Force Market surface: '+selector);
+}
+assert(css.includes('background:var(--panel)!important')&&
+ css.includes('background:var(--panel-2)!important'),
+ 'Market Force must use theme-aware solid backgrounds');
