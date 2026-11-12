@@ -145,6 +145,9 @@ assert(source.includes('marketForceSelectedAssets'),'Saved asset selection missi
 assert(css.includes('.bullish-detail-segment.is-active'),'Animated segments not styled');
 assert(css.includes('.bullish-detail-orbit'),'Animated indicator orbit missing');
 assert(!source.includes('Loghi di tutti i mercati'),'Removed market logo gallery must stay absent');
+assert(!source.includes('function marketForceLogoGallery('),'Legacy gallery function must not return');
+assert(source.includes("root?.querySelectorAll(")===false || !source.includes('marketForceLogoTiles('),
+ 'Legacy market logo grid must be absent');
 assert(source.includes('market-force-selected-logo'),'Selected asset badge must remain');
 assert(source.includes('async function marketForceLoadOHLC('),'OHLC source loader missing');
 assert(source.includes('function forceOHLCAggregate('),'OHLC grouping missing');
