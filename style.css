@@ -3812,116 +3812,175 @@ body.theme-dark .theme-contrast-version{
  .bullish-detail-feed[data-feed-kind="live"]>i{animation:none}
 }
 
-
-/* Vertical layout for the Market Force reference panel — November 2026 */
+/* Horizontal Market Force layout: gauge left, market details right.
+   Keep the two columns even on phones, with carefully scaled content. */
 #pageContainer .market-force-section.bullish-detail-panel{
- width:100%;max-width:100%;min-width:0;
-}
-#pageContainer .bullish-detail-toolbar{
- display:grid;
- grid-template-columns:repeat(2,minmax(0,1fr));
- gap:clamp(12px,2vw,22px);
-}
-#pageContainer .bullish-detail-toolbar>.bullish-detail-field:last-child{
- grid-column:1/-1;
+ min-width:0;
+ width:100%;
+ max-width:100%;
 }
 #pageContainer .bullish-detail-body{
  display:grid;
- grid-template-columns:minmax(0,1fr);
- align-items:start;
- gap:clamp(20px,2.5vw,36px);
+ grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);
+ align-items:center;
+ gap:clamp(10px,2.4vw,36px);
+ min-width:0;
  min-height:0;
 }
 #pageContainer .bullish-detail-dial-wrap{
- width:100%;height:auto;min-width:0;
- display:flex;align-items:center;justify-content:center;
- border-right:0;border-bottom:1px solid #31516e;
- padding:clamp(10px,2vw,26px) 0 clamp(18px,2vw,30px);
+ display:grid;
+ place-items:center;
+ width:100%;
+ min-width:0;
+ height:100%;
+ border-right:1px solid #31516e;
+ border-bottom:0;
+ padding:10px clamp(8px,2vw,26px) 10px 0;
 }
 #pageContainer .bullish-detail-gauge{
- width:min(100%,390px);
+ width:min(100%,365px);
  aspect-ratio:1;
 }
 #pageContainer .bullish-detail-right{
- display:grid;
- width:min(100%,960px);
+ width:100%;
  min-width:0;
- margin-inline:auto;
- gap:clamp(17px,2vw,27px);
+ margin:0;
+ display:grid;
+ gap:clamp(12px,1.5vw,24px);
 }
 #pageContainer .bullish-live-quote{
- justify-content:center;
- text-align:center;
+ justify-content:flex-start;
+ text-align:left;
 }
 #pageContainer .bullish-detail-assessment{
- text-align:center;
+ text-align:left;
 }
 #pageContainer .bullish-detail-metrics{
- display:grid;
  grid-template-columns:repeat(3,minmax(0,1fr));
- gap:clamp(8px,1.4vw,17px);
 }
 #pageContainer .bullish-detail-chart{
- width:100%;min-height:190px;
-}
-#pageContainer .bullish-detail-chart .bullish-live-chart-content svg{
  width:100%;
- height:clamp(185px,23vw,260px);
+ min-width:0;
 }
 #pageContainer .bullish-detail-source{
- text-align:center;
+ text-align:left;
  overflow-wrap:anywhere;
 }
 @media(max-width:740px){
- #pageContainer .bullish-detail-panel{
-  padding:15px 12px;
- }
  #pageContainer .bullish-detail-toolbar{
-  grid-template-columns:minmax(0,1fr);
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
  }
  #pageContainer .bullish-detail-toolbar>.bullish-detail-field:last-child{
-  grid-column:auto;
+  grid-column:1/-1;
+ }
+ #pageContainer .bullish-detail-category-trigger,
+ #pageContainer .bullish-detail-asset-select{
+  padding-inline:8px;gap:5px;
+ }
+ #pageContainer .bullish-category-icon{
+  width:22px;flex:none;font-size:17px;
+ }
+ #pageContainer .bullish-detail-category-trigger,
+ #pageContainer .bullish-detail-asset-select select{
+  font-size:12px;
  }
  #pageContainer .bullish-detail-body{
-  gap:18px;
+  grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr);
+  align-items:center;gap:9px;
  }
  #pageContainer .bullish-detail-dial-wrap{
-  padding:12px 0 22px;
+  border-right:1px solid #31516e;border-bottom:0;
+  padding:5px 7px 5px 0;
  }
  #pageContainer .bullish-detail-gauge{
-  width:min(100%,320px);
+  width:100%;max-width:220px;
+ }
+ #pageContainer .bullish-detail-bull-icon svg{
+  width:clamp(23px,7vw,40px);
+  height:clamp(17px,5vw,31px);
+ }
+ #pageContainer .bullish-detail-gauge-inner{
+  gap:3px;
+ }
+ #pageContainer .bullish-detail-gauge-inner strong{
+  font-size:clamp(24px,7vw,48px);
+ }
+ #pageContainer .bullish-detail-gauge-inner small{
+  font-size:clamp(7px,1.9vw,10px);
+  letter-spacing:.12em;
  }
  #pageContainer .bullish-detail-right{
-  width:100%;gap:15px;
+  gap:10px;min-width:0;
  }
  #pageContainer .bullish-live-quote{
-  justify-content:center;
+  justify-content:flex-start;gap:3px 7px;
+  padding-bottom:6px;
  }
- #pageContainer .bullish-detail-metrics{
-  gap:6px;
+ #pageContainer .bullish-live-quote>span{
+  font-size:10px;
  }
- #pageContainer .bullish-detail-metric{
-  padding:10px 5px;
-  min-width:0;
+ #pageContainer .bullish-live-quote>strong{
+  font-size:clamp(14px,3.7vw,19px);
+  white-space:normal;overflow-wrap:anywhere;
  }
- #pageContainer .bullish-detail-metric>div span{
+ #pageContainer .bullish-live-quote>em{
+  font-size:12px;
+ }
+ #pageContainer .bullish-detail-assessment strong{
+  font-size:clamp(14px,3.6vw,20px);
   overflow-wrap:anywhere;
  }
- #pageContainer .bullish-detail-chart{
-  min-height:160px;
+ #pageContainer .bullish-detail-assessment p{
+  font-size:10px;line-height:1.35;
  }
- #pageContainer .bullish-detail-chart .bullish-live-chart-content svg{
-  height:170px;
+ #pageContainer .bullish-detail-metrics{
+  gap:4px;
+  grid-template-columns:repeat(3,minmax(0,1fr));
  }
-}
-@media(max-width:370px){
- #pageContainer .bullish-detail-gauge{
-  width:min(100%,270px);
+ #pageContainer .bullish-detail-metric{
+  display:flex;flex-direction:column;
+  gap:3px;padding:7px 3px;min-width:0;
+  text-align:center;border-radius:9px;
+  min-height:58px;
  }
  #pageContainer .bullish-detail-metric-icon{
   display:none;
  }
+ #pageContainer .bullish-detail-metric>div span{
+  font-size:clamp(8px,2.1vw,10px);
+  overflow-wrap:anywhere;
+ }
+ #pageContainer .bullish-detail-metric strong{
+  font-size:clamp(15px,4vw,23px);
+ }
+ #pageContainer .bullish-detail-chart{
+  min-height:95px;
+ }
+ #pageContainer .bullish-detail-chart svg,
+ #pageContainer .bullish-detail-chart .bullish-live-chart-content svg{
+  height:105px;min-height:95px;
+ }
+ #pageContainer .bullish-detail-source{
+  font-size:9px;
+ }
+}
+@media(max-width:375px){
+ #pageContainer .bullish-detail-body{
+  grid-template-columns:minmax(0,.78fr) minmax(0,1.22fr);
+  gap:7px;
+ }
+ #pageContainer .bullish-detail-dial-wrap{
+  padding-right:5px;
+ }
+ #pageContainer .bullish-detail-gauge-inner strong{
+  font-size:clamp(21px,6.5vw,30px);
+ }
+ #pageContainer .bullish-detail-gauge-inner small{
+  font-size:7px;
+ }
  #pageContainer .bullish-detail-metric{
-  justify-content:center;text-align:center;
+  padding:6px 1px;
  }
 }
