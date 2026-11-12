@@ -368,3 +368,22 @@ for(const selector of [
 assert(css.includes('background:var(--panel)!important')&&
  css.includes('background:var(--panel-2)!important'),
  'Market Force must use theme-aware solid backgrounds');
+
+/* Sand theme must use readable dark typography on beige cards, including
+   live badges, dropdown labels, OHLC axes and all three score colors. */
+assert(css.includes('Sabbia accessibility correction'),'Sand accessibility fix missing');
+for(const selector of [
+ '.bullish-detail-title-group h2',
+ '.bullish-detail-category-trigger .bullish-category-name',
+ '.bullish-detail-asset-select select',
+ '.bullish-detail-metric>div span',
+ '.force-ohlc-axis',
+ '.bullish-detail-assessment strong'
+]){
+ assert(css.slice(css.indexOf('Sabbia accessibility correction')).includes(selector),
+ 'Sand theme contrast missing for '+selector);
+}
+assert(css.includes('body.theme-sand #pageContainer .market-force-section .bullish-detail-gauge-inner strong'),
+ 'Gauge white numbers must remain legible on dark dial');
+assert(html.includes('style.css?v=20261112-sand-readable-v242'),
+ 'New Sand contrast stylesheet must bypass cache');
