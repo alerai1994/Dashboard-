@@ -4190,3 +4190,21 @@ body.page-global .topbar>#globalCryptoCaps[hidden]{display:none!important}
  }
  body.page-global .topbar>#globalCryptoCaps{margin-top:0}
 }
+
+/* Realistic cutout from the supplied reference: display only in the bullish dial. */
+#pageContainer .bullish-detail-gauge-inner .market-force-realistic-bull{
+ display:block;
+ width:clamp(70px,7.5vw,110px);
+ height:auto;
+ max-height:82px;
+ aspect-ratio:110/85;
+ object-fit:contain;
+ filter:drop-shadow(0 0 5px rgba(27,234,189,.45));
+ pointer-events:none;
+}
+@media(max-width:740px){
+ #pageContainer .bullish-detail-gauge-inner .market-force-realistic-bull{
+  width:clamp(38px,10vw,67px);
+  max-height:53px;
+ }
+}
