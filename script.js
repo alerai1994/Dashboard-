@@ -1838,7 +1838,7 @@ function toggleGlobalCapChart(id){
 const MARKET_FORCE_RING_LENGTH=2*Math.PI*50;
 const MARKET_FORCE_FILTERS=[
  ['all','Tutti'],['crypto','Crypto'],['stocks','Azioni'],['forex','Forex'],['indices','Indici'],
- ['etfs','ETF'],['commodities','Materie prime']
+ ['commodities','Materie prime']
 ];
 let marketForceFilter=load('marketForceFilter','all');
 if(!MARKET_FORCE_FILTERS.some(([key])=>key===marketForceFilter))marketForceFilter='all';
@@ -1849,7 +1849,6 @@ function marketForceAssets(){
   (marketForceFilter==='stocks'&&a.group==='bigtech')||
   (marketForceFilter==='forex'&&a.group==='forex')||
   (marketForceFilter==='indices'&&a.group==='markets'&&a.symbol?.startsWith('^'))||
-  (marketForceFilter==='etfs'&&a.group==='markets'&&!a.symbol?.startsWith('^'))||
   (marketForceFilter==='commodities'&&a.group==='commodities')
  );
 }
@@ -1895,7 +1894,7 @@ function marketForceLeadId(){
  const candidates=marketForceAssets();
  const saved=marketForceSelectedAssets[marketForceFilter];
  if(candidates.some(a=>a.id===saved))return saved;
- const defaults={all:'btc',crypto:'btc',stocks:'nvda',forex:'eurusd',indices:'sp500',etfs:'qqq',commodities:'gold'};
+ const defaults={all:'btc',crypto:'btc',stocks:'nvda',forex:'eurusd',indices:'sp500',commodities:'gold'};
  return candidates.some(a=>a.id===defaults[marketForceFilter])?defaults[marketForceFilter]:candidates[0]?.id||'btc';
 }
 function marketForceMatchedAssets(){
@@ -2257,7 +2256,7 @@ function marketForceBullishMessage(m){
 const BULLISH_CATEGORY_CHOICES=[
  ['all','Tutti i mercati','◈'],['crypto','Criptovaluta','₿'],
  ['stocks','Azione','↗'],['indices','Indice','▥'],['forex','Coppia Forex','⇄'],
- ['etfs','ETF','◫'],['commodities','Materie prime','◆']
+ ['commodities','Materie prime','◆']
 ];
 let bullishCategoryMenuOpen=false;
 function bullishRingSlice(index,total=56){
