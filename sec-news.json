@@ -1,6 +1,6 @@
 {
   "source": "U.S. Securities and Exchange Commission",
-  "updated_at": "2026-11-12T07:38:40Z",
+  "updated_at": "2026-11-12T14:44:25Z",
   "seed_date": "2026-10-31T12:00:00Z",
   "feeds_updated": [
     "press",
@@ -8,6 +8,13 @@
     "testimony"
   ],
   "items": [
+    {
+      "category": "speeches",
+      "title": "The Economics of Attention",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/white-economics-attention-nacd-111126",
+      "date": "2026-11-11T19:01:58Z",
+      "summary": "Joshua White, Chief Economist and Director, Division of Economic and Risk Analysis"
+    },
     {
       "category": "speeches",
       "title": "Remarks at the 26th Annual A.A. Sommer Lecture",
