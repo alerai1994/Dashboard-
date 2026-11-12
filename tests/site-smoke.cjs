@@ -125,7 +125,8 @@ for(const page of [directForcePanel,globalForcePanel]){
  }
  assert(page.includes('<label for="bullishAsset">'),'Instrument heading must align with category heading');
  assert(page.includes('bullish-detail-instrument-field'),'Aligned instrument selector missing');
- assert(page.includes('<label for="bullishAsset"><svg'),'Instrument search icon should render without ReferenceError');
+ assert(page.includes('<label for="bullishAsset"><span>Seleziona asset</span></label>'),
+  'Instrument label must remain without magnifying glass');
  for(const period of ['1H','4H','1D','1W']){
   assert(page.includes('data-bullish-period="'+period+'"'),'Missing timeframe: '+period);
  }
@@ -143,7 +144,7 @@ for(const page of [directForcePanel,globalForcePanel]){
  }
 }
 assert(source.includes('function patchMarketForceBullish()'),'Price updates missing');
-assert(source.includes("const searchIcon='<svg"),'Search icon declaration must exist before rendering Global');
+assert(!source.includes("const searchIcon='<svg"),'Unwanted instrument search icon still declared');
 assert(source.includes('function marketForceChooseAsset('),'Instrument selection missing');
 assert(source.includes('marketForceSelectedAssets'),'Saved asset selection missing');
 assert(css.includes('.bullish-detail-segment.is-active'),'Animated segments not styled');
@@ -160,7 +161,8 @@ assert(!source.includes('id="bullishPriceFill"'),'Old line/area force graph is s
 assert(css.includes('.force-ohlc-candle.down rect'),'Red candlesticks missing');
 assert(source.includes('panel.dataset.forceTone'),'Live dial colour changes missing');
 assert(css.includes('.bullish-detail-category-list'),'Category menu not styled');
-assert(css.includes('grid-template-rows:minmax(30px,auto) auto'),'Selectors must align to shared label row');
+assert(css.includes('grid-template-rows:30px minmax(0,auto)'),'Desktop menu alignment missing');
+assert(css.includes('grid-template-rows:24px minmax(0,auto)'),'Mobile menu alignment missing');
 const dayMetrics=app.marketForceBullishMetrics();
 assert(dayMetrics.valid,'Default 1D quote should be valid');
 assert.equal(dayMetrics.up+dayMetrics.flat+dayMetrics.down,100,'1D force values must total 100');
