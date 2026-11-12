@@ -2293,7 +2293,6 @@ function marketForceBullishPanel(){
  const iconTrend='<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false"><path d="M7 49 25 28l12 11 20-26M45 13h12v12" fill="none" stroke="currentColor" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
  const chev='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 9 7 7 7-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
  const marketIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 9 5-9 5-9-5 9-5Zm-9 10 9 5 9-5M3 17l9 5 9-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg>';
- const searchIcon='<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16 16 5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
  const calendarIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 3v5M17 3v5M3 11h18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
  function metricCard(key,title,symbol){
   return '<div class="bullish-detail-metric bullish-detail-'+key+(dial.key===key?' is-dominant':'')+'" data-force-metric="'+key+'">'+
@@ -2320,7 +2319,7 @@ function marketForceBullishPanel(){
  '<span class="bullish-category-icon" aria-hidden="true">'+icon+'</span><span>'+name+'</span>'+
  '<span class="bullish-category-check" aria-hidden="true">'+(key===marketForceFilter?'✓':'')+'</span></button>').join('')+
  '</div></div></div>'+
- '<div class="bullish-detail-field bullish-detail-instrument-field"><label for="bullishAsset">'+searchIcon+'<span>Seleziona asset</span></label>'+
+ '<div class="bullish-detail-field bullish-detail-instrument-field"><label for="bullishAsset"><span>Seleziona asset</span></label>'+
  '<div class="bullish-detail-asset-select"><span class="market-force-selected-logo" aria-hidden="true">'+(asset?assetLogo(asset):'◈')+'</span>'+
  '<select id="bullishAsset" aria-label="Seleziona un mercato">'+marketForceAssetOptions()+'</select>'+chev+'</div></div>'+
  '<div class="bullish-detail-field"><span class="bullish-detail-label">'+calendarIcon+'<span>Periodo</span></span>'+
