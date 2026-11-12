@@ -10,6 +10,17 @@ new Function(read('vertex-widget-sw.js'));
 assert.match(html,/src="price-board\.js\?v=/);
 assert.match(html,/href="price-board\.css\?v=/);
 assert.match(html,/id="pageContainer"/);
+// Topbar Global must put bell and AR before the TOTAL market-cap pills.
+const vertexTopbar=html.slice(html.indexOf('<header class="topbar">'),html.indexOf('</header>')+9);
+assert(vertexTopbar.includes('id="globalCryptoCaps"'),'Global pills must remain in the header');
+assert(vertexTopbar.indexOf('id="profileButton"')<vertexTopbar.indexOf('id="globalCryptoCaps"'),
+ 'Bell and AR must appear above crypto pills, not below them');
+assert(vertexTopbar.indexOf('id="notificationsButton"')<vertexTopbar.indexOf('id="profileButton"'),
+ 'Notification bell must precede AR');
+assert(!vertexTopbar.slice(vertexTopbar.indexOf('class="page-heading"'),vertexTopbar.indexOf('class="top-actions"')).includes('id="globalCryptoCaps"'),
+ 'Crypto caps should not be nested in the title block');
+assert(css.includes('grid-template-areas:"heading" "actions" "caps"'),
+ 'Mobile Global controls/pills order CSS missing');
 assert.match(html,/src="script\.js\?v=/);
 assert.match(html,/href="style\.css\?v=/);
 assert(!source.includes('biometricSessionUnlocked'),'Removed biometric gate reintroduced');
