@@ -2046,10 +2046,10 @@ function forceOHLCValid(b){
  return b&&[b.t,b.o,b.h,b.l,b.c].every(Number.isFinite)&&b.t>946684800&&
  b.o>0&&b.h>=Math.max(b.o,b.c)&&b.l>0&&b.l<=Math.min(b.o,b.c);
 }
-function forceOHLCSelect(rows,cfg){
+function forceOHLCSelect(rows,cfg,now=Date.now()){
  const valid=rows.filter(forceOHLCValid).sort((a,b)=>a.t-b.t);
  if(valid.length<2)return [];
- const newest=valid.at(-1).t*1000,now=Date.now();
+ const newest=valid.at(-1).t*1000;
  if(newest>now+300000||now-newest>8*86400000)return [];
  return valid.filter(b=>b.t*1000>=newest-cfg.ms-cfg.step&&b.t*1000<=newest+cfg.step);
 }
@@ -2063,6 +2063,29 @@ function forceOHLCAggregate(rows,ms){
  }
  return out.map(({bucket,...bar})=>bar);
 }
+/* ORE historical candles are published within this site as a verified LBank snapshot.
+   Fetch this same-origin archive before trying external API hosts that can block CORS. */
+const FORCE_ORE_SNAPSHOT_RESOLUTIONS=Object.freeze({
+ '1H':['minute1'],'4H':['minute5','minute1'],
+ '1D':['minute15','minute5','hour1'],'1W':['hour1','hour4','day1']
+});
+const FORCE_ORE_SNAPSHOT_STEPS=Object.freeze({
+ minute1:60000,minute5:300000,minute15:900000,
+ hour1:3600000,hour4:14400000,day1:86400000
+});
+function forceOREFromSnapshot(payload,cfg,period,now=Date.now()){
+ if(!payload||payload.mint!=='oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp'||
+  payload.pair!=='ORE/USDT'||!payload.sets)return null;
+ for(const resolution of FORCE_ORE_SNAPSHOT_RESOLUTIONS[period]||[]){
+  const raw=payload.sets[resolution]?.candles;
+  if(!Array.isArray(raw)||raw.length<2)continue;
+  const parsed=chartNormalizeCandles(raw,'LBank',0,now,FORCE_ORE_SNAPSHOT_STEPS[resolution]);
+  const bars=forceOHLCSelect(parsed,cfg,now);
+  if(bars.length>=2)return {bars,interval:resolution,
+   source:'LBank Spot · ORE/USDT · storico OHLC verificato (snapshot)'};
+ }
+ return null;
+}
 async function marketForceLoadOHLC(id,period){
  const a=ASSET_BY_ID[id],cfg=FORCE_OHLC_PERIODS[period],key=id+':'+period;
  if(!a||!cfg||marketForceOHLCLoading.has(key))return;
@@ -2071,7 +2094,18 @@ async function marketForceLoadOHLC(id,period){
  const job=(async()=>{
   let bars=[],source='',interval='',error='Nessun dato OHLC verificato per il periodo';
   const now=Date.now();
-  if(a.group==='crypto'){
+  if(id==='ore'){
+   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),7500);
+   try{
+    const response=await fetch('./ore-chart-history.json?v='+Math.floor(now/120000),
+     {cache:'no-store',signal:controller.signal});
+    if(!response.ok)throw Error('ORE OHLC archive unavailable: '+response.status);
+    const found=forceOREFromSnapshot(await response.json(),cfg,period,Date.now());
+    if(found){bars=found.bars;source=found.source;interval=found.interval;}
+   }catch(_error){/* Fall back to the LBank public API below. */}
+   finally{clearTimeout(timer)}
+  }
+  if(a.group==='crypto'&&bars.length<2){
    for(const endpoint of chartMarketUrls(a,cfg,now-cfg.ms,now)){
     const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),7000);
     try{
