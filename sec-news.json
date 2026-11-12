@@ -1,6 +1,6 @@
 {
   "source": "U.S. Securities and Exchange Commission",
-  "updated_at": "2026-11-12T14:44:25Z",
+  "updated_at": "2026-11-12T15:01:45Z",
   "seed_date": "2026-10-31T12:00:00Z",
   "feeds_updated": [
     "press",
@@ -8,6 +8,13 @@
     "testimony"
   ],
   "items": [
+    {
+      "category": "speeches",
+      "title": "Remarks at the 2026 Corporate Financial Reporting Insights (CFRI) Conference",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/atkins-remarks-2026-cfri-conference-111226-remarks-2026-corporate-financial-reporting-insights-cfri-conference",
+      "date": "2026-11-12T13:54:08Z",
+      "summary": "Paul S. Atkins, Chairman"
+    },
     {
       "category": "speeches",
       "title": "The Economics of Attention",
