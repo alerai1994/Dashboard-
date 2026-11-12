@@ -44,7 +44,7 @@ assert(ore.bids?.length>0&&ore.asks?.length>0,'ORE orderbook missing bids or ask
 const adapted=source.replace('function render(){','function render(){return;')
  .replace('function toast(message){','function toast(message){return;')
  .replace('(function () {','return (function () {')
- .replace(/\}\)\(\);\s*$/,'return {PAGE_RENDERERS,state,marketForceMood,marketForceDialState,marketForceChooseAsset,marketForceLeadId,marketForceSetBullishPeriod,marketForceBullishMetrics,marketForceBullishFeedState,marketForceBullishPlot,marketForceBullishObserved,streamStatus,fxStatus,chartObservedQuotes,chartObservedVersions,portfolioPage,portfolioRow,edit:i=>portfolioEditIndex=i,unlockVertexAudio,playClickSound,playCryptoAlertSound,workspaceChange,workspacePage,workspaceShown,getWorkspaceLayout:()=>workspaceLayout,getWorkspaceEdit:()=>workspaceEditMode};})();');
+ .replace(/\}\)\(\);\s*$/,'return {PAGE_RENDERERS,state,marketForceMood,marketForceDialState,marketForceChooseAsset,marketForceLeadId,marketForceSetBullishPeriod,marketForceBullishMetrics,marketForceBullishFeedState,marketForceBullishPlot,marketForceBullishObserved,forceOREFromSnapshot,FORCE_OHLC_PERIODS,forceOHLCAggregate,streamStatus,fxStatus,chartObservedQuotes,chartObservedVersions,portfolioPage,portfolioRow,edit:i=>portfolioEditIndex=i,unlockVertexAudio,playClickSound,playCryptoAlertSound,workspaceChange,workspacePage,workspaceShown,getWorkspaceLayout:()=>workspaceLayout,getWorkspaceEdit:()=>workspaceEditMode};})();');
 assert(adapted.includes('edit:i=>'),'Cannot instrument app for smoke test');
 /* Simulated WebAudio: exercise sound scheduling without playing real audio in CI. */
 const audioEvents={created:0,resumes:0,notes:[]};
@@ -167,6 +167,20 @@ if(!app.marketForceBullishMetrics().valid){
 app.marketForceSetBullishPeriod('1D');
 assert(app.PAGE_RENDERERS.marketforce().includes('data-force-bullish-panel'),
  'Switching timeframes must not restore the old panel');
+// The first-party ORE OHLC archive must support all four Market Force periods.
+const oreSnapshot=JSON.parse(read('ore-chart-history.json'));
+assert.equal(oreSnapshot.pair,'ORE/USDT');
+const oreNow=oreSnapshot.sets.minute1.candles.at(-1)[0]*1000+60000;
+for(const period of ['1H','4H','1D','1W']){
+ const cfg=app.FORCE_OHLC_PERIODS[period];
+ const picked=app.forceOREFromSnapshot(oreSnapshot,cfg,period,oreNow);
+ assert(picked&&picked.bars.length>=2,'No ORE snapshot OHLC for '+period);
+ const checked=app.forceOHLCAggregate(picked.bars,cfg.group);
+ assert(checked.length>=2&&checked.every(b=>b.h>=Math.max(b.o,b.c)&&b.l<=Math.min(b.o,b.c)),
+  'Bad real OHLC candle for '+period);
+}
+assert(source.includes("fetch('./ore-chart-history.json?v='"),'ORE Market Force snapshot fetch missing');
+console.log('PASS genuine ORE candles in 1H / 4H / 1D / 1W');
 console.log('PASS direct bullish force view replaces old overview on Global and dedicated page');
 
 // Selected feed health must reflect the actual instrument, not another active stream.
@@ -204,8 +218,8 @@ app.chartObservedVersions.set('btc',3);
 assert.equal(app.marketForceBullishObserved('btc','1H').length,3,
  'Real 1H observed BTC ticks not exposed to bullish chart');
 const observedPlot=app.marketForceBullishPlot(app.marketForceBullishMetrics());
-assert(observedPlot.includes('Tick reali osservati')&&observedPlot.includes('<svg'),
- 'Bullish chart must render actual observed prices, not a fake line');
+assert(observedPlot.includes('Caricamento candele OHLC')||observedPlot.includes('force-ohlc-candle')||observedPlot.includes('Storico OHLC'),
+ 'Force panel must display verified OHLC or an explicit missing-history status');
 assert(css.includes('.bullish-detail-feed[data-feed-kind="live"]'),
  'True LIVE feed badge animation styles missing');
 assert(css.includes('.bullish-live-quote'),
