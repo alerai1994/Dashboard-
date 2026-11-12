@@ -4139,3 +4139,18 @@ body.theme-dark .theme-contrast-version{
   height:47px;
  }
 }
+
+/* Blank first row keeps the asset selector level with "Tutti i mercati"
+   without displaying the unwanted "Seleziona asset" heading. */
+#pageContainer .bullish-detail-toolbar>.bullish-detail-instrument-field>.bullish-detail-instrument-spacer{
+ display:block;
+ height:30px;
+ min-height:30px;
+ pointer-events:none;
+}
+@media(max-width:740px){
+ #pageContainer .bullish-detail-toolbar>.bullish-detail-instrument-field>.bullish-detail-instrument-spacer{
+  height:24px;
+  min-height:24px;
+ }
+}
