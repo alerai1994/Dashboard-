@@ -125,6 +125,7 @@ for(const page of [directForcePanel,globalForcePanel]){
  }
  assert(page.includes('<label for="bullishAsset">'),'Instrument heading must align with category heading');
  assert(page.includes('bullish-detail-instrument-field'),'Aligned instrument selector missing');
+ assert(page.includes('<label for="bullishAsset"><svg'),'Instrument search icon should render without ReferenceError');
  for(const period of ['1H','4H','1D','1W']){
   assert(page.includes('data-bullish-period="'+period+'"'),'Missing timeframe: '+period);
  }
@@ -142,6 +143,7 @@ for(const page of [directForcePanel,globalForcePanel]){
  }
 }
 assert(source.includes('function patchMarketForceBullish()'),'Price updates missing');
+assert(source.includes("const searchIcon='<svg"),'Search icon declaration must exist before rendering Global');
 assert(source.includes('function marketForceChooseAsset('),'Instrument selection missing');
 assert(source.includes('marketForceSelectedAssets'),'Saved asset selection missing');
 assert(css.includes('.bullish-detail-segment.is-active'),'Animated segments not styled');
