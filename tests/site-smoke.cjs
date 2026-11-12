@@ -343,3 +343,7 @@ assert(app.workspaceShown('forex'),'Reset did not restore hidden widgets');
 assert(!app.getWorkspaceLayout().wide.includes('summary'),'Reset did not restore module sizes');
 assert.equal(app.getWorkspaceLayout().order[0],'summary','Reset did not restore order');
 console.log('PASS Workspace 16 modules, edit/resize/reorder/hide/reset and saved layout');
+
+assert(source.includes('class="market-force-realistic-bull"'),'Realistic bullish bull must be rendered inside dial');
+assert(source.includes('data:image/webp;base64,UklGR'),'Realistic bull image should be bundled without external fetch');
+assert(css.includes('.market-force-realistic-bull'),'Realistic bull responsive sizing is missing');
