@@ -3811,3 +3811,117 @@ body.theme-dark .theme-contrast-version{
 @media(prefers-reduced-motion:reduce){
  .bullish-detail-feed[data-feed-kind="live"]>i{animation:none}
 }
+
+
+/* Vertical layout for the Market Force reference panel — November 2026 */
+#pageContainer .market-force-section.bullish-detail-panel{
+ width:100%;max-width:100%;min-width:0;
+}
+#pageContainer .bullish-detail-toolbar{
+ display:grid;
+ grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:clamp(12px,2vw,22px);
+}
+#pageContainer .bullish-detail-toolbar>.bullish-detail-field:last-child{
+ grid-column:1/-1;
+}
+#pageContainer .bullish-detail-body{
+ display:grid;
+ grid-template-columns:minmax(0,1fr);
+ align-items:start;
+ gap:clamp(20px,2.5vw,36px);
+ min-height:0;
+}
+#pageContainer .bullish-detail-dial-wrap{
+ width:100%;height:auto;min-width:0;
+ display:flex;align-items:center;justify-content:center;
+ border-right:0;border-bottom:1px solid #31516e;
+ padding:clamp(10px,2vw,26px) 0 clamp(18px,2vw,30px);
+}
+#pageContainer .bullish-detail-gauge{
+ width:min(100%,390px);
+ aspect-ratio:1;
+}
+#pageContainer .bullish-detail-right{
+ display:grid;
+ width:min(100%,960px);
+ min-width:0;
+ margin-inline:auto;
+ gap:clamp(17px,2vw,27px);
+}
+#pageContainer .bullish-live-quote{
+ justify-content:center;
+ text-align:center;
+}
+#pageContainer .bullish-detail-assessment{
+ text-align:center;
+}
+#pageContainer .bullish-detail-metrics{
+ display:grid;
+ grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:clamp(8px,1.4vw,17px);
+}
+#pageContainer .bullish-detail-chart{
+ width:100%;min-height:190px;
+}
+#pageContainer .bullish-detail-chart .bullish-live-chart-content svg{
+ width:100%;
+ height:clamp(185px,23vw,260px);
+}
+#pageContainer .bullish-detail-source{
+ text-align:center;
+ overflow-wrap:anywhere;
+}
+@media(max-width:740px){
+ #pageContainer .bullish-detail-panel{
+  padding:15px 12px;
+ }
+ #pageContainer .bullish-detail-toolbar{
+  grid-template-columns:minmax(0,1fr);
+ }
+ #pageContainer .bullish-detail-toolbar>.bullish-detail-field:last-child{
+  grid-column:auto;
+ }
+ #pageContainer .bullish-detail-body{
+  gap:18px;
+ }
+ #pageContainer .bullish-detail-dial-wrap{
+  padding:12px 0 22px;
+ }
+ #pageContainer .bullish-detail-gauge{
+  width:min(100%,320px);
+ }
+ #pageContainer .bullish-detail-right{
+  width:100%;gap:15px;
+ }
+ #pageContainer .bullish-live-quote{
+  justify-content:center;
+ }
+ #pageContainer .bullish-detail-metrics{
+  gap:6px;
+ }
+ #pageContainer .bullish-detail-metric{
+  padding:10px 5px;
+  min-width:0;
+ }
+ #pageContainer .bullish-detail-metric>div span{
+  overflow-wrap:anywhere;
+ }
+ #pageContainer .bullish-detail-chart{
+  min-height:160px;
+ }
+ #pageContainer .bullish-detail-chart .bullish-live-chart-content svg{
+  height:170px;
+ }
+}
+@media(max-width:370px){
+ #pageContainer .bullish-detail-gauge{
+  width:min(100%,270px);
+ }
+ #pageContainer .bullish-detail-metric-icon{
+  display:none;
+ }
+ #pageContainer .bullish-detail-metric{
+  justify-content:center;text-align:center;
+ }
+}
