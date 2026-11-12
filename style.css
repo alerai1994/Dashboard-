@@ -4061,6 +4061,9 @@ body.theme-dark .theme-contrast-version{
  #pageContainer .bullish-detail-chart-note{font-size:9px;line-height:1.35}
 }
 
+/* Defensive hide for a legacy cached all-market gallery, not the selected logo. */
+#pageContainer .market-force-logo-gallery,
+#pageContainer #marketForceLogoGallery{display:none!important}
 /* Keep the selected instrument's individual logo inside the asset control. */
 #pageContainer .bullish-detail-asset-select>.market-force-selected-logo{
  display:grid;place-items:center;flex:0 0 29px;width:29px;height:30px;
