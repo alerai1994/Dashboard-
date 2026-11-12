@@ -44,7 +44,7 @@ assert(ore.bids?.length>0&&ore.asks?.length>0,'ORE orderbook missing bids or ask
 const adapted=source.replace('function render(){','function render(){return;')
  .replace('function toast(message){','function toast(message){return;')
  .replace('(function () {','return (function () {')
- .replace(/\}\)\(\);\s*$/,'return {PAGE_RENDERERS,state,marketForceMood,marketForceChooseAsset,marketForceLeadId,marketForceSetBullishPeriod,marketForceBullishMetrics,marketForceBullishFeedState,marketForceBullishPlot,marketForceBullishObserved,streamStatus,fxStatus,chartObservedQuotes,chartObservedVersions,portfolioPage,portfolioRow,edit:i=>portfolioEditIndex=i,unlockVertexAudio,playClickSound,playCryptoAlertSound,workspaceChange,workspacePage,workspaceShown,getWorkspaceLayout:()=>workspaceLayout,getWorkspaceEdit:()=>workspaceEditMode};})();');
+ .replace(/\}\)\(\);\s*$/,'return {PAGE_RENDERERS,state,marketForceMood,marketForceDialState,marketForceChooseAsset,marketForceLeadId,marketForceSetBullishPeriod,marketForceBullishMetrics,marketForceBullishFeedState,marketForceBullishPlot,marketForceBullishObserved,streamStatus,fxStatus,chartObservedQuotes,chartObservedVersions,portfolioPage,portfolioRow,edit:i=>portfolioEditIndex=i,unlockVertexAudio,playClickSound,playCryptoAlertSound,workspaceChange,workspacePage,workspaceShown,getWorkspaceLayout:()=>workspaceLayout,getWorkspaceEdit:()=>workspaceEditMode};})();');
 assert(adapted.includes('edit:i=>'),'Cannot instrument app for smoke test');
 /* Simulated WebAudio: exercise sound scheduling without playing real audio in CI. */
 const audioEvents={created:0,resumes:0,notes:[]};
@@ -103,7 +103,11 @@ assert(sp500Strength.up>0&&sp500Strength.down===0,'Positive instrument must have
 assert(injStrength.down>0&&injStrength.up===0,'Negative instrument must have bearish force');
 assert.equal(app.marketForceLeadId(),'sp500','Selected instrument was not persisted');
 Object.assign(app.state.quotes,savedForceQuotes);
-console.log('PASS selection-driven bullish/neutral/bearish scores for BTC, INJ, S&P 500');
+assert.equal(app.marketForceDialState({valid:true,up:76,flat:24,down:0}).key,'up');
+assert.equal(app.marketForceDialState({valid:true,up:20,flat:80,down:0}).key,'flat');
+assert.equal(app.marketForceDialState({valid:true,up:0,flat:10,down:90}).key,'down');
+assert.equal(app.marketForceDialState({valid:false,up:0,flat:0,down:0}).key,'unavailable');
+console.log('PASS reactive dial states (bullish, neutral, bearish, unavailable)');
 // The user-selected dashboard replaces the previous Market Force overview entirely.
 app.marketForceChooseAsset('btc');
 const directForcePanel=app.PAGE_RENDERERS.marketforce();
@@ -139,6 +143,8 @@ assert(source.includes('function patchMarketForceBullish()'),'Price updates miss
 assert(source.includes('function marketForceChooseAsset('),'Instrument selection missing');
 assert(source.includes('marketForceSelectedAssets'),'Saved asset selection missing');
 assert(css.includes('.bullish-detail-segment.is-active'),'Animated segments not styled');
+assert(css.includes('.bullish-detail-orbit'),'Animated indicator orbit missing');
+assert(source.includes('panel.dataset.forceTone'),'Live dial colour changes missing');
 assert(css.includes('.bullish-detail-category-list'),'Category menu not styled');
 const dayMetrics=app.marketForceBullishMetrics();
 assert(dayMetrics.valid,'Default 1D quote should be valid');
