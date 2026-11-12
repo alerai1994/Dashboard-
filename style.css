@@ -3984,3 +3984,48 @@ body.theme-dark .theme-contrast-version{
   padding:6px 1px;
  }
 }
+
+/* Animated, data-driven market force dial: retain the horizontal responsive layout. */
+#pageContainer .market-force-section.bullish-detail-panel[data-force-tone="up"]{--bull-accent:#2de7b6}
+#pageContainer .market-force-section.bullish-detail-panel[data-force-tone="flat"]{--bull-accent:#9bc9ff}
+#pageContainer .market-force-section.bullish-detail-panel[data-force-tone="down"]{--bull-accent:#ff7e9b}
+#pageContainer .market-force-section.bullish-detail-panel[data-force-tone="unavailable"]{--bull-accent:#90a2b9}
+#pageContainer .bullish-detail-outer-guide,
+#pageContainer .bullish-detail-ticks line.major{stroke:var(--bull-accent);transition:stroke .65s ease}
+#pageContainer .bullish-detail-dial-progress{
+ stroke:var(--bull-accent);
+ transition:stroke-dashoffset 1.4s cubic-bezier(.16,1,.3,1),stroke .65s ease;
+}
+#pageContainer .bullish-detail-segment.is-active{
+ fill:var(--bull-accent);filter:drop-shadow(0 0 4px var(--bull-accent));
+}
+#pageContainer .bullish-detail-bull-icon{
+ color:var(--bull-accent);transition:color .65s ease;
+ animation:market-force-icon-oscillate 3.2s ease-in-out infinite;
+}
+#pageContainer .bullish-detail-assessment strong{color:var(--bull-accent);transition:color .65s ease}
+#pageContainer .bullish-detail-state{
+ color:var(--bull-accent);
+ background:color-mix(in srgb,var(--bull-accent) 12%,#092339);
+ border-color:color-mix(in srgb,var(--bull-accent) 75%,#28516c);
+ transition:color .65s ease,background .65s ease,border-color .65s ease;
+}
+#pageContainer .bullish-detail-metric.is-dominant{
+ border-color:var(--bull-accent);
+ box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--bull-accent) 30%,transparent),0 0 14px color-mix(in srgb,var(--bull-accent) 12%,transparent);
+ transition:border-color .65s ease,box-shadow .65s ease;
+}
+#pageContainer .bullish-detail-orbit{
+ fill:none;stroke:var(--bull-accent);stroke-width:2.8;stroke-linecap:round;
+ stroke-dasharray:23 1100;opacity:.85;transform-origin:170px 170px;
+ animation:market-force-orbit 10s linear infinite;
+ filter:drop-shadow(0 0 5px var(--bull-accent));
+}
+@keyframes market-force-orbit{to{transform:rotate(360deg)}}
+@keyframes market-force-icon-oscillate{
+ 0%,100%{transform:translateY(0) scale(1)}
+ 50%{transform:translateY(-2px) scale(1.045)}
+}
+@media(prefers-reduced-motion:reduce){
+ #pageContainer .bullish-detail-orbit,#pageContainer .bullish-detail-bull-icon{animation:none}
+}
