@@ -4082,75 +4082,50 @@ body.theme-dark .theme-contrast-version{
  }
 }
 
-/* Force Market toolbar: category and instrument selectors share the same baseline. */
-#pageContainer .bullish-detail-toolbar>.bullish-detail-category-field,
-#pageContainer .bullish-detail-toolbar>.bullish-detail-instrument-field{
- align-content:start;
- grid-template-rows:minmax(30px,auto) auto;
-}
-#pageContainer .bullish-detail-toolbar>.bullish-detail-category-field>label,
-#pageContainer .bullish-detail-toolbar>.bullish-detail-instrument-field>label{
- margin:0;align-self:center;min-width:0;
-}
-#pageContainer .bullish-detail-toolbar>.bullish-detail-instrument-field .bullish-detail-asset-select{
- align-self:start;
-}
-@media(max-width:740px){
- #pageContainer .bullish-detail-toolbar>.bullish-detail-category-field,
- #pageContainer .bullish-detail-toolbar>.bullish-detail-instrument-field{
-  grid-template-rows:minmax(22px,auto) auto;
- }
-}
 
-/* Force Market: the two adjacent dropdowns have precisely matching vertical
-   geometry on mobile and desktop, with no search icon in the instrument label. */
+/* Market Force: align the controls by their BOTTOM edge, rather than inserting
+   phantom label/spacer elements. Works with dynamic text and both mobile columns. */
+#pageContainer .bullish-detail-toolbar{
+ align-items:stretch;
+}
 #pageContainer .bullish-detail-toolbar>.bullish-detail-category-field,
 #pageContainer .bullish-detail-toolbar>.bullish-detail-instrument-field{
- display:grid;
- grid-template-rows:30px minmax(0,auto);
- align-content:start;
- gap:11px;
  min-width:0;
+ align-self:stretch;
 }
-#pageContainer .bullish-detail-toolbar>.bullish-detail-category-field>label,
-#pageContainer .bullish-detail-toolbar>.bullish-detail-instrument-field>label{
- display:flex;align-items:center;min-height:30px;line-height:1.25;
+#pageContainer .bullish-detail-toolbar>.bullish-detail-category-field{
+ display:flex;
+ flex-direction:column;
+ gap:11px;
+}
+#pageContainer .bullish-detail-toolbar>.bullish-detail-category-field>label{
+ display:flex;
+ flex:0 0 auto;
+ align-items:center;
  margin:0;
+ min-height:30px;
+}
+#pageContainer .bullish-detail-toolbar>.bullish-detail-category-field>.bullish-detail-category-picker{
+ margin-top:auto;
+}
+#pageContainer .bullish-detail-toolbar>.bullish-detail-instrument-field{
+ display:flex;
+ flex-direction:column;
+ justify-content:flex-end;
+ gap:0;
 }
 #pageContainer .bullish-detail-toolbar>.bullish-detail-category-field .bullish-detail-category-trigger,
 #pageContainer .bullish-detail-toolbar>.bullish-detail-instrument-field .bullish-detail-asset-select{
+ width:100%;
  height:clamp(48px,4.2vw,68px);
  min-height:0;
- align-self:start;
  box-sizing:border-box;
 }
 @media(max-width:740px){
- #pageContainer .bullish-detail-toolbar>.bullish-detail-category-field,
- #pageContainer .bullish-detail-toolbar>.bullish-detail-instrument-field{
-  grid-template-rows:24px minmax(0,auto);
-  gap:7px;
- }
- #pageContainer .bullish-detail-toolbar>.bullish-detail-category-field>label,
- #pageContainer .bullish-detail-toolbar>.bullish-detail-instrument-field>label{
-  min-height:24px;
- }
+ #pageContainer .bullish-detail-toolbar>.bullish-detail-category-field{gap:7px}
+ #pageContainer .bullish-detail-toolbar>.bullish-detail-category-field>label{min-height:24px}
  #pageContainer .bullish-detail-toolbar>.bullish-detail-category-field .bullish-detail-category-trigger,
  #pageContainer .bullish-detail-toolbar>.bullish-detail-instrument-field .bullish-detail-asset-select{
   height:47px;
- }
-}
-
-/* Blank first row keeps the asset selector level with "Tutti i mercati"
-   without displaying the unwanted "Seleziona asset" heading. */
-#pageContainer .bullish-detail-toolbar>.bullish-detail-instrument-field>.bullish-detail-instrument-spacer{
- display:block;
- height:30px;
- min-height:30px;
- pointer-events:none;
-}
-@media(max-width:740px){
- #pageContainer .bullish-detail-toolbar>.bullish-detail-instrument-field>.bullish-detail-instrument-spacer{
-  height:24px;
-  min-height:24px;
  }
 }
