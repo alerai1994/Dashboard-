@@ -144,6 +144,11 @@ assert(source.includes('function marketForceChooseAsset('),'Instrument selection
 assert(source.includes('marketForceSelectedAssets'),'Saved asset selection missing');
 assert(css.includes('.bullish-detail-segment.is-active'),'Animated segments not styled');
 assert(css.includes('.bullish-detail-orbit'),'Animated indicator orbit missing');
+assert(source.includes('async function marketForceLoadOHLC('),'OHLC source loader missing');
+assert(source.includes('function forceOHLCAggregate('),'OHLC grouping missing');
+assert(source.includes('class="force-ohlc-candle '),'OHLC body and wick drawing missing');
+assert(!source.includes('id="bullishPriceFill"'),'Old line/area force graph is still present');
+assert(css.includes('.force-ohlc-candle.down rect'),'Red candlesticks missing');
 assert(source.includes('panel.dataset.forceTone'),'Live dial colour changes missing');
 assert(css.includes('.bullish-detail-category-list'),'Category menu not styled');
 const dayMetrics=app.marketForceBullishMetrics();
@@ -151,7 +156,7 @@ assert(dayMetrics.valid,'Default 1D quote should be valid');
 assert.equal(dayMetrics.up+dayMetrics.flat+dayMetrics.down,100,'1D force values must total 100');
 app.marketForceSetBullishPeriod('1H');
 if(!app.marketForceBullishMetrics().valid){
- assert(app.PAGE_RENDERERS.marketforce().includes('Storico 1H non disponibile'),
+ assert(app.PAGE_RENDERERS.marketforce().includes('Caricamento candele OHLC'),
   'Insufficient 1H history must not create a fake chart');
 }
 app.marketForceSetBullishPeriod('1D');
