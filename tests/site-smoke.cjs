@@ -144,6 +144,9 @@ assert(source.includes('function marketForceChooseAsset('),'Instrument selection
 assert(source.includes('marketForceSelectedAssets'),'Saved asset selection missing');
 assert(css.includes('.bullish-detail-segment.is-active'),'Animated segments not styled');
 assert(css.includes('.bullish-detail-orbit'),'Animated indicator orbit missing');
+assert(source.includes('function marketForceLogoGallery('),'Market logos gallery missing');
+assert(source.includes('data-force-logo-asset'),'Click on logo handler missing');
+assert(css.includes('.market-force-logo-tile.active'),'Market logo active state missing');
 assert(source.includes('async function marketForceLoadOHLC('),'OHLC source loader missing');
 assert(source.includes('function forceOHLCAggregate('),'OHLC grouping missing');
 assert(source.includes('class="force-ohlc-candle '),'OHLC body and wick drawing missing');
