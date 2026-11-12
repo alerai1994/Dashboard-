@@ -123,6 +123,8 @@ for(const page of [directForcePanel,globalForcePanel]){
  for(const id of ['bullishGroup','bullishAsset']){
   assert(page.includes('id="'+id+'"'),'Missing bullish market selector: '+id);
  }
+ assert(page.includes('<label for="bullishAsset">'),'Instrument heading must align with category heading');
+ assert(page.includes('bullish-detail-instrument-field'),'Aligned instrument selector missing');
  for(const period of ['1H','4H','1D','1W']){
   assert(page.includes('data-bullish-period="'+period+'"'),'Missing timeframe: '+period);
  }
@@ -156,6 +158,7 @@ assert(!source.includes('id="bullishPriceFill"'),'Old line/area force graph is s
 assert(css.includes('.force-ohlc-candle.down rect'),'Red candlesticks missing');
 assert(source.includes('panel.dataset.forceTone'),'Live dial colour changes missing');
 assert(css.includes('.bullish-detail-category-list'),'Category menu not styled');
+assert(css.includes('grid-template-rows:minmax(30px,auto) auto'),'Selectors must align to shared label row');
 const dayMetrics=app.marketForceBullishMetrics();
 assert(dayMetrics.valid,'Default 1D quote should be valid');
 assert.equal(dayMetrics.up+dayMetrics.flat+dayMetrics.down,100,'1D force values must total 100');
