@@ -2108,13 +2108,29 @@ function marketForceBullishPlot(m){
  '<circle cx="'+last.x.toFixed(2)+'" cy="'+last.y.toFixed(2)+'" r="3.5" fill="'+color+'"/></svg>'+
  '<span class="bullish-detail-chart-note">'+esc(source)+'</span></div>';
 }
+/* The ring signals the prevailing real price-movement component; its orbit is decorative. */
+const MARKET_FORCE_BULL_ICON='<svg viewBox="0 0 128 74" aria-hidden="true" focusable="false"><path fill="currentColor" d="m7 42 10-11 15-4 11 5 7-9 13 1 12-9 12 4 10-9 5 6-1 11-6 6 2 12-9 8-6-1-5 14-7-1 1-18-9-7-8 3-7 23-7-1 1-24-12-2-6 18-7-1-1-22-10-5-5 9-7-3Z"/><path fill="currentColor" d="m93 19 5-10 12-2-8 7 13 2-10 6-9-3ZM16 31l-12-2 8-4 10 2Z"/></svg>';
+const MARKET_FORCE_NEUTRAL_ICON='<svg viewBox="0 0 128 74" aria-hidden="true"><path d="M28 26h72M28 48h72" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round"/></svg>';
+const MARKET_FORCE_BEAR_ICON='<svg viewBox="0 0 128 74" aria-hidden="true"><path d="m14 15 40 30 21-16 38 31m-19 0h19V41" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+function marketForceDialState(m){
+ const key=!m.valid?'unavailable':
+  m.up>m.flat&&m.up>=m.down?'up':
+  m.down>m.flat&&m.down>=m.up?'down':'flat';
+ const labels={up:['Rialzista','RIALZISTA'],flat:['Neutrale','NEUTRALE'],
+  down:['Ribassista','RIBASSISTA'],unavailable:['Dati N/D','DATI N/D']};
+ return {key,score:m.valid?m[key]:null,label:labels[key][0],caption:labels[key][1]};
+}
+function marketForceDialIcon(key){
+ return key==='up'?MARKET_FORCE_BULL_ICON:key==='down'?MARKET_FORCE_BEAR_ICON:MARKET_FORCE_NEUTRAL_ICON;
+}
 function marketForceBullishMessage(m){
  if(!m.valid)return ['Dati insufficienti','Nessuna variazione verificabile per il periodo selezionato'];
- if(m.up>=65)return ['Forza rialzista elevata','La variazione di prezzo mostra un rialzo marcato'];
- if(m.up>=30)return ['Forza rialzista moderata','La variazione di prezzo è positiva'];
- if(m.up>0)return ['Forza rialzista debole','La variazione di prezzo è lievemente positiva'];
- if(m.down>0)return ['Prevalgono i ribassi','La variazione di prezzo è negativa'];
- return ['Mercato neutro','La variazione disponibile è pari a zero'];
+ const type=marketForceDialState(m).key;
+ if(type==='up')return [m.up>=65?'Forza rialzista elevata':'Forza rialzista prevalente',
+  'La variazione del prezzo mostra una prevalenza rialzista'];
+ if(type==='down')return [m.down>=65?'Forza ribassista elevata':'Forza ribassista prevalente',
+  'La variazione del prezzo mostra una prevalenza ribassista'];
+ return ['Forza neutrale prevalente','Il movimento del prezzo è contenuto rispetto alla scala dell’indicatore'];
 }
 
 const BULLISH_CATEGORY_CHOICES=[
@@ -2139,6 +2155,7 @@ function bullishSymbolIcon(type){
 }
 function marketForceBullishPanel(){
  const m=marketForceBullishMetrics(),asset=ASSET_BY_ID[m.id],q=quote(m.id);
+ const dial=marketForceDialState(m);
  const feed=marketForceBullishFeedState(m.id);
  const message=marketForceBullishMessage(m);
  const selectedCategory=BULLISH_CATEGORY_CHOICES.find(row=>row[0]===marketForceFilter)||BULLISH_CATEGORY_CHOICES[0];
@@ -2156,21 +2173,20 @@ function marketForceBullishPanel(){
  const marketIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 9 5-9 5-9-5 9-5Zm-9 10 9 5 9-5M3 17l9 5 9-5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg>';
  const searchIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16 16 5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
  const calendarIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 3v5M17 3v5M3 11h18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
- const bullIcon='<svg viewBox="0 0 128 74" aria-hidden="true" focusable="false"><path fill="currentColor" d="m7 42 10-11 15-4 11 5 7-9 13 1 12-9 12 4 10-9 5 6-1 11-6 6 2 12-9 8-6-1-5 14-7-1 1-18-9-7-8 3-7 23-7-1 1-24-12-2-6 18-7-1-1-22-10-5-5 9-7-3Z"/><path fill="currentColor" d="m93 19 5-10 12-2-8 7 13 2-10 6-9-3ZM16 31l-12-2 8-4 10 2Z"/></svg>';
  function metricCard(key,title,symbol){
-  return '<div class="bullish-detail-metric bullish-detail-'+key+'">'+
+  return '<div class="bullish-detail-metric bullish-detail-'+key+(dial.key===key?' is-dominant':'')+'" data-force-metric="'+key+'">'+
    '<span class="bullish-detail-metric-icon" aria-hidden="true">'+symbol+'</span>'+
    '<div><span>'+title+'</span><strong data-bullish-stat="'+key+'">'+(m.valid?m[key]+'%':'—')+'</strong></div></div>';
  }
- return '<section class="market-force-section bullish-detail-panel" data-force-bullish-panel aria-labelledby="marketForceTitle">'+
+ return '<section class="market-force-section bullish-detail-panel" data-force-bullish-panel data-force-tone="'+dial.key+'" aria-labelledby="marketForceTitle">'+
  '<div class="bullish-detail-heading"><div class="bullish-detail-title-group">'+
  '<span class="bullish-detail-arrow" aria-hidden="true">'+iconTrend+'</span><div>'+
- '<h2 id="marketForceTitle">Forza rialzista</h2>'+
- '<p>Analisi della forza rialzista del prezzo sul mercato</p></div></div>'+
+ '<h2 id="marketForceTitle">Forza mercato</h2>'+
+ '<p>Forza rialzista, neutrale o ribassista in base al prezzo</p></div></div>'+
  '<div class="bullish-detail-heading-right"><span class="bullish-detail-feed" data-bullish-feed data-feed-kind="'+feed.kind+'" title="'+esc(feed.description)+'">'+
  '<i aria-hidden="true"></i><span data-bullish-feed-text>'+esc(feed.label)+'</span></span>'+
- '<span class="bullish-detail-state" data-bullish-state data-direction="'+(m.up?'up':m.down?'down':'flat')+'">'+
- '<i class="bullish-state-dot" aria-hidden="true"></i><span data-bullish-state-text>'+(m.up?'Bullish':m.down?'Bearish':m.valid?'Neutro':'Dati N/D')+'</span></span>'+
+ '<span class="bullish-detail-state" data-bullish-state data-direction="'+dial.key+'">'+
+ '<i class="bullish-state-dot" aria-hidden="true"></i><span data-bullish-state-text>'+dial.label+'</span></span>'+
  '</div></div>'+
  '<div class="bullish-detail-toolbar">'+
  '<div class="bullish-detail-field bullish-detail-category-field"><label for="bullishGroup">'+marketIcon+'<span>Asset</span></label>'+
@@ -2190,17 +2206,18 @@ function marketForceBullishPanel(){
  MARKET_FORCE_BULLISH_PERIODS.map(p=>'<button type="button" data-bullish-period="'+p+'" aria-pressed="'+String(p===marketForceBullishPeriod)+'"'+(p===marketForceBullishPeriod?' class="active"':'')+'>'+p+'</button>').join('')+
  '</div></div></div>'+
  '<div class="bullish-detail-body"><div class="bullish-detail-dial-wrap">'+
- '<div class="bullish-detail-gauge" aria-label="Forza rialzista del prezzo">'+
+ '<div class="bullish-detail-gauge" aria-label="Forza prevalente del prezzo">'+
  '<svg class="bullish-detail-dial-svg" viewBox="0 0 340 340" aria-hidden="true">'+
- '<circle class="bullish-detail-outer-guide" cx="170" cy="170" r="163"/>'+
+ '<circle class="bullish-detail-outer-guide" cx="170" cy="170" r="163"/>'+ 
+ '<circle class="bullish-detail-orbit" cx="170" cy="170" r="163"/>'+
  '<circle class="bullish-detail-dial-track" cx="170" cy="170" r="142"/>'+
  '<circle class="bullish-detail-dial-progress" data-bullish-gauge cx="170" cy="170" r="132" stroke-dasharray="'+ring+'" stroke-dashoffset="'+ring+'"/>'+
  '<g class="bullish-detail-segments">'+slices+'</g>'+
  '<g class="bullish-detail-ticks">'+ticks+'</g>'+
  '<circle class="bullish-detail-inner-guide" cx="170" cy="170" r="104"/>'+
  '</svg>'+
- '<div class="bullish-detail-gauge-inner"><span class="bullish-detail-bull-icon" aria-hidden="true">'+bullIcon+'</span>'+
- '<strong data-bullish-gauge-value>'+(m.valid?m.up+'%':'—')+'</strong><small>FORZA<br>RIALZISTA</small></div></div></div>'+
+ '<div class="bullish-detail-gauge-inner"><span class="bullish-detail-bull-icon" data-bullish-gauge-icon data-force-icon="'+dial.key+'" aria-hidden="true">'+marketForceDialIcon(dial.key)+'</span>'+
+ '<strong data-bullish-gauge-value aria-live="polite">'+(m.valid?dial.score+'%':'—')+'</strong><small data-bullish-gauge-label data-caption-key="'+dial.key+'">FORZA<br>'+dial.caption+'</small></div></div></div>'+
  '<div class="bullish-detail-right">'+
  '<div class="bullish-live-quote" data-bullish-quote><span>'+esc(marketForceLeadLabel(asset,q))+'</span>'+
  '<strong data-bullish-price>'+esc(assetValue(asset))+'</strong>'+
@@ -2220,6 +2237,8 @@ function patchMarketForceBullish(){
  const panel=document.querySelector('#pageContainer [data-force-bullish-panel]');
  if(!panel)return;
  const m=marketForceBullishMetrics(),messages=marketForceBullishMessage(m);
+ const dial=marketForceDialState(m);
+ if(panel.dataset.forceTone!==dial.key)panel.dataset.forceTone=dial.key;
  const q=quote(m.id),asset=ASSET_BY_ID[m.id],feed=marketForceBullishFeedState(m.id);
  const badge=panel.querySelector('[data-bullish-feed]');
  if(badge){
@@ -2237,21 +2256,27 @@ function patchMarketForceBullish(){
   liveDelta.dataset.trend=trend(q?.change);
  }
  const value=panel.querySelector('[data-bullish-gauge-value]');
- const text=m.valid?m.up+'%':'—';
+ const text=m.valid?dial.score+'%':'—';
  if(value&&value.textContent!==text)value.textContent=text;
+ const icon=panel.querySelector('[data-bullish-gauge-icon]');
+ if(icon&&icon.dataset.forceIcon!==dial.key){icon.innerHTML=marketForceDialIcon(dial.key);icon.dataset.forceIcon=dial.key;}
+ const caption=panel.querySelector('[data-bullish-gauge-label]');
+ if(caption&&caption.dataset.captionKey!==dial.key){caption.innerHTML='FORZA<br>'+dial.caption;caption.dataset.captionKey=dial.key;}
  const segments=panel.querySelectorAll('[data-bullish-segment]');
  if(segments.length){
-  const count=Math.round(segments.length*(m.valid?m.up:0)/100);
+  const count=Math.round(segments.length*(m.valid?dial.score:0)/100);
   segments.forEach((segment,index)=>segment.classList.toggle('is-active',index<count));
  }
  const gauge=panel.querySelector('[data-bullish-gauge]');
  if(gauge){
-  const offset=(MARKET_FORCE_BULLISH_CIRCUMFERENCE*(1-(m.valid?m.up:0)/100)).toFixed(2);
+  const offset=(MARKET_FORCE_BULLISH_CIRCUMFERENCE*(1-(m.valid?dial.score:0)/100)).toFixed(2);
   if(gauge.style.strokeDashoffset!==offset)gauge.style.strokeDashoffset=offset;
  }
  for(const key of ['up','flat','down']){
   const node=panel.querySelector('[data-bullish-stat="'+key+'"]'),label=m.valid?m[key]+'%':'—';
   if(node&&node.textContent!==label)node.textContent=label;
+  const metric=panel.querySelector('[data-force-metric="'+key+'"]');
+  if(metric)metric.classList.toggle('is-dominant',dial.key===key);
  }
  const head=panel.querySelector('[data-bullish-assessment]'),description=panel.querySelector('[data-bullish-description]');
  if(head&&head.textContent!==messages[0])head.textContent=messages[0];
@@ -2259,8 +2284,8 @@ function patchMarketForceBullish(){
  const status=panel.querySelector('[data-bullish-state]');
  if(status){
   const state=status.querySelector('[data-bullish-state-text]');
-  if(state)state.textContent=m.up?'Bullish':m.down?'Bearish':m.valid?'Neutro':'Dati N/D';
-  status.dataset.direction=m.up?'up':m.down?'down':'flat';
+  if(state&&state.textContent!==dial.label)state.textContent=dial.label;
+  status.dataset.direction=dial.key;
  }
  const source=panel.querySelector('[data-bullish-source]');
  if(source)source.textContent=instrumentQuoteStatus(m.id);
