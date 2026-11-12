@@ -1837,7 +1837,8 @@ function toggleGlobalCapChart(id){
    Prices and charts share Vertex's validated snapshot and streaming quotes. */
 const MARKET_FORCE_RING_LENGTH=2*Math.PI*50;
 const MARKET_FORCE_FILTERS=[
- ['all','Tutti'],['crypto','Crypto'],['stocks','Azioni'],['forex','Forex'],['indices','Indici']
+ ['all','Tutti'],['crypto','Crypto'],['stocks','Azioni'],['forex','Forex'],['indices','Indici'],
+ ['etfs','ETF'],['commodities','Materie prime']
 ];
 let marketForceFilter=load('marketForceFilter','all');
 if(!MARKET_FORCE_FILTERS.some(([key])=>key===marketForceFilter))marketForceFilter='all';
@@ -1847,7 +1848,9 @@ function marketForceAssets(){
   (marketForceFilter==='crypto'&&a.group==='crypto')||
   (marketForceFilter==='stocks'&&a.group==='bigtech')||
   (marketForceFilter==='forex'&&a.group==='forex')||
-  (marketForceFilter==='indices'&&a.group==='markets'&&a.symbol?.startsWith('^'))
+  (marketForceFilter==='indices'&&a.group==='markets'&&a.symbol?.startsWith('^'))||
+  (marketForceFilter==='etfs'&&a.group==='markets'&&!a.symbol?.startsWith('^'))||
+  (marketForceFilter==='commodities'&&a.group==='commodities')
  );
 }
 /* A transparent per-instrument momentum score, computed only from the selected
@@ -1892,7 +1895,7 @@ function marketForceLeadId(){
  const candidates=marketForceAssets();
  const saved=marketForceSelectedAssets[marketForceFilter];
  if(candidates.some(a=>a.id===saved))return saved;
- const defaults={all:'btc',crypto:'btc',stocks:'nvda',forex:'eurusd',indices:'sp500'};
+ const defaults={all:'btc',crypto:'btc',stocks:'nvda',forex:'eurusd',indices:'sp500',etfs:'qqq',commodities:'gold'};
  return candidates.some(a=>a.id===defaults[marketForceFilter])?defaults[marketForceFilter]:candidates[0]?.id||'btc';
 }
 function marketForceMatchedAssets(){
@@ -1929,13 +1932,35 @@ function marketForceStepAsset(step){
  if(!candidates.length)return;
  marketForceChooseAsset(candidates[(i+step+candidates.length)%candidates.length].id);
 }
+/* Searchable market logo gallery reuses crypto/stock/index/FX artwork and fallbacks. */
+function marketForceLogoTiles(){
+ const selected=marketForceLeadId(),items=marketForceMatchedAssets();
+ if(!items.length)return '<p class="market-force-logo-empty">Nessun mercato trovato.</p>';
+ return items.map(a=>'<button type="button" class="market-force-logo-tile'+
+  (a.id===selected?' active':'')+'" data-force-logo-asset="'+esc(a.id)+
+  '" title="'+esc(a.name+' · '+a.symbol)+'" aria-label="'+esc(a.name+' · '+a.symbol)+
+  '" aria-pressed="'+String(a.id===selected)+'">'+
+  '<span class="market-force-logo-art">'+assetLogo(a)+'</span>'+
+  '<span class="market-force-logo-name">'+esc(a.short||a.symbol||a.name)+'</span></button>').join('');
+}
+function marketForceLogoGallery(){
+ return '<section class="market-force-logo-gallery" aria-label="Loghi dei mercati">'+
+  '<div class="market-force-logo-heading"><strong>Loghi di tutti i mercati</strong>'+
+  '<small data-force-asset-count>'+marketForceMatchedAssets().length+' / '+
+  marketForceAssets().length+' mercati</small>'+
+  '<input id="marketForceAssetSearch" type="search" aria-label="Cerca un mercato" autocomplete="off" placeholder="Cerca un mercato…" value="'+esc(marketForceAssetSearch)+'"></div>'+
+  '<div id="marketForceLogoGallery" class="market-force-logo-grid" role="group">'+
+  marketForceLogoTiles()+'</div></section>';
+}
 function marketForceSearchOptions(){
  const panel=document.querySelector('#pageContainer .market-force-section');
  if(!panel)return;
  const select=panel.querySelector('#marketForceAssetSelect');
  if(select)select.innerHTML=marketForceAssetOptions();
+ const grid=panel.querySelector('#marketForceLogoGallery');
+ if(grid)grid.innerHTML=marketForceLogoTiles();
  const count=panel.querySelector('[data-force-asset-count]');
- if(count)count.textContent=marketForceMatchedAssets().length+' / '+marketForceAssets().length+' strumenti';
+ if(count)count.textContent=marketForceMatchedAssets().length+' / '+marketForceAssets().length+' mercati';
 }
 function marketForceLeadLabel(a,q){
  if(a.group==='crypto'&&typeof a.symbol==='string')
@@ -2227,7 +2252,8 @@ function marketForceBullishMessage(m){
 
 const BULLISH_CATEGORY_CHOICES=[
  ['all','Tutti i mercati','◈'],['crypto','Criptovaluta','₿'],
- ['stocks','Azione','↗'],['indices','Indice','▥'],['forex','Coppia Forex','⇄']
+ ['stocks','Azione','↗'],['indices','Indice','▥'],['forex','Coppia Forex','⇄'],
+ ['etfs','ETF','◫'],['commodities','Materie prime','◆']
 ];
 let bullishCategoryMenuOpen=false;
 function bullishRingSlice(index,total=56){
@@ -2291,12 +2317,13 @@ function marketForceBullishPanel(){
  '<span class="bullish-category-check" aria-hidden="true">'+(key===marketForceFilter?'✓':'')+'</span></button>').join('')+
  '</div></div></div>'+
  '<div class="bullish-detail-field"><label for="bullishAsset">'+searchIcon+'<span>Seleziona asset</span></label>'+
- '<div class="bullish-detail-asset-select"><span aria-hidden="true">'+(asset?.icon||bullishSymbolIcon(asset?.group))+'</span>'+
+ '<div class="bullish-detail-asset-select"><span class="market-force-selected-logo" aria-hidden="true">'+(asset?assetLogo(asset):'◈')+'</span>'+
  '<select id="bullishAsset" aria-label="Seleziona un mercato">'+marketForceAssetOptions()+'</select>'+chev+'</div></div>'+
  '<div class="bullish-detail-field"><span class="bullish-detail-label">'+calendarIcon+'<span>Periodo</span></span>'+
  '<div class="bullish-detail-periods" role="group" aria-label="Periodo di analisi">'+
  MARKET_FORCE_BULLISH_PERIODS.map(p=>'<button type="button" data-bullish-period="'+p+'" aria-pressed="'+String(p===marketForceBullishPeriod)+'"'+(p===marketForceBullishPeriod?' class="active"':'')+'>'+p+'</button>').join('')+
  '</div></div></div>'+
+ marketForceLogoGallery()+
  '<div class="bullish-detail-body"><div class="bullish-detail-dial-wrap">'+
  '<div class="bullish-detail-gauge" aria-label="Forza prevalente del prezzo">'+
  '<svg class="bullish-detail-dial-svg" viewBox="0 0 340 340" aria-hidden="true">'+
@@ -7168,6 +7195,7 @@ function setupEvents(){
     return;
    }
    if(btn.dataset.bullishCategory){setMarketForceFilter(btn.dataset.bullishCategory);return;}
+   if(btn.dataset.forceLogoAsset){marketForceChooseAsset(btn.dataset.forceLogoAsset);return;}
    if(btn.dataset.bullishPeriod){marketForceSetBullishPeriod(btn.dataset.bullishPeriod);return;}
    if(btn.dataset.forceFilter){setMarketForceFilter(btn.dataset.forceFilter);return;}
    if(btn.dataset.forceStep){marketForceStepAsset(Number(btn.dataset.forceStep));return;}
