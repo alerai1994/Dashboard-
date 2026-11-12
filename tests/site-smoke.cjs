@@ -347,3 +347,9 @@ console.log('PASS Workspace 16 modules, edit/resize/reorder/hide/reset and saved
 assert(source.includes('class="market-force-realistic-bull"'),'Realistic bullish bull must be rendered inside dial');
 assert(source.includes('data:image/webp;base64,UklGR'),'Realistic bull image should be bundled without external fetch');
 assert(css.includes('.market-force-realistic-bull'),'Realistic bull responsive sizing is missing');
+assert(css.includes('Global: fully opaque dashboard containers'),'Global solid card surface override missing');
+assert(css.includes('background:var(--panel)!important'),'Card backgrounds must use opaque theme surfaces');
+assert(css.includes('body.page-global :is(.map-callout,.region-insight)'),'Map callouts must be opaque');
+assert(css.includes('body.page-global .world-map-panel'),'Map backdrop should remain visible');
+assert(css.includes('body .sidebar{'),'Sidebar should have solid theme background');
+assert(html.includes('style.css?v=20261112-opaque-cards-v240'),'Updated styles must bypass browser cache');
