@@ -2401,6 +2401,9 @@ function marketForceSection(){
  return marketForceBullishPanel();
 }
 function patchMarketForce(){
+ // Clean up remnants of the legacy all-market logo gallery.
+ document.querySelectorAll('#pageContainer .market-force-logo-gallery, #pageContainer #marketForceLogoGallery')
+  .forEach(node=>node.remove());
  patchMarketForceBullish();
 }
 function setMarketForceFilter(key){
