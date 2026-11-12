@@ -2318,7 +2318,7 @@ function marketForceBullishPanel(){
  '<span class="bullish-category-icon" aria-hidden="true">'+icon+'</span><span>'+name+'</span>'+
  '<span class="bullish-category-check" aria-hidden="true">'+(key===marketForceFilter?'✓':'')+'</span></button>').join('')+
  '</div></div></div>'+
- '<div class="bullish-detail-field bullish-detail-instrument-field"><span class="bullish-detail-instrument-spacer" aria-hidden="true"></span>'+
+ '<div class="bullish-detail-field bullish-detail-instrument-field">'+
  '<div class="bullish-detail-asset-select"><span class="market-force-selected-logo" aria-hidden="true">'+(asset?assetLogo(asset):'◈')+'</span>'+
  '<select id="bullishAsset" aria-label="Seleziona un mercato">'+marketForceAssetOptions()+'</select>'+chev+'</div></div>'+
  '<div class="bullish-detail-field"><span class="bullish-detail-label">'+calendarIcon+'<span>Periodo</span></span>'+
