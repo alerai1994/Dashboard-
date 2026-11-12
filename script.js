@@ -2037,76 +2037,168 @@ function marketForceBullishObserved(id,period){
   num(p.ts)&&p.ts<=now+60000&&p.ts>=now-milliseconds)
   .map(p=>({t:p.ts,v:p.price}));
 }
+
+/* True OHLC for Force Market. Never reinterpret close-only history as candles. */
+const FORCE_OHLC_PERIODS={
+ '1H':{ms:3600000,interval:'1m',lbank:'minute1',step:60000,group:60000,yahoo:['1m','5m']},
+ '4H':{ms:14400000,interval:'5m',lbank:'minute5',step:300000,group:300000,yahoo:['5m','1m']},
+ '1D':{ms:86400000,interval:'15m',lbank:'minute15',step:900000,group:1800000,yahoo:['5m','60m']},
+ '1W':{ms:604800000,interval:'1h',lbank:'hour1',step:3600000,group:14400000,yahoo:['60m','1d']}
+};
+const marketForceOHLC=new Map(),marketForceOHLCLoading=new Map();
+function forceOHLCGet(id,period){return marketForceOHLC.get(id+':'+period)||null}
+function forceOHLCValid(b){
+ return b&&[b.t,b.o,b.h,b.l,b.c].every(Number.isFinite)&&b.t>946684800&&
+ b.o>0&&b.h>=Math.max(b.o,b.c)&&b.l>0&&b.l<=Math.min(b.o,b.c);
+}
+function forceOHLCSelect(rows,cfg){
+ const valid=rows.filter(forceOHLCValid).sort((a,b)=>a.t-b.t);
+ if(valid.length<2)return [];
+ const newest=valid.at(-1).t*1000,now=Date.now();
+ if(newest>now+300000||now-newest>8*86400000)return [];
+ return valid.filter(b=>b.t*1000>=newest-cfg.ms-cfg.step&&b.t*1000<=newest+cfg.step);
+}
+function forceOHLCAggregate(rows,ms){
+ const out=[];
+ for(const b of rows){
+  const bucket=Math.floor(b.t*1000/ms),last=out.at(-1);
+  if(last&&last.bucket===bucket){
+   last.h=Math.max(last.h,b.h);last.l=Math.min(last.l,b.l);last.c=b.c;
+  }else out.push({...b,bucket});
+ }
+ return out.map(({bucket,...bar})=>bar);
+}
+async function marketForceLoadOHLC(id,period){
+ const a=ASSET_BY_ID[id],cfg=FORCE_OHLC_PERIODS[period],key=id+':'+period;
+ if(!a||!cfg||marketForceOHLCLoading.has(key))return;
+ const old=marketForceOHLC.get(key),ttl=a.group==='crypto'?60000:120000;
+ if(old&&Date.now()-old.at<(old.bars.length?ttl:90000))return;
+ const job=(async()=>{
+  let bars=[],source='',interval='',error='Nessun dato OHLC verificato per il periodo';
+  const now=Date.now();
+  if(a.group==='crypto'){
+   for(const endpoint of chartMarketUrls(a,cfg,now-cfg.ms,now)){
+    const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),7000);
+    try{
+     const response=await fetch(endpoint.url,{cache:'no-store',signal:controller.signal});
+     if(!response.ok)throw Error('HTTP '+response.status);
+     const json=await response.json();
+     if(endpoint.venue==='LBank'&&json?.error_code!==undefined&&Number(json.error_code)!==0)
+      throw Error('LBank');
+     const raw=endpoint.venue==='Binance'?json:Array.isArray(json)?json:json?.data;
+     const parsed=chartNormalizeCandles(raw,endpoint.venue,now-cfg.ms,Date.now(),cfg.step);
+     bars=forceOHLCSelect(parsed,cfg);
+     if(bars.length<2)throw Error('OHLC insufficienti');
+     source=endpoint.source;interval=cfg.interval;break;
+    }catch(_err){bars=[]}
+    finally{clearTimeout(timeout)}
+   }
+  }else{
+   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),9000);
+   try{
+    const response=await fetch('./chart-history/'+encodeURIComponent(id)+'.json?v='+Math.floor(now/120000),
+     {cache:'no-store',signal:controller.signal});
+    if(!response.ok)throw Error('HTTP '+response.status);
+    const json=await response.json();
+    if(json?.id!==id||json.symbol!==a.symbol||!json.sets)throw Error('Wrong instrument');
+    for(const key of cfg.yahoo){
+     const raw=json.sets[key]?.candles;
+     if(!Array.isArray(raw))continue;
+     const list=forceOHLCSelect(chartReadAllCandles(raw),cfg);
+     if(list.length>=2){bars=list;source='Yahoo Finance';interval=key;break}
+    }
+   }catch(_err){/* No false candles in the event of a source outage. */}
+   finally{clearTimeout(timeout)}
+   if(bars.length<2&&period==='1W'){
+    const daily=forceOHLCSelect(chartDailyCandles(a),cfg);
+    if(daily.length>=2){
+     bars=daily;source=quote(id)?.candleSource||'OHLC giornaliero';interval='1d';
+    }
+   }
+  }
+  const actual=bars.length>=2?forceOHLCAggregate(bars,cfg.group):[];
+  marketForceOHLC.set(key,{bars:actual,source,interval,error:actual.length?'':error,at:Date.now()});
+  if(marketForceOHLC.size>28)marketForceOHLC.delete(marketForceOHLC.keys().next().value);
+ })().catch(()=>{
+  marketForceOHLC.set(key,{bars:[],error:'Storico OHLC non raggiungibile',source:'',interval:'',at:Date.now()});
+ }).finally(()=>{
+  marketForceOHLCLoading.delete(key);
+  if(!document.hidden&&marketForceBullishPeriod===period&&marketForceLeadId()===id&&
+   document.querySelector('#pageContainer [data-force-bullish-panel]'))
+   requestAnimationFrame(()=>patchMarketForceBullish());
+ });
+ marketForceOHLCLoading.set(key,job);
+ return job;
+}
 function marketForceBullishChartSignature(m){
- const q=quote(m.id);
- return [m.id,marketForceBullishPeriod,chartObservedVersions.get(m.id)||0,
-  marketForceLeadSeriesKey(m.id),q?.time||'',q?.candleSource||''].join(':');
+ return [m.id,marketForceBullishPeriod,forceOHLCGet(m.id,marketForceBullishPeriod)?.at||0].join(':');
 }
 function marketForceBullishMetrics(){
- const id=marketForceLeadId(),q=quote(id);
+ const id=marketForceLeadId(),q=quote(id),period=marketForceBullishPeriod;
+ const bars=forceOHLCGet(id,period)?.bars||[];
  let delta=null,series=[];
- if(marketForceBullishPeriod==='1D'){
+ if(bars.length>=2){
+  delta=(bars.at(-1).c/bars[0].o-1)*100;
+  series=bars.map(x=>({t:x.t*1000,v:x.c}));
+ }else if(period==='1D'){
   if(q&&num(q.value)&&q.value>0&&num(q.change))delta=q.change;
-  // A non-timestamped history is visualized only as generic available history,
-  // not presented as a verified 1D candle series.
   series=marketForceDatedCandles(id,'1D');
  }else{
-  series=marketForceDatedCandles(id,marketForceBullishPeriod);
+  series=marketForceDatedCandles(id,period);
   if(series.length<2){
-   const observed=marketForceBullishObserved(id,marketForceBullishPeriod);
-   const span={'1H':3600000,'4H':14400000,'1W':604800000}[marketForceBullishPeriod]||86400000;
-   if(observed.length>=2&&observed.at(-1).t-observed[0].t>=span*.65)series=observed;
+   const observed=marketForceBullishObserved(id,period);
+   if(observed.length>=2&&observed.at(-1).t-observed[0].t>=FORCE_OHLC_PERIODS[period].ms*.65)
+    series=observed;
   }
   if(series.length>=2)delta=(series.at(-1).v/series[0].v-1)*100;
  }
  const valid=delta!==null&&num(delta);
  const intensity=valid?Math.round(100*Math.abs(delta)/(Math.abs(delta)+2)):0;
- return {
-  id,valid,delta,series,
-  up:valid&&delta>0?intensity:0,
-  down:valid&&delta<0?intensity:0,
-  flat:valid?100-intensity:0
- };
+ return {id,valid,delta,series,up:valid&&delta>0?intensity:0,
+  down:valid&&delta<0?intensity:0,flat:valid?100-intensity:0};
 }
 function marketForceBullishPlot(m){
- const id=m.id,q=quote(id),period=marketForceBullishPeriod;
- let values=[],source='';
- const observed=marketForceBullishObserved(id,period);
- if(m.series?.length>=2){
-  values=m.series.map(row=>row.v);source='Candele / prezzi verificati · '+period;
- }else if(observed.length>=2){
-  values=observed.slice(-100).map(row=>row.v);
-  source='Tick reali osservati · storico parziale';
- }else if(period==='1D'){
-  if(Array.isArray(q?.candles)&&q.candles.length>=2){
-   values=q.candles.slice(-100).map(row=>Number(row?.c));
-   source='Storico disponibile · intervallo da verificare';
-  }else if(Array.isArray(q?.history)&&q.history.length>=2){
-   values=q.history.slice(-100).map(row=>Number(row));
-   source='Storico disponibile · intervallo da verificare';
-  }
- }
- values=values.filter(x=>num(x)&&x>0);
- if(values.length<2)return '<div class="bullish-detail-unavailable">Storico '+period+' non disponibile</div>';
- const w=460,h=130,margin=10,low=Math.min(...values),high=Math.max(...values);
- const spread=Math.max(high-low,Math.abs(high)*.0001,1e-8);
- const points=values.map((v,i)=>({
-  x:margin+i*(w-margin*2)/(values.length-1),
-  y:h-margin-(v-low)/spread*(h-margin*2)
- }));
- const line=points.map((p,i)=>(i?'L':'M')+p.x.toFixed(2)+' '+p.y.toFixed(2)).join(' ');
- const last=points[points.length-1];
- const area=line+' L'+last.x.toFixed(2)+' '+h+' L'+margin+' '+h+' Z';
- const delta=values.at(-1)-values[0],color=delta<0?'var(--red)':'var(--green)';
- return '<div class="bullish-live-chart-content">'+
- '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" role="img" aria-label="Andamento dei prezzi realmente rilevati per '+esc(ASSET_BY_ID[id]?.name||id)+'">'+
- '<defs><linearGradient id="bullishPriceFill" x1="0" y1="0" x2="0" y2="1">'+
- '<stop offset="0" stop-color="'+color+'" stop-opacity=".35"/>'+
- '<stop offset="1" stop-color="'+color+'" stop-opacity="0"/></linearGradient></defs>'+
- '<path fill="url(#bullishPriceFill)" d="'+area+'"/>'+
- '<path d="'+line+'" fill="none" stroke="'+color+'" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>'+
- '<circle cx="'+last.x.toFixed(2)+'" cy="'+last.y.toFixed(2)+'" r="3.5" fill="'+color+'"/></svg>'+
- '<span class="bullish-detail-chart-note">'+esc(source)+'</span></div>';
+ const period=marketForceBullishPeriod,data=forceOHLCGet(m.id,period);
+ if(!data)return '<div class="bullish-detail-unavailable" role="status">Caricamento candele OHLC '+period+'…</div>';
+ const bars=data.bars;
+ if(bars.length<2)return '<div class="bullish-detail-unavailable" role="status">'+
+  esc(data.error||'Storico OHLC non disponibile')+' · '+period+'</div>';
+ const w=490,h=190,L=10,R=77,T=8,B=31,pw=w-L-R,ph=h-T-B;
+ const low=Math.min(...bars.map(b=>b.l)),high=Math.max(...bars.map(b=>b.h));
+ const pad=Math.max((high-low)*.1,high*.0004,1e-9),min=Math.max(0,low-pad),max=high+pad;
+ const y=v=>T+(max-v)/(max-min)*ph;
+ const width=pw/bars.length,body=Math.max(1.5,Math.min(10,width*.65));
+ const fmt=n=>new Intl.NumberFormat('it-IT',{maximumFractionDigits:n>=100?2:n>=1?4:8}).format(n);
+ const levels=[0,.5,1].map(v=>{
+  const yy=T+v*ph;
+  return '<line class="force-ohlc-grid" x1="'+L+'" y1="'+yy+'" x2="'+(w-R)+'" y2="'+yy+'"/>'+
+  '<text class="force-ohlc-axis" x="'+(w-R+7)+'" y="'+(yy+4)+'">'+esc(fmt(max-(max-min)*v))+'</text>';
+ }).join('');
+ const candles=bars.map((b,i)=>{
+  const x=L+(i+.5)*width,up=b.c>=b.o,by=y(Math.max(b.o,b.c));
+  const date=new Intl.DateTimeFormat('it-IT',{dateStyle:'short',timeStyle:'short',timeZone:'Europe/Rome'})
+   .format(new Date(b.t*1000));
+  return '<g class="force-ohlc-candle '+(up?'up':'down')+'"><title>'+
+  esc(date+' | O '+fmt(b.o)+' H '+fmt(b.h)+' L '+fmt(b.l)+' C '+fmt(b.c))+'</title>'+
+  '<line x1="'+x.toFixed(2)+'" y1="'+y(b.h).toFixed(2)+
+  '" x2="'+x.toFixed(2)+'" y2="'+y(b.l).toFixed(2)+'"/>'+
+  '<rect x="'+(x-body/2).toFixed(2)+'" y="'+by.toFixed(2)+'" width="'+body.toFixed(2)+
+  '" height="'+Math.max(1.2,y(Math.min(b.o,b.c))-by).toFixed(2)+'" rx=".4"/></g>';
+ }).join('');
+ const time=(b)=>new Intl.DateTimeFormat('it-IT',period==='1W'?
+  {day:'2-digit',month:'2-digit',timeZone:'Europe/Rome'}:
+  {hour:'2-digit',minute:'2-digit',timeZone:'Europe/Rome'}).format(new Date(b.t*1000));
+ const labels=[bars[0],bars[Math.floor(bars.length/2)],bars.at(-1)].map((b,i)=>
+  '<text class="force-ohlc-axis" x="'+(L+i*pw/2)+'" y="'+(h-5)+'" text-anchor="'+
+  (i===0?'start':i===2?'end':'middle')+'">'+esc(time(b))+'</text>').join('');
+ const last=new Intl.DateTimeFormat('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Rome'}).format(new Date(bars.at(-1).t*1000));
+ return '<div class="bullish-live-chart-content force-ohlc-chart">'+
+  '<div class="force-ohlc-legend"><span><i class="up"></i>Rialzo</span>'+
+  '<span><i class="down"></i>Ribasso</span><b>OHLC · '+period+'</b></div>'+
+  '<svg class="force-ohlc-svg" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" role="img" aria-label="Candele reali OHLC '+
+  esc(ASSET_BY_ID[m.id]?.name||m.id)+' · '+period+'">'+levels+candles+labels+'</svg>'+
+  '<span class="bullish-detail-chart-note">'+esc(data.source)+' · '+esc(data.interval)+
+  ' · ultima '+esc(last)+' · '+bars.length+' candele reali</span></div>';
 }
 /* The ring signals the prevailing real price-movement component; its orbit is decorative. */
 const MARKET_FORCE_BULL_ICON='<svg viewBox="0 0 128 74" aria-hidden="true" focusable="false"><path fill="currentColor" d="m7 42 10-11 15-4 11 5 7-9 13 1 12-9 12 4 10-9 5 6-1 11-6 6 2 12-9 8-6-1-5 14-7-1 1-18-9-7-8 3-7 23-7-1 1-24-12-2-6 18-7-1-1-22-10-5-5 9-7-3Z"/><path fill="currentColor" d="m93 19 5-10 12-2-8 7 13 2-10 6-9-3ZM16 31l-12-2 8-4 10 2Z"/></svg>';
@@ -2289,6 +2381,7 @@ function patchMarketForceBullish(){
  }
  const source=panel.querySelector('[data-bullish-source]');
  if(source)source.textContent=instrumentQuoteStatus(m.id);
+ marketForceLoadOHLC(m.id,marketForceBullishPeriod);
  const chart=panel.querySelector('[data-bullish-chart]');
  if(chart){
   const stamp=marketForceBullishChartSignature(m);
