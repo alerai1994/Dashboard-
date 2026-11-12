@@ -4291,3 +4291,140 @@ body .sidebar{
  backdrop-filter:none!important;
  -webkit-backdrop-filter:none!important;
 }
+
+
+/* Sabbia accessibility correction: Force Market previously inherited
+   night-mode pale blues on warm ivory surfaces.
+   Keep the circular dial's DARK interior and white gauge numbers untouched. */
+body.theme-sand #pageContainer .market-force-section{
+ --sand-ink:#2c251f;
+ --sand-copy:#594838;
+ --sand-rise:#087355;
+ --sand-neutral:#305a7c;
+ --sand-fall:#a82f46;
+ color:var(--sand-ink);
+}
+body.theme-sand #pageContainer .market-force-section :is(
+ .bullish-detail-title-group h2,
+ .bullish-detail-field label,
+ .bullish-detail-label,
+ .bullish-detail-category-trigger,
+ .bullish-detail-category-trigger .bullish-category-name,
+ .bullish-detail-asset-select select,
+ .bullish-detail-periods button:not(.active),
+ .bullish-live-quote>strong,
+ .bullish-detail-metric>div span
+){
+ color:var(--sand-ink)!important;
+}
+body.theme-sand #pageContainer .market-force-section :is(
+ .bullish-detail-title-group p,
+ .bullish-detail-assessment p,
+ .bullish-detail-source,
+ .bullish-detail-footnote,
+ .bullish-detail-unavailable,
+ .bullish-detail-chart-note,
+ .force-ohlc-legend,
+ .force-ohlc-legend b,
+ .bullish-live-quote>span,
+ .bullish-detail-feed:not([data-feed-kind="live"])
+){
+ color:var(--sand-copy)!important;
+}
+body.theme-sand #pageContainer .market-force-section :is(
+ .bullish-detail-field label svg,
+ .bullish-detail-label svg,
+ .bullish-detail-category-trigger>svg,
+ .bullish-detail-asset-select>svg,
+ .bullish-category-icon
+){
+ color:#655044!important;
+}
+body.theme-sand #pageContainer .market-force-section .bullish-detail-category-list button:not(.selected){
+ color:var(--sand-ink)!important;
+}
+body.theme-sand #pageContainer .market-force-section .bullish-detail-category-list button:not(.selected):hover{
+ background:#e6d5bf!important;
+}
+body.theme-sand #pageContainer .market-force-section .bullish-detail-category-list button.selected{
+ color:#f3fff9!important;
+ background:#13614c!important;
+ border-color:#087355;
+}
+body.theme-sand #pageContainer .market-force-section .bullish-detail-category-list button.selected .bullish-category-icon{
+ color:#f3fff9!important;
+}
+/* Darker semantic accents on light sand, including percentage cards. */
+body.theme-sand #pageContainer .market-force-section .bullish-detail-up{
+ --metric:var(--sand-rise);
+}
+body.theme-sand #pageContainer .market-force-section .bullish-detail-flat{
+ --metric:var(--sand-neutral);
+}
+body.theme-sand #pageContainer .market-force-section .bullish-detail-down{
+ --metric:var(--sand-fall);
+}
+body.theme-sand #pageContainer .market-force-section .bullish-detail-assessment strong{
+ color:var(--sand-copy)!important;
+}
+body.theme-sand #pageContainer .market-force-section[data-force-tone="up"] .bullish-detail-assessment strong,
+body.theme-sand #pageContainer .market-force-section[data-force-tone="up"] .bullish-detail-state{
+ color:var(--sand-rise)!important;
+}
+body.theme-sand #pageContainer .market-force-section[data-force-tone="flat"] .bullish-detail-assessment strong,
+body.theme-sand #pageContainer .market-force-section[data-force-tone="flat"] .bullish-detail-state{
+ color:var(--sand-neutral)!important;
+}
+body.theme-sand #pageContainer .market-force-section[data-force-tone="down"] .bullish-detail-assessment strong,
+body.theme-sand #pageContainer .market-force-section[data-force-tone="down"] .bullish-detail-state{
+ color:var(--sand-fall)!important;
+}
+body.theme-sand #pageContainer .market-force-section .bullish-detail-feed[data-feed-kind="live"]{
+ color:var(--sand-rise)!important;
+ border-color:var(--sand-rise)!important;
+}
+body.theme-sand #pageContainer .market-force-section .bullish-live-quote>em[data-trend="up"]{
+ color:var(--sand-rise)!important;
+}
+body.theme-sand #pageContainer .market-force-section .bullish-live-quote>em[data-trend="down"]{
+ color:var(--sand-fall)!important;
+}
+body.theme-sand #pageContainer .market-force-section .bullish-live-quote>em[data-trend="flat"],
+body.theme-sand #pageContainer .market-force-section .bullish-live-quote>em[data-trend="unknown"]{
+ color:var(--sand-copy)!important;
+}
+body.theme-sand #pageContainer .market-force-section .force-ohlc-axis{
+ fill:#665746!important;
+}
+body.theme-sand #pageContainer .market-force-section .force-ohlc-grid{
+ stroke:#887865!important;
+ opacity:.7;
+}
+body.theme-sand #pageContainer .market-force-section .force-ohlc-candle.up line{
+ stroke:var(--sand-rise)!important;
+}
+body.theme-sand #pageContainer .market-force-section .force-ohlc-candle.up rect,
+body.theme-sand #pageContainer .market-force-section .force-ohlc-legend i.up{
+ fill:var(--sand-rise)!important;
+ background:var(--sand-rise)!important;
+}
+body.theme-sand #pageContainer .market-force-section .force-ohlc-candle.down line{
+ stroke:var(--sand-fall)!important;
+}
+body.theme-sand #pageContainer .market-force-section .force-ohlc-candle.down rect,
+body.theme-sand #pageContainer .market-force-section .force-ohlc-legend i.down{
+ fill:var(--sand-fall)!important;
+ background:var(--sand-fall)!important;
+}
+/* Preserves highly legible white lettering on the ACTIVE dark green period. */
+body.theme-sand #pageContainer .market-force-section .bullish-detail-periods button.active{
+ color:#fff!important;
+}
+/* The gauge stays navy; its center number and labels must remain white. */
+body.theme-sand #pageContainer .market-force-section .bullish-detail-gauge-inner strong{
+ color:#f7fcff!important;
+}
+body.theme-sand #pageContainer .market-force-section .bullish-detail-gauge-inner small{
+ color:#dbeeff!important;
+}
+
