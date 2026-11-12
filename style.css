@@ -4129,3 +4129,64 @@ body.theme-dark .theme-contrast-version{
   height:47px;
  }
 }
+
+
+/* Global header order: page heading, controls (notification + profile), then
+   the entire crypto capitalization pill strip. The clock stays top-right
+   on mobile as before; other dashboard pages are not affected. */
+body.page-global .topbar{
+ display:grid;
+ grid-template-columns:minmax(0,1fr) auto;
+ grid-template-areas:"heading actions" "caps caps";
+ align-items:start;
+ column-gap:14px;
+ row-gap:8px;
+}
+body.page-global .topbar>.page-heading{
+ grid-area:heading;min-width:0;width:100%;
+}
+body.page-global .topbar>.top-actions{
+ grid-area:actions;
+ display:flex;
+ align-items:center;
+ justify-content:flex-end;
+ gap:10px;
+ min-width:0;
+ width:auto;
+}
+body.page-global .topbar>#globalCryptoCaps{
+ grid-area:caps;
+ width:100%;
+ min-width:0;
+ max-width:100%;
+ margin-top:0;
+}
+body.page-global .topbar>#globalCryptoCaps[hidden]{display:none!important}
+@media(max-width:850px){
+ body.page-global .topbar{
+  grid-template-columns:minmax(0,1fr);
+  grid-template-areas:"heading" "actions" "caps";
+  row-gap:8px;
+ }
+ body.page-global .topbar>.top-actions{
+  width:100%;
+  justify-content:flex-end;
+  padding-top:2px;
+  padding-right:0;
+ }
+ body.page-global .topbar .live-clock{
+  position:absolute;
+  top:0;
+  right:0;
+ }
+}
+@media(max-width:600px){
+ body.page-global .topbar{align-items:stretch;row-gap:6px}
+ body.page-global .topbar>.top-actions{
+  width:100%;
+  min-height:39px;
+  gap:10px;
+  justify-content:flex-end;
+ }
+ body.page-global .topbar>#globalCryptoCaps{margin-top:0}
+}
