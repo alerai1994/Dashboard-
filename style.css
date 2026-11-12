@@ -4061,51 +4061,7 @@ body.theme-dark .theme-contrast-version{
  #pageContainer .bullish-detail-chart-note{font-size:9px;line-height:1.35}
 }
 
-/* Market Force: branded logos for all supported market instruments. */
-#pageContainer .market-force-logo-gallery{
- display:grid;gap:10px;min-width:0;padding:12px;
- background:#091f35;border:1px solid #305b7c;border-radius:14px;
-}
-#pageContainer .market-force-logo-heading{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-#pageContainer .market-force-logo-heading strong{font-size:14px;color:#e1f2ff}
-#pageContainer .market-force-logo-heading small{font-size:10px;color:#a0bfda}
-#pageContainer .market-force-logo-heading input{
- flex:1 1 180px;min-width:130px;background:#071a2d;color:#f1f8ff;
- border-radius:9px;border:1px solid #36698d;padding:9px;font-size:12px;
-}
-#pageContainer .market-force-logo-grid{
- display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));
- gap:7px;max-height:210px;overflow-y:auto;overscroll-behavior:contain;
- scrollbar-width:thin;
-}
-#pageContainer .market-force-logo-tile{
- display:flex;flex-direction:column;align-items:center;justify-content:center;
- gap:5px;min-height:72px;min-width:0;padding:7px 3px;cursor:pointer;
- border:1px solid #325674;border-radius:10px;background:#0d2c44;
- color:#dfeffb;text-align:center;
-}
-#pageContainer .market-force-logo-tile:hover,
-#pageContainer .market-force-logo-tile:focus-visible{outline:1px solid #47d9bf;background:#173e55}
-#pageContainer .market-force-logo-tile.active{
- background:#0c433d;border:1px solid #2ce5b7;box-shadow:inset 0 0 0 1px #27ac8f;
-}
-#pageContainer .market-force-logo-art{
- display:flex;align-items:center;justify-content:center;
- width:32px;height:32px;flex:0 0 32px;
-}
-#pageContainer .market-force-logo-art>.asset-logo{
- width:29px;height:29px;min-width:29px;min-height:29px;
- font-size:12px;
-}
-#pageContainer .market-force-logo-art>.forex-pair-logo{height:30px;width:32px;min-width:32px}
-#pageContainer .market-force-logo-art .forex-pair-part{height:20px;width:20px}
-#pageContainer .market-force-logo-name{
- display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;
- white-space:nowrap;font-size:10px;font-weight:750;
-}
-#pageContainer .market-force-logo-empty{
- grid-column:1/-1;color:#b0c9dd;font-size:12px;padding:7px;
-}
+/* Keep the selected instrument's individual logo inside the asset control. */
 #pageContainer .bullish-detail-asset-select>.market-force-selected-logo{
  display:grid;place-items:center;flex:0 0 29px;width:29px;height:30px;
  min-width:29px;color:inherit;
@@ -4115,13 +4071,6 @@ body.theme-dark .theme-contrast-version{
 }
 #pageContainer .market-force-selected-logo>.forex-pair-logo{height:27px}
 @media(max-width:740px){
- #pageContainer .market-force-logo-gallery{padding:9px 7px}
- #pageContainer .market-force-logo-heading strong{font-size:12px}
- #pageContainer .market-force-logo-grid{
-  grid-template-columns:repeat(auto-fill,minmax(62px,1fr));max-height:170px;gap:5px;
- }
- #pageContainer .market-force-logo-tile{min-height:64px;padding:5px 2px}
- #pageContainer .market-force-logo-name{font-size:9px}
  #pageContainer .bullish-detail-asset-select>.market-force-selected-logo{
   width:24px;min-width:24px;flex-basis:24px;
  }
