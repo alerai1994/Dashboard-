@@ -4081,3 +4081,23 @@ body.theme-dark .theme-contrast-version{
   width:23px;height:23px;min-width:23px;min-height:23px;
  }
 }
+
+/* Force Market toolbar: category and instrument selectors share the same baseline. */
+#pageContainer .bullish-detail-toolbar>.bullish-detail-category-field,
+#pageContainer .bullish-detail-toolbar>.bullish-detail-instrument-field{
+ align-content:start;
+ grid-template-rows:minmax(30px,auto) auto;
+}
+#pageContainer .bullish-detail-toolbar>.bullish-detail-category-field>label,
+#pageContainer .bullish-detail-toolbar>.bullish-detail-instrument-field>label{
+ margin:0;align-self:center;min-width:0;
+}
+#pageContainer .bullish-detail-toolbar>.bullish-detail-instrument-field .bullish-detail-asset-select{
+ align-self:start;
+}
+@media(max-width:740px){
+ #pageContainer .bullish-detail-toolbar>.bullish-detail-category-field,
+ #pageContainer .bullish-detail-toolbar>.bullish-detail-instrument-field{
+  grid-template-rows:minmax(22px,auto) auto;
+ }
+}
