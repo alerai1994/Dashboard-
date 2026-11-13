@@ -4532,7 +4532,7 @@ body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.them
 }
 .vertex-frost-select-popover,
 #searchMenu,
-#pageContainer .market-force-section .bullish-detail-category-list{
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) #pageContainer .market-force-section .bullish-detail-category-list{
  background:
   radial-gradient(ellipse at 18% 12%,color-mix(in srgb,var(--green) 12%,transparent),transparent 61%),
   radial-gradient(ellipse at 79% 78%,color-mix(in srgb,var(--red) 12%,transparent),transparent 65%),
