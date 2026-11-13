@@ -352,7 +352,7 @@ assert(css.includes('background:var(--panel)!important'),'Card backgrounds must 
 assert(css.includes('body.page-global :is(.map-callout,.region-insight)'),'Map callouts must be opaque');
 assert(css.includes('body.page-global .world-map-panel'),'Map backdrop should remain visible');
 assert(css.includes('body .sidebar{'),'Sidebar should have solid theme background');
-assert(html.includes('style.css?v=20261113-market-menu-blur10-v247'),'Updated styles must bypass browser cache');
+assert(html.includes('style.css?v=20261113-market-menu-allthemes-blur-v248'),'Updated styles must bypass browser cache');
 assert(css.includes('Market Force: fully opaque, theme-aware surfaces'),'Opaque Force Market override missing');
 for(const selector of [
  '.market-force-section.bullish-detail-panel',
@@ -385,7 +385,7 @@ for(const selector of [
 }
 assert(css.includes('body.theme-sand #pageContainer .market-force-section .bullish-detail-gauge-inner strong'),
  'Gauge white numbers must remain legible on dark dial');
-assert(html.includes('style.css?v=20261113-market-menu-blur10-v247'),
+assert(html.includes('style.css?v=20261113-market-menu-allthemes-blur-v248'),
  'New Sand contrast stylesheet must bypass cache');
 
 /* Market category overlay must be truly 70% opacity (30% transparent). */
@@ -398,4 +398,15 @@ assert(!dropdownCss.includes('background:rgba('),'Do not apply double transparen
 assert(dropdownCss.includes('background:#e7d8c5!important'),'Sand theme palette must be preserved');
 assert(dropdownCss.includes('body:is(.theme-light,.theme-ice)'),'Light/Ice support missing');
 assert(dropdownCss.includes('button.selected'),'Menu selection must remain highlighted');
-assert(html.includes('style.css?v=20261113-market-menu-blur10-v247'),'Browser must load new stylesheet');
+assert(html.includes('style.css?v=20261113-market-menu-allthemes-blur-v248'),'Browser must load new stylesheet');
+
+/* The same frosted dropdown should be effective in every Vertex theme. */
+const themeGlassCss=css.slice(css.indexOf('Market Force glass dropdown for ALL Vertex themes'));
+for(const theme of ["light","dark","ocean","emerald","violet","sand","ice","sunset","graphite","ruby"]){
+ assert(themeGlassCss.includes('.theme-'+theme),'Missing themed market dropdown: '+theme);
+}
+assert(themeGlassCss.includes('opacity:0.70!important'),'All themes must retain 30% transparency');
+assert(themeGlassCss.includes('background:var(--panel-2)!important'),'Dropdown must use per-theme background');
+assert(themeGlassCss.includes('backdrop-filter:blur(10px) saturate(1.1)!important'),'Missing 10px blur');
+assert(themeGlassCss.includes('-webkit-backdrop-filter:blur(10px) saturate(1.1)!important'),'WebKit blur missing');
+assert(html.includes('style.css?v=20261113-market-menu-allthemes-blur-v248'),'Updated stylesheet cache key is required');
