@@ -1,6 +1,6 @@
 {
   "source": "U.S. Securities and Exchange Commission",
-  "updated_at": "2026-11-13T10:49:43Z",
+  "updated_at": "2026-11-13T18:28:38Z",
   "seed_date": "2026-10-31T12:00:00Z",
   "feeds_updated": [
     "press",
@@ -8,6 +8,34 @@
     "testimony"
   ],
   "items": [
+    {
+      "category": "speeches",
+      "title": "Statement on Proposing Release for Executive Compensation Disclosure Reform",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/atkins-statement-proposing-release-executive-compensation-disclosure-reform-111326",
+      "date": "2026-11-13T17:04:02Z",
+      "summary": "SEC Chairman Paul S. Atkins"
+    },
+    {
+      "category": "speeches",
+      "title": "Statement on Proposing Release for Executive Compensation Disclosure Reform",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/uyeda-statement-executive-compensation-111326",
+      "date": "2026-11-13T16:58:40Z",
+      "summary": "Commissioner Mark T. Uyeda"
+    },
+    {
+      "category": "press",
+      "title": "SEC Proposes Executive and Director Compensation Disclosure Reforms",
+      "url": "https://www.sec.gov/newsroom/press-releases/2026-114-sec-proposes-executive-director-compensation-disclosure-reforms",
+      "date": "2026-11-13T16:57:00Z",
+      "summary": "The Securities and Exchange Commission today proposed rule amendments to make its executive and director compensation disclosure requirements more principles-based and materiality-driven, providing investors with clearer, more con"
+    },
+    {
+      "category": "speeches",
+      "title": "Mo’ Data, Mo’ Problems",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/selway-remarks-baruch-college-conference-111326",
+      "date": "2026-11-13T14:00:00Z",
+      "summary": "Jamie Selway, Director, Division of Trading and Markets"
+    },
     {
       "category": "speeches",
       "title": "Remarks at the 2026 Corporate Financial Reporting Insights (CFRI) Conference",
