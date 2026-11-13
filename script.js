@@ -1903,8 +1903,7 @@ function marketForceMatchedAssets(){
  return !term?candidates:candidates.filter(a=>(a.name+' '+a.short+' '+a.symbol+' '+(a.country||'')).toLocaleLowerCase('it-IT').includes(term));
 }
 function marketForceSelectLabel(asset){
- const symbol=asset.group==='crypto'?asset.symbol.replace(/-(?:USD|USDT)$/i,''):asset.symbol;
- return asset.name+' · '+symbol;
+ return asset.name;
 }
 function marketForceAssetOptions(){
  const id=marketForceLeadId(),selected=ASSET_BY_ID[id],found=marketForceMatchedAssets();
