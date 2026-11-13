@@ -10,13 +10,17 @@ const escapeHtml=value=>String(value==null?'':value).replace(/[&<>"']/g,c=>({'&'
 let id='btc';
 try{const saved=JSON.parse(localStorage.getItem(store));if(typeof saved==='string')id=saved;}catch(_e){}
 function active(){return byId(id)||byId('btc')||assets()[0];}
+function dropdownLabel(a){
+ const symbol=a.group==='crypto'?a.symbol.replace(/-(?:USD|USDT)$/i,''):a.symbol;
+ return a.name+' · '+symbol;
+}
 function options(){
  const selected=active();
  let html='';
  for(const [key,label] of groups){
   const group=assets().filter(a=>a.group===key);
   if(group.length)html+='<optgroup label="'+label+'">'+group.map(a=>
-   '<option value="'+escapeHtml(a.id)+'"'+(a.id===selected?.id?' selected':'')+'>'+escapeHtml(a.name+' · '+a.symbol)+'</option>').join('')+'</optgroup>';
+   '<option value="'+escapeHtml(a.id)+'"'+(a.id===selected?.id?' selected':'')+'>'+escapeHtml(dropdownLabel(a))+'</option>').join('')+'</optgroup>';
  }
  return html;
 }
