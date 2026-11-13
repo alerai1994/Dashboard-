@@ -4489,3 +4489,24 @@ body:is(.theme-sand,.theme-light,.theme-ice) #pageContainer .market-force-sectio
  background:#0e785c!important;
  color:#fff!important;
 }
+
+
+/* Market Force glass dropdown for ALL Vertex themes (including Light and Night).
+   Final high-specificity override defeats earlier opaque-card rules and uses
+   the active theme's own panel color. 30% transparency + 10px backdrop blur. */
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) #pageContainer .market-force-section .bullish-detail-category-list{
+ opacity:0.70!important;
+ background:var(--panel-2)!important;
+ background-color:var(--panel-2)!important;
+ background-image:none!important;
+ backdrop-filter:blur(10px) saturate(1.1)!important;
+ -webkit-backdrop-filter:blur(10px) saturate(1.1)!important;
+ border-color:var(--line)!important;
+}
+/* Each theme supplies a contrasting text color; do not fade these separately. */
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby)
+#pageContainer .market-force-section .bullish-detail-category-list button:not(.selected),
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby)
+#pageContainer .market-force-section .bullish-detail-category-list button:not(.selected) .bullish-category-icon{
+ color:var(--text)!important;
+}
