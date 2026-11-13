@@ -1902,16 +1902,20 @@ function marketForceMatchedAssets(){
  const candidates=marketForceAssets();
  return !term?candidates:candidates.filter(a=>(a.name+' '+a.short+' '+a.symbol+' '+(a.country||'')).toLocaleLowerCase('it-IT').includes(term));
 }
+function marketForceSelectLabel(asset){
+ const symbol=asset.group==='crypto'?asset.symbol.replace(/-(?:USD|USDT)$/i,''):asset.symbol;
+ return asset.name+' · '+symbol;
+}
 function marketForceAssetOptions(){
  const id=marketForceLeadId(),selected=ASSET_BY_ID[id],found=marketForceMatchedAssets();
  const groups=[...new Set(found.map(a=>a.group))];
  let html='';
  if(selected&&!found.some(a=>a.id===id))
-  html+='<optgroup label="Selezionato"><option value="'+esc(id)+'" selected>'+esc(selected.name+' · '+selected.symbol)+'</option></optgroup>';
+  html+='<optgroup label="Selezionato"><option value="'+esc(id)+'" selected>'+esc(marketForceSelectLabel(selected))+'</option></optgroup>';
  for(const group of groups){
   html+='<optgroup label="'+esc(MARKET_FORCE_GROUPS[group]||group)+'">'+
    found.filter(a=>a.group===group).map(a=>
-    '<option value="'+esc(a.id)+'"'+(a.id===id?' selected':'')+'>'+esc(a.name+' · '+a.symbol)+'</option>'
+    '<option value="'+esc(a.id)+'"'+(a.id===id?' selected':'')+'>'+esc(marketForceSelectLabel(a))+'</option>'
    ).join('')+'</optgroup>';
  }
  return html;
