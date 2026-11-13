@@ -4626,3 +4626,69 @@ body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.them
 }
 /* All ten themes including Sand, Light and Night inherit their own panel,
    green, red, border and text variables; keep system selectors as fallback. */
+
+
+/* Global page — reference-inspired frosted glass for its market cards and panels.
+   70% surface tint + 24px blur; don't dim text, sparkline graphics, or photographs.
+   These rules intentionally override the old "fully opaque" Global declarations. */
+body.page-global :is(
+ .global-crypto-cap-pill,
+ .market-index-strip .index-mini,
+ .global-grid .global-regions,
+ .global-grid .aside-stack > .panel,
+ .global-grid .photo-card
+){
+ background:
+  radial-gradient(ellipse at 12% 10%,color-mix(in srgb,var(--green) 10%,transparent),transparent 62%),
+  radial-gradient(ellipse at 90% 90%,color-mix(in srgb,var(--red) 9%,transparent),transparent 65%),
+  linear-gradient(135deg,
+   color-mix(in srgb,var(--panel-2) 70%,transparent),
+   color-mix(in srgb,var(--panel) 70%,transparent))!important;
+ background-color:transparent!important;
+ backdrop-filter:blur(24px) saturate(135%)!important;
+ -webkit-backdrop-filter:blur(24px) saturate(135%)!important;
+ border-color:color-mix(in srgb,var(--brand) 27%,var(--line))!important;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 12px 25px rgba(0,0,0,.13)!important;
+ opacity:1!important;
+}
+/* The selected top-cap pill must remain frosted when hovered/active. */
+body.page-global .global-crypto-cap-pill:is(:hover,.is-active){
+ background:
+  linear-gradient(135deg,
+   color-mix(in srgb,var(--brand) 11%,transparent),
+   color-mix(in srgb,var(--panel) 70%,transparent))!important;
+ border-color:var(--brand)!important;
+}
+/* Interactive region rows: subtle glass highlight without hiding country symbols. */
+body.page-global .global-grid .region-list-item:is(:hover,.selected){
+ background:color-mix(in srgb,var(--brand) 14%,transparent)!important;
+}
+/* Frost just the floating labels ON the globe; the map illustration stays sharp. */
+body.page-global .world-map-panel :is(.map-callout,.region-insight){
+ background:
+  linear-gradient(145deg,rgba(12,44,59,.74),rgba(7,25,40,.70))!important;
+ background-color:transparent!important;
+ backdrop-filter:blur(20px) saturate(128%)!important;
+ -webkit-backdrop-filter:blur(20px) saturate(128%)!important;
+ border-color:rgba(108,180,196,.58)!important;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 8px 20px rgba(0,0,0,.20)!important;
+ opacity:1!important;
+}
+/* Sidebar follows the same finish without affecting the active navigation. */
+body.page-global .sidebar{
+ background:
+  linear-gradient(155deg,
+   color-mix(in srgb,var(--shell) 78%,transparent),
+   color-mix(in srgb,var(--panel) 78%,transparent))!important;
+ backdrop-filter:blur(20px) saturate(125%)!important;
+ -webkit-backdrop-filter:blur(20px) saturate(125%)!important;
+}
+/* Never blur the atlas pixels, regional photographs or sparkline charts. */
+body.page-global .world-map-panel{
+ backdrop-filter:none!important;
+ -webkit-backdrop-filter:none!important;
+}
+body.page-global :is(.photo-cover,.map-svg,.spark){
+ backdrop-filter:none!important;
+ -webkit-backdrop-filter:none!important;
+}
