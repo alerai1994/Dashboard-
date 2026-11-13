@@ -352,7 +352,7 @@ assert(css.includes('background:var(--panel)!important'),'Card backgrounds must 
 assert(css.includes('body.page-global :is(.map-callout,.region-insight)'),'Map callouts must be opaque');
 assert(css.includes('body.page-global .world-map-panel'),'Map backdrop should remain visible');
 assert(css.includes('body .sidebar{'),'Sidebar should have solid theme background');
-assert(html.includes('style.css?v=20261113-market-menu-real-alpha50-v244'),'Updated styles must bypass browser cache');
+assert(html.includes('style.css?v=20261113-market-menu-opacity50-v245'),'Updated styles must bypass browser cache');
 assert(css.includes('Market Force: fully opaque, theme-aware surfaces'),'Opaque Force Market override missing');
 for(const selector of [
  '.market-force-section.bullish-detail-panel',
@@ -385,24 +385,15 @@ for(const selector of [
 }
 assert(css.includes('body.theme-sand #pageContainer .market-force-section .bullish-detail-gauge-inner strong'),
  'Gauge white numbers must remain legible on dark dial');
-assert(html.includes('style.css?v=20261113-market-menu-real-alpha50-v244'),
+assert(html.includes('style.css?v=20261113-market-menu-opacity50-v245'),
  'New Sand contrast stylesheet must bypass cache');
 
-/* Verify that the market dropdown uses real 50% alpha, without glass blur. */
-const menuCss=css.slice(css.indexOf('Market Force dropdown: literal 50% alpha'));
-assert(menuCss.includes('background:rgba(7,26,42,0.50)!important'),
- 'Dark menu must be exactly 50% transparent');
-assert(menuCss.includes('background:rgba(252,247,237,0.50)!important'),
- 'Sand menu must be exactly 50% transparent');
-assert(menuCss.includes('background:rgba(243,249,251,0.50)!important'),
- 'Light and Ice menu must be exactly 50% transparent');
-assert(menuCss.includes('background:rgba(4,107,81,0.50)!important'),
- 'Selected dark tile must also use 50% alpha');
-assert(menuCss.includes('backdrop-filter:none!important'),
- 'Blur should not conceal the 50% translucency');
-assert(menuCss.includes('button{\n opacity:1!important;'),
- 'Text and icons must remain fully opaque');
-assert(!menuCss.includes('opacity:.5')&&!menuCss.includes('opacity:0.5'),
- 'Never fade entire menu and its labels');
-assert(html.includes('style.css?v=20261113-market-menu-real-alpha50-v244'),
- 'Browser must refresh the corrected CSS');
+/* Market category overlay must be truly 50% opacity, not just tinted background. */
+const dropdownCss=css.slice(css.indexOf('Force Market dropdown: actual element opacity 50%'));
+assert(dropdownCss.includes('opacity:0.50!important'),'Dropdown element must be 50% opaque');
+assert(dropdownCss.includes('background:#102c3d!important'),'Dropdown needs solid background BEFORE opacity compositing');
+assert(!dropdownCss.includes('background:rgba('),'Do not apply double transparency');
+assert(dropdownCss.includes('background:#e7d8c5!important'),'Sand theme palette must be preserved');
+assert(dropdownCss.includes('body:is(.theme-light,.theme-ice)'),'Light/Ice support missing');
+assert(dropdownCss.includes('button.selected'),'Menu selection must remain highlighted');
+assert(html.includes('style.css?v=20261113-market-menu-opacity50-v245'),'Browser must load new stylesheet');
