@@ -4429,16 +4429,16 @@ body.theme-sand #pageContainer .market-force-section .bullish-detail-gauge-inner
 }
 
 
-/* Force Market dropdown: actual element opacity 70% = 30% transparency (including labels and
-   selected item), not merely rgba background, so the chart behind shows through.
+/* Force Market dropdown: 30% transparency and soft frosted-glass blur behind it.
+   Backdrop blur targets content beneath the menu; text is never directly blurred.
    Do not apply background alpha on top of the menu's 70% element opacity. */
 #pageContainer .market-force-section .bullish-detail-category-list{
  opacity:0.70!important;
  background:#102c3d!important;
  background-color:#102c3d!important;
  background-image:none!important;
- backdrop-filter:none!important;
- -webkit-backdrop-filter:none!important;
+ backdrop-filter:blur(10px) saturate(1.1)!important;
+ -webkit-backdrop-filter:blur(10px) saturate(1.1)!important;
  border:1px solid #477a98!important;
  box-shadow:0 6px 16px rgba(0,0,0,.14)!important;
 }
