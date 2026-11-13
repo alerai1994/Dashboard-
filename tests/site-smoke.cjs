@@ -352,7 +352,7 @@ assert(css.includes('background:var(--panel)!important'),'Card backgrounds must 
 assert(css.includes('body.page-global :is(.map-callout,.region-insight)'),'Map callouts must be opaque');
 assert(css.includes('body.page-global .world-map-panel'),'Map backdrop should remain visible');
 assert(css.includes('body .sidebar{'),'Sidebar should have solid theme background');
-assert(html.includes('style.css?v=20261112-force-opaque-v241'),'Updated styles must bypass browser cache');
+assert(html.includes('style.css?v=20261113-market-menu-glass-50-v243'),'Updated styles must bypass browser cache');
 assert(css.includes('Market Force: fully opaque, theme-aware surfaces'),'Opaque Force Market override missing');
 for(const selector of [
  '.market-force-section.bullish-detail-panel',
@@ -385,5 +385,16 @@ for(const selector of [
 }
 assert(css.includes('body.theme-sand #pageContainer .market-force-section .bullish-detail-gauge-inner strong'),
  'Gauge white numbers must remain legible on dark dial');
-assert(html.includes('style.css?v=20261112-sand-readable-v242'),
+assert(html.includes('style.css?v=20261113-market-menu-glass-50-v243'),
  'New Sand contrast stylesheet must bypass cache');
+
+/* A translucent background must NOT be implemented by fading the text or controls. */
+const glassRule=css.slice(css.indexOf('Force Market category dropdown: 50% transparent frosted glass'));
+assert(glassRule.includes('background:color-mix(in srgb,var(--panel-2) 50%,transparent)!important'),
+ 'Market Force menu must have exactly 50% translucent surface');
+assert(glassRule.includes('backdrop-filter:blur(12px)'),'Backdrop blur missing on market category menu');
+assert(!glassRule.includes('opacity:.5')&&!glassRule.includes('opacity:0.5'),
+ 'Do not fade menu text by setting global element opacity');
+assert(glassRule.includes('body:is(.theme-light,.theme-sand,.theme-ice)'),
+ 'Light / Sand menu theme contrast missing');
+assert(html.includes('style.css?v=20261113-market-menu-glass-50-v243'),'Glass menu CSS cache marker missing');
