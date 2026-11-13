@@ -151,7 +151,7 @@ for(const page of [directForcePanel,globalForcePanel]){
  for(const key of ['crypto','stocks','indices','forex']){
   assert(page.includes('data-bullish-category="'+key+'"'),'Market category unavailable: '+key);
  }
- for(const ticker of ['BTC-USD','INJ-USD','NVDA','AAPL','EURUSD=X','^GSPC']){
+ for(const ticker of ['Bitcoin (BTC) · BTC','Injective (INJ) · INJ','NVDA','AAPL','EURUSD=X','^GSPC']){
   assert(page.includes(ticker),'Asset not selectable: '+ticker);
  }
 }
@@ -445,3 +445,11 @@ assert(globalGlassRules.includes('backdrop-filter:blur(24px) saturate(135%)!impo
 assert(globalGlassRules.includes('body.page-global .world-map-panel{\n backdrop-filter:none!important'),
  'The atlas must not itself be blurred');
 assert(html.includes('style.css?v=20261113-global-glass-cards-v252'),'Global frosted CSS must bypass cache');
+
+/* UI-only removal of the crypto quote currency suffix from dropdowns. */
+assert(source.includes("asset.symbol.replace(/-(?:USD|USDT)$/i,'')"));
+assert(read('price-board.js').includes("a.symbol.replace(/-(?:USD|USDT)$/i,'')"));
+assert(source.includes("symbol:'BTC-USD'"),'Original market symbol must remain intact');
+assert(source.includes("symbol:'EURUSD=X'"),'Forex pair must remain intact');
+assert(html.includes('script.js?v=20261113-dropdown-no-usd-v253'));
+assert(html.includes('price-board.js?v=20261113-board-dropdown-no-usd-v5'));
