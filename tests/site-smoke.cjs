@@ -352,7 +352,7 @@ assert(css.includes('background:var(--panel)!important'),'Card backgrounds must 
 assert(css.includes('body.page-global :is(.map-callout,.region-insight)'),'Map callouts must be opaque');
 assert(css.includes('body.page-global .world-map-panel'),'Map backdrop should remain visible');
 assert(css.includes('body .sidebar{'),'Sidebar should have solid theme background');
-assert(html.includes('style.css?v=20261113-vertex-glass-popup-v250'),'Updated styles must bypass browser cache');
+assert(html.includes('style.css?v=20261113-vertex-glass-popup-v251'),'Updated styles must bypass browser cache');
 assert(css.includes('Market Force: fully opaque, theme-aware surfaces'),'Opaque Force Market override missing');
 for(const selector of [
  '.market-force-section.bullish-detail-panel',
@@ -385,7 +385,7 @@ for(const selector of [
 }
 assert(css.includes('body.theme-sand #pageContainer .market-force-section .bullish-detail-gauge-inner strong'),
  'Gauge white numbers must remain legible on dark dial');
-assert(html.includes('style.css?v=20261113-vertex-glass-popup-v250'),
+assert(html.includes('style.css?v=20261113-vertex-glass-popup-v251'),
  'New Sand contrast stylesheet must bypass cache');
 
 /* All Vertex menu variants share the same blurred, readable glass design. */
@@ -402,7 +402,7 @@ assert(dropdownCSS.includes('opacity:1!important'),'Text and icons must stay ful
 assert(dropdownCSS.includes('-webkit-backdrop-filter:blur(var(--vertex-popup-blur))'),'Safari blur fallback missing');
 assert(dropdownCSS.includes('@supports (appearance:base-select)'),'Customizable native-select picker enhancement missing');
 assert(dropdownCSS.includes('option:checked'),'Selected native option must be highlighted');
-assert(html.includes('style.css?v=20261113-vertex-glass-popup-v250'),'Updated glass menu stylesheet must bypass cache');
+assert(html.includes('style.css?v=20261113-vertex-glass-popup-v251'),'Updated glass menu stylesheet must bypass cache');
 
 /* In-page native-select replacement actually displays styled popup in every browser. */
 const frostJs=read('vertex-frost-selects.js');
@@ -421,3 +421,6 @@ assert(frostJs.includes('document.addEventListener(\'pointerdown\''),
  'Native dropdown popup must be intercepted on mobile');
 assert(frostJs.includes('select.closest(\'dialog[open]\')||document.fullscreenElement||document.body'),
  'Fullscreen/dialog dropdown must stay in top layer');
+
+assert(css.includes('body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) #pageContainer .market-force-section .bullish-detail-category-list{'),
+ 'Frosted market dropdown must override earlier theme-specific opaque rules');
