@@ -11,8 +11,7 @@ let id='btc';
 try{const saved=JSON.parse(localStorage.getItem(store));if(typeof saved==='string')id=saved;}catch(_e){}
 function active(){return byId(id)||byId('btc')||assets()[0];}
 function dropdownLabel(a){
- const symbol=a.group==='crypto'?a.symbol.replace(/-(?:USD|USDT)$/i,''):a.symbol;
- return a.name+' · '+symbol;
+ return a.name;
 }
 function options(){
  const selected=active();
