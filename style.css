@@ -4429,37 +4429,60 @@ body.theme-sand #pageContainer .market-force-section .bullish-detail-gauge-inner
 }
 
 
-/* Force Market category dropdown: 50% transparent frosted glass, theme-aware.
-   The menu surface alone is translucent; text and click targets stay opaque. */
+/* Market Force dropdown: literal 50% alpha, with visible detail behind it.
+   No container opacity: labels, icons and checkmarks remain fully opaque.
+   Previous 12px backdrop blur hid the transparency visually. */
 #pageContainer .market-force-section .bullish-detail-category-list{
- background:rgba(12,39,65,.50)!important;
- background:color-mix(in srgb,var(--panel-2) 50%,transparent)!important;
+ background:rgba(7,26,42,0.50)!important;
+ background-color:rgba(7,26,42,0.50)!important;
  background-image:none!important;
- backdrop-filter:blur(12px) saturate(1.08)!important;
- -webkit-backdrop-filter:blur(12px) saturate(1.08)!important;
- border:1px solid color-mix(in srgb,var(--line) 85%,transparent)!important;
- box-shadow:0 12px 30px rgba(0,0,0,.25)!important;
+ backdrop-filter:none!important;
+ -webkit-backdrop-filter:none!important;
+ border:1px solid rgba(63,125,151,.72)!important;
+ box-shadow:0 8px 19px rgba(0,0,0,.16)!important;
+}
+#pageContainer .market-force-section .bullish-detail-category-list button{
+ opacity:1!important;
 }
 #pageContainer .market-force-section .bullish-detail-category-list button:not(.selected){
  background:transparent!important;
+ color:#eff6fa!important;
 }
-#pageContainer .market-force-section .bullish-detail-category-list button:not(.selected):hover,
-#pageContainer .market-force-section .bullish-detail-category-list button:not(.selected):focus-visible{
- background:color-mix(in srgb,var(--brand) 16%,transparent)!important;
+#pageContainer .market-force-section .bullish-detail-category-list button:not(.selected):is(:hover,:focus-visible){
+ background:rgba(94,154,173,.20)!important;
 }
+#pageContainer .market-force-section .bullish-detail-category-list button.selected{
+ background:rgba(4,107,81,0.50)!important;
+ border-color:#2eccab!important;
+ color:#fff!important;
+}
+#pageContainer .market-force-section .bullish-detail-category-list button.selected :is(.bullish-category-icon,.bullish-category-check){
+ color:#b9ffe9!important;
+}
+/* Light surfaces require dark labels; only the background remains at 50%. */
 body:is(.theme-light,.theme-sand,.theme-ice) #pageContainer .market-force-section .bullish-detail-category-list{
- border-color:color-mix(in srgb,var(--line) 90%,transparent)!important;
- box-shadow:0 12px 30px rgba(59,48,37,.18)!important;
+ background:rgba(252,247,237,0.50)!important;
+ background-color:rgba(252,247,237,0.50)!important;
+ border-color:rgba(104,88,69,.65)!important;
+ box-shadow:0 8px 19px rgba(59,48,37,.14)!important;
+}
+body.theme-light #pageContainer .market-force-section .bullish-detail-category-list,
+body.theme-ice #pageContainer .market-force-section .bullish-detail-category-list{
+ background:rgba(243,249,251,0.50)!important;
+ background-color:rgba(243,249,251,0.50)!important;
 }
 body:is(.theme-light,.theme-sand,.theme-ice) #pageContainer .market-force-section .bullish-detail-category-list button:not(.selected),
 body:is(.theme-light,.theme-sand,.theme-ice) #pageContainer .market-force-section .bullish-detail-category-list button:not(.selected) .bullish-category-icon{
  color:var(--text)!important;
 }
+body:is(.theme-light,.theme-sand,.theme-ice) #pageContainer .market-force-section .bullish-detail-category-list button:not(.selected):is(:hover,:focus-visible){
+ background:rgba(122,104,82,.16)!important;
+}
 body:is(.theme-light,.theme-sand,.theme-ice) #pageContainer .market-force-section .bullish-detail-category-list button.selected{
- color:#fff!important;
- background:rgba(12,96,75,.86)!important;
- border-color:#1b8f74!important;
+ background:rgba(21,117,91,0.50)!important;
+ border-color:#148067!important;
+ color:#163d30!important;
 }
 body:is(.theme-light,.theme-sand,.theme-ice) #pageContainer .market-force-section .bullish-detail-category-list button.selected :is(.bullish-category-icon,.bullish-category-check){
- color:#fff!important;
+ color:#134d3d!important;
 }
