@@ -4428,3 +4428,38 @@ body.theme-sand #pageContainer .market-force-section .bullish-detail-gauge-inner
  color:#dbeeff!important;
 }
 
+
+/* Force Market category dropdown: 50% transparent frosted glass, theme-aware.
+   The menu surface alone is translucent; text and click targets stay opaque. */
+#pageContainer .market-force-section .bullish-detail-category-list{
+ background:rgba(12,39,65,.50)!important;
+ background:color-mix(in srgb,var(--panel-2) 50%,transparent)!important;
+ background-image:none!important;
+ backdrop-filter:blur(12px) saturate(1.08)!important;
+ -webkit-backdrop-filter:blur(12px) saturate(1.08)!important;
+ border:1px solid color-mix(in srgb,var(--line) 85%,transparent)!important;
+ box-shadow:0 12px 30px rgba(0,0,0,.25)!important;
+}
+#pageContainer .market-force-section .bullish-detail-category-list button:not(.selected){
+ background:transparent!important;
+}
+#pageContainer .market-force-section .bullish-detail-category-list button:not(.selected):hover,
+#pageContainer .market-force-section .bullish-detail-category-list button:not(.selected):focus-visible{
+ background:color-mix(in srgb,var(--brand) 16%,transparent)!important;
+}
+body:is(.theme-light,.theme-sand,.theme-ice) #pageContainer .market-force-section .bullish-detail-category-list{
+ border-color:color-mix(in srgb,var(--line) 90%,transparent)!important;
+ box-shadow:0 12px 30px rgba(59,48,37,.18)!important;
+}
+body:is(.theme-light,.theme-sand,.theme-ice) #pageContainer .market-force-section .bullish-detail-category-list button:not(.selected),
+body:is(.theme-light,.theme-sand,.theme-ice) #pageContainer .market-force-section .bullish-detail-category-list button:not(.selected) .bullish-category-icon{
+ color:var(--text)!important;
+}
+body:is(.theme-light,.theme-sand,.theme-ice) #pageContainer .market-force-section .bullish-detail-category-list button.selected{
+ color:#fff!important;
+ background:rgba(12,96,75,.86)!important;
+ border-color:#1b8f74!important;
+}
+body:is(.theme-light,.theme-sand,.theme-ice) #pageContainer .market-force-section .bullish-detail-category-list button.selected :is(.bullish-category-icon,.bullish-category-check){
+ color:#fff!important;
+}
