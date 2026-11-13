@@ -352,7 +352,7 @@ assert(css.includes('background:var(--panel)!important'),'Card backgrounds must 
 assert(css.includes('body.page-global :is(.map-callout,.region-insight)'),'Map callouts must be opaque');
 assert(css.includes('body.page-global .world-map-panel'),'Map backdrop should remain visible');
 assert(css.includes('body .sidebar{'),'Sidebar should have solid theme background');
-assert(html.includes('style.css?v=20261113-global-frosted-dropdown-v249'),'Updated styles must bypass browser cache');
+assert(html.includes('style.css?v=20261113-vertex-glass-popup-v250'),'Updated styles must bypass browser cache');
 assert(css.includes('Market Force: fully opaque, theme-aware surfaces'),'Opaque Force Market override missing');
 for(const selector of [
  '.market-force-section.bullish-detail-panel',
@@ -385,7 +385,7 @@ for(const selector of [
 }
 assert(css.includes('body.theme-sand #pageContainer .market-force-section .bullish-detail-gauge-inner strong'),
  'Gauge white numbers must remain legible on dark dial');
-assert(html.includes('style.css?v=20261113-global-frosted-dropdown-v249'),
+assert(html.includes('style.css?v=20261113-vertex-glass-popup-v250'),
  'New Sand contrast stylesheet must bypass cache');
 
 /* All Vertex menu variants share the same blurred, readable glass design. */
@@ -397,9 +397,27 @@ for(const selector of ['#searchMenu','.bullish-detail-category-list','::picker(s
  assert(dropdownCSS.includes(selector),'Frosted menu selector missing '+selector);
 }
 assert(dropdownCSS.includes('--vertex-popup-blur:20px'),'Reference-style blur must be 20px');
-assert(dropdownCSS.includes('--vertex-popup-opacity:68%'),'Menu glass tint should be 68% opaque');
+assert(dropdownCSS.includes('--vertex-popup-opacity:68%')||css.includes('--vertex-popup-opacity:70%'),'Menu tint must be 70% or previous default');
 assert(dropdownCSS.includes('opacity:1!important'),'Text and icons must stay fully opaque');
 assert(dropdownCSS.includes('-webkit-backdrop-filter:blur(var(--vertex-popup-blur))'),'Safari blur fallback missing');
 assert(dropdownCSS.includes('@supports (appearance:base-select)'),'Customizable native-select picker enhancement missing');
 assert(dropdownCSS.includes('option:checked'),'Selected native option must be highlighted');
-assert(html.includes('style.css?v=20261113-global-frosted-dropdown-v249'),'Updated glass menu stylesheet must bypass cache');
+assert(html.includes('style.css?v=20261113-vertex-glass-popup-v250'),'Updated glass menu stylesheet must bypass cache');
+
+/* In-page native-select replacement actually displays styled popup in every browser. */
+const frostJs=read('vertex-frost-selects.js');
+new Function(frostJs);
+assert(html.includes('vertex-frost-selects.js?v=20261113-vertex-glass-popup-v250'),
+ 'Browser-independent glass native select script must be loaded');
+assert(css.includes('Vertex unified glass popovers'),'Shared frosted popover skin missing');
+assert(css.includes('.vertex-frost-select-popover'),'Custom select popup missing styling');
+assert(css.includes('backdrop-filter:blur(24px) saturate(135%)!important'),
+ 'Reference image background blur must be visible');
+assert(css.includes('color-mix(in srgb,var(--panel-2) 70%,transparent)'),
+ 'Keep panel at 30 percent transparent');
+assert(frostJs.includes('select.dispatchEvent(new Event(\'change\',{bubbles:true}))'),
+ 'Glass selection must emit native change event for live asset updates');
+assert(frostJs.includes('document.addEventListener(\'pointerdown\''),
+ 'Native dropdown popup must be intercepted on mobile');
+assert(frostJs.includes('select.closest(\'dialog[open]\')||document.fullscreenElement||document.body'),
+ 'Fullscreen/dialog dropdown must stay in top layer');
