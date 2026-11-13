@@ -4429,11 +4429,11 @@ body.theme-sand #pageContainer .market-force-section .bullish-detail-gauge-inner
 }
 
 
-/* Force Market dropdown: actual element opacity 50% (including labels and
+/* Force Market dropdown: actual element opacity 70% = 30% transparency (including labels and
    selected item), not merely rgba background, so the chart behind shows through.
-   Do not combine 50% background alpha with 50% element alpha. */
+   Do not apply background alpha on top of the menu's 70% element opacity. */
 #pageContainer .market-force-section .bullish-detail-category-list{
- opacity:0.50!important;
+ opacity:0.70!important;
  background:#102c3d!important;
  background-color:#102c3d!important;
  background-image:none!important;
@@ -4464,7 +4464,7 @@ body.theme-sand #pageContainer .market-force-section .bullish-detail-gauge-inner
 #pageContainer .market-force-section .bullish-detail-category-list button.selected :is(.bullish-category-icon,.bullish-category-check){
  color:#fff!important;
 }
-/* Light palettes: half-opacity warm or cool surfaces rather than dark overlays. */
+/* Light palettes: warm or cool surfaces with the same 30% transparency. */
 body.theme-sand #pageContainer .market-force-section .bullish-detail-category-list{
  background:#e7d8c5!important;
  background-color:#e7d8c5!important;
