@@ -4429,84 +4429,96 @@ body.theme-sand #pageContainer .market-force-section .bullish-detail-gauge-inner
 }
 
 
-/* Force Market dropdown: 30% transparency and soft frosted-glass blur behind it.
-   Backdrop blur targets content beneath the menu; text is never directly blurred.
-   Do not apply background alpha on top of the menu's 70% element opacity. */
-#pageContainer .market-force-section .bullish-detail-category-list{
- opacity:0.70!important;
- background:#102c3d!important;
- background-color:#102c3d!important;
- background-image:none!important;
- backdrop-filter:blur(10px) saturate(1.1)!important;
- -webkit-backdrop-filter:blur(10px) saturate(1.1)!important;
- border:1px solid #477a98!important;
- box-shadow:0 6px 16px rgba(0,0,0,.14)!important;
+/* Vertex frosted dropdown system · consistent across all ten themes.
+   The glass panel is translucent; text/icons are not faded or blurred.
+   A slight green/pink bloom is inspired by the provided reference image. */
+:root{
+ --vertex-popup-blur:20px;
+ --vertex-popup-opacity:68%;
 }
-/* Keep icons and menu items in high-contrast colors before the composite fade. */
-#pageContainer .market-force-section .bullish-detail-category-list button{
- opacity:1!important;
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby){
+ --vertex-glass-menu-bg:color-mix(in srgb,var(--panel-2) var(--vertex-popup-opacity),transparent);
+ --vertex-glass-menu-edge:color-mix(in srgb,var(--brand) 38%,var(--line));
 }
-#pageContainer .market-force-section .bullish-detail-category-list button:not(.selected){
- background:transparent!important;
- color:#fff!important;
-}
-#pageContainer .market-force-section .bullish-detail-category-list button:not(.selected) .bullish-category-icon{
- color:#fff!important;
-}
-#pageContainer .market-force-section .bullish-detail-category-list button:not(.selected):is(:hover,:focus-visible){
- background:#27516a!important;
-}
-#pageContainer .market-force-section .bullish-detail-category-list button.selected{
- background:#087c60!important;
- color:#fff!important;
- border-color:#28f0bc!important;
-}
-#pageContainer .market-force-section .bullish-detail-category-list button.selected :is(.bullish-category-icon,.bullish-category-check){
- color:#fff!important;
-}
-/* Light palettes: warm or cool surfaces with the same 30% transparency. */
-body.theme-sand #pageContainer .market-force-section .bullish-detail-category-list{
- background:#e7d8c5!important;
- background-color:#e7d8c5!important;
- border-color:#876d51!important;
-}
-body:is(.theme-light,.theme-ice) #pageContainer .market-force-section .bullish-detail-category-list{
- background:#e3edf0!important;
- background-color:#e3edf0!important;
- border-color:#6e929e!important;
-}
-body:is(.theme-sand,.theme-light,.theme-ice) #pageContainer .market-force-section .bullish-detail-category-list button:not(.selected),
-body:is(.theme-sand,.theme-light,.theme-ice) #pageContainer .market-force-section .bullish-detail-category-list button:not(.selected) .bullish-category-icon{
- color:#182a32!important;
-}
-body:is(.theme-sand,.theme-light,.theme-ice) #pageContainer .market-force-section .bullish-detail-category-list button:not(.selected):is(:hover,:focus-visible){
- background:#b5c6c6!important;
-}
-body.theme-sand #pageContainer .market-force-section .bullish-detail-category-list button:not(.selected):is(:hover,:focus-visible){
- background:#c5ab8e!important;
-}
-body:is(.theme-sand,.theme-light,.theme-ice) #pageContainer .market-force-section .bullish-detail-category-list button.selected{
- background:#0e785c!important;
- color:#fff!important;
-}
-
-
-/* Market Force glass dropdown for ALL Vertex themes (including Light and Night).
-   Final high-specificity override defeats earlier opaque-card rules and uses
-   the active theme's own panel color. 30% transparency + 10px backdrop blur. */
+#searchMenu,
 body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) #pageContainer .market-force-section .bullish-detail-category-list{
- opacity:0.70!important;
- background:var(--panel-2)!important;
- background-color:var(--panel-2)!important;
- background-image:none!important;
- backdrop-filter:blur(10px) saturate(1.1)!important;
- -webkit-backdrop-filter:blur(10px) saturate(1.1)!important;
- border-color:var(--line)!important;
-}
-/* Each theme supplies a contrasting text color; do not fade these separately. */
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby)
-#pageContainer .market-force-section .bullish-detail-category-list button:not(.selected),
-body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby)
-#pageContainer .market-force-section .bullish-detail-category-list button:not(.selected) .bullish-category-icon{
+ opacity:1!important;
+ background-color:transparent!important;
+ background-image:
+  radial-gradient(ellipse at 15% 16%,color-mix(in srgb,var(--green) 15%,transparent),transparent 60%),
+  radial-gradient(ellipse at 82% 76%,color-mix(in srgb,var(--red) 13%,transparent),transparent 65%),
+  linear-gradient(135deg,var(--vertex-glass-menu-bg),var(--vertex-glass-menu-bg))!important;
+ backdrop-filter:blur(var(--vertex-popup-blur)) saturate(140%)!important;
+ -webkit-backdrop-filter:blur(var(--vertex-popup-blur)) saturate(140%)!important;
+ border:1px solid var(--vertex-glass-menu-edge)!important;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 18px 34px rgba(0,0,0,.17)!important;
+ border-radius:16px;
  color:var(--text)!important;
+}
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) #pageContainer .market-force-section .bullish-detail-category-list button{
+ opacity:1!important;
+ color:var(--text)!important;
+ background:transparent!important;
+}
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) #pageContainer .market-force-section .bullish-detail-category-list button .bullish-category-icon{
+ color:var(--muted)!important;
+}
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) #pageContainer .market-force-section .bullish-detail-category-list button:not(.selected):is(:hover,:focus-visible),
+#searchMenu button:is(:hover,:focus-visible){
+ background:color-mix(in srgb,var(--brand) 18%,transparent)!important;
+}
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) #pageContainer .market-force-section .bullish-detail-category-list button.selected{
+ background:color-mix(in srgb,var(--green) 27%,var(--vertex-glass-menu-bg))!important;
+ border:1px solid color-mix(in srgb,var(--green) 68%,var(--line))!important;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 0 14px color-mix(in srgb,var(--green) 14%,transparent)!important;
+ color:var(--text)!important;
+}
+body:is(.theme-light,.theme-dark,.theme-ocean,.theme-emerald,.theme-violet,.theme-sand,.theme-ice,.theme-sunset,.theme-graphite,.theme-ruby) #pageContainer .market-force-section .bullish-detail-category-list button.selected :is(.bullish-category-icon,.bullish-category-check){
+ color:var(--green)!important;
+}
+/* The normal select itself stays accessible and works on every device.
+   Modern browsers with customizable select support also frost the OPEN list. */
+@supports (appearance:base-select){
+ #pageContainer select:not([multiple]),
+ .asset-dialog select:not([multiple]){
+  appearance:base-select;
+  -webkit-appearance:base-select;
+ }
+ #pageContainer select:not([multiple])::picker(select),
+ .asset-dialog select:not([multiple])::picker(select){
+  appearance:base-select;
+  background:
+   radial-gradient(ellipse at 15% 16%,color-mix(in srgb,var(--green) 15%,transparent),transparent 60%),
+   radial-gradient(ellipse at 82% 76%,color-mix(in srgb,var(--red) 13%,transparent),transparent 65%),
+   var(--vertex-glass-menu-bg)!important;
+  backdrop-filter:blur(var(--vertex-popup-blur)) saturate(140%)!important;
+  -webkit-backdrop-filter:blur(var(--vertex-popup-blur)) saturate(140%)!important;
+  border:1px solid var(--vertex-glass-menu-edge)!important;
+  box-shadow:0 18px 34px rgba(0,0,0,.17)!important;
+  border-radius:14px;
+  color:var(--text);
+  padding:5px;
+  max-height:min(55dvh,420px);
+  overflow:auto;
+ }
+ #pageContainer select:not([multiple]) option,
+ .asset-dialog select:not([multiple]) option{
+  padding:9px 12px;
+  border-radius:9px;
+  color:var(--text);
+  background:transparent;
+ }
+ #pageContainer select:not([multiple]) option:checked,
+ .asset-dialog select:not([multiple]) option:checked{
+  background:color-mix(in srgb,var(--green) 24%,transparent);
+ }
+ #pageContainer .bullish-detail-asset-select select::picker-icon{display:none}
+}
+/* Older browser fallback: the CLOSED native selectors share the frosted look.
+   Their OS-owned popup is deliberately left native for accessibility. */
+#pageContainer :is(.form-field select,.crypto-cap-controls select,.market-force-picker-controls select,.price-board-field select),
+.asset-dialog .form-field select{
+ background-color:color-mix(in srgb,var(--surface) 73%,transparent)!important;
+ backdrop-filter:blur(10px)!important;
+ -webkit-backdrop-filter:blur(10px)!important;
 }
