@@ -29,7 +29,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           mkdir -p chart-history/crypto/prices
-          git status --porcelain chart-history/crypto/prices/ | sed 's/^...//' > "$RUNNER_TEMP/vertex-price-changed.txt"
+          find chart-history/crypto/prices/ -type f -name '*.json' | sort > "$RUNNER_TEMP/vertex-price-changed.txt"
           if [ ! -s "$RUNNER_TEMP/vertex-price-changed.txt" ]; then exit 0; fi
           mkdir -p "$RUNNER_TEMP/vertex-price-staged"
           while IFS= read -r file; do
