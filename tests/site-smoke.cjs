@@ -10,6 +10,14 @@ new Function(read('crypto-extended.js'));
 const screenshotCatalog=JSON.parse(read('crypto-extended.js').match(/window\.__VERTEX_EXTRA_CRYPTO__\s*=\s*(\[[\s\S]*?\]);/)[1]);
 assert.equal(screenshotCatalog.length,220,'Expected 220 screenshot cryptocurrencies');
 assert.equal(new Set(screenshotCatalog.map(c=>c[0])).size,220,'Duplicate screenshot ticker');
+assert(screenshotCatalog.every(c=>c.length>=3&&/^[a-z0-9-]{1,100}$/.test(c[2])),
+ 'Every screenshot token needs its exact CoinGecko identifier');
+assert(source.includes('async function chartCoinGeckoCandles('),'Missing verified historical OHLC fallback');
+assert(source.includes('async function chartExtendedCryptoHistory('),'Missing 228-coin history loader');
+assert(source.includes('CoinGecko · OHLC 4 giorni'),'Historical candles must reveal source resolution');
+assert(source.includes('data.coingeckoId!==asset.coingeckoId'),
+ 'Historical archive must verify the selected token identity');
+
 assert(html.includes('crypto-extended.js?v='),'Extended catalog must load before the app');
 assert(html.indexOf('crypto-extended.js?v=')<html.indexOf('script.js?v='),'Catalog must load first');
 new Function(read('vertex-widget-sw.js'));
@@ -466,7 +474,7 @@ assert(source.includes("function marketForceSelectLabel(asset){\n return asset.n
 assert(read('price-board.js').includes("function dropdownLabel(a){\n return a.name;"));
 assert(source.includes("symbol:'BTC-USD'"),'Original market symbol must remain intact');
 assert(source.includes("symbol:'EURUSD=X'"),'Forex pair must remain intact');
-assert(html.includes('script.js?v=20261114-crypto-catalogo220'));
+assert(html.includes('script.js?v=20261114-history228-v1'));
 assert(html.includes('price-board.js?v=20261114-board-dropdown-names-v6'));
 
 /* Swipe control persists across all sections and prioritizes the exposed right strip. */
@@ -483,7 +491,7 @@ assert(source.includes("if(Math.abs(dy)>18&&Math.abs(dy)>Math.abs(dx)*1.15)"));
 const heatmap=read('vertex-heatmap.js'),heatmapCss=read('vertex-heatmap.css');
 new Function(heatmap);
 assert(html.includes('vertex-heatmap.css?v=20261114-v3-no-inj-header'),'Crypto heatmap CSS missing');
-assert(html.includes('vertex-heatmap.js?v=20261114-v4-no-inj-header'),'Crypto heatmap JS missing');
+assert(html.includes('vertex-heatmap.js?v=20261114-history228-v1'),'Crypto heatmap JS missing');
 assert(source.includes("window.VertexHeatmap?.page()"),'Markets must render heatmap');
 assert(source.includes("window.VertexHeatmap?.activate()"),'Markets must refresh live heatmap');
 assert(source.includes('id="vertexMarketsCharts"'),'Existing charts scroll target missing');
