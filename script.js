@@ -6002,14 +6002,15 @@ async function chartExtendedCryptoHistory(asset,period,from,now,force=false){
  });
  const savedResult=()=>{
   if(!saved||saved.id!==asset.id||saved.coingeckoId!==asset.coingeckoId)return null;
+  const monthly=saved.timeframe==='1mo'&&String(saved.source||'').startsWith('Yahoo Finance');
   const order=isLong?[
-   ['candles','4 giorni'],['recentCandles','4 ore']
+   ['candles',monthly?'1 mese':'4 giorni'],['recentCandles','4 ore']
   ]:[
-   ['recentCandles','4 ore'],['candles','4 giorni']
+   ['recentCandles','4 ore'],['candles',monthly?'1 mese':'4 giorni']
   ];
   for(const [key,resolution] of order){
    const rows=keep(saved[key]);
-   if(rows.length>=2)return describe(rows,resolution,'Archivio CoinGecko');
+   if(rows.length>=2)return describe(rows,resolution,monthly?'Archivio Yahoo Finance':'Archivio CoinGecko');
   }
   return null;
  };
