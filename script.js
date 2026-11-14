@@ -5725,6 +5725,8 @@ function chartNormalizeCandles(raw,venue,from,to,step){
  return parsed.filter((row,i)=>i===0||row.t!==parsed[i-1].t);
 }
 function chartMarketUrls(asset,period,from,to){
+ // CoinGecko token IDs are verified; a matching Binance ticker alone is not.
+ if(asset.extended)return [];
  const count=Math.min(750,Math.max(32,Math.ceil((to-from)/period.step)+4));
  const symbol=asset.id==='ore'?'ore_usdt':asset.id.toUpperCase()+'_usdt';
  const params='symbol='+encodeURIComponent(symbol)+'&type='+period.lbank+
@@ -5809,6 +5811,13 @@ async function loadSecondChartHistory(force=false){
  const asset=ASSET_BY_ID[state.dialogId],selected=chartRange;
  const period=CHART_PERIOD_BY_ID[selected];
  if(!asset||!period||!period.seconds)return;
+ if(asset.extended){
+  chartSeries={id:asset.id,range:selected,candles:[],source:'',loading:false,partial:false,
+   error:'Storico al secondo non disponibile da una fonte verificata per '+
+    asset.name+'. Seleziona 1H, 1D, 1W, 1M o TUTTO.'};
+  updateChartHistoryStatus();scheduleDetailChartDraw();
+  return;
+ }
  const seq=++chartFetchState.sequence;
  if(chartFetchState.abort)chartFetchState.abort.abort();
  chartFetchState.abort=null;
@@ -5957,6 +5966,75 @@ async function loadSecondChartHistory(force=false){
  updateChartHistoryStatus();scheduleDetailChartDraw();
 }
 
+
+// CoinGecko OHLC uses the *exact coin ID* from the 220-coin catalog.
+// Free endpoints return 30-minute / 4-hour / 4-day candles depending on
+// the time window. Preserve that true resolution; no synthetic bars.
+async function chartCoinGeckoCandles(asset,days,controller){
+ const token=asset?.coingeckoId;
+ if(typeof token!=='string'||!/^[a-z0-9-]{1,100}$/.test(token))return [];
+ const url='https://api.coingecko.com/api/v3/coins/'+encodeURIComponent(token)+
+  '/ohlc?vs_currency=usd&days='+days+'&precision=full';
+ const response=await fetch(url,{signal:controller.signal,cache:'no-store'});
+ if(!response.ok)throw Error('CoinGecko OHLC HTTP '+response.status);
+ const raw=await response.json();
+ if(!Array.isArray(raw))throw Error('OHLC CoinGecko non validi');
+ return chartReadAllCandles(raw.filter(row=>Array.isArray(row)&&row.length>=5).map(row=>[
+  Math.floor(Number(row[0])/1000),row[1],row[2],row[3],row[4]
+ ]));
+}
+// Same-origin archives avoid mobile CORS/429 problems. A live CoinGecko call
+// is a genuine fallback when the CI archive has not yet published the coin.
+async function chartExtendedCryptoHistory(asset,period,from,now,force=false){
+ const controller=new AbortController();
+ chartFetchState.abort=controller;
+ const timer=setTimeout(()=>controller.abort(),13000);
+ const isLong=!!period.months&&period.months>1;
+ const useArchive=period.months||period.ms>=86400000;
+ let saved=null;
+ const keep=rows=>chartReadAllCandles(rows)
+  .filter(c=>c.t*1000>=from&&c.t*1000<=now+60000);
+ const describe=(rows,resolution,origin)=>({
+  candles:rows,source:origin+' · OHLC '+resolution+
+   ' reali in USD · risoluzione effettiva della fonte',
+  partial:true
+ });
+ const savedResult=()=>{
+  if(!saved||saved.id!==asset.id||saved.coingeckoId!==asset.coingeckoId)return null;
+  const order=isLong?[
+   ['candles','4 giorni'],['recentCandles','4 ore']
+  ]:[
+   ['recentCandles','4 ore'],['candles','4 giorni']
+  ];
+  for(const [key,resolution] of order){
+   const rows=keep(saved[key]);
+   if(rows.length>=2)return describe(rows,resolution,'Archivio CoinGecko');
+  }
+  return null;
+ };
+ try{
+  if(useArchive){
+   try{
+    const path='./chart-history/crypto/'+encodeURIComponent(asset.id)+
+     '.json?v='+Math.floor(Date.now()/300000);
+    const response=await fetch(path,{cache:'no-store',signal:controller.signal});
+    if(response.ok)saved=await response.json();
+   }catch(error){if(controller.signal.aborted)throw error;}
+  }
+  const archive=savedResult();
+  if(archive&&!force)return archive;
+  const days=period.months?(period.months===1?30:365):
+   period.ms<=43200000?1:period.ms<=604800000?7:30;
+  try{
+   const rows=keep(await chartCoinGeckoCandles(asset,days,controller));
+   if(rows.length>=2){
+    const resolution=days===1?'30 minuti':days<=30?'4 ore':'4 giorni';
+    return describe(rows,resolution,'CoinGecko');
+   }
+  }catch(_error){}
+  return archive;
+ }finally{clearTimeout(timer);}
+}
 async function loadCryptoChartHistory(force=false){
  const asset=ASSET_BY_ID[state.dialogId];
  if(!asset||asset.group!=='crypto')return;
@@ -5980,6 +6058,22 @@ async function loadCryptoChartHistory(force=false){
  scheduleDetailChartDraw();
  const now=Date.now(),from=chartStartTime(period,now);
  let failure='Impossibile ricevere le candele OHLC per '+selected+' dalle fonti disponibili.';
+ // New crypto are resolved by CoinGecko ID: ticker-only exchange pairs
+ // are ambiguous and may refer to an entirely different project.
+ if(asset.extended){
+  const result=await chartExtendedCryptoHistory(asset,period,from,now,force);
+  if(seq!==chartFetchState.sequence)return;
+  if(result?.candles?.length>=2){
+   const output={id:asset.id,range:selected,...result,loading:false,error:'',
+    loadedAt:Date.now()};
+   chartSeries=output;chartFetchState.cache.set(key,output);
+   if(chartFetchState.cache.size>100)
+    chartFetchState.cache.delete(chartFetchState.cache.keys().next().value);
+   updateChartHistoryStatus();scheduleDetailChartDraw();return;
+  }
+  failure='CoinGecko non ha restituito candele OHLC verificate per '+asset.name+
+   ' e il periodo '+selected+'. Prova TUTTO o un intervallo più ampio.';
+ }
  for(const endpoint of chartMarketUrls(asset,period,from,now)){
   if(seq!==chartFetchState.sequence)return;
   const controller=new AbortController();
