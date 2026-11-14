@@ -2,7 +2,7 @@ name: Vertex Global Market Data
 on:
   push:
     branches: [main]
-    paths: [index.html, style.css, script.js, .github/scripts/market-data.py, .github/workflows/market-data.yml]
+    paths: [index.html, style.css, script.js, crypto-extended.js, .github/scripts/market-data.py, .github/workflows/market-data.yml]
   schedule:
     - cron: '3,33 * * * *'
   workflow_dispatch:
