@@ -526,7 +526,7 @@ assert(source.includes("function marketForceSelectLabel(asset){\n return asset.n
 assert(read('price-board.js').includes("function dropdownLabel(a){\n return a.name;"));
 assert(source.includes("symbol:'BTC-USD'"),'Original market symbol must remain intact');
 assert(source.includes("symbol:'EURUSD=X'"),'Forex pair must remain intact');
-assert(html.includes('script.js?v=20261114-markets-history-v4'));
+assert(html.includes('script.js?v=20261114-all228-history-v5'));
 assert(html.includes('price-board.js?v=20261114-board-dropdown-names-v6'));
 
 /* Swipe control persists across all sections and prioritizes the exposed right strip. */
