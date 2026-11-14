@@ -468,13 +468,14 @@ assert(source.includes("if(Math.abs(dy)>18&&Math.abs(dy)>Math.abs(dx)*1.15)"));
 const heatmap=read('vertex-heatmap.js'),heatmapCss=read('vertex-heatmap.css');
 new Function(heatmap);
 assert(html.includes('vertex-heatmap.css?v=20261114-v2'),'Crypto heatmap CSS missing');
-assert(html.includes('vertex-heatmap.js?v=20261114-v1'),'Crypto heatmap JS missing');
+assert(html.includes('vertex-heatmap.js?v=20261114-v3-no-market-tabs'),'Crypto heatmap JS missing');
 assert(source.includes("window.VertexHeatmap?.page()"),'Markets must render heatmap');
 assert(source.includes("window.VertexHeatmap?.activate()"),'Markets must refresh live heatmap');
 assert(source.includes('id="vertexMarketsCharts"'),'Existing charts scroll target missing');
-for(const name of ['Global Crypto','Market Events','Live Charts','Order Book','Performance','Global Market']){
- assert(heatmap.includes(name),'Reference market navigation missing: '+name);
-}
+assert(!heatmap.includes('<nav class="vh-tabs"'),'Unwanted crypto heatmap navigation bar was reintroduced');
+assert(!heatmap.includes('navButton('),'Old market tab builder should be removed');
+assert(heatmap.includes('id="vhStats"'),'Market statistics must remain visible');
+assert(heatmap.includes('id="vhGrid"'),'Crypto heatmap must remain visible');
 assert(heatmap.includes('/api/v3/coins/markets'),'Top CoinGecko markets endpoint missing');
 assert(heatmap.includes("coinAssets()"),'Vertex crypto fallback missing');
 assert(heatmap.includes('aria-label="Mappa mercato criptovalute"'),'Accessible heatmap missing');
