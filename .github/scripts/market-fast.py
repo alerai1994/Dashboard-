@@ -181,6 +181,11 @@ def crypto_fast():
                     })
         except (HTTPError, URLError, TimeoutError, ValueError, TypeError):
             pass
+    # The 220 screenshot tokens share the same verified CoinGecko source.
+    # No invented values: symbols not returned by CoinGecko remain unavailable.
+    for extra in BACKEND["coingecko_screenshot_quotes"]():
+        rows[extra["id"]] = {k: v for k, v in extra.items()
+                             if k not in ("history", "candles")}
     return rows
 
 
@@ -225,7 +230,7 @@ def main():
                             "source", "marketState", "delayMinutes", "logo") if key in old}
             payload[group].append(row)
     crypto_rows = crypto_fast()
-    for identity, _ in COINS:
+    for identity in crypto_rows:
         row = crypto_rows[identity]
         old = older.get(identity, {})
         if positive(row.get("value")):
