@@ -3,882 +3,1102 @@
 window.__VERTEX_EXTRA_CRYPTO__ = [
  [
   "BTC",
-  "Bitcoin"
+  "Bitcoin",
+  "bitcoin"
  ],
  [
   "ETH",
-  "Ethereum"
+  "Ethereum",
+  "ethereum"
  ],
  [
   "USDT",
-  "Tether"
+  "Tether",
+  "tether"
  ],
  [
   "BNB",
-  "BNB"
+  "BNB",
+  "binancecoin"
  ],
  [
   "USDC",
-  "USDC"
+  "USDC",
+  "usd-coin"
  ],
  [
   "XRP",
-  "XRP"
+  "XRP",
+  "ripple"
  ],
  [
   "SOL",
-  "Solana"
+  "Solana",
+  "solana"
  ],
  [
   "TRX",
-  "TRON"
+  "TRON",
+  "tron"
  ],
  [
   "FIGR_HELOC",
-  "Figure HELOC"
+  "Figure HELOC",
+  "figure-heloc"
  ],
  [
   "HYPE",
-  "Hyperliquid"
+  "Hyperliquid",
+  "hyperliquid"
  ],
  [
   "ZEC",
-  "Zcash"
+  "Zcash",
+  "zcash"
  ],
  [
   "XMR",
-  "Monero"
+  "Monero",
+  "monero"
  ],
  [
   "DOGE",
-  "Dogecoin"
+  "Dogecoin",
+  "dogecoin"
  ],
  [
   "LEO",
-  "UNUS SED LEO"
+  "UNUS SED LEO",
+  "leo-token"
  ],
  [
   "USDS",
-  "USDS"
+  "USDS",
+  "usds"
  ],
  [
   "WBT",
-  "WhiteBIT Coin"
+  "WhiteBIT Coin",
+  "whitebit"
  ],
  [
   "LINK",
-  "Chainlink"
+  "Chainlink",
+  "chainlink"
  ],
  [
   "ADA",
-  "Cardano"
+  "Cardano",
+  "cardano"
  ],
  [
   "XLM",
-  "Stellar"
+  "Stellar",
+  "stellar"
  ],
  [
   "USDE",
-  "Ethena USDe"
+  "Ethena USDe",
+  "ethena-usde"
  ],
  [
   "DAI",
-  "Dai"
+  "Dai",
+  "dai"
  ],
  [
   "NEAR",
-  "NEAR Protocol"
+  "NEAR Protocol",
+  "near"
  ],
  [
   "BCH",
-  "Bitcoin Cash"
+  "Bitcoin Cash",
+  "bitcoin-cash"
  ],
  [
   "LTC",
-  "Litecoin"
+  "Litecoin",
+  "litecoin"
  ],
  [
   "AVAX",
-  "Avalanche"
+  "Avalanche",
+  "avalanche-2"
  ],
  [
   "CC",
-  "Canton"
+  "Canton",
+  "canton-network"
  ],
  [
   "UNI",
-  "Uniswap"
+  "Uniswap",
+  "uniswap"
  ],
  [
   "SUI",
-  "Sui"
+  "Sui",
+  "sui"
  ],
  [
   "XAUT",
-  "Tether Gold"
+  "Tether Gold",
+  "tether-gold"
  ],
  [
   "USD1",
-  "World Liberty Financial USD"
+  "World Liberty Financial USD",
+  "usd1-wlfi"
  ],
  [
   "GRAM",
-  "GRAM"
+  "GRAM",
+  "the-open-network"
  ],
  [
   "RLUSD",
-  "Ripple USD"
+  "Ripple USD",
+  "ripple-usd"
  ],
  [
   "HBAR",
-  "Hedera"
+  "Hedera",
+  "hedera-hashgraph"
  ],
  [
   "USDG",
-  "Global Dollar"
+  "Global Dollar",
+  "global-dollar"
  ],
  [
   "RAIN",
-  "RAIN"
+  "RAIN",
+  "rain"
  ],
  [
   "PYUSD",
-  "PayPal USD"
+  "PayPal USD",
+  "paypal-usd"
  ],
  [
   "SHIB",
-  "Shiba Inu"
+  "Shiba Inu",
+  "shiba-inu"
  ],
  [
   "TAO",
-  "Bittensor"
+  "Bittensor",
+  "bittensor"
  ],
  [
   "USDY",
-  "Ondo US Dollar Yield"
+  "Ondo US Dollar Yield",
+  "ondo-us-dollar-yield"
  ],
  [
   "CRO",
-  "Cronos"
+  "Cronos",
+  "crypto-com-chain"
  ],
  [
   "QNT",
-  "Quant"
+  "Quant",
+  "quant-network"
  ],
  [
   "USYC",
-  "USYC"
+  "USYC",
+  "hashnote-usyc"
  ],
  [
   "EURSAFO",
-  "EURSAFO"
+  "EURSAFO",
+  "spiko-amundi-overnight-swap-fund-eur"
  ],
  [
   "M",
-  "MemeCore"
+  "MemeCore",
+  "memecore"
  ],
  [
   "OKB",
-  "OKB"
+  "OKB",
+  "okb"
  ],
  [
   "PEPE",
-  "Pepe"
+  "Pepe",
+  "pepe"
  ],
  [
   "PAXG",
-  "PAX Gold"
+  "PAX Gold",
+  "pax-gold"
  ],
  [
   "USDF",
-  "USDF"
+  "USDF",
+  "falcon-finance"
  ],
  [
   "ENA",
-  "Ethena"
+  "Ethena",
+  "ethena"
  ],
  [
   "BUIDL",
-  "BlackRock BUIDL"
+  "BlackRock BUIDL",
+  "blackrock-usd-institutional-digital-liquidity-fund"
  ],
  [
   "AAVE",
-  "Aave"
+  "Aave",
+  "aave"
  ],
  [
   "ASTER",
-  "Aster"
+  "Aster",
+  "aster-2"
  ],
  [
   "U",
-  "U"
+  "U",
+  "united-stables"
  ],
  [
   "ONDO",
-  "Ondo"
+  "Ondo",
+  "ondo-finance"
  ],
  [
   "WLFI",
-  "World Liberty Financial"
+  "World Liberty Financial",
+  "world-liberty-financial"
  ],
  [
   "PUMP",
-  "Pump.fun"
+  "Pump.fun",
+  "pump-fun"
  ],
  [
   "USDD",
-  "USDD"
+  "USDD",
+  "usdd"
  ],
  [
   "ICP",
-  "Internet Computer"
+  "Internet Computer",
+  "internet-computer"
  ],
  [
   "HTX",
-  "HTX"
+  "HTX",
+  "htx-dao"
  ],
  [
   "MORPHO",
-  "Morpho"
+  "Morpho",
+  "morpho"
  ],
  [
   "DOT",
-  "Polkadot"
+  "Polkadot",
+  "polkadot"
  ],
  [
   "SKY",
-  "Sky"
+  "Sky",
+  "sky"
  ],
  [
   "MNT",
-  "Mantle"
+  "Mantle",
+  "mantle"
  ],
  [
   "BFUSD",
-  "BFUSD"
+  "BFUSD",
+  "bfusd"
  ],
  [
   "JST",
-  "JUST"
+  "JUST",
+  "just"
  ],
  [
   "BGB",
-  "Bitget Token"
+  "Bitget Token",
+  "bitget-token"
  ],
  [
   "USDGO",
-  "USDGO"
+  "USDGO",
+  "usdgo"
  ],
  [
   "BTW",
-  "BTW"
+  "BTW",
+  "bitway"
  ],
  [
   "WLD",
-  "Worldcoin"
+  "Worldcoin",
+  "worldcoin-wld"
  ],
  [
   "ETC",
-  "Ethereum Classic"
+  "Ethereum Classic",
+  "ethereum-classic"
  ],
  [
   "ARB",
-  "Arbitrum"
+  "Arbitrum",
+  "arbitrum"
  ],
  [
   "OUSD",
-  "Origin Dollar"
+  "Origin Dollar",
+  "open-usd"
  ],
  [
   "KCS",
-  "KuCoin Token"
+  "KuCoin Token",
+  "kucoin-shares"
  ],
  [
   "VVV",
-  "Venice Token"
+  "Venice Token",
+  "venice-token"
  ],
  [
   "GT",
-  "GateToken"
+  "GateToken",
+  "gatechain-token"
  ],
  [
   "POL",
-  "POL"
+  "POL",
+  "polygon-ecosystem-token"
  ],
  [
   "JUP",
-  "Jupiter"
+  "Jupiter",
+  "jupiter-exchange-solana"
  ],
  [
   "NIGHT",
-  "Midnight"
+  "Midnight",
+  "midnight-3"
  ],
  [
   "RENDER",
-  "Render"
+  "Render",
+  "render-token"
  ],
  [
   "INJ",
-  "Injective"
+  "Injective",
+  "injective-protocol"
  ],
  [
   "KAS",
-  "Kaspa"
+  "Kaspa",
+  "kaspa"
  ],
  [
   "PI",
-  "Pi Network"
+  "Pi Network",
+  "pi-network"
  ],
  [
   "LIT",
-  "LIT"
+  "LIT",
+  "lighter"
  ],
  [
   "ALGO",
-  "Algorand"
+  "Algorand",
+  "algorand"
  ],
  [
   "ATOM",
-  "Cosmos"
+  "Cosmos",
+  "cosmos"
  ],
  [
   "GHO",
-  "GHO"
+  "GHO",
+  "gho"
  ],
  [
   "NEXO",
-  "NEXO"
+  "NEXO",
+  "nexo"
  ],
  [
   "USTB",
-  "USTB"
+  "USTB",
+  "superstate-short-duration-us-government-securities-fund-ustb"
  ],
  [
   "ZRO",
-  "LayerZero"
+  "LayerZero",
+  "layerzero"
  ],
  [
   "BDX",
-  "Beldex"
+  "Beldex",
+  "beldex"
  ],
  [
   "PEARL",
-  "PEARL"
+  "PEARL",
+  "pearl-2"
  ],
  [
   "JAAA",
-  "JAAA"
+  "JAAA",
+  "janus-henderson-anemoy-aaa-clo-fund"
  ],
  [
   "FIL",
-  "Filecoin"
+  "Filecoin",
+  "filecoin"
  ],
  [
   "CAKE",
-  "PancakeSwap"
+  "PancakeSwap",
+  "pancakeswap-token"
  ],
  [
   "XDC",
-  "XDC Network"
+  "XDC Network",
+  "xdce-crowd-sale"
  ],
  [
   "ETHFI",
-  "ether.fi"
+  "ether.fi",
+  "ether-fi"
  ],
  [
   "USDO",
-  "USDO"
+  "USDO",
+  "openeden-open-dollar"
  ],
  [
   "STX",
-  "Stacks"
+  "Stacks",
+  "blockstack"
  ],
  [
   "EURC",
-  "EURC"
+  "EURC",
+  "euro-coin"
  ],
  [
   "DASH",
-  "Dash"
+  "Dash",
+  "dash"
  ],
  [
   "TUSD",
-  "TrueUSD"
+  "TrueUSD",
+  "true-usd"
  ],
  [
   "YLDS",
-  "YLDS"
+  "YLDS",
+  "ylds"
  ],
  [
   "PIEVERSE",
-  "PIEVERSE"
+  "PIEVERSE",
+  "pieverse"
  ],
  [
   "EUTBL",
-  "EUTBL"
+  "EUTBL",
+  "eutbl"
  ],
  [
   "PYTH",
-  "Pyth Network"
+  "Pyth Network",
+  "pyth-network"
  ],
  [
   "A7A5",
-  "A7A5"
+  "A7A5",
+  "a7a5"
  ],
  [
   "STABLE",
-  "STABLE"
+  "STABLE",
+  "stable-2"
  ],
  [
   "币安人生",
-  "币安人生"
+  "币安人生",
+  "bianrensheng"
  ],
  [
   "APT",
-  "Aptos"
+  "Aptos",
+  "aptos"
  ],
  [
   "FLR",
-  "Flare"
+  "Flare",
+  "flare-networks"
  ],
  [
   "VET",
-  "VeChain"
+  "VeChain",
+  "vechain"
  ],
  [
   "RAY",
-  "Raydium"
+  "Raydium",
+  "raydium"
  ],
  [
   "HASH",
-  "HASH"
+  "HASH",
+  "hash-2"
  ],
  [
   "REUSD",
-  "REUSD"
+  "REUSD",
+  "re-protocol-reusd"
  ],
  [
   "TIA",
-  "Celestia"
+  "Celestia",
+  "celestia"
  ],
  [
   "CRV",
-  "Curve DAO"
+  "Curve DAO",
+  "curve-dao-token"
  ],
  [
   "PENGU",
-  "Pudgy Penguins"
+  "Pudgy Penguins",
+  "pudgy-penguins"
  ],
  [
   "KAU",
-  "Kinesis Gold"
+  "Kinesis Gold",
+  "kinesis-gold"
  ],
  [
   "SOFID",
-  "SOFID"
+  "SOFID",
+  "sofiusd"
  ],
  [
   "AERO",
-  "Aerodrome Finance"
+  "Aerodrome Finance",
+  "aero"
  ],
  [
   "FET",
-  "Artificial Superintelligence Alliance"
+  "Artificial Superintelligence Alliance",
+  "fetch-ai"
  ],
  [
   "VIRTUAL",
-  "Virtuals Protocol"
+  "Virtuals Protocol",
+  "virtual-protocol"
  ],
  [
   "FF",
-  "FF"
+  "FF",
+  "falcon-finance-ff"
  ],
  [
   "OUSG",
-  "OUSG"
+  "OUSG",
+  "ousg"
  ],
  [
   "BTT",
-  "BitTorrent"
+  "BitTorrent",
+  "bittorrent"
  ],
  [
   "KITE",
-  "Kite"
+  "Kite",
+  "kite-2"
  ],
  [
   "GRASS",
-  "Grass"
+  "Grass",
+  "grass"
  ],
  [
   "BSV",
-  "Bitcoin SV"
+  "Bitcoin SV",
+  "bitcoin-cash-sv"
  ],
  [
   "SPX",
-  "SPX6900"
+  "SPX6900",
+  "spx6900"
  ],
  [
   "APXUSD",
-  "APXUSD"
+  "APXUSD",
+  "apxusd"
  ],
  [
   "TRUMP",
-  "Official Trump"
+  "Official Trump",
+  "official-trump"
  ],
  [
   "SUN",
-  "SUN"
+  "SUN",
+  "sun-token"
  ],
  [
   "DRV",
-  "DRV"
+  "DRV",
+  "derive"
  ],
  [
   "FDUSD",
-  "First Digital USD"
+  "First Digital USD",
+  "first-digital-usd"
  ],
  [
   "SEI",
-  "Sei"
+  "Sei",
+  "sei-network"
  ],
  [
   "AKE",
-  "AKE"
+  "AKE",
+  "akedo"
  ],
  [
   "STRK",
-  "Starknet"
+  "Starknet",
+  "starknet"
  ],
  [
   "PENDLE",
-  "Pendle"
+  "Pendle",
+  "pendle"
  ],
  [
   "UB",
-  "UB"
+  "UB",
+  "unibase"
  ],
  [
   "APEPE",
-  "APEPE"
+  "APEPE",
+  "ape-and-pepe"
  ],
  [
   "SAFO",
-  "SAFO"
+  "SAFO",
+  "safo"
  ],
  [
   "GNO",
-  "Gnosis"
+  "Gnosis",
+  "gnosis"
  ],
  [
   "XTZ",
-  "Tezos"
+  "Tezos",
+  "tezos"
  ],
  [
   "LDO",
-  "Lido DAO"
+  "Lido DAO",
+  "lido-dao"
  ],
  [
   "OHM",
-  "Olympus"
+  "Olympus",
+  "olympus"
  ],
  [
   "XPL",
-  "Plasma"
+  "Plasma",
+  "plasma"
  ],
  [
   "PC0000031",
-  "PC0000031"
+  "PC0000031",
+  "tradable-na-rent-financing-platform-sstn"
  ],
  [
   "BONK",
-  "Bonk"
+  "Bonk",
+  "bonk"
  ],
  [
   "FRAX",
-  "Frax"
+  "Frax",
+  "frax"
  ],
  [
   "BEAM",
-  "Beam"
+  "Beam",
+  "beam-2"
  ],
  [
   "BP",
-  "BP"
+  "BP",
+  "backpack"
  ],
  [
   "CFX",
-  "Conflux"
+  "Conflux",
+  "conflux-token"
  ],
  [
   "USX",
-  "USX"
+  "USX",
+  "usx"
  ],
  [
   "OP",
-  "Optimism"
+  "Optimism",
+  "optimism"
  ],
  [
   "OZO",
-  "OZO"
+  "OZO",
+  "ozone-chain"
  ],
  [
   "LUNC",
-  "Terra Luna Classic"
+  "Terra Luna Classic",
+  "terra-luna"
  ],
  [
   "CAP",
-  "CAP"
+  "CAP",
+  "cap-4"
  ],
  [
   "KAIA",
-  "Kaia"
+  "Kaia",
+  "kaia"
  ],
  [
   "DCR",
-  "Decred"
+  "Decred",
+  "decred"
  ],
  [
   "NFT",
-  "APENFT"
+  "APENFT",
+  "apenft"
  ],
  [
   "COMP",
-  "Compound"
+  "Compound",
+  "compound-governance-token"
  ],
  [
   "EURCV",
-  "EURCV"
+  "EURCV",
+  "societe-generale-forge-eurcv"
  ],
  [
   "MGLO",
-  "MGLO"
+  "MGLO",
+  "midas-fasanara-global-open"
  ],
  [
   "KOGE",
-  "KOGE"
+  "KOGE",
+  "bnb48-club-token"
  ],
  [
   "MON",
-  "MON"
+  "MON",
+  "monad"
  ],
  [
   "SHFL",
-  "SHFL"
+  "SHFL",
+  "shuffle-2"
  ],
  [
   "BTSE",
-  "BTSE"
+  "BTSE",
+  "btse-token"
  ],
  [
   "GRT",
-  "The Graph"
+  "The Graph",
+  "the-graph"
  ],
  [
   "FLOKI",
-  "FLOKI"
+  "FLOKI",
+  "floki"
  ],
  [
   "KMNO",
-  "Kamino"
+  "Kamino",
+  "kamino"
  ],
  [
   "AR",
-  "Arweave"
+  "Arweave",
+  "arweave"
  ],
  [
   "KAG",
-  "Kinesis Silver"
+  "Kinesis Silver",
+  "kinesis-silver"
  ],
  [
   "USAT",
-  "USAT"
+  "USAT",
+  "usa"
  ],
  [
   "ZBCN",
-  "ZBCN"
+  "ZBCN",
+  "zebec-network"
  ],
  [
   "RUNE",
-  "THORChain"
+  "THORChain",
+  "thorchain"
  ],
  [
   "USTBL",
-  "USTBL"
+  "USTBL",
+  "spiko-us-t-bills-money-market-fund"
  ],
  [
   "ENS",
-  "Ethereum Name Service"
+  "Ethereum Name Service",
+  "ethereum-name-service"
  ],
  [
   "SPCXB",
-  "SPCXB"
+  "SPCXB",
+  "spacex-bstocks-tokenized-stock"
  ],
  [
   "GEOD",
-  "GEOD"
+  "GEOD",
+  "geodnet"
  ],
  [
   "JASMY",
-  "JasmyCoin"
+  "JasmyCoin",
+  "jasmycoin"
  ],
  [
   "PC0000033",
-  "PC0000033"
+  "PC0000033",
+  "tradable-apac-diversified-finance-provider-sstn"
  ],
  [
   "CARDS",
-  "CARDS"
+  "CARDS",
+  "collector-crypt"
  ],
  [
   "MET",
-  "Meteora"
+  "Meteora",
+  "meteora"
  ],
  [
   "ANVL",
-  "ANVL"
+  "ANVL",
+  "anvil"
  ],
  [
   "FLUID",
-  "FLUID"
+  "FLUID",
+  "instadapp"
  ],
  [
   "IOTA",
-  "IOTA"
+  "IOTA",
+  "iota"
  ],
  [
   "USDAI",
-  "USDAI"
+  "USDAI",
+  "usdai"
  ],
  [
   "NVDAB",
-  "NVDAB"
+  "NVDAB",
+  "nvidia-bstocks"
  ],
  [
   "JTO",
-  "Jito"
+  "Jito",
+  "jito-governance-token"
  ],
  [
   "AKT",
-  "Akash Network"
+  "Akash Network",
+  "akash-network"
  ],
  [
   "BAT",
-  "Basic Attention Token"
+  "Basic Attention Token",
+  "basic-attention-token"
  ],
  [
   "TWT",
-  "Trust Wallet"
+  "Trust Wallet",
+  "trust-wallet-token"
  ],
  [
   "AUSD",
-  "Agora Dollar"
+  "Agora Dollar",
+  "agora-dollar"
  ],
  [
   "GUSD",
-  "Gemini Dollar"
+  "Gemini Dollar",
+  "gusd"
  ],
  [
   "ZAMA",
-  "ZAMA"
+  "ZAMA",
+  "zama"
  ],
  [
   "CVX",
-  "Convex Finance"
+  "Convex Finance",
+  "convex-finance"
  ],
  [
   "GOMINING",
-  "GOMINING"
+  "GOMINING",
+  "gmt-token"
  ],
  [
   "EIGEN",
-  "EigenLayer"
+  "EigenLayer",
+  "eigenlayer"
  ],
  [
   "WIF",
-  "dogwifhat"
+  "dogwifhat",
+  "dogwifcoin"
  ],
  [
   "S",
-  "Sonic"
+  "Sonic",
+  "sonic-3"
  ],
  [
   "APYUSD",
-  "APYUSD"
+  "APYUSD",
+  "apyusd"
  ],
  [
   "TRAC",
-  "OriginTrail"
+  "OriginTrail",
+  "origintrail"
  ],
  [
   "BR",
-  "BR"
+  "BR",
+  "bedrock-token"
  ],
  [
   "THETA",
-  "Theta Network"
+  "Theta Network",
+  "theta-token"
  ],
  [
   "CRVUSD",
-  "crvUSD"
+  "crvUSD",
+  "crvusd"
  ],
  [
   "PC0000097",
-  "PC0000097"
+  "PC0000097",
+  "tradable-latam-fintech-sstn"
  ],
  [
   "Q",
-  "Q"
+  "Q",
+  "quack-ai"
  ],
  [
   "CASH",
-  "CASH"
+  "CASH",
+  "cash-4"
  ],
  [
   "CRCLB",
-  "CRCLB"
+  "CRCLB",
+  "circle-internet-group-bstock"
  ],
  [
   "COCO",
-  "COCO"
+  "COCO",
+  "coco-2"
  ],
  [
   "USD3",
-  "USD3"
+  "USD3",
+  "3jane-usd3"
  ],
  [
   "MX",
-  "MX Token"
+  "MX Token",
+  "mx-token"
  ],
  [
   "BORG",
-  "SwissBorg"
+  "SwissBorg",
+  "swissborg"
  ],
  [
   "JPYSC",
-  "JPYSC"
+  "JPYSC",
+  "jpysc"
  ],
  [
   "AXS",
-  "Axie Infinity"
+  "Axie Infinity",
+  "axie-infinity"
  ],
  [
   "BC",
-  "BC"
+  "BC",
+  "bc-token"
  ],
  [
   "MANA",
-  "Decentraland"
+  "Decentraland",
+  "decentraland"
  ],
  [
   "SN51",
-  "SN51"
+  "SN51",
+  "celium"
  ],
  [
   "VSN",
-  "VSN"
+  "VSN",
+  "vision-3"
  ],
  [
   "SYRUP",
-  "Maple Finance"
+  "Maple Finance",
+  "syrup"
  ]
 ];
