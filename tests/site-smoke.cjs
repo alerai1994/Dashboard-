@@ -14,6 +14,17 @@ assert(screenshotCatalog.every(c=>c.length>=3&&/^[a-z0-9-]{1,100}$/.test(c[2])),
  'Every screenshot token needs its exact CoinGecko identifier');
 assert(source.includes('async function chartCoinGeckoCandles('),'Missing verified historical OHLC fallback');
 assert(source.includes('async function chartExtendedCryptoHistory('),'Missing 228-coin history loader');
+assert(source.includes('function observeMarketCryptoHistoryPreviews('),
+ 'Markets must lazily observe crypto historical charts');
+assert(source.includes('function loadMarketCryptoHistoryPreview('),
+ 'Markets must load verified crypto history archives for the new coins');
+assert(source.includes("chart-history/crypto/'+encodeURIComponent(id)"),
+ 'Markets previews must fetch the selected crypto history rather than the old 42-coin feed');
+assert(source.includes("marketCryptoHistoryPreviews.get(id)"),
+ 'Markets preview chart must use loaded archived OHLC');
+assert(source.includes("status:'unavailable'"),
+ 'Markets must show an honest unavailable state rather than synthetic candles');
+
 assert(source.includes("'4 giorni'")&&source.includes("'4 ore'")&&source.includes("'1 giorno'"),
  'Historical candles must retain real CoinGecko/CryptoCompare source resolution');
 assert(source.includes('data.coingeckoId!==asset.coingeckoId'),
@@ -102,6 +113,13 @@ const allCrypto=appWindow.__vertexPriceBoardBackend.assets.filter(a=>a.group==='
 for(const [symbol] of screenshotCatalog)
  assert(allCrypto.some(a=>a.symbol===symbol+'-USD'),'Missing screenshot crypto '+symbol);
 assert.equal(new Set(allCrypto.map(a=>a.id)).size,allCrypto.length,'Duplicate crypto IDs');
+const marketHtml=app.PAGE_RENDERERS.markets();
+for(const symbol of ['FIGR_HELOC','HYPE','ZEC','USDE','XMR','LUNC']){
+ const asset=allCrypto.find(a=>a.symbol===symbol+'-USD');
+ assert(asset&&marketHtml.includes('data-asset="'+asset.id+'"'),
+  'Markets must show a historical preview card for '+symbol);
+}
+
 app.state.quotes=Object.fromEntries(rows.map(row=>[row.id,row]));
 app.state.feedTime=quotes.generatedAt;
 app.state.loading=false;
@@ -475,7 +493,7 @@ assert(source.includes("function marketForceSelectLabel(asset){\n return asset.n
 assert(read('price-board.js').includes("function dropdownLabel(a){\n return a.name;"));
 assert(source.includes("symbol:'BTC-USD'"),'Original market symbol must remain intact');
 assert(source.includes("symbol:'EURUSD=X'"),'Forex pair must remain intact');
-assert(html.includes('script.js?v=20261114-history228-v2'));
+assert(html.includes('script.js?v=20261114-markets-history-v3'));
 assert(html.includes('price-board.js?v=20261114-board-dropdown-names-v6'));
 
 /* Swipe control persists across all sections and prioritizes the exposed right strip. */
@@ -492,7 +510,7 @@ assert(source.includes("if(Math.abs(dy)>18&&Math.abs(dy)>Math.abs(dx)*1.15)"));
 const heatmap=read('vertex-heatmap.js'),heatmapCss=read('vertex-heatmap.css');
 new Function(heatmap);
 assert(html.includes('vertex-heatmap.css?v=20261114-v3-no-inj-header'),'Crypto heatmap CSS missing');
-assert(html.includes('vertex-heatmap.js?v=20261114-history228-v2'),'Crypto heatmap JS missing');
+assert(html.includes('vertex-heatmap.js?v=20261114-markets-history-v3'),'Crypto heatmap JS missing');
 assert(source.includes("window.VertexHeatmap?.page()"),'Markets must render heatmap');
 assert(source.includes("window.VertexHeatmap?.activate()"),'Markets must refresh live heatmap');
 assert(source.includes('id="vertexMarketsCharts"'),'Existing charts scroll target missing');
