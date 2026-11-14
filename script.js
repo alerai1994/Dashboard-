@@ -2604,7 +2604,7 @@ async function loadMarketCryptoHistoryPreview(id){
     record={
      status:'ready',candles:rows.slice(-48),
      source:String(data.source||'Archivio OHLC verificato').slice(0,180),
-     first:rows[0].t,last:rows[rows.length-1].t,
+     first:rows[Math.max(0,rows.length-48)].t,last:rows[rows.length-1].t,
      resolution:monthly.length>=2?
       data.timeframe==='1mo'?'1 mese':data.timeframe==='1d'?'1 giorno':'4 giorni':
       '4 ore',
@@ -2625,7 +2625,7 @@ async function loadMarketCryptoHistoryPreview(id){
   if(rows.length>=2)return {
    status:'ready',candles:rows.slice(-48),
    source:'CoinGecko · OHLC in USD',
-   first:rows[0].t,last:rows[rows.length-1].t,
+   first:rows[Math.max(0,rows.length-48)].t,last:rows[rows.length-1].t,
    resolution:'4 giorni',partial:true
   };
  }catch(error){
