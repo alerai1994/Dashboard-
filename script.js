@@ -2733,7 +2733,9 @@ function marketsPage(){
  const options=[['all','Tutti'],['markets','Indici'],['tech','Tech'],['bigtech','Big Tech'],['commodities','Materie prime'],['forex','Forex'],['crypto','Crypto']];
  const text=state.marketSearch.trim().toLowerCase();
  const filtered=ASSETS.filter(a=>marketFilterMatch(a)&&(!text||(a.name+' '+a.symbol+' '+(a.country||'')).toLowerCase().includes(text)));
- return secHeader('Tutti i grafici dei mercati','Grafici visibili per ogni strumento: selezionane uno per aprire le medie mobili e gli indicatori',
+ return (window.VertexHeatmap?.page()||'')+
+  '<div class="vh-charts-anchor" id="vertexMarketsCharts"></div>'+
+  secHeader('Tutti i grafici dei mercati','Grafici visibili per ogni strumento: selezionane uno per aprire le medie mobili e gli indicatori',
  '<a class="btn btn-small" href="#global">'+sym('globe')+' Mappa mondiale</a>')+
   '<section class="content-card panel markets-gallery"><div class="filter-row"><div class="tab-filters" role="group" aria-label="Categorie mercati">'+
  options.map(([id,label])=>'<button type="button" data-filter="'+id+'" class="'+(state.marketFilter===id?'active':'')+'">'+label+'</button>').join('')+
@@ -4688,6 +4690,7 @@ function render(){
   main.innerHTML='<section class="panel" style="padding:24px"><h2>Impossibile mostrare questa sezione</h2><p>Riprova a ricaricare la pagina. I servizi dati sono indipendenti dalla dashboard.</p></section>';
  }
  if(state.page==='priceboard')window.VertexPriceBoard?.paint();
+ if(state.page==='markets')window.VertexHeatmap?.activate();
  // Start each visible force circle at zero, then animate the verified percentage.
  if(state.page==='global'||state.page==='marketforce')
   requestAnimationFrame(()=>requestAnimationFrame(()=>patchMarketForce()));
