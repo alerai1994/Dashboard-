@@ -242,6 +242,73 @@ def recently_captured(stamp, hours=36):
         return False
 
 
+
+def verified_coin_names():
+    path = ROOT / "market-quotes.json"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError):
+        return {}
+    return {str(row["id"]): row for row in payload.get("crypto", [])
+            if isinstance(row, dict) and isinstance(row.get("id"), str)}
+
+
+def clean_project_name(value):
+    value = re.sub(r"\s*\([^)]*\)\s*$", "", str(value or ""))
+    value = re.sub(r"\s+(?:USD|USDT)\s*$", "", value, flags=re.I)
+    return re.sub(r"[^a-z0-9]+", "", value.casefold())
+
+
+def yahoo_extended_candidate(target, market):
+    """Accept Yahoo candles only if its instrument name matches CoinGecko.
+
+    Tickers are not unique project identities. A latest-price sanity check
+    also rejects clearly unrelated symbols.
+    """
+    identity, ticker, label, cg_id = target
+    if not re.fullmatch(r"[A-Z][A-Z0-9]{1,14}", ticker):
+        return None
+    if market.get("coingeckoId") != cg_id:
+        return None
+    expected = clean_project_name(market.get("name") or label)
+    if len(expected) < 4 or expected == ticker.casefold():
+        return None
+    symbol = ticker + "-USD"
+    for host in ("query1.finance.yahoo.com", "query2.finance.yahoo.com"):
+        url = ("https://" + host + "/v8/finance/chart/" + quote(symbol, safe="")
+               + "?" + urlencode({"range": "max", "interval": "1mo"}))
+        try:
+            with urlopen(Request(url, headers=HEADERS), timeout=9) as response:
+                raw = json.load(response)
+            result = (raw.get("chart", {}).get("result") or [None])[0]
+            if not isinstance(result, dict):
+                continue
+            meta = result.get("meta") or {}
+            actual = clean_project_name(meta.get("longName") or meta.get("shortName"))
+            if actual != expected:
+                continue
+            candles = normalise(zip_rows(result.get("timestamp") or [],
+                                         (result.get("indicators", {}).get("quote") or [{}])[0]))
+            if len(candles) < 2:
+                continue
+            spot = positive(market.get("value"))
+            if spot and candles[-1][0] >= int(datetime.now(timezone.utc).timestamp()) - 7 * 86400:
+                if not 0.28 <= candles[-1][4] / spot <= 3.5:
+                    continue
+            return identity, {
+                "id": identity, "symbol": symbol, "coingeckoId": cg_id,
+                "quoteCurrency": "USD", "timeframe": "1mo",
+                "source": "Yahoo Finance · " + symbol + " · OHLC mensile verificato per nome",
+                "first": candles[0][0], "last": candles[-1][0],
+                "capturedAt": datetime.now(timezone.utc).isoformat(),
+                "candles": candles, "partial": False,
+            }
+        except (HTTPError, URLError, OSError, ValueError, TypeError,
+                IndexError, KeyError, OverflowError):
+            continue
+    return None
+
+
 def collect_screenshot_histories():
     """Preserve 365-day and 30-day *real* OHLC separately.
 
@@ -256,6 +323,31 @@ def collect_screenshot_histories():
         if prior and prior.get("id") == identity and prior.get("coingeckoId") == coin_id:
             kept[identity] = prior
     changes, covered = 0, 0
+    names = verified_coin_names()
+    eligible = [target for target in targets if target[0] not in kept or
+                (kept[target[0]].get("timeframe") != "1mo" or
+                 not recently_captured(kept[target[0]].get("capturedAt")))]
+    matched = 0
+    with ThreadPoolExecutor(max_workers=9) as executor:
+        jobs = [executor.submit(yahoo_extended_candidate, target,
+                                names.get(target[0], {})) for target in eligible]
+        for job in as_completed(jobs):
+            result = job.result()
+            if not result:
+                continue
+            identity, source_data = result
+            previous = kept.get(identity)
+            if previous and len(previous.get("candles") or []) >= 2 and (
+                previous["candles"][0][0] < source_data["candles"][0][0]
+            ):
+                continue
+            kept[identity] = source_data
+            (OUT / (identity + ".json")).write_text(
+                json.dumps(source_data, ensure_ascii=False, separators=(",", ":")) + "\n",
+                encoding="utf-8")
+            changes += 1
+            matched += 1
+    print("Yahoo token identities verified:", matched, "/", len(eligible))
 
     # Fetch the largest available window for *every* requested crypto first.
     # If the provider stops responding, no subset is permanently privileged.
@@ -266,6 +358,8 @@ def collect_screenshot_histories():
             prior = kept.get(identity)
             key = "candles" if days == 365 else "recentCandles"
             stamp = "capturedAt" if days == 365 else "recentCapturedAt"
+            if prior and prior.get("timeframe") == "1mo" and len(prior.get("candles") or []) >= 2:
+                continue
             if prior and len(prior.get(key) or []) >= 2 and recently_captured(prior.get(stamp)):
                 continue
             candles = coingecko_ohlc(coin_id, days)
