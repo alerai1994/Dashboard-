@@ -541,6 +541,98 @@ def crypto_quotes():
           sum(len(row["candles"]) >= 2 for row in items.values()), "/", len(items))
     return [items[cid] for cid, _ in CRYPTO]
 
+def screenshot_crypto_catalog():
+    """Read the canonical 220-symbol catalog shared with the browser.
+
+    Coin IDs must not be guessed from a ticker. Resolve only exact symbols
+    found in a ranked CoinGecko market response and retain older source
+    timestamps when a token drops out of the returned market-cap window.
+    """
+    catalog = Path(__file__).resolve().parents[2] / "crypto-extended.js"
+    try:
+        raw = catalog.read_text(encoding="utf-8")
+        match = re.search(r"window\\.__VERTEX_EXTRA_CRYPTO__\\s*=\\s*(\\[[\\s\\S]*?\\]);", raw)
+        rows = json.loads(match.group(1)) if match else []
+    except (OSError, ValueError, TypeError):
+        rows = []
+    existing = {cid for cid, _ in CRYPTO}
+    output = []
+    seen = set()
+    for row in rows:
+        if not isinstance(row, list) or len(row) < 2:
+            continue
+        ticker = str(row[0]).strip().upper()
+        if not ticker or ticker in seen or len(ticker) > 40:
+            continue
+        identity = (ticker.lower() if re.fullmatch(r"[A-Z0-9_-]+", ticker)
+                    else "crypto-" + "-".join(format(ord(c), "x") for c in ticker))
+        if identity in existing:
+            continue
+        seen.add(ticker)
+        output.append((identity, ticker, str(row[1]).strip()[:100] or ticker))
+    return output
+
+
+def coingecko_screenshot_quotes():
+    """Lightweight, authenticated-by-source snapshot for added crypto only.
+
+    One ranked CoinGecko batch covers the 220 tiles; no static screenshot
+    prices, fake prices, or unverified ticker-to-contract matches are used.
+    """
+    wanted = screenshot_crypto_catalog()
+    if not wanted:
+        return []
+    symbols = {ticker for _, ticker, _ in wanted}
+    by_symbol = {}
+    try:
+        url = "https://api.coingecko.com/api/v3/coins/markets?" + urlencode({
+            "vs_currency": "usd", "order": "market_cap_desc",
+            "per_page": 250, "page": 1, "sparkline": "false",
+            "price_change_percentage": "24h",
+        })
+        data = request_json(url)
+        if isinstance(data, list):
+            for market in data:
+                if not isinstance(market, dict):
+                    continue
+                symbol = str(market.get("symbol") or "").strip().upper()
+                if symbol in symbols and symbol not in by_symbol:
+                    by_symbol[symbol] = market
+    except (HTTPError, URLError, TimeoutError, ValueError, TypeError, OSError) as e:
+        print("CoinGecko extended catalog unavailable:", type(e).__name__)
+
+    previous = previous_crypto_snapshot()
+    result = []
+    for identity, ticker, name in wanted:
+        market = by_symbol.get(ticker, {})
+        price = valid(market.get("current_price"))
+        cap = valid(market.get("market_cap"))
+        supply = valid(market.get("circulating_supply"))
+        image = market.get("image")
+        row = {
+            "id": identity, "symbol": ticker, "name": str(market.get("name") or name)[:120],
+            "value": price if price is not None and price > 0 else None,
+            "change": valid(market.get("price_change_percentage_24h")),
+            "currency": "USD", "time": market.get("last_updated"),
+            "source": "CoinGecko", "coingeckoId": market.get("id"),
+            "market_cap": cap if cap is not None and cap > 0 else None,
+            "circulating_supply": supply if supply is not None and supply > 0 else None,
+            "cap_updated_at": market.get("last_updated"),
+            "logo": image if isinstance(image, str) and image.startswith((
+                "https://coin-images.coingecko.com/",
+                "https://assets.coingecko.com/")) else None,
+            "history": [], "candles": [],
+        }
+        old = previous.get(identity, {})
+        if row["value"] is None and valid(old.get("value")) is not None:
+            for key in ("value", "change", "time", "logo", "coingeckoId",
+                        "market_cap", "circulating_supply", "cap_updated_at"):
+                if old.get(key) is not None:
+                    row[key] = old[key]
+        result.append(row)
+    return result
+
+
 def fetch_group(pairs):
     results = {}
     with ThreadPoolExecutor(max_workers=3) as pool:
@@ -777,7 +869,7 @@ def main():
         "commodities": fetch_group(COMMODITIES),
         "forex": fetch_group(FOREX),
         "etfs": etf_quotes(),
-        "crypto": crypto_quotes(),
+        "crypto": crypto_quotes() + coingecko_screenshot_quotes(),
     }
     ready = sum(1 for group in ("markets", "bigtech", "commodities", "forex", "etfs", "crypto")
                 for row in data[group] if row["value"] is not None)
