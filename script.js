@@ -2619,12 +2619,16 @@ async function loadMarketCryptoHistoryPreview(id){
  // Genuine sampled prices are a LINE graph, not synthetic OHLC candles.
  try{
   const prices=await chartLoadObservedPriceArchive(asset,controller.signal);
-  if(prices?.points?.length>=2)return {
-   status:'price',points:prices.points.slice(-365),
-   source:prices.source,resolution:'prezzi giornalieri osservati',
-   first:prices.points[Math.max(0,prices.points.length-365)].t,
-   last:prices.points[prices.points.length-1].t,partial:true
-  };
+  if(prices?.points?.length>=2){
+   const sampled=chartSampledCandlesFromPrices(prices.points,7);
+   if(sampled.length>=2)return {
+    status:'ready',candles:sampled.slice(-48),sampled:true,
+    source:prices.source+' · max/min solo fra rilevazioni giornaliere',
+    resolution:'1 settimana · candele campionate',
+    first:sampled[Math.max(0,sampled.length-48)].t,
+    last:sampled[sampled.length-1].t,partial:true
+   };
+  }
  }catch(_error){/* Price history might not be indexed for this token. */}
  if(Date.now()<marketCryptoHistoryApiPauseUntil)return null;
  const fallbackCtl=new AbortController(),deadline=setTimeout(()=>fallbackCtl.abort(),9000);
@@ -2715,20 +2719,6 @@ function marketChartPlot(id){
  const q=quote(id),W=320,H=142,L=10,R=10,T=10,B=14,chartW=W-L-R,chartH=H-T-B;
  const grid='<path d="M10 42H310 M10 82H310 M10 122H310" stroke="currentColor" stroke-opacity=".13" stroke-width=".7" fill="none"/>';
  const plot=(svg,note)=>'<svg viewBox="0 0 320 142" preserveAspectRatio="none" aria-hidden="true">'+grid+svg+'</svg><span class="market-chart-note">'+note+'</span>';
- const historicalPrices=marketCryptoHistoryPreviews.get(id);
- if(historicalPrices?.status==='price'&&historicalPrices.points?.length>=2){
-  const points=historicalPrices.points;
-  const lo=Math.min(...points.map(p=>p.p)),hi=Math.max(...points.map(p=>p.p));
-  const pad=Math.max((hi-lo)*.07,hi*.001);
-  const ymin=lo-pad,ymax=hi+pad;
-  const xp=i=>L+chartW*i/(points.length-1);
-  const yp=p=>T+(ymax-p)/(ymax-ymin)*chartH;
-  const d=points.map((p,i)=>(i?'L':'M')+xp(i).toFixed(2)+' '+yp(p.p).toFixed(2)).join(' ');
-  const stroke=points[points.length-1].p>=points[0].p?'#18c69d':'#ed7192';
-  return plot('<path d="'+d+'" stroke="'+stroke+'" stroke-width="2" fill="none" vector-effect="non-scaling-stroke"/>',
-   'Storico prezzi reali (linea, non OHLC) · '+esc(marketCryptoHistoryDate(historicalPrices.first))+
-   ' – '+esc(marketCryptoHistoryDate(historicalPrices.last))+' · '+esc(historicalPrices.source));
- }
  const candles=marketPreviewCandleData(id);
  if(candles.length>=2){
   const low=Math.min(...candles.map(c=>Number(c.l))),high=Math.max(...candles.map(c=>Number(c.h)));
@@ -2742,7 +2732,8 @@ function marketChartPlot(id){
   }).join('');
   const historical=marketCryptoHistoryPreviews.get(id);
   const note=historical?.status==='ready'?
-   'Storico OHLC reale · '+esc(historical.resolution)+' · '+esc(marketCryptoHistoryDate(historical.first))+
+   (historical.sampled?'Candele campionate · max/min fra prezzi osservati, non OHLC exchange':'Storico OHLC reale')+
+   ' · '+esc(historical.resolution)+' · '+esc(marketCryptoHistoryDate(historical.first))+
    ' – '+esc(marketCryptoHistoryDate(historical.last))+' · '+esc(historical.source):
    'Candele OHLC · '+candles.length+' barre'+(candles[candles.length-1]?.observed?' · ultima candela parziale':'')+
    (q&&q.candleSource?' · '+esc(q.candleSource):'');
@@ -5927,13 +5918,13 @@ function updateChartHistoryStatus(){
   badge.textContent=info&&info.loading&&(!info.candles||!info.candles.length)&&!info.pricePoints?.length?
    'Caricamento '+rangeLabel+'…':
    info&&info.candles.length?rangeLabel+' · '+(info.visibleCount||info.candles.length)+
-    ' candele'+(info.partial?' (parziale)':''):
+    (info.sampled?' candele campionate':' candele OHLC')+(info.partial?' (parziale)':''):
    info&&info.pricePoints?.length>=2?rangeLabel+' · '+info.pricePoints.length+' prezzi reali (linea)':
    rangeLabel+' · dati non disponibili';
  }
  if(source){
   source.textContent=info&&info.loading?'Ricerca candele reali: '+rangeLabel+'…':
-   info&&info.candles.length?'Candele OHLC: '+info.source+
+   info&&info.candles.length?(info.sampled?'Candele da prezzi osservati (non OHLC intraday): ':'Candele OHLC: ')+info.source+
     (info.partial?(all?' · copertura limitata alla fonte disponibile':
        ' · granularità o copertura parziale della fonte'):'')+
     ' · periodo '+rangeLabel:
@@ -5952,7 +5943,7 @@ function updateChartHistoryStatus(){
     });
     dates.textContent='Prima quotazione disponibile: '+formatter.format(new Date(first.t*1000))+
      '  ·  Ultima quotazione: '+formatter.format(new Date(last.t*1000))+
-     '  ·  '+series.length+(info.pricePoints?.length>=2?' prezzi osservati (linea)':' candele reali')+
+     '  ·  '+series.length+(info.pricePoints?.length>=2?' prezzi osservati (linea)':info.sampled?' candele campionate':' candele reali OHLC')+
      (info.partial?' · archivio incompleto':'');
    }else dates.textContent=info&&info.loading?
     'Caricamento delle prime e ultime quotazioni disponibili…':
@@ -6452,6 +6443,27 @@ function chartReadHistoricalPricePoints(raw){
  }
  return [...seen.values()].sort((a,b)=>a.t-b.t);
 }
+/* Verified price observations are not exchange OHLC. When OHLC is absent,
+   a weekly sampled candlestick shows FIRST/MAX/MIN/LAST *observed prices*
+   from that week. It never claims a trade-based intraday high/low. */
+function chartSampledCandlesFromPrices(points,days=7){
+ if(!Array.isArray(points)||points.length<2)return [];
+ const size=Math.max(1,Math.round(days))*86400;
+ const buckets=new Map();
+ const valid=points.filter(p=>p&&Number.isFinite(Number(p.t))&&
+  Number.isFinite(Number(p.p))&&Number(p.p)>0)
+  .slice().sort((a,b)=>Number(a.t)-Number(b.t));
+ for(const point of valid){
+  const t=Number(point.t),value=Number(point.p);
+  const bucket=Math.floor((t+259200)/size)*size-259200;
+  let group=buckets.get(bucket);
+  if(!group){group={t,o:value,h:value,l:value,c:value,observations:0,sampled:true};buckets.set(bucket,group);}
+  group.h=Math.max(group.h,value);
+  group.l=Math.min(group.l,value);
+  group.c=value;group.observations++;
+ }
+ return [...buckets.values()].filter(c=>c.observations>=2).sort((a,b)=>a.t-b.t);
+}
 async function chartLoadObservedPriceArchive(asset,signal){
  if(!asset||asset.group!=='crypto'||asset.id==='ore')return null;
  const url='./chart-history/crypto/prices/'+encodeURIComponent(asset.id)+
@@ -6577,13 +6589,17 @@ async function loadAllChartHistory(force=false){
   clearTimeout(timer);
   if(seq!==chartFetchState.sequence)return;
   if(observed?.points?.length>=2){
-   const result={id,range:'MAX',candles:[],pricePoints:observed.points,kind:'price-line',
-    source:observed.source,partial:true,loading:false,error:'',loadedAt:Date.now()};
-   chartSeries=result;
-   chartFetchState.cache.set(key,result);
-   if(chartFetchState.cache.size>100)
-    chartFetchState.cache.delete(chartFetchState.cache.keys().next().value);
-   updateChartHistoryStatus();scheduleDetailChartDraw();return;
+   const candles=chartSampledCandlesFromPrices(observed.points,7);
+   if(candles.length>=2){
+    const result={id,range:'MAX',candles,kind:'sampled-price-candles',sampled:true,
+     source:observed.source+' · candele settimanali da prezzi osservati (non OHLC exchange)',
+     partial:true,loading:false,error:'',loadedAt:Date.now()};
+    chartSeries=result;
+    chartFetchState.cache.set(key,result);
+    if(chartFetchState.cache.size>100)
+     chartFetchState.cache.delete(chartFetchState.cache.keys().next().value);
+    updateChartHistoryStatus();scheduleDetailChartDraw();return;
+   }
   }
  }
  if(candles.length>=2){
