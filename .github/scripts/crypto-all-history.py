@@ -309,6 +309,72 @@ def yahoo_extended_candidate(target, market):
     return None
 
 
+
+def cryptocompare_catalog():
+    """One symbol/name map; a ticker match alone is never accepted."""
+    url = "https://min-api.cryptocompare.com/data/all/coinlist?summary=true"
+    try:
+        with urlopen(Request(url, headers=HEADERS), timeout=24) as response:
+            data = json.load(response)
+        listing = data.get("Data") if isinstance(data, dict) else None
+        return listing if isinstance(listing, dict) else {}
+    except (HTTPError, URLError, OSError, ValueError, TypeError):
+        return {}
+
+
+def cryptocompare_verified_candidate(target, market, listing):
+    """Exact CoinGecko/CC project-name agreement + spot-price plausibility."""
+    identity, ticker, label, cg_id = target
+    if not re.fullmatch(r"[A-Z][A-Z0-9]{2,14}", ticker):
+        return None
+    if market.get("coingeckoId") != cg_id:
+        return None
+    item = listing.get(ticker)
+    if not isinstance(item, dict):
+        return None
+    expected = clean_project_name(market.get("name") or label)
+    actual = clean_project_name(item.get("CoinName") or item.get("FullName"))
+    if len(expected) < 5 or actual != expected:
+        return None
+    url = "https://min-api.cryptocompare.com/data/v2/histoday?" + urlencode({
+        "fsym": ticker, "tsym": "USD", "limit": 2000, "aggregate": 1,
+        "extraParams": "VertexGlobalCryptoHistory",
+    })
+    try:
+        with urlopen(Request(url, headers=HEADERS), timeout=15) as response:
+            payload = json.load(response)
+        if not isinstance(payload, dict) or payload.get("Response") != "Success":
+            return None
+        envelope = payload.get("Data") or {}
+        rows = envelope.get("Data") if isinstance(envelope, dict) else []
+        if not isinstance(rows, list):
+            return None
+        candles = normalise([
+            [row.get("time"), row.get("open"), row.get("high"),
+             row.get("low"), row.get("close")]
+            for row in rows if isinstance(row, dict)
+        ])
+        if len(candles) < 2:
+            return None
+        # A real recent daily close should be reasonably consistent with the
+        # *same* coin's verified CoinGecko quote, excluding wrong ticker reuse.
+        spot = positive(market.get("value"))
+        recent = candles[-1][0] >= int(datetime.now(timezone.utc).timestamp()) - 3 * 86400
+        if spot and recent and not 0.2 <= candles[-1][4] / spot <= 5:
+            return None
+        return identity, {
+            "id": identity, "symbol": ticker + "/USD", "coingeckoId": cg_id,
+            "quoteCurrency": "USD", "timeframe": "1d",
+            "source": "CryptoCompare · USD · OHLC giornaliero aggregato verificato per nome",
+            "partial": True, "historyDays": 2000,
+            "first": candles[0][0], "last": candles[-1][0],
+            "capturedAt": datetime.now(timezone.utc).isoformat(),
+            "candles": candles,
+        }
+    except (HTTPError, URLError, OSError, ValueError, TypeError, OverflowError):
+        return None
+
+
 def collect_screenshot_histories():
     """Preserve 365-day and 30-day *real* OHLC separately.
 
@@ -348,6 +414,33 @@ def collect_screenshot_histories():
             changes += 1
             matched += 1
     print("Yahoo token identities verified:", matched, "/", len(eligible))
+    cc_catalog = cryptocompare_catalog()
+    cc_targets = [target for target in targets if (
+        target[0] not in kept or kept[target[0]].get("timeframe") not in ("1mo", "1d")
+    )]
+    cc_matches = 0
+    if cc_catalog:
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            jobs = [executor.submit(cryptocompare_verified_candidate, target,
+                                    names.get(target[0], {}), cc_catalog)
+                    for target in cc_targets]
+            for job in as_completed(jobs):
+                result = job.result()
+                if not result:
+                    continue
+                identity, source_data = result
+                previous = kept.get(identity)
+                if previous and len(previous.get("candles") or []) >= 2 and (
+                    previous["candles"][0][0] < source_data["candles"][0][0]
+                ):
+                    continue
+                kept[identity] = source_data
+                (OUT / (identity + ".json")).write_text(
+                    json.dumps(source_data, ensure_ascii=False, separators=(",", ":")) + "\n",
+                    encoding="utf-8")
+                cc_matches += 1
+                changes += 1
+    print("CryptoCompare validated historical assets:", cc_matches, "/", len(cc_targets))
 
     # Fetch the largest available window for *every* requested crypto first.
     # If the provider stops responding, no subset is permanently privileged.
@@ -358,7 +451,7 @@ def collect_screenshot_histories():
             prior = kept.get(identity)
             key = "candles" if days == 365 else "recentCandles"
             stamp = "capturedAt" if days == 365 else "recentCapturedAt"
-            if prior and prior.get("timeframe") == "1mo" and len(prior.get("candles") or []) >= 2:
+            if prior and prior.get("timeframe") in ("1mo", "1d") and len(prior.get("candles") or []) >= 2:
                 continue
             if prior and len(prior.get(key) or []) >= 2 and recently_captured(prior.get(stamp)):
                 continue
