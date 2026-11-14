@@ -5763,7 +5763,8 @@ function updateChartHistoryStatus(){
  if(source){
   source.textContent=info&&info.loading?'Ricerca candele reali: '+rangeLabel+'…':
    info&&info.candles.length?'Candele OHLC: '+info.source+
-    (info.partial?' · solo storico parziale, non dalla nascita':'')+
+    (info.partial?(all?' · copertura limitata alla fonte disponibile':
+       ' · granularità o copertura parziale della fonte'):'')+
     ' · periodo '+rangeLabel:
    info&&info.error?info.error:'Dati storici non ancora disponibili per '+rangeLabel;
  }
@@ -5811,6 +5812,9 @@ async function loadSecondChartHistory(force=false){
  const asset=ASSET_BY_ID[state.dialogId],selected=chartRange;
  const period=CHART_PERIOD_BY_ID[selected];
  if(!asset||!period||!period.seconds)return;
+ const seq=++chartFetchState.sequence;
+ if(chartFetchState.abort)chartFetchState.abort.abort();
+ chartFetchState.abort=null;
  if(asset.extended){
   chartSeries={id:asset.id,range:selected,candles:[],source:'',loading:false,partial:false,
    error:'Storico al secondo non disponibile da una fonte verificata per '+
@@ -5818,9 +5822,6 @@ async function loadSecondChartHistory(force=false){
   updateChartHistoryStatus();scheduleDetailChartDraw();
   return;
  }
- const seq=++chartFetchState.sequence;
- if(chartFetchState.abort)chartFetchState.abort.abort();
- chartFetchState.abort=null;
  const key=asset.id+':'+selected,cached=chartFetchState.cache.get(key);
  if(!force&&cached&&Date.now()-cached.loadedAt<15000){
   chartSeries={...cached,id:asset.id,range:selected,loading:false};
@@ -6061,7 +6062,9 @@ async function loadCryptoChartHistory(force=false){
  // New crypto are resolved by CoinGecko ID: ticker-only exchange pairs
  // are ambiguous and may refer to an entirely different project.
  if(asset.extended){
-  const result=await chartExtendedCryptoHistory(asset,period,from,now,force);
+  let result=null;
+  try{result=await chartExtendedCryptoHistory(asset,period,from,now,force);}
+  catch(_error){/* Missing or rate-limited upstream history stays unavailable. */}
   if(seq!==chartFetchState.sequence)return;
   if(result?.candles?.length>=2){
    const output={id:asset.id,range:selected,...result,loading:false,error:'',
@@ -6271,7 +6274,7 @@ async function loadAllChartHistory(force=false){
  const controller=new AbortController();
  chartFetchState.abort=controller;
  const timeout=setTimeout(()=>controller.abort(),10500);
- let candles=[],source='',partial=false;
+ let candles=[],source='',partial=false,archived=null;
  let failure='Lo storico completo disponibile non è stato ancora pubblicato per '+asset.name+'.';
  try{
   const url=path+'?v='+Math.floor(Date.now()/300000);
@@ -6286,9 +6289,15 @@ async function loadAllChartHistory(force=false){
    source='LBank Spot · ORE/USDT · OHLC '+(resolution==='day1'?'giornaliero':'4 ore');
    partial=resolution!=='day1';
   }else if(isCrypto){
-   if(!data||data.id!==id)throw Error('Crypto diversa da quella selezionata');
+   if(!data||data.id!==id||
+      (asset.coingeckoId&&data.coingeckoId&&data.coingeckoId!==asset.coingeckoId))
+    throw Error('Identità CoinGecko diversa dalla crypto selezionata');
+   archived=data;
    rows=data.candles;
    source=data.source||'Storico crypto verificato';
+   partial=data.partial===true;
+   if(partial&&data.historyDays)
+    source+=' · storico disponibile fino a '+data.historyDays+' giorni';
   }else{
    if(!data||data.id!==id||data.symbol!==asset.symbol)throw Error('Storico diverso dallo strumento');
    rows=data.sets&&data.sets['1mo']&&data.sets['1mo'].candles;
@@ -6299,6 +6308,23 @@ async function loadAllChartHistory(force=false){
  }catch(error){
   candles=[];
   failure='Storico MAX di '+asset.name+' non disponibile o ancora in preparazione. Aggiorna più tardi.';
+  if(isCrypto&&Array.isArray(archived?.recentCandles)){
+   candles=chartReadAllCandles(archived.recentCandles);
+   if(candles.length>=2){
+    source='Archivio CoinGecko · OHLC 4 ore · ultimi 30 giorni disponibili';
+    partial=true;failure='';
+   }
+  }
+  // Immediate fallback before the scheduled GitHub archive is populated.
+  if(isCrypto&&candles.length<2&&asset.coingeckoId&&!controller.signal.aborted){
+   try{
+    const fetched=await chartCoinGeckoCandles(asset,365,controller);
+    if(fetched.length>=2){
+     candles=fetched;source='CoinGecko · OHLC 4 giorni · ultimi 365 giorni disponibili';
+     partial=true;failure='';
+    }
+   }catch(_error){/* Unavailable/rate-limited is not replaced by fake prices. */}
+  }
  }finally{clearTimeout(timeout)}
  if(seq!==chartFetchState.sequence)return;
  if(candles.length<2){
@@ -6318,10 +6344,9 @@ async function loadAllChartHistory(force=false){
    source,partial,loading:false,error:partial?failure:'',
    loadedAt:Date.now()};
   chartSeries=result;
-  if(!partial){
-   chartFetchState.cache.set(key,result);
-   if(chartFetchState.cache.size>90)chartFetchState.cache.delete(chartFetchState.cache.keys().next().value);
-  }
+  chartFetchState.cache.set(key,result);
+  if(chartFetchState.cache.size>100)
+   chartFetchState.cache.delete(chartFetchState.cache.keys().next().value);
  }else{
   chartSeries={id,range:'MAX',candles:[],source:'',loading:false,error:failure,partial:false};
  }
