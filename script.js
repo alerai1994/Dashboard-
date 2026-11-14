@@ -150,14 +150,23 @@ const knownCryptoSymbols=new Set(ASSETS.filter(a=>a.group==='crypto')
 for(const entry of screenshotCrypto){
  if(!Array.isArray(entry))continue;
  const ticker=String(entry[0]||'').trim().toUpperCase();
- if(!ticker||ticker.length>40||knownCryptoSymbols.has(ticker))continue;
+ if(!ticker||ticker.length>40)continue;
+ if(knownCryptoSymbols.has(ticker)){
+  const existing=ASSETS.find(a=>a.group==='crypto'&&
+   String(a.symbol).replace(/-USD$/i,'').toUpperCase()===ticker);
+  if(existing&&typeof entry[2]==='string'&&/^[a-z0-9-]{1,100}$/.test(entry[2])&&!existing.coingeckoId)
+   existing.coingeckoId=entry[2];
+  continue;
+ }
  const label=String(entry[1]||ticker).trim().slice(0,100)||ticker;
+ const coingeckoId=typeof entry[2]==='string'&&/^[a-z0-9-]{1,100}$/.test(entry[2])?entry[2]:null;
  const id=/^[A-Z0-9_-]+$/.test(ticker)?ticker.toLowerCase():
   'crypto-'+Array.from(ticker).map(char=>char.codePointAt(0).toString(16)).join('-');
  if(ASSETS.some(a=>a.id===id))continue;
  ASSETS.push({id,name:label===ticker?ticker:label+' ('+ticker+')',
   short:label,group:'crypto',symbol:ticker+'-USD',
-  icon:ticker.slice(0,1),currency:'USD',extended:true});
+  icon:ticker.slice(0,1),currency:'USD',extended:true,
+  ...(coingeckoId?{coingeckoId}:{})});
  knownCryptoSymbols.add(ticker);
 }
 const ASSET_BY_ID=Object.fromEntries(ASSETS.map(a=>[a.id,a]));
