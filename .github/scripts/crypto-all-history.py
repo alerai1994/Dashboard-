@@ -11,6 +11,9 @@ from __future__ import annotations
 import json
 import math
 import runpy
+import re
+import time
+from urllib.error import HTTPError, URLError
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
@@ -147,6 +150,163 @@ def collect(identity):
     return identity, None, " | ".join(errors)
 
 
+
+def screenshot_targets():
+    """Use exact CoinGecko IDs declared in the same catalog used by Vertex.
+
+    A ticker alone is not a token identity: tokenized shares, stablecoins, and
+    short tickers can share symbols with entirely different assets.
+    """
+    catalog = ROOT / "crypto-extended.js"
+    try:
+        text = catalog.read_text(encoding="utf-8")
+        match = re.search(r"window\.__VERTEX_EXTRA_CRYPTO__\s*=\s*(\[[\s\S]*?\]);", text)
+        entries = json.loads(match.group(1)) if match else []
+    except (OSError, TypeError, ValueError):
+        entries = []
+    original = {asset_id for asset_id, _ in CONFIG["CRYPTO"]}
+    targets, seen = [], set()
+    for entry in entries:
+        if not isinstance(entry, list) or len(entry) < 3:
+            continue
+        ticker, label, cg_id = map(str, entry[:3])
+        ticker, cg_id = ticker.strip().upper(), cg_id.strip()
+        if not ticker or not re.fullmatch(r"[a-z0-9-]{1,100}", cg_id):
+            continue
+        identity = (ticker.lower() if re.fullmatch(r"[A-Z0-9_-]+", ticker)
+                    else "crypto-" + "-".join(format(ord(c), "x") for c in ticker))
+        if identity in original or identity in seen or identity == "ore":
+            continue
+        seen.add(identity)
+        targets.append((identity, ticker, label, cg_id))
+    return targets
+
+
+# Anonymous API calls need pacing. A rate limit never warrants fabricating
+# history; earlier verified files remain untouched.
+CG_GAP_SECONDS = 2.1
+_cg_last_request = 0.0
+_cg_blocked = False
+
+
+def coingecko_ohlc(coin_id, days):
+    global _cg_last_request, _cg_blocked
+    if _cg_blocked:
+        return []
+    now = time.monotonic()
+    if now - _cg_last_request < CG_GAP_SECONDS:
+        time.sleep(CG_GAP_SECONDS - (now - _cg_last_request))
+    _cg_last_request = time.monotonic()
+    url = ("https://api.coingecko.com/api/v3/coins/" + quote(coin_id, safe="")
+           + "/ohlc?" + urlencode({"vs_currency": "usd", "days": days, "precision": "full"}))
+    try:
+        with urlopen(Request(url, headers=HEADERS), timeout=13) as response:
+            payload = json.load(response)
+        if not isinstance(payload, list):
+            return []
+        # CoinGecko timestamps are milliseconds, unlike Yahoo/Binance archives.
+        return normalise([
+            [int(float(candle[0])) // 1000, *candle[1:5]]
+            for candle in payload if isinstance(candle, list) and len(candle) >= 5
+        ])
+    except HTTPError as error:
+        if error.code == 429:
+            _cg_blocked = True
+            print("CoinGecko rate limit (429). Keeping existing archives; retry in next run.")
+        elif error.code in (401, 403):
+            _cg_blocked = True
+            print("CoinGecko access denied. Keeping existing archives.")
+        else:
+            print("CoinGecko history unavailable:", coin_id, days, "HTTP", error.code)
+    except (URLError, OSError, ValueError, TypeError, OverflowError) as error:
+        print("CoinGecko OHLC unavailable:", coin_id, days, type(error).__name__)
+    return []
+
+
+def existing_history(path):
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else None
+    except (OSError, ValueError, TypeError):
+        return None
+
+
+def recently_captured(stamp, hours=36):
+    try:
+        date = datetime.fromisoformat(str(stamp).replace("Z", "+00:00"))
+        if date.tzinfo is None:
+            date = date.replace(tzinfo=timezone.utc)
+        elapsed = (datetime.now(timezone.utc) - date).total_seconds()
+        return 0 <= elapsed < hours * 3600
+    except (ValueError, TypeError, OverflowError):
+        return False
+
+
+def collect_screenshot_histories():
+    """Preserve 365-day and 30-day *real* OHLC separately.
+
+    Free CoinGecko: 365 days => approximately 4-day candles, 30 days =>
+    approximately 4-hour candles. Neither is falsely called all-time or 1m.
+    """
+    targets = screenshot_targets()
+    kept = {}
+    for identity, ticker, label, coin_id in targets:
+        path = OUT / (identity + ".json")
+        prior = existing_history(path)
+        if prior and prior.get("id") == identity and prior.get("coingeckoId") == coin_id:
+            kept[identity] = prior
+    changes, covered = 0, 0
+
+    # Fetch the largest available window for *every* requested crypto first.
+    # If the provider stops responding, no subset is permanently privileged.
+    for days in (365, 30):
+        for identity, ticker, label, coin_id in targets:
+            if _cg_blocked:
+                break
+            prior = kept.get(identity)
+            key = "candles" if days == 365 else "recentCandles"
+            stamp = "capturedAt" if days == 365 else "recentCapturedAt"
+            if prior and len(prior.get(key) or []) >= 2 and recently_captured(prior.get(stamp)):
+                continue
+            candles = coingecko_ohlc(coin_id, days)
+            if len(candles) < 2:
+                continue
+            if not prior:
+                prior = {
+                    "id": identity, "symbol": ticker,
+                    "coingeckoId": coin_id, "quoteCurrency": "USD",
+                    "source": "CoinGecko · OHLC verificato in USD",
+                    "partial": True, "historyDays": 365,
+                    "timeframe": "4d",
+                    "candles": [], "recentCandles": [],
+                }
+            if days == 365:
+                prior.update({
+                    "candles": candles, "first": candles[0][0], "last": candles[-1][0],
+                    "capturedAt": datetime.now(timezone.utc).isoformat(),
+                })
+            else:
+                prior.update({
+                    "recentCandles": candles, "recentTimeframe": "4h",
+                    "recentCapturedAt": datetime.now(timezone.utc).isoformat(),
+                })
+            kept[identity] = prior
+            (OUT / (identity + ".json")).write_text(
+                json.dumps(prior, ensure_ascii=False, separators=(",", ":")) + "\n",
+                encoding="utf-8")
+            changes += 1
+        if _cg_blocked:
+            break
+
+    for identity, _, _, _ in targets:
+        existing = kept.get(identity)
+        if existing and (len(existing.get("candles") or []) >= 2 or
+                         len(existing.get("recentCandles") or []) >= 2):
+            covered += 1
+    print("Screenshot crypto OHLC:", covered, "/", len(targets),
+          "with verified history;", changes, "updated datasets.")
+    return covered, len(targets)
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     changes, unavailable = 0, []
@@ -174,8 +334,10 @@ def main():
             print(identity, "verified monthly candles:", len(latest["candles"]),
                   datetime.fromtimestamp(latest["first"], timezone.utc).date(),
                   "to", datetime.fromtimestamp(latest["last"], timezone.utc).date())
-    print("Crypto ALL history:", changes, "updates,",
-          len(unavailable), "unavailable assets out of", len(CRYPTO))
+    extra_covered, extra_total = collect_screenshot_histories()
+    print("Crypto ALL history:", changes, "core updates,",
+          len(unavailable), "core assets unavailable out of", len(CRYPTO),
+          "; screenshot history", extra_covered, "/", extra_total)
     for error in unavailable:
         print("Not available:", error)
 
