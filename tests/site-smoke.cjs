@@ -467,8 +467,8 @@ assert(source.includes("if(Math.abs(dy)>18&&Math.abs(dy)>Math.abs(dx)*1.15)"));
 /* Reference-inspired cryptocurrency heatmap in Markets (real data, no fake coins). */
 const heatmap=read('vertex-heatmap.js'),heatmapCss=read('vertex-heatmap.css');
 new Function(heatmap);
-assert(html.includes('vertex-heatmap.css?v=20261114-v2'),'Crypto heatmap CSS missing');
-assert(html.includes('vertex-heatmap.js?v=20261114-v3-no-market-tabs'),'Crypto heatmap JS missing');
+assert(html.includes('vertex-heatmap.css?v=20261114-v3-no-inj-header'),'Crypto heatmap CSS missing');
+assert(html.includes('vertex-heatmap.js?v=20261114-v4-no-inj-header'),'Crypto heatmap JS missing');
 assert(source.includes("window.VertexHeatmap?.page()"),'Markets must render heatmap');
 assert(source.includes("window.VertexHeatmap?.activate()"),'Markets must refresh live heatmap');
 assert(source.includes('id="vertexMarketsCharts"'),'Existing charts scroll target missing');
@@ -481,3 +481,9 @@ assert(heatmap.includes("coinAssets()"),'Vertex crypto fallback missing');
 assert(heatmap.includes('aria-label="Mappa mercato criptovalute"'),'Accessible heatmap missing');
 assert(heatmapCss.includes('.vh-down')&&heatmapCss.includes('.vh-up'),'Red and green tile styling missing');
 assert(heatmapCss.includes('@media(max-width:520px)'),'Mobile heatmap styling missing');
+
+/* Header should not display a pinned INJ price or percentage anymore. */
+assert(!heatmap.includes('id="vhLeader"'),'The removed INJ leader must not be rendered');
+assert(!heatmap.includes('const inj=data.all.find('),'No pinned INJ asset in heatmap header');
+assert(!heatmap.includes('const leader=document.getElementById('),'Live paint must not recreate the leader');
+assert(!heatmapCss.includes('.vh-leader'),'Unused INJ leader styles must be absent');
