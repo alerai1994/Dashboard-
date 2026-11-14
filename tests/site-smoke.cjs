@@ -10,6 +10,23 @@ new Function(read('crypto-extended.js'));
 const screenshotCatalog=JSON.parse(read('crypto-extended.js').match(/window\.__VERTEX_EXTRA_CRYPTO__\s*=\s*(\[[\s\S]*?\]);/)[1]);
 assert.equal(screenshotCatalog.length,220,'Expected 220 screenshot cryptocurrencies');
 assert.equal(new Set(screenshotCatalog.map(c=>c[0])).size,220,'Duplicate screenshot ticker');
+const canonicalCryptoId=symbol=>/^[A-Z0-9_-]+$/.test(symbol)?
+ symbol.toLowerCase():'crypto-'+Array.from(symbol).map(c=>c.codePointAt(0).toString(16)).join('-');
+const historyPaths=fs.readdirSync('chart-history/crypto').filter(name=>name.endsWith('.json'))
+ .map(name=>name.slice(0,-5));
+const priceLinePaths=fs.readdirSync('chart-history/crypto/prices').filter(name=>name.endsWith('.json'))
+ .map(name=>name.slice(0,-5));
+const historicalIds=new Set([...historyPaths,...priceLinePaths,'ore']);
+const requestedIds=new Set([
+ ...JSON.parse(read('market-quotes.json')).crypto.slice(0,42).map(row=>row.id),
+ ...screenshotCatalog.map(row=>canonicalCryptoId(row[0]))
+]);
+assert.equal(requestedIds.size,228,'Catalog must keep exactly 228 unique crypto');
+for(const id of requestedIds)assert(historicalIds.has(id),
+ 'Missing verified OHLC or real observed-price history for '+id);
+assert(source.includes("kind:'price-line',candles:[],pricePoints"),
+ 'The chart must never convert price samples into synthetic candles');
+
 assert(screenshotCatalog.every(c=>c.length>=3&&/^[a-z0-9-]{1,100}$/.test(c[2])),
  'Every screenshot token needs its exact CoinGecko identifier');
 assert(source.includes('async function chartCoinGeckoCandles('),'Missing verified historical OHLC fallback');
