@@ -52,10 +52,12 @@ function fallback(){
 function list(){
  const local=fallback();
  if(!state.coins.length)return local;
+ // Exact CoinGecko IDs identify assets. A matching ticker alone can link
+ // different token projects to the wrong chart or historical archive.
+ const byCoinId=new Map(local.map(a=>[a.id,a]));
  const used=new Set();
  const merged=state.coins.map(coin=>{
-  const localMatch=local.find(a=>
-   a.id===coin.id||a.symbol===coin.symbol&&!used.has(a.localId));
+  const localMatch=byCoinId.get(coin.id);
   if(localMatch)used.add(localMatch.localId);
   return {...coin,localId:localMatch?.localId||null};
  });
@@ -79,7 +81,8 @@ function tile(c){
  const image=logo(c.image);
  const icon=image?'<img src="'+esc(image)+'" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">':
   '<span class="vh-fallback-logo">'+esc((c.symbol||'?').slice(0,1).toUpperCase())+'</span>';
- const info=esc(c.name+' ('+c.symbol.toUpperCase()+') · '+priceText(c.price)+' · 24h '+changeText(c.change));
+ const info=esc(c.name+' ('+c.symbol.toUpperCase()+') · '+priceText(c.price)+' · 24h '+changeText(c.change)+
+  (c.localId?' · Tocca per aprire lo storico OHLC e gli indicatori':' · Vedi su CoinGecko'));
  const content='<span class="vh-coin-logo" aria-hidden="true">'+icon+'</span>'+
   '<span class="vh-symbol">'+esc(c.symbol.toUpperCase())+'</span>'+
   '<span class="vh-change">'+esc(changeText(c.change))+'</span>'+
@@ -132,7 +135,7 @@ function page(){
  return '<section class="vh-shell" id="vertexCryptoHeatmap" aria-label="Mappa mercato criptovalute">'+
   '<div class="vh-head"><span class="vh-breadcrumb">VERTEX / MARKETS</span><strong class="vh-heading">CRYPTO MARKET HEATMAP</strong></div>'+
   '<div class="vh-ticker" id="vhStats">'+statistics(data.all)+'</div>'+
-  '<div class="vh-controls"><div><h2>Mappa delle criptovalute</h2><p>Prezzo e variazione nelle ultime 24 ore · rosso in calo, verde in rialzo</p></div>'+
+  '<div class="vh-controls"><div><h2>Mappa delle criptovalute</h2><p>Prezzo e variazione nelle ultime 24 ore · rosso in calo, verde in rialzo · Tocca una crypto per aprire lo storico</p></div>'+
   '<div class="vh-controls-right"><label class="vh-search-label"><span>Cerca</span><input id="vhSearch" type="search" placeholder="Nome o simbolo…" value="'+esc(state.query)+'" autocomplete="off"></label>'+
   '<label class="vh-sort-label"><span>Ordina per</span><select id="vhSort" aria-label="Ordina la mappa">'+
   [['cap','Capitalizzazione'],['moves','Movimenti 24h'],['winners','Maggiori rialzi'],['losers','Maggiori ribassi'],['volume','Volume 24h']].map(([value,label])=>
