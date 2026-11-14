@@ -22,7 +22,7 @@
  scrollbar-width:thin;scrollbar-color:#584053 transparent;white-space:nowrap;
  border-bottom:1px solid rgba(216,173,197,.19)}
 .vh-tabs .vh-tab{appearance:none;border:1px solid transparent;padding:10px 12px;color:#cbbcc9;
- background:transparent;cursor:pointer;border-radius:8px;font:750 11px/1.2 inherit;white-space:nowrap}
+ background:transparent;cursor:pointer;border-radius:8px;font-size:11px;font-weight:750;line-height:1.2;font-family:inherit;white-space:nowrap}
 .vh-tabs .vh-tab.is-active{background:#544254;border-color:#8c677f;color:#fff;
  box-shadow:inset 0 1px 0 rgba(255,255,255,.16)}
 .vh-tabs .vh-tab:hover{background:rgba(226,161,200,.12);color:#fff}
@@ -43,12 +43,12 @@
 .vh-controls label{display:flex;flex-direction:column;gap:4px;color:#b1a1b3;font-size:10px}
 .vh-controls input,.vh-controls select{
  height:35px;min-width:112px;max-width:210px;border:1px solid #584059;border-radius:7px;
- background:#261b27;color:#fff;outline:none;font:600 12px inherit;padding:7px 10px;
+ background:#261b27;color:#fff;outline:none;font-size:12px;font-weight:600;font-family:inherit;padding:7px 10px;
 }
 .vh-controls input:focus,.vh-controls select:focus{border-color:#ce8ab0;box-shadow:0 0 0 2px rgba(206,138,176,.15)}
 .vh-controls input::placeholder{color:#bca4b9}
 .vh-controls .vh-refresh{height:35px;padding:0 12px;border:1px solid #684559;
- background:#362234;border-radius:7px;color:#faf3f9;font:700 11px inherit;cursor:pointer}
+ background:#362234;border-radius:7px;color:#faf3f9;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer}
 .vh-controls .vh-refresh:hover{background:#56324e}
 .vh-grid{
  display:grid;grid-template-columns:repeat(auto-fill,minmax(67px,1fr));gap:4px;
@@ -80,7 +80,7 @@
  border-top:1px solid rgba(255,255,255,.07)}
 .vh-foot-actions{display:flex;align-items:center;gap:12px;margin-left:auto;white-space:nowrap}
 .vh-foot button{padding:6px 12px;border-radius:7px;border:1px solid #754d69;background:#3e2740;
- color:#fff;font:700 11px inherit;cursor:pointer}
+ color:#fff;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer}
 .vh-foot button:hover{background:#5e365a}
 .vh-charts-anchor{scroll-margin-top:14px}
 @media(max-width:800px){
