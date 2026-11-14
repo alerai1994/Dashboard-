@@ -151,7 +151,7 @@ for(const page of [directForcePanel,globalForcePanel]){
  for(const key of ['crypto','stocks','indices','forex']){
   assert(page.includes('data-bullish-category="'+key+'"'),'Market category unavailable: '+key);
  }
- for(const ticker of ['Bitcoin (BTC)','Injective (INJ)','NVIDIA','Apple','EUR / USD','S&P 500']){
+ for(const ticker of ['Bitcoin (BTC)','Injective (INJ)','NVIDIA','Apple','EUR / USD','S&amp;P 500']){
   assert(page.includes(ticker),'Asset not selectable: '+ticker);
  }
 }
