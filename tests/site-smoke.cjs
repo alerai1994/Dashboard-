@@ -289,8 +289,12 @@ assert(css.includes('.bullish-detail-category-list'),'Category menu not styled')
 assert(css.includes('justify-content:flex-end'),'Market selector must align by bottom edge');
 assert(css.includes('margin-top:auto'),'Category dropdown must share instrument bottom edge');
 assert(!css.includes('.bullish-detail-instrument-spacer'),'Obsolete spacer CSS must be removed');
+// New crypto default to the one-year archive for actual / sampled candles.
+assert(app.PAGE_RENDERERS.marketforce().includes('data-bullish-period="1A"'),
+ 'Forza mercato must offer annual candle history for cryptocurrencies');
+app.marketForceSetBullishPeriod('1D');
 const dayMetrics=app.marketForceBullishMetrics();
-assert(dayMetrics.valid,'Default 1D quote should be valid');
+assert(dayMetrics.valid,'1D quote should be valid once selected');
 assert.equal(dayMetrics.up+dayMetrics.flat+dayMetrics.down,100,'1D force values must total 100');
 app.marketForceSetBullishPeriod('1H');
 if(!app.marketForceBullishMetrics().valid){
