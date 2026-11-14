@@ -382,6 +382,12 @@ def collect_screenshot_histories():
     approximately 4-hour candles. Neither is falsely called all-time or 1m.
     """
     targets = screenshot_targets()
+    # Prioritize the crypto still missing any verified historical source.
+    targets.sort(key=lambda row: (
+        0 if row[0] == "a7a5" else
+        1 if not (OUT / (row[0] + ".json")).exists() else 2,
+        row[0]
+    ))
     kept = {}
     for identity, ticker, label, coin_id in targets:
         path = OUT / (identity + ".json")
