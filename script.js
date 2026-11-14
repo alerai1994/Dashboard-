@@ -4445,7 +4445,8 @@ function settingsPage(){
  '<button type="button" class="outline-button" data-test-crypto-alert-sound="above">▶ Prova UPPER ↑</button>'+
  '<button type="button" class="outline-button" data-test-crypto-alert-sound="below">▶ Prova LOWER ↓</button></div>'+
  '<p class="subnote settings-audio-help">I pulsanti di prova riproducono solo un suono, senza generare falsi avvisi di prezzo. Per ascoltare gli avvisi reali attiva la campanella in alto a destra. Su iPhone e iPad serve un primo tocco per sbloccare l’audio; browser e sistema possono silenziare le schede in background.</p>'+
- '<button type="button" class="btn btn-small" data-crypto-bell-reset="1">Ricalibra tutte le 42 crypto ai prezzi attuali</button></div></section>'+
+ '<button type="button" class="btn btn-small" data-crypto-bell-reset="1">Ricalibra le crypto con prezzo disponibile ('+
+ ASSETS.filter(a=>a.group==='crypto').length+' monitorate)</button></div></section>'+
  '<section class="content-card panel settings-preferences"><div class="settings-sound-row"><div><h3>Suono al clic</h3><p class="subnote">Un breve suono quando premi i pulsanti. Puoi disattivarlo quando vuoi.</p></div>'+
  '<button type="button" data-sound-toggle="1" class="settings-sound-toggle'+(state.clickSound?' is-on':'')+'" role="switch" aria-checked="'+state.clickSound+'" aria-label="Suono al clic">'+(state.clickSound?'Attivo':'Disattivo')+'</button></div>'+
  '<div class="settings-audio-tests" role="group" aria-label="Prova il suono al clic"><button type="button" class="outline-button" data-test-click-sound="1">▶ Prova suono clic</button></div>'+
@@ -4572,7 +4573,8 @@ function workspaceWidgetBody(id){
  }
  if(id==='global')return '<div class="ws-map-layout">'+mapPanel()+regionList()+'</div>';
  if(id==='markets')return workspaceAssets(ASSETS.filter(a=>a.group==='markets').map(a=>a.id));
- if(id==='crypto')return '<p class="ws-subnote">42 criptovalute nel terminale · prezzi da feed verificati; apertura del grafico completo con un tocco.</p>'+
+ if(id==='crypto')return '<p class="ws-subnote">'+ASSETS.filter(a=>a.group==='crypto').length+
+  ' criptovalute nel terminale · storico OHLC dalla fonte verificata quando disponibile; apertura del grafico completo con un tocco.</p>'+
   workspaceAssets(ASSETS.filter(a=>a.group==='crypto').map(a=>a.id));
  if(id==='tech')return workspaceAssets(TECH_IDS);
  if(id==='bigtech')return workspaceAssets(BIGTECH_IDS);
