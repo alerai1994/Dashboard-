@@ -125,9 +125,6 @@ function sourceLabel(){
  return state.fetching?'Caricamento elenco esteso… · intanto vengono mostrati i dati Vertex':
   (state.error?'CoinGecko non raggiungibile · ':'')+'Fonte: feed Vertex · prezzi disponibili, aggiornamento secondo fonte.';
 }
-function navButton(label,attrs,active){
- return '<button type="button" '+attrs+' class="vh-tab'+(active?' is-active':'')+'">'+label+'</button>';
-}
 function page(){
  const data=gridHtml();
  const inj=data.all.find(c=>c.symbol==='inj');
@@ -135,14 +132,6 @@ function page(){
   '<div class="vh-head"><span class="vh-breadcrumb">VERTEX / MARKETS</span><strong class="vh-heading">CRYPTO MARKET HEATMAP</strong>'+
   '<span class="vh-leader" id="vhLeader"><small>INJ</small><b>'+esc(inj?priceText(inj.price):'—')+'</b>'+
   '<em>'+esc(inj?changeText(inj.change):'—')+'</em></span></div>'+
-  '<nav class="vh-tabs" aria-label="Sezioni dei mercati">'+
-   navButton('Global Crypto','data-vh-scroll="vertexCryptoHeatmap"',state.sort!=='moves')+
-   navButton('Market Events','data-page="news"',false)+
-   navButton('Live Charts','data-vh-scroll="vertexMarketsCharts"',false)+
-   navButton('Order Book','data-page="orderbook"',false)+
-   navButton('Performance','data-vh-sort="moves"',state.sort==='moves')+
-   navButton('Global Market','data-page="global"',false)+
-  '</nav>'+
   '<div class="vh-ticker" id="vhStats">'+statistics(data.all)+'</div>'+
   '<div class="vh-controls"><div><h2>Mappa delle criptovalute</h2><p>Prezzo e variazione nelle ultime 24 ore · rosso in calo, verde in rialzo</p></div>'+
   '<div class="vh-controls-right"><label class="vh-search-label"><span>Cerca</span><input id="vhSearch" type="search" placeholder="Nome o simbolo…" value="'+esc(state.query)+'" autocomplete="off"></label>'+
@@ -172,8 +161,6 @@ function paint(){
  const inj=all.find(c=>c.symbol==='inj');
  const leader=document.getElementById('vhLeader');
  if(leader)leader.innerHTML='<small>INJ</small><b>'+esc(inj?priceText(inj.price):'—')+'</b><em>'+esc(inj?changeText(inj.change):'—')+'</em>';
- document.querySelectorAll('.vh-tabs [data-vh-sort="moves"]').forEach(b=>b.classList.toggle('is-active',state.sort==='moves'));
- document.querySelectorAll('.vh-tabs [data-vh-scroll="vertexCryptoHeatmap"]').forEach(b=>b.classList.toggle('is-active',state.sort!=='moves'));
 }
 async function refresh(force=false){
  if(state.fetching||document.hidden)return;
@@ -225,19 +212,10 @@ document.addEventListener('change',event=>{
  }
 });
 document.addEventListener('click',event=>{
- const control=event.target instanceof Element?event.target.closest('[data-vh-refresh],[data-vh-sort],[data-vh-more],[data-vh-scroll]'):null;
+ const control=event.target instanceof Element?event.target.closest('[data-vh-refresh],[data-vh-more]'):null;
  if(!control)return;
  if(control.hasAttribute('data-vh-refresh')){state.attemptedAt=0;refresh(true);}
- if(control.hasAttribute('data-vh-sort')){
-  state.sort=control.dataset.vhSort;state.all=false;
-  const select=document.getElementById('vhSort');if(select)select.value=state.sort;
-  paint();
- }
  if(control.hasAttribute('data-vh-more')){state.all=!state.all;paint();}
- if(control.dataset.vhScroll){
-  event.preventDefault();
-  document.getElementById(control.dataset.vhScroll)?.scrollIntoView({behavior:'smooth',block:'start'});
- }
 });
 setInterval(()=>{if(document.getElementById('vhGrid')&&!document.hidden)refresh();},30000);
 window.VertexHeatmap=Object.freeze({page,activate,paint,refresh});
