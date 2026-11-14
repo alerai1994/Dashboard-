@@ -142,6 +142,24 @@ const ASSETS=[
 {id:'tao',name:'Bittensor (TAO)',short:'Bittensor',group:'crypto',symbol:'TAO-USD',icon:'τ',currency:'USD',coingeckoId:'bittensor'},
 {id:'luna',name:'Terra (LUNA)',short:'Terra 2.0',group:'crypto',symbol:'LUNA-USD',icon:'L',currency:'USD',coingeckoId:'terra-luna-2'}
 ];
+// I 220 simboli delle schermate sono disponibili in tutti i selettori crypto.
+// I 42 strumenti originari rimangono invariati: nessun doppione per simbolo.
+const screenshotCrypto=Array.isArray(window.__VERTEX_EXTRA_CRYPTO__)?window.__VERTEX_EXTRA_CRYPTO__:[];
+const knownCryptoSymbols=new Set(ASSETS.filter(a=>a.group==='crypto')
+ .map(a=>String(a.symbol).replace(/-USD$/i,'').toUpperCase()));
+for(const entry of screenshotCrypto){
+ if(!Array.isArray(entry))continue;
+ const ticker=String(entry[0]||'').trim().toUpperCase();
+ if(!ticker||ticker.length>40||knownCryptoSymbols.has(ticker))continue;
+ const label=String(entry[1]||ticker).trim().slice(0,100)||ticker;
+ const id=/^[A-Z0-9_-]+$/.test(ticker)?ticker.toLowerCase():
+  'crypto-'+Array.from(ticker).map(char=>char.codePointAt(0).toString(16)).join('-');
+ if(ASSETS.some(a=>a.id===id))continue;
+ ASSETS.push({id,name:label===ticker?ticker:label+' ('+ticker+')',
+  short:label,group:'crypto',symbol:ticker+'-USD',
+  icon:ticker.slice(0,1),currency:'USD',extended:true});
+ knownCryptoSymbols.add(ticker);
+}
 const ASSET_BY_ID=Object.fromEntries(ASSETS.map(a=>[a.id,a]));
 const TECH_IDS=["ndx","sox","xlk","qqq","smh"];
 const BIGTECH_IDS=["nvda","msft","aapl","googl","amzn","meta","tsla","avgo","amd","orcl","tsm","asml"];
@@ -3075,7 +3093,7 @@ function analyticsPage(){
    oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp) uses LBank Spot ORE/USDT.
    Oraichain uses Gate.io and TARS AI uses MEXC. Only the selected coin
    is polled, with an unavailable state when no verified book is accessible. */
-const ORDER_BOOK_COINS=ASSETS.filter(a=>a.group==='crypto');
+const ORDER_BOOK_COINS=ASSETS.filter(a=>a.group==='crypto'&&!a.extended);
 const orderBookState={
  id:load('orderBookCoin','btc'),search:'',data:null,error:null,busy:false,
  lastTry:0,updatedAt:0,venue:'',pair:'',mode:'',serial:0,abort:null,lastTrade:null,lastTradeAt:0,previousTrade:null
