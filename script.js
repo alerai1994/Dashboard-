@@ -5900,9 +5900,11 @@ function updateChartHistoryStatus(){
  const info=same?chartSeries:null;
  const all=chartRange==='MAX',rangeLabel=all?'Tutto lo storico':chartRange;
  if(badge){
-  badge.textContent=info&&info.loading&&(!info.candles||!info.candles.length)?'Caricamento '+rangeLabel+'…':
+  badge.textContent=info&&info.loading&&(!info.candles||!info.candles.length)&&!info.pricePoints?.length?
+   'Caricamento '+rangeLabel+'…':
    info&&info.candles.length?rangeLabel+' · '+(info.visibleCount||info.candles.length)+
     ' candele'+(info.partial?' (parziale)':''):
+   info&&info.pricePoints?.length>=2?rangeLabel+' · '+info.pricePoints.length+' prezzi reali (linea)':
    rangeLabel+' · dati non disponibili';
  }
  if(source){
@@ -5911,19 +5913,22 @@ function updateChartHistoryStatus(){
     (info.partial?(all?' · copertura limitata alla fonte disponibile':
        ' · granularità o copertura parziale della fonte'):'')+
     ' · periodo '+rangeLabel:
+   info&&info.pricePoints?.length>=2?
+    'Prezzi storici osservati: '+info.source+' · grafico a linea, NON candele OHLC':
    info&&info.error?info.error:'Dati storici non ancora disponibili per '+rangeLabel;
  }
  if(dates){
   dates.hidden=!all;
   if(all){
-   if(info&&info.candles.length>=2){
-    const first=info.candles[0],last=info.candles[info.candles.length-1];
+   if(info&&(info.candles.length>=2||info.pricePoints?.length>=2)){
+    const series=info.candles.length>=2?info.candles:info.pricePoints;
+    const first=series[0],last=series[series.length-1];
     const formatter=new Intl.DateTimeFormat('it-IT',{
      day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'
     });
     dates.textContent='Prima quotazione disponibile: '+formatter.format(new Date(first.t*1000))+
      '  ·  Ultima quotazione: '+formatter.format(new Date(last.t*1000))+
-     '  ·  '+info.candles.length+' candele reali'+
+     '  ·  '+series.length+(info.pricePoints?.length>=2?' prezzi osservati (linea)':' candele reali')+
      (info.partial?' · archivio incompleto':'');
    }else dates.textContent=info&&info.loading?
     'Caricamento delle prime e ultime quotazioni disponibili…':
@@ -6399,6 +6404,32 @@ function chartReadAllCandles(raw){
  }
  return [...seen.values()].sort((a,b)=>a.t-b.t);
 }
+
+// Real historical price observations are a line series, never fabricated OHLC.
+function chartReadHistoricalPricePoints(raw){
+ if(!Array.isArray(raw))return [];
+ const seen=new Map(),latest=Math.floor(Date.now()/1000)+86400;
+ for(const row of raw){
+  if(!Array.isArray(row)||row.length<2)continue;
+  const t=Number(row[0]),p=Number(row[1]);
+  if(!Number.isFinite(t)||!Number.isFinite(p)||t<946684800||t>latest||p<=0)continue;
+  seen.set(t,{t,p});
+ }
+ return [...seen.values()].sort((a,b)=>a.t-b.t);
+}
+async function chartLoadObservedPriceArchive(asset,signal){
+ if(!asset||asset.group!=='crypto'||asset.id==='ore')return null;
+ const url='./chart-history/crypto/prices/'+encodeURIComponent(asset.id)+
+  '.json?v='+Math.floor(Date.now()/3600000);
+ const response=await fetch(url,{signal,cache:'force-cache'});
+ if(!response.ok)return null;
+ const data=await response.json();
+ if(!data||data.id!==asset.id||data.kind!=='observed-price-line'||
+   (asset.coingeckoId&&data.coingeckoId!==asset.coingeckoId))return null;
+ const points=chartReadHistoricalPricePoints(data.points);
+ if(points.length<2)return null;
+ return {points,source:String(data.source||'Prezzi storici osservati').slice(0,180)};
+}
 async function loadAllChartHistory(force=false){
  const asset=ASSET_BY_ID[state.dialogId];
  if(!chartSupportsRanges(asset)||chartRange!=='MAX')return;
@@ -6493,6 +6524,24 @@ async function loadAllChartHistory(force=false){
   );
   source='Ultime candele disponibili · '+(q&&q.candleSource||'feed quotazioni');
   partial=true;
+ }
+ if(candles.length<2&&isCrypto&&id!=='ore'){
+  const priceController=new AbortController(),timer=setTimeout(()=>priceController.abort(),9000);
+  chartFetchState.abort=priceController;
+  let observed=null;
+  try{observed=await chartLoadObservedPriceArchive(asset,priceController.signal);}
+  catch(_error){/* The archive is absent for some tokens; don't invent a chart. */}
+  finally{clearTimeout(timer);}
+  if(seq!==chartFetchState.sequence)return;
+  if(observed?.points?.length>=2){
+   const result={id,range:'MAX',candles:[],pricePoints:observed.points,kind:'price-line',
+    source:observed.source,partial:true,loading:false,error:'',loadedAt:Date.now()};
+   chartSeries=result;
+   chartFetchState.cache.set(key,result);
+   if(chartFetchState.cache.size>100)
+    chartFetchState.cache.delete(chartFetchState.cache.keys().next().value);
+   updateChartHistoryStatus();scheduleDetailChartDraw();return;
+  }
  }
  if(candles.length>=2){
   const result={id,range:'MAX',candles,visibleCount:candles.length,
