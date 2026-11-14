@@ -29,12 +29,25 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add chart-history/crypto/
-          if git diff --cached --quiet; then exit 0; fi
-          git commit -m "data: refresh crypto all-time OHLC history [skip ci]"
-          for attempt in 1 2 3 4; do
+          # Capture only files refreshed in this run. Concurrent quotes and
+          # site updates may move main; rebasing generated JSON causes conflicts.
+          git status --porcelain chart-history/crypto/ | sed 's/^...//' > "$RUNNER_TEMP/vertex-crypto-changed.txt"
+          if [ ! -s "$RUNNER_TEMP/vertex-crypto-changed.txt" ]; then exit 0; fi
+          mkdir -p "$RUNNER_TEMP/vertex-crypto-staged"
+          while IFS= read -r file; do
+            mkdir -p "$RUNNER_TEMP/vertex-crypto-staged/$(dirname "$file")"
+            cp "$file" "$RUNNER_TEMP/vertex-crypto-staged/$file"
+          done < "$RUNNER_TEMP/vertex-crypto-changed.txt"
+          for attempt in 1 2 3 4 5; do
             git fetch origin main
-            git rebase origin/main
+            git reset --hard origin/main
+            while IFS= read -r file; do
+              mkdir -p "$(dirname "$file")"
+              cp "$RUNNER_TEMP/vertex-crypto-staged/$file" "$file"
+            done < "$RUNNER_TEMP/vertex-crypto-changed.txt"
+            git add chart-history/crypto/
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -m "data: refresh crypto all-time OHLC history [skip ci]"
             if git push origin HEAD:main; then exit 0; fi
             sleep 2
           done
