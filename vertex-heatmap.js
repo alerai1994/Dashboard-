@@ -40,8 +40,10 @@ function fallback(){
   const q=backend()?.getQuote?.(a.id);
   const price=Number(q?.value);
   const change=Number(q?.change);
-  if(!(Number.isFinite(price)&&price>0))continue;
-  data.push({id:a.coingeckoId||a.id,name:a.name,symbol:assetSymbol(a),price,
+  // Keep even an asset without a spot quote: its verified historical
+  // archive can still be opened from the crypto map.
+  const lastPrice=Number.isFinite(price)&&price>0?price:null;
+  data.push({id:a.coingeckoId||a.id,name:a.name,symbol:assetSymbol(a),price:lastPrice,
    change:q?.change==null?null:Number.isFinite(change)?change:null,
    marketCap:null,volume:null,rank:null,image:logo(q?.logo),localId:a.id});
  }
