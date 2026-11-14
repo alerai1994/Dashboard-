@@ -24,8 +24,17 @@ const requestedIds=new Set([
 assert.equal(requestedIds.size,228,'Catalog must keep exactly 228 unique crypto');
 for(const id of requestedIds)assert(historicalIds.has(id),
  'Missing verified OHLC or real observed-price history for '+id);
-assert(source.includes("kind:'price-line',candles:[],pricePoints"),
- 'The chart must never convert price samples into synthetic candles');
+for(const id of requestedIds){
+ if(id==='ore')continue;
+ if(historyPaths.includes(id))continue;
+ const archive=JSON.parse(read('chart-history/crypto/prices/'+id+'.json'));
+ assert(archive.kind==='observed-price-line'&&archive.points?.length>=14,
+  'Cannot form meaningful weekly sampled candles for '+id);
+}
+assert(source.includes("kind:'sampled-price-candles',sampled:true"),
+ 'The full crypto chart must render visibly labelled sampled candles when exchange OHLC is unavailable');
+assert(source.includes("Candele da prezzi osservati (non OHLC intraday)"),
+ 'Sampled candle display must never claim true intraday OHLC');
 
 assert(screenshotCatalog.every(c=>c.length>=3&&/^[a-z0-9-]{1,100}$/.test(c[2])),
  'Every screenshot token needs its exact CoinGecko identifier');
@@ -33,16 +42,45 @@ assert(source.includes('async function chartCoinGeckoCandles('),'Missing verifie
 assert(source.includes('async function chartExtendedCryptoHistory('),'Missing 228-coin history loader');
 assert(source.includes('function observeMarketCryptoHistoryPreviews('),
  'Markets must lazily observe crypto historical charts');
+assert(source.includes("ASSET_BY_ID[card.dataset.asset]?.group==='crypto'"),
+ 'All 228 crypto, not just the 186 new coins, need Markets historical previews');
 assert(source.includes('function loadMarketCryptoHistoryPreview('),
  'Markets must load verified crypto history archives for the new coins');
-// When no verified OHLC exists, Markets must render actual prices as a LINE,
-// never fictitious high/low candles.
+// Sampled weekly candles use actual observed daily prices. Their extrema
+// are extrema of the *samples*, never fictional exchange intraday highs/lows.
 for(const method of ['chartReadHistoricalPricePoints(','chartLoadObservedPriceArchive(',
-  'drawObservedHistoricalPrices(']){
+  'chartSampledCandlesFromPrices(']){
  assert(source.includes(method),'Missing observed-price chart capability: '+method);
 }
-assert(source.includes("status:'price',points:prices.points.slice(-365)"),
- 'Markets needs historical price-line preview for newly added coins');
+assert(source.includes("status:'ready',candles:sampled.slice(-48),sampled:true"),
+ 'Markets must display sampled candles rather than price lines for new crypto');
+assert(source.includes("sampled?'Candele campionate'")||
+ source.includes("historical.sampled?'Candele campionate'"),
+ 'Markets sampled candles must be clearly distinguished from real OHLC');
+assert(source.includes("marketForceBullishPeriod=ASSET_BY_ID[id]?.group==='crypto'?'1A':'1D'"),
+ 'Forza mercato must show historical candles on crypto selection');
+assert(source.includes("MARKET_FORCE_BULLISH_PERIODS=['1H','4H','1D','1W','1A']"),
+ 'Forza mercato requires annual candles timeframe');
+assert(source.includes("data.sampled?'Candele campionate'"),
+ 'Forza mercato must label sampled candles distinctly');
+assert(source.includes("a.group==='crypto'?'MAX':'1D'"),
+ 'All crypto must open the real or sampled historical chart by default');
+// Verify the sampled-candle computation against actual first/high/low/last
+// observations within the date bucket. Never assume unknown trade extremes.
+const sampledCode=source.slice(
+ source.indexOf('function chartSampledCandlesFromPrices('),
+ source.indexOf('async function chartLoadObservedPriceArchive('));
+assert(sampledCode.startsWith('function chartSampledCandlesFromPrices('));
+const toSampledCandles=new Function(sampledCode+
+ ';return chartSampledCandlesFromPrices;')();
+const weeklyPrices=Array.from({length:14},(_,i)=>({
+ t:Date.UTC(2026,0,5+i)/1000,p:[10,12,9,13,14,11,15,15,16,17,14,13,11,12][i]
+}));
+const sampledCandles=toSampledCandles(weeklyPrices,7);
+assert.equal(sampledCandles.length,2,'Expected two fully observed weekly candles');
+assert.deepEqual(sampledCandles.map(c=>[c.o,c.h,c.l,c.c,c.observations,c.sampled]),[
+ [10,15,9,15,7,true],[15,17,11,12,7,true]
+]);
 const observedPrices=JSON.parse(read('chart-history/crypto/prices/aero.json'));
 assert.equal(observedPrices.id,'aero');
 assert.equal(observedPrices.kind,'observed-price-line');
