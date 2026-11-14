@@ -7033,6 +7033,30 @@ function drawDetailRightPriceMarker(ctx,marker,layout){
  ctx.fillText(label,x+tagWidth/2,centerY+.25,tagWidth-6);
  ctx.restore();
 }
+function drawObservedHistoricalPrices(ctx,points,width,right,left,chartW,priceRegion,color){
+ if(!Array.isArray(points)||points.length<2)return;
+ const values=points.map(point=>point.p);
+ const lowest=Math.min(...values),highest=Math.max(...values);
+ const pad=Math.max((highest-lowest)*.06,highest*.002);
+ const lower=lowest-pad,upper=highest+pad;
+ const top=priceRegion.top+21,bottom=priceRegion.bottom-24;
+ const x=index=>left+chartW*index/(points.length-1);
+ const y=price=>bottom-(price-lower)/(upper-lower)*(bottom-top);
+ ctx.beginPath();
+ points.forEach((point,i)=>i?ctx.lineTo(x(i),y(point.p)):
+  ctx.moveTo(x(i),y(point.p)));
+ ctx.strokeStyle=points[points.length-1].p>=points[0].p?'#19c5a0':'#ed6a9e';
+ ctx.lineWidth=2;ctx.stroke();
+ const date=t=>new Date(t*1000).toLocaleDateString('it-IT',{month:'short',year:'numeric',timeZone:'UTC'});
+ const valueText=p=>p>=1?"$"+p.toLocaleString('en-US',{maximumSignificantDigits:5}):"$"+p.toPrecision(4);
+ ctx.fillStyle=color;ctx.font='10px sans-serif';
+ ctx.fillText('Prezzi osservati · non candele OHLC',left+7,priceRegion.top+15);
+ ctx.fillText(date(points[0].t),left+5,priceRegion.bottom-6);
+ const last=date(points[points.length-1].t);
+ ctx.fillText(last,Math.max(left+8,width-right-ctx.measureText(last).width-3),priceRegion.bottom-6);
+ ctx.fillText(valueText(upper),width-right+4,priceRegion.top+21);
+ ctx.fillText(valueText(lower),width-right+4,priceRegion.bottom-25);
+}
 function drawChart(){
  if(!state.dialogId)return;
  const canvas=$('#detailChart');if(!canvas||!canvas.isConnected)return;
@@ -7100,9 +7124,17 @@ function drawChart(){
  }
  if(!sample.length){
   chartFib.view=null;
-  const message=chartSeries.loading&&chartSeries.id===state.dialogId?
-   'Caricamento storico '+chartRange+'…':'Candele OHLC non disponibili per il periodo selezionato.';
-  text(message,width/2,Math.min(130,height/3),'center',13);
+  const observations=chartSeries.id===state.dialogId&&chartSeries.range===chartRange?
+   chartSeries.pricePoints:null;
+  if(Array.isArray(observations)&&observations.length>=2){
+   drawObservedHistoricalPrices(ctx,observations,width,right,left,chartW,regions[0],color);
+   for(const pane of regions.slice(1))
+    text('Indicatori OHLC non disponibili',left+6,pane.top+28,'left',10);
+  }else{
+   const message=chartSeries.loading&&chartSeries.id===state.dialogId?
+    'Caricamento storico '+chartRange+'…':'Storico non disponibile dalla fonte.';
+   text(message,width/2,Math.min(130,height/3),'center',13);
+  }
   const tooltip=$('#chartCandleTooltip');if(tooltip)tooltip.hidden=true;
   return;
  }
