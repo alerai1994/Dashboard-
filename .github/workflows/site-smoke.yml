@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - script.js
+      - crypto-extended.js
       - style.css
       - index.html
       - tests/site-smoke.cjs
