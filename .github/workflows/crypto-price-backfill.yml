@@ -1,0 +1,52 @@
+name: Vertex Crypto Verified Historical Price Lines
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/scripts/crypto-price-backfill.py
+      - .github/workflows/crypto-price-backfill.yml
+  schedule:
+    - cron: '13 */3 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: vertex-crypto-price-backfill
+  cancel-in-progress: false
+jobs:
+  prices:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Python
+        run: python3 -m py_compile .github/scripts/crypto-price-backfill.py
+      - name: Download observed historical crypto prices where OHLC is missing
+        run: python3 .github/scripts/crypto-price-backfill.py
+      - name: Publish validated price-line archives
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p chart-history/crypto/prices
+          git status --porcelain chart-history/crypto/prices/ | sed 's/^...//' > "$RUNNER_TEMP/vertex-price-changed.txt"
+          if [ ! -s "$RUNNER_TEMP/vertex-price-changed.txt" ]; then exit 0; fi
+          mkdir -p "$RUNNER_TEMP/vertex-price-staged"
+          while IFS= read -r file; do
+            mkdir -p "$RUNNER_TEMP/vertex-price-staged/$(dirname "$file")"
+            cp "$file" "$RUNNER_TEMP/vertex-price-staged/$file"
+          done < "$RUNNER_TEMP/vertex-price-changed.txt"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            while IFS= read -r file; do
+              mkdir -p "$(dirname "$file")"
+              cp "$RUNNER_TEMP/vertex-price-staged/$file" "$file"
+            done < "$RUNNER_TEMP/vertex-price-changed.txt"
+            git add chart-history/crypto/prices/
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -m "data: update genuine historical price lines [skip ci]"
+            if git push origin HEAD:main; then exit 0; fi
+            sleep 2
+          done
+          exit 1
