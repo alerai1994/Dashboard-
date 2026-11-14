@@ -5008,6 +5008,15 @@ async function fetchQuotes(isManual=false,forceFull=false){
   if(!all.some(x=>x&&x.id&&Number.isFinite(Number(x.value))&&Number(x.value)>0))
    throw new Error('No verified quotes');
   const base=Object.fromEntries(all.filter(x=>x&&x.id&&ASSET_BY_ID[x.id]).map(x=>{
+   // CoinGecko's ranked response identifies the exact asset; never infer
+   // an ambiguous ID from a screenshot ticker when no source is available.
+   const asset=ASSET_BY_ID[x.id];
+   if(asset?.extended&&x.coingeckoId&&typeof x.coingeckoId==='string'){
+    asset.coingeckoId=x.coingeckoId;
+    if(typeof x.name==='string'&&x.name.trim().length<100){
+     asset.name=x.name+' ('+x.symbol+')';asset.short=x.name;
+    }
+   }
    const prev=state.quotes[x.id]||{};
    // Full snapshots include OHLC, price-only snapshots preserve it.
    // A slower 30-minute historical feed must never overwrite a newer quote.
