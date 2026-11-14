@@ -2013,7 +2013,7 @@ function marketForceCoverageText(mood){
    Pressure cards are a transparent price-change proxy, never order-flow metrics. */
 const MARKET_FORCE_BULLISH_PERIODS=['1H','4H','1D','1W','1A'];
 const MARKET_FORCE_BULLISH_CIRCUMFERENCE=2*Math.PI*132;
-let marketForceBullishPeriod='1D';
+let marketForceBullishPeriod=ASSET_BY_ID[marketForceLeadId()]?.group==='crypto'?'1A':'1D';
 function marketForceDatedCandles(id,period){
  const q=quote(id),raw=Array.isArray(q?.candles)?q.candles:[];
  const hours={'1H':1,'4H':4,'1D':24,'1W':168}[period];
@@ -2649,27 +2649,34 @@ function redrawMarketCryptoHistoryPreview(id){
 }
 async function loadMarketCryptoHistoryPreview(id){
  const asset=ASSET_BY_ID[id];
- if(!asset?.extended||asset.group!=='crypto')return null;
+ if(!asset||asset.group!=='crypto')return null;
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),11500);
  let record=null;
  try{
-  const path='./chart-history/crypto/'+encodeURIComponent(id)+'.json?v='+
+  const path=(id==='ore'?'./ore-chart-history.json':
+   './chart-history/crypto/'+encodeURIComponent(id)+'.json')+'?v='+
    Math.floor(Date.now()/3600000);
   const response=await fetch(path,{signal:controller.signal,cache:'force-cache'});
   if(response.ok){
    const data=await response.json();
-   if(!data||data.id!==id||(data.coingeckoId&&data.coingeckoId!==asset.coingeckoId))
+   if(id==='ore'){
+    if(data.pair!=='ORE/USDT'||data.mint!=='oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp')
+     throw Error('Archivio ORE non verificato');
+   }else if(!data||data.id!==id||
+    (asset.coingeckoId&&data.coingeckoId&&data.coingeckoId!==asset.coingeckoId))
     throw Error('Identità dello storico non corrispondente');
-   const monthly=chartReadAllCandles(data.candles);
-   const recent=chartReadAllCandles(data.recentCandles);
+   const monthly=chartReadAllCandles(id==='ore'?
+    (data.sets?.day1?.candles||data.sets?.hour4?.candles||[]):data.candles);
+   const recent=chartReadAllCandles(id==='ore'?[]:data.recentCandles);
    const rows=monthly.length>=2?monthly:recent;
    if(rows.length>=2){
     record={
      status:'ready',candles:rows.slice(-48),
-     source:String(data.source||'Archivio OHLC verificato').slice(0,180),
+     source:String(id==='ore'?'LBank Spot · ORE/USDT':data.source||'Archivio OHLC verificato').slice(0,180),
      first:rows[Math.max(0,rows.length-48)].t,last:rows[rows.length-1].t,
      resolution:monthly.length>=2?
-      data.timeframe==='1mo'?'1 mese':data.timeframe==='1d'?'1 giorno':'4 giorni':
+      id==='ore'?'giornaliera':data.timeframe==='1mo'?'1 mese':
+       data.timeframe==='1d'?'1 giorno':'4 giorni':
       '4 ore',
      partial:data.partial===true
     };
@@ -2714,7 +2721,7 @@ async function loadMarketCryptoHistoryPreview(id){
 function pumpMarketCryptoHistoryPreviews(){
  while(marketCryptoHistoryActive<MARKET_CRYPTO_PREVIEW_CONCURRENCY&&marketCryptoHistoryQueue.length){
   const id=marketCryptoHistoryQueue.shift();
-  if(!ASSET_BY_ID[id]?.extended)continue;
+  if(ASSET_BY_ID[id]?.group!=='crypto')continue;
   marketCryptoHistoryActive++;
   marketCryptoHistoryPreviews.set(id,{status:'loading'});
   redrawMarketCryptoHistoryPreview(id);
@@ -2731,7 +2738,7 @@ function pumpMarketCryptoHistoryPreviews(){
 }
 function queueMarketCryptoHistoryPreview(id){
  const asset=ASSET_BY_ID[id];
- if(!asset?.extended||asset.group!=='crypto'||marketCryptoHistoryPreviews.has(id))return;
+ if(!asset||asset.group!=='crypto'||marketCryptoHistoryPreviews.has(id))return;
  marketCryptoHistoryPreviews.set(id,{status:'queued'});
  marketCryptoHistoryQueue.push(id);
  pumpMarketCryptoHistoryPreviews();
@@ -2741,7 +2748,7 @@ function observeMarketCryptoHistoryPreviews(){
  marketCryptoHistoryObserver=null;
  if(!['markets','workspace'].includes(state.page))return;
  const cards=Array.from(document.querySelectorAll('#pageContainer .market-chart-card[data-asset]'))
-  .filter(card=>ASSET_BY_ID[card.dataset.asset]?.extended);
+  .filter(card=>ASSET_BY_ID[card.dataset.asset]?.group==='crypto');
  if(!cards.length)return;
  if(typeof IntersectionObserver==='undefined'){
   cards.slice(0,12).forEach(card=>queueMarketCryptoHistoryPreview(card.dataset.asset));
@@ -2803,12 +2810,12 @@ function marketChartPlot(id){
   return plot(paths,note);
  }
  const status=marketCryptoHistoryPreviews.get(id);
- if(ASSET_BY_ID[id]?.extended&&status?.status==='loading')
+ if(ASSET_BY_ID[id]?.group==='crypto'&&status?.status==='loading')
   return '<span class="market-chart-unavailable">Caricamento dello storico OHLC verificato…</span>'+
    '<span class="market-chart-note">Archivio della criptovaluta · nessuna candela simulata</span>';
- if(ASSET_BY_ID[id]?.extended&&status?.status==='queued')
+ if(ASSET_BY_ID[id]?.group==='crypto'&&status?.status==='queued')
   return '<span class="market-chart-unavailable">Storico in coda di caricamento…</span>';
- if(ASSET_BY_ID[id]?.extended&&status?.status==='unavailable')
+ if(ASSET_BY_ID[id]?.group==='crypto'&&status?.status==='unavailable')
   return '<span class="market-chart-unavailable">Storico OHLC non disponibile dalla fonte</span>'+
    '<span class="market-chart-note">Apri il grafico completo per riprovare · nessun dato simulato</span>';
  return '<span class="market-chart-unavailable">Candele OHLC non disponibili per questo strumento</span>'+
@@ -6816,7 +6823,7 @@ function openAsset(id){
  chartFetchState.sequence++;
  if(chartFetchState.abort)chartFetchState.abort.abort();
  // Newly added crypto open on the available historical view first.
- chartRange=a.extended?'MAX':'1D';chartHoverForex=false;
+ chartRange=a.group==='crypto'?'MAX':'1D';chartHoverForex=false;
  chartSeries={id:null,range:null,candles:[],source:'',loading:false,error:'',partial:false};
  state.dialogId=id;state.chartShift=0;state.chartHover=null;
  chartFib.mode='idle';chartFib.draft=null;chartFib.view=null;chartFib.manualView=null;
