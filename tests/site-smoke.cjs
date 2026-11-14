@@ -446,10 +446,14 @@ assert(globalGlassRules.includes('body.page-global .world-map-panel{\n backdrop-
  'The atlas must not itself be blurred');
 assert(html.includes('style.css?v=20261113-global-glass-cards-v252'),'Global frosted CSS must bypass cache');
 
-/* UI-only removal of the crypto quote currency suffix from dropdowns. */
-assert(source.includes("asset.symbol.replace(/-(?:USD|USDT)$/i,'')"));
-assert(read('price-board.js').includes("a.symbol.replace(/-(?:USD|USDT)$/i,'')"));
+/* Asset menus show clean names with no redundant currency/ticker suffix. */
+assert(source.includes("function marketForceSelectLabel(asset){\n return asset.name;"));
+assert(read('price-board.js').includes("function dropdownLabel(a){\n return a.name;"));
 assert(source.includes("symbol:'BTC-USD'"),'Original market symbol must remain intact');
 assert(source.includes("symbol:'EURUSD=X'"),'Forex pair must remain intact');
-assert(html.includes('script.js?v=20261113-dropdown-no-usd-v253'));
-assert(html.includes('price-board.js?v=20261113-board-dropdown-no-usd-v5'));
+assert(html.includes('script.js?v=20261114-mobile-sidebar-swipe-v255'));
+assert(html.includes('price-board.js?v=20261114-board-dropdown-names-v6'));
+
+/* Mobile drawer supports the requested left-to-right swipe on the exposed right strip. */
+assert(source.includes('function setupSidebarSwipe()'));
+assert(source.includes("zone:outsideRight?'right-strip'"));
