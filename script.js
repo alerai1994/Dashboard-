@@ -6202,6 +6202,17 @@ async function chartExtendedCryptoHistory(asset,period,from,now,force=false){
   }
   const archive=savedResult();
   if(archive&&!force)return archive;
+  // When OHLC is unavailable, a daily sampled-price LINE can still show
+  // genuine historical movement over 2D/1W/1M, never synthetic candles.
+  if(!archive&&(period.months||period.ms>=86400000)){
+   try{
+    const savedPrices=await chartLoadObservedPriceArchive(asset,controller.signal);
+    const pricePoints=savedPrices?.points.filter(p=>p.t*1000>=from&&p.t*1000<=now+60000)||[];
+    if(pricePoints.length>=2)return {
+     kind:'price-line',candles:[],pricePoints,source:savedPrices.source,partial:true
+    };
+   }catch(_error){/* Some assets only have exchange OHLC, not sampled prices. */}
+  }
   const days=period.months?(period.months===1?30:365):
    period.ms<=43200000?1:period.ms<=604800000?7:30;
   try{
@@ -6244,8 +6255,8 @@ async function loadCryptoChartHistory(force=false){
   try{result=await chartExtendedCryptoHistory(asset,period,from,now,force);}
   catch(_error){/* Missing or rate-limited upstream history stays unavailable. */}
   if(seq!==chartFetchState.sequence)return;
-  if(result?.candles?.length>=2){
-   const output={id:asset.id,range:selected,...result,loading:false,error:'',
+  if(result?.candles?.length>=2||result?.pricePoints?.length>=2){
+   const output={id:asset.id,range:selected,candles:[],...result,loading:false,error:'',
     loadedAt:Date.now()};
    chartSeries=output;chartFetchState.cache.set(key,output);
    if(chartFetchState.cache.size>100)
