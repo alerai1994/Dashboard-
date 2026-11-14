@@ -18,6 +18,22 @@ assert(source.includes('function observeMarketCryptoHistoryPreviews('),
  'Markets must lazily observe crypto historical charts');
 assert(source.includes('function loadMarketCryptoHistoryPreview('),
  'Markets must load verified crypto history archives for the new coins');
+// When no verified OHLC exists, Markets must render actual prices as a LINE,
+// never fictitious high/low candles.
+for(const method of ['chartReadHistoricalPricePoints(','chartLoadObservedPriceArchive(',
+  'drawObservedHistoricalPrices(']){
+ assert(source.includes(method),'Missing observed-price chart capability: '+method);
+}
+assert(source.includes("status:'price',points:prices.points.slice(-365)"),
+ 'Markets needs historical price-line preview for newly added coins');
+const observedPrices=JSON.parse(read('chart-history/crypto/prices/aero.json'));
+assert.equal(observedPrices.id,'aero');
+assert.equal(observedPrices.kind,'observed-price-line');
+assert(observedPrices.points.length>=2);
+assert(observedPrices.points.every(row=>Array.isArray(row)&&row.length===2&&
+ Number.isFinite(row[0])&&Number.isFinite(row[1])&&row[1]>0),
+ 'Only timestamp plus observed price, not synthetic OHLC');
+
 assert(source.includes("chart-history/crypto/'+encodeURIComponent(id)"),
  'Markets previews must fetch the selected crypto history rather than the old 42-coin feed');
 assert(source.includes("marketCryptoHistoryPreviews.get(id)"),
