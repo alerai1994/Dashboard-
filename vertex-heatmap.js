@@ -127,11 +127,8 @@ function sourceLabel(){
 }
 function page(){
  const data=gridHtml();
- const inj=data.all.find(c=>c.symbol==='inj');
  return '<section class="vh-shell" id="vertexCryptoHeatmap" aria-label="Mappa mercato criptovalute">'+
-  '<div class="vh-head"><span class="vh-breadcrumb">VERTEX / MARKETS</span><strong class="vh-heading">CRYPTO MARKET HEATMAP</strong>'+
-  '<span class="vh-leader" id="vhLeader"><small>INJ</small><b>'+esc(inj?priceText(inj.price):'—')+'</b>'+
-  '<em>'+esc(inj?changeText(inj.change):'—')+'</em></span></div>'+
+  '<div class="vh-head"><span class="vh-breadcrumb">VERTEX / MARKETS</span><strong class="vh-heading">CRYPTO MARKET HEATMAP</strong></div>'+
   '<div class="vh-ticker" id="vhStats">'+statistics(data.all)+'</div>'+
   '<div class="vh-controls"><div><h2>Mappa delle criptovalute</h2><p>Prezzo e variazione nelle ultime 24 ore · rosso in calo, verde in rialzo</p></div>'+
   '<div class="vh-controls-right"><label class="vh-search-label"><span>Cerca</span><input id="vhSearch" type="search" placeholder="Nome o simbolo…" value="'+esc(state.query)+'" autocomplete="off"></label>'+
@@ -158,9 +155,6 @@ function paint(){
  if(count)count.textContent=visible.length+' / '+filtered.length+' asset';
  const more=document.getElementById('vhMore');
  if(more){more.hidden=filtered.length<=220;more.textContent=state.all?'Mostra meno':'Mostra tutti';}
- const inj=all.find(c=>c.symbol==='inj');
- const leader=document.getElementById('vhLeader');
- if(leader)leader.innerHTML='<small>INJ</small><b>'+esc(inj?priceText(inj.price):'—')+'</b><em>'+esc(inj?changeText(inj.change):'—')+'</em>';
 }
 async function refresh(force=false){
  if(state.fetching||document.hidden)return;
