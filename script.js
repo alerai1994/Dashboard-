@@ -7162,53 +7162,69 @@ function setupEvents(){
  (function setupSidebarSwipe(){
   const sidebar=$('#sidebar');
   const mobile=window.matchMedia('(max-width:600px)');
+  const LEFT_EDGE_PX=44;
+  const MIN_SWIPE_PX=64;
   let gesture=null;
   let suppressSwipeClickUntil=0;
+
+  // Bound to document, not #pageContainer: survives every section redraw.
+  // Outside the open sidebar, the exposed right-hand strip always has priority
+  // even over charts, carousels and horizontal scrollers on the current page.
   document.addEventListener('touchstart',e=>{
    gesture=null;
-   if(!mobile.matches||e.touches.length!==1)return;
+   if(!mobile.matches||e.touches.length!==1||document.fullscreenElement)return;
    const target=e.target;
    if(!(target instanceof Element))return;
-   if(target.closest('input,textarea,select,[contenteditable="true"],dialog,[role="dialog"]'))return;
-   // Preserve drag, chart selection and horizontal scrolling in existing widgets.
-   if(target.closest('canvas,.market-index-strip,.region-photo-grid,.market-mini-chart,.ws-book-layout,.chart-frame,.price-board-stage'))return;
+   if(target.closest('dialog[open],[role="dialog"],.vertex-frost-select-popover'))return;
    const touch=e.touches[0];
    const open=sidebar.classList.contains('open');
    const outsideRight=open&&!sidebar.contains(target)&&
-    touch.clientX>sidebar.getBoundingClientRect().right+2;
+    touch.clientX>=sidebar.getBoundingClientRect().right;
    const inSidebar=open&&sidebar.contains(target);
-   const atEdge=!open&&touch.clientX<=48;
-   if(!outsideRight&&!inSidebar&&!atEdge)return;
-   gesture={x:touch.clientX,y:touch.clientY,open,
+   const leftEdge=!open&&touch.clientX<=LEFT_EDGE_PX;
+   if(!outsideRight&&!inSidebar&&!leftEdge)return;
+
+   // Dragging a chart inside the first few pixels remains a chart interaction.
+   // Opening the drawer is reserved for a deliberate edge gesture in all sections.
+   if(leftEdge&&target.closest('canvas,.chart-frame,.market-mini-chart,.price-board-stage'))return;
+   gesture={id:touch.identifier,x:touch.clientX,y:touch.clientY,open,
     zone:outsideRight?'right-strip':inSidebar?'sidebar':'left-edge'};
-  },{passive:true});
+  },{capture:true,passive:true});
+
   document.addEventListener('touchmove',e=>{
-   if(!gesture||!mobile.matches||e.touches.length!==1)return;
-   const touch=e.touches[0];
+   if(!gesture||!mobile.matches)return;
+   const touch=Array.from(e.touches).find(t=>t.identifier===gesture.id);
+   if(!touch){gesture=null;return;}
    const dx=touch.clientX-gesture.x,dy=touch.clientY-gesture.y;
-   if(Math.abs(dx)>18&&Math.abs(dx)>Math.abs(dy)*1.5&&e.cancelable){
-    e.preventDefault();
-   }
-  },{passive:false});
+   // Never capture vertical page scrolling or scrolling inside the sidebar.
+   if(Math.abs(dy)>18&&Math.abs(dy)>Math.abs(dx)*1.15){gesture=null;return;}
+   if(Math.abs(dx)<20||Math.abs(dx)<Math.abs(dy)*1.3)return;
+   const validDirection=(!gesture.open&&dx>0)||
+    (gesture.open&&(gesture.zone==='right-strip'||dx<0));
+   if(!validDirection){gesture=null;return;}
+   // Prevent a chart or carousel from stealing an intentional strip swipe.
+   if(e.cancelable)e.preventDefault();
+  },{capture:true,passive:false});
+
   document.addEventListener('touchend',e=>{
    const start=gesture;
    gesture=null;
-   if(!start||!mobile.matches||e.changedTouches.length!==1)return;
-   const touch=e.changedTouches[0];
+   if(!start||!mobile.matches)return;
+   const touch=Array.from(e.changedTouches).find(t=>t.identifier===start.id);
+   if(!touch)return;
    const dx=touch.clientX-start.x,dy=touch.clientY-start.y;
-   if(Math.abs(dx)<64||Math.abs(dy)>75||Math.abs(dx)<Math.abs(dy)*1.35)return;
-   if(!start.open&&start.zone==='left-edge'&&dx>0){
-    sidebar.classList.add('open');
-    suppressSwipeClickUntil=Date.now()+330;
-   }else if(start.open&&
+   if(Math.abs(dx)<MIN_SWIPE_PX||Math.abs(dx)<Math.abs(dy)*1.3)return;
+   const open=!start.open&&start.zone==='left-edge'&&dx>0;
+   const close=start.open&&
     ((start.zone==='right-strip'&&dx>0)||
      (start.zone==='right-strip'&&dx<0)||
-     (start.zone==='sidebar'&&dx<0))){
-    sidebar.classList.remove('open');
-    suppressSwipeClickUntil=Date.now()+330;
-   }
-  },{passive:true});
-  document.addEventListener('touchcancel',()=>{gesture=null},{passive:true});
+     (start.zone==='sidebar'&&dx<0));
+   if(!open&&!close)return;
+   sidebar.classList.toggle('open',open);
+   suppressSwipeClickUntil=Date.now()+350;
+  },{capture:true,passive:true});
+
+  document.addEventListener('touchcancel',()=>{gesture=null},{capture:true,passive:true});
   document.addEventListener('click',e=>{
    if(Date.now()>=suppressSwipeClickUntil)return;
    e.preventDefault();
