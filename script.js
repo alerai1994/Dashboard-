@@ -1948,6 +1948,9 @@ function marketForceAssetOptions(){
 }
 function marketForceChooseAsset(id){
  if(!marketForceAssets().some(a=>a.id===id))return;
+ // Open the annual candle archive when choosing a cryptocurrency. The
+ // shorter intraday windows require true intraday trading observations.
+ marketForceBullishPeriod=ASSET_BY_ID[id]?.group==='crypto'?'1A':'1D';
  marketForceSelectedAssets[marketForceFilter]=id;
  save('marketForceSelectedAssets',marketForceSelectedAssets);
  marketForceAssetSearch='';
@@ -2008,7 +2011,7 @@ function marketForceCoverageText(mood){
 
 /* Detail view opened from Forza rialzista.
    Pressure cards are a transparent price-change proxy, never order-flow metrics. */
-const MARKET_FORCE_BULLISH_PERIODS=['1H','4H','1D','1W'];
+const MARKET_FORCE_BULLISH_PERIODS=['1H','4H','1D','1W','1A'];
 const MARKET_FORCE_BULLISH_CIRCUMFERENCE=2*Math.PI*132;
 let marketForceBullishPeriod='1D';
 function marketForceDatedCandles(id,period){
@@ -2067,7 +2070,9 @@ const FORCE_OHLC_PERIODS={
  '1H':{ms:3600000,interval:'1m',lbank:'minute1',step:60000,group:60000,yahoo:['1m','5m']},
  '4H':{ms:14400000,interval:'5m',lbank:'minute5',step:300000,group:300000,yahoo:['5m','1m']},
  '1D':{ms:86400000,interval:'15m',lbank:'minute15',step:900000,group:1800000,yahoo:['5m','60m']},
- '1W':{ms:604800000,interval:'1h',lbank:'hour1',step:3600000,group:14400000,yahoo:['60m','1d']}
+ '1W':{ms:604800000,interval:'1h',lbank:'hour1',step:3600000,group:14400000,yahoo:['60m','1d']},
+ '1A':{ms:366*86400000,interval:'1w',lbank:'day1',step:86400000,
+  group:604800000,yahoo:['1d','1wk']}
 };
 const marketForceOHLC=new Map(),marketForceOHLCLoading=new Map();
 function forceOHLCGet(id,period){return marketForceOHLC.get(id+':'+period)||null}
@@ -2121,9 +2126,61 @@ async function marketForceLoadOHLC(id,period){
  const old=marketForceOHLC.get(key),ttl=a.group==='crypto'?60000:120000;
  if(old&&Date.now()-old.at<(old.bars.length?ttl:90000))return;
  const job=(async()=>{
-  let bars=[],source='',interval='',error='Nessun dato OHLC verificato per il periodo';
+  let bars=[],source='',interval='',sampledBars=false,
+   error='Nessuna candela verificata o campionabile per il periodo';
   const now=Date.now();
-  if(id==='ore'){
+  if(period==='1A'&&a.group==='crypto'){
+   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),11000);
+   try{
+    // Same-origin verified archives have stable token identity. ORE has
+    // a separate vetted LBank archive with a unique mint address.
+    if(id==='ore'){
+     const response=await fetch('./ore-chart-history.json?v='+Math.floor(now/3600000),
+      {signal:controller.signal,cache:'force-cache'});
+     if(response.ok){
+      const payload=await response.json();
+      if(payload.pair==='ORE/USDT'&&payload.mint==='oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp'){
+       const sourceRows=payload.sets?.day1?.candles||payload.sets?.hour4?.candles||[];
+       bars=chartReadAllCandles(sourceRows).filter(c=>c.t*1000>=now-cfg.ms-86400000);
+       if(bars.length>=2){source='LBank Spot · archivio ORE/USDT';interval='giornaliero';}
+      }
+     }
+    }else{
+     const response=await fetch('./chart-history/crypto/'+encodeURIComponent(id)+
+      '.json?v='+Math.floor(now/3600000),{signal:controller.signal,cache:'force-cache'});
+     if(response.ok){
+      const data=await response.json();
+      if(data?.id===id&&(!a.coingeckoId||!data.coingeckoId||
+         data.coingeckoId===a.coingeckoId)){
+       const rows=chartReadAllCandles(data.candles||data.recentCandles);
+       bars=rows.filter(c=>c.t*1000>=now-cfg.ms-86400000);
+       if(bars.length>=2){
+        source=data.source||'Archivio storico crypto';
+        interval=data.timeframe==='1mo'?'mensile':
+         data.timeframe==='1d'?'giornaliero':'risoluzione fonte';
+       }
+      }
+     }
+    }
+   }catch(_error){/* Archive unavailable; verified price observations below. */}
+   finally{clearTimeout(timeout);}
+   if(bars.length<2&&id!=='ore'){
+    const signaler=new AbortController(),deadline=setTimeout(()=>signaler.abort(),10500);
+    try{
+     const observed=await chartLoadObservedPriceArchive(a,signaler.signal);
+     const sampled=chartSampledCandlesFromPrices(observed?.points,7);
+     if(sampled.length>=2){
+      bars=sampled.filter(c=>c.t*1000>=now-cfg.ms-86400000);
+      if(bars.length>=2){
+       source='DefiLlama · candele settimanali CAMPIONATE da prezzi osservati, non OHLC exchange';
+       interval='1 settimana · massimi/minimi fra campioni';sampledBars=true;
+      }
+     }
+    }catch(_error){/* A source outage never creates artificial OHLC. */}
+    finally{clearTimeout(deadline);}
+   }
+  }
+  if(id==='ore'&&period!=='1A'){
    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),7500);
    try{
     const response=await fetch('./ore-chart-history.json?v='+Math.floor(now/120000),
@@ -2134,7 +2191,7 @@ async function marketForceLoadOHLC(id,period){
    }catch(_error){/* Fall back to the LBank public API below. */}
    finally{clearTimeout(timer)}
   }
-  if(a.group==='crypto'&&bars.length<2){
+  if(a.group==='crypto'&&bars.length<2&&period!=='1A'){
    for(const endpoint of chartMarketUrls(a,cfg,now-cfg.ms,now)){
     const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),7000);
     try{
@@ -2151,7 +2208,7 @@ async function marketForceLoadOHLC(id,period){
     }catch(_err){bars=[]}
     finally{clearTimeout(timeout)}
    }
-  }else{
+  }else if(a.group!=='crypto'){
    const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),9000);
    try{
     const response=await fetch('./chart-history/'+encodeURIComponent(id)+'.json?v='+Math.floor(now/120000),
@@ -2174,8 +2231,9 @@ async function marketForceLoadOHLC(id,period){
     }
    }
   }
-  const actual=bars.length>=2?forceOHLCAggregate(bars,cfg.group):[];
-  marketForceOHLC.set(key,{bars:actual,source,interval,error:actual.length?'':error,at:Date.now()});
+  const actual=bars.length>=2?(sampledBars?bars:forceOHLCAggregate(bars,cfg.group)):[];
+  marketForceOHLC.set(key,{bars:actual,source,interval,sampled:sampledBars,
+   error:actual.length?'':error,at:Date.now()});
   if(marketForceOHLC.size>28)marketForceOHLC.delete(marketForceOHLC.keys().next().value);
  })().catch(()=>{
   marketForceOHLC.set(key,{bars:[],error:'Storico OHLC non raggiungibile',source:'',interval:'',at:Date.now()});
@@ -2243,7 +2301,7 @@ function marketForceBullishPlot(m){
   '<rect x="'+(x-body/2).toFixed(2)+'" y="'+by.toFixed(2)+'" width="'+body.toFixed(2)+
   '" height="'+Math.max(1.2,y(Math.min(b.o,b.c))-by).toFixed(2)+'" rx=".4"/></g>';
  }).join('');
- const time=(b)=>new Intl.DateTimeFormat('it-IT',period==='1W'?
+ const time=(b)=>new Intl.DateTimeFormat('it-IT',period==='1W'||period==='1A'?
   {day:'2-digit',month:'2-digit',timeZone:'Europe/Rome'}:
   {hour:'2-digit',minute:'2-digit',timeZone:'Europe/Rome'}).format(new Date(b.t*1000));
  const labels=[bars[0],bars[Math.floor(bars.length/2)],bars.at(-1)].map((b,i)=>
@@ -2252,11 +2310,14 @@ function marketForceBullishPlot(m){
  const last=new Intl.DateTimeFormat('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Rome'}).format(new Date(bars.at(-1).t*1000));
  return '<div class="bullish-live-chart-content force-ohlc-chart">'+
   '<div class="force-ohlc-legend"><span><i class="up"></i>Rialzo</span>'+
-  '<span><i class="down"></i>Ribasso</span><b>OHLC · '+period+'</b></div>'+
-  '<svg class="force-ohlc-svg" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" role="img" aria-label="Candele reali OHLC '+
+  '<span><i class="down"></i>Ribasso</span><b>'+(data.sampled?'Candele campionate':'OHLC reale')+' · '+period+'</b></div>'+
+  '<svg class="force-ohlc-svg" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" role="img" aria-label="'+
+  (data.sampled?'Candele settimanali da prezzi rilevati ':'Candele reali OHLC ')+
   esc(ASSET_BY_ID[m.id]?.name||m.id)+' · '+period+'">'+levels+candles+labels+'</svg>'+
   '<span class="bullish-detail-chart-note">'+esc(data.source)+' · '+esc(data.interval)+
-  ' · ultima '+esc(last)+' · '+bars.length+' candele reali</span></div>';
+  ' · ultima '+esc(last)+' · '+bars.length+
+  (data.sampled?' candele CAMPIONATE (massimo e minimo tra prezzi giornalieri, non intraday)':' candele reali OHLC')+
+  '</span></div>';
 }
 /* The ring signals the prevailing real price-movement component; its orbit is decorative. */
 const MARKET_FORCE_BULL_ICON='<img class="market-force-realistic-bull" src="data:image/webp;base64,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" alt="" aria-hidden="true" decoding="async" width="110" height="85">';
@@ -2353,7 +2414,8 @@ function marketForceBullishPanel(){
  '<select id="bullishAsset" aria-label="Seleziona un mercato">'+marketForceAssetOptions()+'</select>'+chev+'</div></div>'+
  '<div class="bullish-detail-field"><span class="bullish-detail-label">'+calendarIcon+'<span>Periodo</span></span>'+
  '<div class="bullish-detail-periods" role="group" aria-label="Periodo di analisi">'+
- MARKET_FORCE_BULLISH_PERIODS.map(p=>'<button type="button" data-bullish-period="'+p+'" aria-pressed="'+String(p===marketForceBullishPeriod)+'"'+(p===marketForceBullishPeriod?' class="active"':'')+'>'+p+'</button>').join('')+
+ MARKET_FORCE_BULLISH_PERIODS.filter(p=>p!=='1A'||asset?.group==='crypto')
+ .map(p=>'<button type="button" data-bullish-period="'+p+'" aria-pressed="'+String(p===marketForceBullishPeriod)+'"'+(p===marketForceBullishPeriod?' class="active"':'')+'>'+p+'</button>').join('')+
  '</div></div></div>'+
  '<div class="bullish-detail-body"><div class="bullish-detail-dial-wrap">'+
  '<div class="bullish-detail-gauge" aria-label="Forza prevalente del prezzo">'+
@@ -2472,6 +2534,7 @@ function setMarketForceFilter(key){
  if(!MARKET_FORCE_FILTERS.some(([id])=>id===key)||key===marketForceFilter)return;
  bullishCategoryMenuOpen=false;
  marketForceFilter=key;
+ marketForceBullishPeriod=key==='crypto'?'1A':'1D';
  marketForceAssetSearch='';
  save('marketForceFilter',key);
  const panel=document.querySelector('#pageContainer .market-force-section');
