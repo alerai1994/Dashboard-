@@ -6321,13 +6321,19 @@ async function loadAllChartHistory(force=false){
   }
   // Immediate fallback before the scheduled GitHub archive is populated.
   if(isCrypto&&candles.length<2&&asset.coingeckoId&&!controller.signal.aborted){
-   try{
-    const fetched=await chartCoinGeckoCandles(asset,365,controller);
-    if(fetched.length>=2){
-     candles=fetched;source='CoinGecko · OHLC 4 giorni · ultimi 365 giorni disponibili';
-     partial=true;failure='';
-    }
-   }catch(_error){/* Unavailable/rate-limited is not replaced by fake prices. */}
+   for(const days of [365,30]){
+    try{
+     const fetched=await chartCoinGeckoCandles(asset,days,controller);
+     if(fetched.length>=2){
+      candles=fetched;source='CoinGecko · OHLC '+
+       (days===365?'4 giorni · ultimi 365 giorni':'4 ore · ultimi 30 giorni')+
+       ' disponibili';
+      partial=true;failure='';
+      break;
+     }
+    }catch(_error){/* Missing history stays unavailable, not simulated. */}
+    if(controller.signal.aborted)break;
+   }
   }
  }finally{clearTimeout(timeout)}
  if(seq!==chartFetchState.sequence)return;
@@ -6493,7 +6499,8 @@ function openAsset(id){
  const a=ASSET_BY_ID[id];if(!a)return;
  chartFetchState.sequence++;
  if(chartFetchState.abort)chartFetchState.abort.abort();
- chartRange='1D';chartHoverForex=false;
+ // Newly added crypto open on the available historical view first.
+ chartRange=a.extended?'MAX':'1D';chartHoverForex=false;
  chartSeries={id:null,range:null,candles:[],source:'',loading:false,error:'',partial:false};
  state.dialogId=id;state.chartShift=0;state.chartHover=null;
  chartFib.mode='idle';chartFib.draft=null;chartFib.view=null;chartFib.manualView=null;
