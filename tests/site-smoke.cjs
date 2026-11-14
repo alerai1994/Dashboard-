@@ -14,7 +14,8 @@ assert(screenshotCatalog.every(c=>c.length>=3&&/^[a-z0-9-]{1,100}$/.test(c[2])),
  'Every screenshot token needs its exact CoinGecko identifier');
 assert(source.includes('async function chartCoinGeckoCandles('),'Missing verified historical OHLC fallback');
 assert(source.includes('async function chartExtendedCryptoHistory('),'Missing 228-coin history loader');
-assert(source.includes('CoinGecko · OHLC 4 giorni'),'Historical candles must reveal source resolution');
+assert(source.includes("'4 giorni'")&&source.includes("'4 ore'")&&source.includes("'1 giorno'"),
+ 'Historical candles must retain real CoinGecko/CryptoCompare source resolution');
 assert(source.includes('data.coingeckoId!==asset.coingeckoId'),
  'Historical archive must verify the selected token identity');
 
