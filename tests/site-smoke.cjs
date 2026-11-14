@@ -467,7 +467,7 @@ assert(source.includes("if(Math.abs(dy)>18&&Math.abs(dy)>Math.abs(dx)*1.15)"));
 /* Reference-inspired cryptocurrency heatmap in Markets (real data, no fake coins). */
 const heatmap=read('vertex-heatmap.js'),heatmapCss=read('vertex-heatmap.css');
 new Function(heatmap);
-assert(html.includes('vertex-heatmap.css?v=20261114-v1'),'Crypto heatmap CSS missing');
+assert(html.includes('vertex-heatmap.css?v=20261114-v2'),'Crypto heatmap CSS missing');
 assert(html.includes('vertex-heatmap.js?v=20261114-v1'),'Crypto heatmap JS missing');
 assert(source.includes("window.VertexHeatmap?.page()"),'Markets must render heatmap');
 assert(source.includes("window.VertexHeatmap?.activate()"),'Markets must refresh live heatmap');
