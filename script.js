@@ -6002,15 +6002,18 @@ async function chartExtendedCryptoHistory(asset,period,from,now,force=false){
  });
  const savedResult=()=>{
   if(!saved||saved.id!==asset.id||saved.coingeckoId!==asset.coingeckoId)return null;
-  const monthly=saved.timeframe==='1mo'&&String(saved.source||'').startsWith('Yahoo Finance');
+  const origin=String(saved.source||'').startsWith('Yahoo Finance')?
+   'Archivio Yahoo Finance':String(saved.source||'').startsWith('CryptoCompare')?
+   'Archivio CryptoCompare':'Archivio CoinGecko';
+  const resolution=saved.timeframe==='1mo'?'1 mese':saved.timeframe==='1d'?'1 giorno':'4 giorni';
   const order=isLong?[
-   ['candles',monthly?'1 mese':'4 giorni'],['recentCandles','4 ore']
+   ['candles',resolution],['recentCandles','4 ore']
   ]:[
-   ['recentCandles','4 ore'],['candles',monthly?'1 mese':'4 giorni']
+   ['recentCandles','4 ore'],['candles',resolution]
   ];
-  for(const [key,resolution] of order){
+  for(const [key,res] of order){
    const rows=keep(saved[key]);
-   if(rows.length>=2)return describe(rows,resolution,monthly?'Archivio Yahoo Finance':'Archivio CoinGecko');
+   if(rows.length>=2)return describe(rows,res,key==='recentCandles'?'Archivio CoinGecko':origin);
   }
   return null;
  };
