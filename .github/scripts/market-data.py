@@ -551,7 +551,7 @@ def screenshot_crypto_catalog():
     catalog = Path(__file__).resolve().parents[2] / "crypto-extended.js"
     try:
         raw = catalog.read_text(encoding="utf-8")
-        match = re.search(r"window\\.__VERTEX_EXTRA_CRYPTO__\\s*=\\s*(\\[[\\s\\S]*?\\]);", raw)
+        match = re.search(r"window\.__VERTEX_EXTRA_CRYPTO__\s*=\s*(\[[\s\S]*?\]);", raw)
         rows = json.loads(match.group(1)) if match else []
     except (OSError, ValueError, TypeError):
         rows = []
