@@ -6,6 +6,12 @@ const read=path=>fs.readFileSync(path,'utf8');
 const source=read('script.js'),html=read('index.html'),css=read('style.css');
 new Function(source);
 new Function(read('price-board.js'));
+new Function(read('crypto-extended.js'));
+const screenshotCatalog=JSON.parse(read('crypto-extended.js').match(/window\.__VERTEX_EXTRA_CRYPTO__\s*=\s*(\[[\s\S]*?\]);/)[1]);
+assert.equal(screenshotCatalog.length,220,'Expected 220 screenshot cryptocurrencies');
+assert.equal(new Set(screenshotCatalog.map(c=>c[0])).size,220,'Duplicate screenshot ticker');
+assert(html.includes('crypto-extended.js?v='),'Extended catalog must load before the app');
+assert(html.indexOf('crypto-extended.js?v=')<html.indexOf('script.js?v='),'Catalog must load first');
 new Function(read('vertex-widget-sw.js'));
 assert.match(html,/src="price-board\.js\?v=/);
 assert.match(html,/href="price-board\.css\?v=/);
@@ -43,9 +49,14 @@ for(const icon of ['original','minimal','aurora','pulse']){
 }
 const quotes=JSON.parse(read('market-quotes.json'));
 const rows=[...quotes.markets,...quotes.bigtech,...quotes.commodities,...quotes.forex,...quotes.crypto];
-assert.equal(quotes.crypto.length,42,'Expected 42 cryptocurrency quotes');
+assert(quotes.crypto.length>=42,'The 42 original cryptocurrency quotes must remain');
 assert.equal(new Set(rows.map(row=>row.id)).size,rows.length,'Duplicate asset IDs');
-for(const row of rows)assert(row.id&&row.symbol&&Number.isFinite(+row.value)&&+row.value>0,'Invalid quote '+row.id);
+for(const row of rows)assert(row.id&&row.symbol&&
+ (row.value===null||Number.isFinite(+row.value)&&+row.value>0),'Invalid quote '+row.id);
+// Requested coins outside today's CoinGecko window have unavailable prices,
+// not invented screenshot values.
+for(const row of quotes.crypto.slice(0,42))
+ assert(Number.isFinite(+row.value)&&+row.value>0,'Original crypto quote missing '+row.id);
 const books=JSON.parse(read('crypto-orderbooks-data.js').replace(/^window\.__VERTEX_CRYPTO_BOOKS__\s*=\s*/,'').replace(/;\s*$/,''));
 assert.equal(books.totalAssets,42);
 assert.equal(Object.keys(books.books).length,42);
@@ -73,11 +84,15 @@ class MockAudioContext{
 const persisted={};
 const emptyStorage={getItem:key=>persisted[key]??null,setItem:(key,value)=>{persisted[key]=value},removeItem:key=>{delete persisted[key]}};
 const document={readyState:'loading',body:{className:''},querySelector:()=>null,querySelectorAll:()=>[],addEventListener(){}};
-const appWindow={matchMedia:()=>({matches:true,addEventListener(){}}),addEventListener(){},AudioContext:MockAudioContext,__VERTEX_CRYPTO_BOOKS__:books,__VERTEX_ORE_BOOK__:ore};
+const appWindow={matchMedia:()=>({matches:true,addEventListener(){}}),addEventListener(){},AudioContext:MockAudioContext,__VERTEX_CRYPTO_BOOKS__:books,__VERTEX_ORE_BOOK__:ore,__VERTEX_EXTRA_CRYPTO__:screenshotCatalog};
 const app=new Function('window','document','location','localStorage','sessionStorage','navigator','URLSearchParams',adapted)(
  appWindow,
  document,{hash:'#global',search:'',origin:'https://example.test',hostname:'example.test'},
  emptyStorage,emptyStorage,{onLine:false},URLSearchParams);
+const allCrypto=appWindow.__vertexPriceBoardBackend.assets.filter(a=>a.group==='crypto');
+for(const [symbol] of screenshotCatalog)
+ assert(allCrypto.some(a=>a.symbol===symbol+'-USD'),'Missing screenshot crypto '+symbol);
+assert.equal(new Set(allCrypto.map(a=>a.id)).size,allCrypto.length,'Duplicate crypto IDs');
 app.state.quotes=Object.fromEntries(rows.map(row=>[row.id,row]));
 app.state.feedTime=quotes.generatedAt;
 app.state.loading=false;
@@ -451,7 +466,7 @@ assert(source.includes("function marketForceSelectLabel(asset){\n return asset.n
 assert(read('price-board.js').includes("function dropdownLabel(a){\n return a.name;"));
 assert(source.includes("symbol:'BTC-USD'"),'Original market symbol must remain intact');
 assert(source.includes("symbol:'EURUSD=X'"),'Forex pair must remain intact');
-assert(html.includes('script.js?v=20261114-crypto-heatmap-v257'));
+assert(html.includes('script.js?v=20261114-crypto-catalogo220'));
 assert(html.includes('price-board.js?v=20261114-board-dropdown-names-v6'));
 
 /* Swipe control persists across all sections and prioritizes the exposed right strip. */
