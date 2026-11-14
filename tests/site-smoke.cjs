@@ -475,7 +475,7 @@ assert(source.includes("function marketForceSelectLabel(asset){\n return asset.n
 assert(read('price-board.js').includes("function dropdownLabel(a){\n return a.name;"));
 assert(source.includes("symbol:'BTC-USD'"),'Original market symbol must remain intact');
 assert(source.includes("symbol:'EURUSD=X'"),'Forex pair must remain intact');
-assert(html.includes('script.js?v=20261114-history228-v1'));
+assert(html.includes('script.js?v=20261114-history228-v2'));
 assert(html.includes('price-board.js?v=20261114-board-dropdown-names-v6'));
 
 /* Swipe control persists across all sections and prioritizes the exposed right strip. */
@@ -492,7 +492,7 @@ assert(source.includes("if(Math.abs(dy)>18&&Math.abs(dy)>Math.abs(dx)*1.15)"));
 const heatmap=read('vertex-heatmap.js'),heatmapCss=read('vertex-heatmap.css');
 new Function(heatmap);
 assert(html.includes('vertex-heatmap.css?v=20261114-v3-no-inj-header'),'Crypto heatmap CSS missing');
-assert(html.includes('vertex-heatmap.js?v=20261114-history228-v1'),'Crypto heatmap JS missing');
+assert(html.includes('vertex-heatmap.js?v=20261114-history228-v2'),'Crypto heatmap JS missing');
 assert(source.includes("window.VertexHeatmap?.page()"),'Markets must render heatmap');
 assert(source.includes("window.VertexHeatmap?.activate()"),'Markets must refresh live heatmap');
 assert(source.includes('id="vertexMarketsCharts"'),'Existing charts scroll target missing');
