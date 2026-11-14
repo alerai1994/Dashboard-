@@ -451,9 +451,15 @@ assert(source.includes("function marketForceSelectLabel(asset){\n return asset.n
 assert(read('price-board.js').includes("function dropdownLabel(a){\n return a.name;"));
 assert(source.includes("symbol:'BTC-USD'"),'Original market symbol must remain intact');
 assert(source.includes("symbol:'EURUSD=X'"),'Forex pair must remain intact');
-assert(html.includes('script.js?v=20261114-mobile-sidebar-swipe-v255'));
+assert(html.includes('script.js?v=20261114-sidebar-swipe-all-sections-v256'));
 assert(html.includes('price-board.js?v=20261114-board-dropdown-names-v6'));
 
-/* Mobile drawer supports the requested left-to-right swipe on the exposed right strip. */
+/* Swipe control persists across all sections and prioritizes the exposed right strip. */
 assert(source.includes('function setupSidebarSwipe()'));
 assert(source.includes("zone:outsideRight?'right-strip'"));
+assert(source.includes("Bound to document, not #pageContainer"));
+assert(source.includes("touch.clientX>=sidebar.getBoundingClientRect().right"));
+assert(source.includes("document.addEventListener('touchmove'"));
+assert(source.includes("document.fullscreenElement"));
+assert(source.includes("if(leftEdge&&target.closest("));
+assert(source.includes("if(Math.abs(dy)>18&&Math.abs(dy)>Math.abs(dx)*1.15)"));
