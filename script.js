@@ -2616,6 +2616,16 @@ async function loadMarketCryptoHistoryPreview(id){
   // A missing, corrupt or stale archive may still have a verified remote source.
  }finally{clearTimeout(timer);}
  if(record)return record;
+ // Genuine sampled prices are a LINE graph, not synthetic OHLC candles.
+ try{
+  const prices=await chartLoadObservedPriceArchive(asset,controller.signal);
+  if(prices?.points?.length>=2)return {
+   status:'price',points:prices.points.slice(-365),
+   source:prices.source,resolution:'prezzi giornalieri osservati',
+   first:prices.points[Math.max(0,prices.points.length-365)].t,
+   last:prices.points[prices.points.length-1].t,partial:true
+  };
+ }catch(_error){/* Price history might not be indexed for this token. */}
  if(Date.now()<marketCryptoHistoryApiPauseUntil)return null;
  const fallbackCtl=new AbortController(),deadline=setTimeout(()=>fallbackCtl.abort(),9000);
  try{
@@ -2705,6 +2715,20 @@ function marketChartPlot(id){
  const q=quote(id),W=320,H=142,L=10,R=10,T=10,B=14,chartW=W-L-R,chartH=H-T-B;
  const grid='<path d="M10 42H310 M10 82H310 M10 122H310" stroke="currentColor" stroke-opacity=".13" stroke-width=".7" fill="none"/>';
  const plot=(svg,note)=>'<svg viewBox="0 0 320 142" preserveAspectRatio="none" aria-hidden="true">'+grid+svg+'</svg><span class="market-chart-note">'+note+'</span>';
+ const historicalPrices=marketCryptoHistoryPreviews.get(id);
+ if(historicalPrices?.status==='price'&&historicalPrices.points?.length>=2){
+  const points=historicalPrices.points;
+  const lo=Math.min(...points.map(p=>p.p)),hi=Math.max(...points.map(p=>p.p));
+  const pad=Math.max((hi-lo)*.07,hi*.001);
+  const ymin=lo-pad,ymax=hi+pad;
+  const xp=i=>L+chartW*i/(points.length-1);
+  const yp=p=>T+(ymax-p)/(ymax-ymin)*chartH;
+  const d=points.map((p,i)=>(i?'L':'M')+xp(i).toFixed(2)+' '+yp(p.p).toFixed(2)).join(' ');
+  const stroke=points[points.length-1].p>=points[0].p?'#18c69d':'#ed7192';
+  return plot('<path d="'+d+'" stroke="'+stroke+'" stroke-width="2" fill="none" vector-effect="non-scaling-stroke"/>',
+   'Storico prezzi reali (linea, non OHLC) · '+esc(marketCryptoHistoryDate(historicalPrices.first))+
+   ' – '+esc(marketCryptoHistoryDate(historicalPrices.last))+' · '+esc(historicalPrices.source));
+ }
  const candles=marketPreviewCandleData(id);
  if(candles.length>=2){
   const low=Math.min(...candles.map(c=>Number(c.l))),high=Math.max(...candles.map(c=>Number(c.h)));
