@@ -7156,6 +7156,69 @@ function setupEvents(){
  },true);
  $$('.side-link[data-page]').forEach(btn=>btn.addEventListener('click',()=>navigate(btn.dataset.page)));
  $('#menuToggle').addEventListener('click',()=>$('#sidebar').classList.toggle('open'));
+ // Mobile side drawer: horizontal gestures on the exposed right-hand strip.
+ // Right swipe from the left edge opens it; right swipe on the visible right strip
+ // (as requested) or left swipe on the drawer closes it. Never hijack vertical scroll.
+ (function setupSidebarSwipe(){
+  const sidebar=$('#sidebar');
+  const mobile=window.matchMedia('(max-width:600px)');
+  let gesture=null;
+  let suppressSwipeClickUntil=0;
+  document.addEventListener('touchstart',e=>{
+   gesture=null;
+   if(!mobile.matches||e.touches.length!==1)return;
+   const target=e.target;
+   if(!(target instanceof Element))return;
+   if(target.closest('input,textarea,select,[contenteditable="true"],dialog,[role="dialog"]'))return;
+   // Preserve drag, chart selection and horizontal scrolling in existing widgets.
+   if(target.closest('canvas,.market-index-strip,.region-photo-grid,.market-mini-chart,.ws-book-layout,.chart-frame,.price-board-stage'))return;
+   const touch=e.touches[0];
+   const open=sidebar.classList.contains('open');
+   const outsideRight=open&&!sidebar.contains(target)&&
+    touch.clientX>sidebar.getBoundingClientRect().right+2;
+   const inSidebar=open&&sidebar.contains(target);
+   const atEdge=!open&&touch.clientX<=48;
+   if(!outsideRight&&!inSidebar&&!atEdge)return;
+   gesture={x:touch.clientX,y:touch.clientY,open,
+    zone:outsideRight?'right-strip':inSidebar?'sidebar':'left-edge'};
+  },{passive:true});
+  document.addEventListener('touchmove',e=>{
+   if(!gesture||!mobile.matches||e.touches.length!==1)return;
+   const touch=e.touches[0];
+   const dx=touch.clientX-gesture.x,dy=touch.clientY-gesture.y;
+   if(Math.abs(dx)>18&&Math.abs(dx)>Math.abs(dy)*1.5&&e.cancelable){
+    e.preventDefault();
+   }
+  },{passive:false});
+  document.addEventListener('touchend',e=>{
+   const start=gesture;
+   gesture=null;
+   if(!start||!mobile.matches||e.changedTouches.length!==1)return;
+   const touch=e.changedTouches[0];
+   const dx=touch.clientX-start.x,dy=touch.clientY-start.y;
+   if(Math.abs(dx)<64||Math.abs(dy)>75||Math.abs(dx)<Math.abs(dy)*1.35)return;
+   if(!start.open&&start.zone==='left-edge'&&dx>0){
+    sidebar.classList.add('open');
+    suppressSwipeClickUntil=Date.now()+330;
+   }else if(start.open&&
+    ((start.zone==='right-strip'&&dx>0)||
+     (start.zone==='right-strip'&&dx<0)||
+     (start.zone==='sidebar'&&dx<0))){
+    sidebar.classList.remove('open');
+    suppressSwipeClickUntil=Date.now()+330;
+   }
+  },{passive:true});
+  document.addEventListener('touchcancel',()=>{gesture=null},{passive:true});
+  document.addEventListener('click',e=>{
+   if(Date.now()>=suppressSwipeClickUntil)return;
+   e.preventDefault();
+   e.stopImmediatePropagation();
+  },true);
+  window.addEventListener('resize',()=>{
+   gesture=null;
+   if(!mobile.matches)sidebar.classList.remove('open');
+  });
+ })();
  $$('.sidebar-theme-button[data-fixed-theme]').forEach(button=>button.addEventListener('click',()=>setTheme(button.dataset.fixedTheme)));
  $('#profileButton').addEventListener('click',()=>navigate('settings'));
  // Keep the bell visible and enable alert audio without opening a page or popup.
