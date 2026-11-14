@@ -2560,8 +2560,130 @@ function marketPreviewCandles(id,base){
  }
  return out.slice(-48);
 }
+/* Markets gallery: lazily load real OHLC for the 186 added cryptocurrencies.
+   The compact quote feed has no historical candles for those assets. Each
+   thumbnail reads the same verified same-origin archive as MAX; optional
+   direct CoinGecko retrieval is attempted only for visible, missing archives.
+   Never synthesize candle data from 24h % changes or spot-price series. */
+const marketCryptoHistoryPreviews=new Map();
+const marketCryptoHistoryQueue=[];
+let marketCryptoHistoryActive=0,marketCryptoHistoryObserver=null;
+let marketCryptoHistoryApiPauseUntil=0;
+const MARKET_CRYPTO_PREVIEW_CONCURRENCY=3;
+function marketCryptoHistoryDate(seconds){
+ const time=Number(seconds)*1000;
+ if(!Number.isFinite(time))return 'n.d.';
+ return new Intl.DateTimeFormat('it-IT',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'}).format(new Date(time));
+}
+function redrawMarketCryptoHistoryPreview(id){
+ if(!['markets','workspace'].includes(state.page))return;
+ document.querySelectorAll('#pageContainer .market-chart-card[data-asset]').forEach(card=>{
+  if(card.dataset.asset!==id)return;
+  const chart=card.querySelector('.market-mini-chart');
+  if(chart)chart.innerHTML=marketChartPlot(id);
+  if(miniCandleHover?.card===card)hideMiniCandle(card);
+ });
+}
+async function loadMarketCryptoHistoryPreview(id){
+ const asset=ASSET_BY_ID[id];
+ if(!asset?.extended||asset.group!=='crypto')return null;
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),11500);
+ let record=null;
+ try{
+  const path='./chart-history/crypto/'+encodeURIComponent(id)+'.json?v='+
+   Math.floor(Date.now()/3600000);
+  const response=await fetch(path,{signal:controller.signal,cache:'force-cache'});
+  if(response.ok){
+   const data=await response.json();
+   if(!data||data.id!==id||(data.coingeckoId&&data.coingeckoId!==asset.coingeckoId))
+    throw Error('Identità dello storico non corrispondente');
+   const monthly=chartReadAllCandles(data.candles);
+   const recent=chartReadAllCandles(data.recentCandles);
+   const rows=monthly.length>=2?monthly:recent;
+   if(rows.length>=2){
+    record={
+     status:'ready',candles:rows.slice(-48),
+     source:String(data.source||'Archivio OHLC verificato').slice(0,180),
+     first:rows[0].t,last:rows[rows.length-1].t,
+     resolution:monthly.length>=2?
+      data.timeframe==='1mo'?'1 mese':data.timeframe==='1d'?'1 giorno':'4 giorni':
+      '4 ore',
+     partial:data.partial===true
+    };
+   }
+  }
+ }catch(_error){
+  // A missing, corrupt or stale archive may still have a verified remote source.
+ }finally{clearTimeout(timer);}
+ if(record)return record;
+ if(Date.now()<marketCryptoHistoryApiPauseUntil)return null;
+ const fallbackCtl=new AbortController(),deadline=setTimeout(()=>fallbackCtl.abort(),9000);
+ try{
+  // The 365-day CoinGecko OHLC response has genuine ~4-day candles.
+  // Do not mistake them for 1-minute or native exchange candles.
+  const rows=await chartCoinGeckoCandles(asset,365,fallbackCtl);
+  if(rows.length>=2)return {
+   status:'ready',candles:rows.slice(-48),
+   source:'CoinGecko · OHLC in USD',
+   first:rows[0].t,last:rows[rows.length-1].t,
+   resolution:'4 giorni',partial:true
+  };
+ }catch(error){
+  if(String(error?.message||'').includes('429'))
+   marketCryptoHistoryApiPauseUntil=Date.now()+10*60000;
+ }finally{clearTimeout(deadline);}
+ return null;
+}
+function pumpMarketCryptoHistoryPreviews(){
+ while(marketCryptoHistoryActive<MARKET_CRYPTO_PREVIEW_CONCURRENCY&&marketCryptoHistoryQueue.length){
+  const id=marketCryptoHistoryQueue.shift();
+  if(!ASSET_BY_ID[id]?.extended)continue;
+  marketCryptoHistoryActive++;
+  marketCryptoHistoryPreviews.set(id,{status:'loading'});
+  redrawMarketCryptoHistoryPreview(id);
+  loadMarketCryptoHistoryPreview(id).then(record=>{
+   marketCryptoHistoryPreviews.set(id,record||{status:'unavailable'});
+  }).catch(()=>{
+   marketCryptoHistoryPreviews.set(id,{status:'unavailable'});
+  }).finally(()=>{
+   marketCryptoHistoryActive--;
+   redrawMarketCryptoHistoryPreview(id);
+   pumpMarketCryptoHistoryPreviews();
+  });
+ }
+}
+function queueMarketCryptoHistoryPreview(id){
+ const asset=ASSET_BY_ID[id];
+ if(!asset?.extended||asset.group!=='crypto'||marketCryptoHistoryPreviews.has(id))return;
+ marketCryptoHistoryPreviews.set(id,{status:'queued'});
+ marketCryptoHistoryQueue.push(id);
+ pumpMarketCryptoHistoryPreviews();
+}
+function observeMarketCryptoHistoryPreviews(){
+ marketCryptoHistoryObserver?.disconnect();
+ marketCryptoHistoryObserver=null;
+ if(!['markets','workspace'].includes(state.page))return;
+ const cards=Array.from(document.querySelectorAll('#pageContainer .market-chart-card[data-asset]'))
+  .filter(card=>ASSET_BY_ID[card.dataset.asset]?.extended);
+ if(!cards.length)return;
+ if(typeof IntersectionObserver==='undefined'){
+  cards.slice(0,12).forEach(card=>queueMarketCryptoHistoryPreview(card.dataset.asset));
+  return;
+ }
+ marketCryptoHistoryObserver=new IntersectionObserver(entries=>{
+  for(const entry of entries){
+   if(!entry.isIntersecting)continue;
+   marketCryptoHistoryObserver?.unobserve(entry.target);
+   queueMarketCryptoHistoryPreview(entry.target.dataset.asset);
+  }
+ },{rootMargin:'180px 0px',threshold:0.01});
+ cards.forEach(card=>marketCryptoHistoryObserver.observe(card));
+}
 const marketPreviewCache=new Map();
 function marketPreviewCandleData(id){
+ const historical=marketCryptoHistoryPreviews.get(id);
+ if(historical?.status==='ready'&&Array.isArray(historical.candles))
+  return historical.candles;
  const q=quote(id);
  if(!q||!Array.isArray(q.candles))return [];
  const version=chartObservedVersions.get(id)||0,epoch=Math.floor(Date.now()/60000);
@@ -2594,8 +2716,23 @@ function marketChartPlot(id){
    return '<path d="M'+x.toFixed(2)+' '+y(Number(c.h)).toFixed(2)+'V'+y(Number(c.l)).toFixed(2)+'" stroke="'+co+'" stroke-width="1.15"/>'+
     '<rect x="'+(x-cw/2).toFixed(2)+'" y="'+Math.min(yo,yc).toFixed(2)+'" width="'+cw.toFixed(2)+'" height="'+Math.max(1,Math.abs(yo-yc)).toFixed(2)+'" rx=".5" fill="'+co+'"/>';
   }).join('');
-  return plot(paths,'Candele OHLC · '+candles.length+' barre'+(candles[candles.length-1]?.observed?' · ultima candela parziale':'')+(q&&q.candleSource?' · '+esc(q.candleSource):''));
+  const historical=marketCryptoHistoryPreviews.get(id);
+  const note=historical?.status==='ready'?
+   'Storico OHLC reale · '+esc(historical.resolution)+' · '+esc(marketCryptoHistoryDate(historical.first))+
+   ' – '+esc(marketCryptoHistoryDate(historical.last))+' · '+esc(historical.source):
+   'Candele OHLC · '+candles.length+' barre'+(candles[candles.length-1]?.observed?' · ultima candela parziale':'')+
+   (q&&q.candleSource?' · '+esc(q.candleSource):'');
+  return plot(paths,note);
  }
+ const status=marketCryptoHistoryPreviews.get(id);
+ if(ASSET_BY_ID[id]?.extended&&status?.status==='loading')
+  return '<span class="market-chart-unavailable">Caricamento dello storico OHLC verificato…</span>'+
+   '<span class="market-chart-note">Archivio della criptovaluta · nessuna candela simulata</span>';
+ if(ASSET_BY_ID[id]?.extended&&status?.status==='queued')
+  return '<span class="market-chart-unavailable">Storico in coda di caricamento…</span>';
+ if(ASSET_BY_ID[id]?.extended&&status?.status==='unavailable')
+  return '<span class="market-chart-unavailable">Storico OHLC non disponibile dalla fonte</span>'+
+   '<span class="market-chart-note">Apri il grafico completo per riprovare · nessun dato simulato</span>';
  return '<span class="market-chart-unavailable">Candele OHLC non disponibili per questo strumento</span>'+
   '<span class="market-chart-note">Nessun grafico a linee o candele simulate</span>';
 }
@@ -4720,6 +4857,12 @@ function render(){
  }
  if(state.page==='priceboard')window.VertexPriceBoard?.paint();
  if(state.page==='markets')window.VertexHeatmap?.activate();
+ if(['markets','workspace'].includes(state.page))
+  requestAnimationFrame(observeMarketCryptoHistoryPreviews);
+ else{
+  marketCryptoHistoryObserver?.disconnect();
+  marketCryptoHistoryObserver=null;
+ }
  // Start each visible force circle at zero, then animate the verified percentage.
  if(state.page==='global'||state.page==='marketforce')
   requestAnimationFrame(()=>requestAnimationFrame(()=>patchMarketForce()));
@@ -7658,6 +7801,7 @@ function setupEvents(){
    const rows=$('#marketRows');
    if(rows)rows.innerHTML=marketsCards(ASSETS.filter(a=>marketFilterMatch(a)&&
     (a.name+' '+a.symbol+' '+(a.country||'')).toLowerCase().includes(state.marketSearch.trim().toLowerCase())),'Nessun risultato');
+   observeMarketCryptoHistoryPreviews();
    paintCryptoPriceHighlights();
    try{target.setSelectionRange(cursor,cursor)}catch(err){}
   }
