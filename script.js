@@ -6478,7 +6478,7 @@ async function loadAllChartHistory(force=false){
  const controller=new AbortController();
  chartFetchState.abort=controller;
  const timeout=setTimeout(()=>controller.abort(),10500);
- let candles=[],source='',partial=false,archived=null;
+ let candles=[],source='',partial=false,archived=null,archivedPrices=null;
  let failure='Lo storico completo disponibile non è stato ancora pubblicato per '+asset.name+'.';
  try{
   const url=path+'?v='+Math.floor(Date.now()/300000);
@@ -6519,8 +6519,14 @@ async function loadAllChartHistory(force=false){
     partial=true;failure='';
    }
   }
-  // Immediate fallback before the scheduled GitHub archive is populated.
-  if(isCrypto&&candles.length<2&&asset.coingeckoId&&!controller.signal.aborted){
+  // Use already-published, genuine observed prices BEFORE hitting the
+  // rate-limited public OHLC endpoint. This keeps 228 market charts responsive.
+  if(isCrypto&&candles.length<2&&id!=='ore'&&!controller.signal.aborted){
+   try{archivedPrices=await chartLoadObservedPriceArchive(asset,controller.signal);}
+   catch(_error){/* No sampled-price history indexed for this token. */}
+  }
+  // Only use CoinGecko when neither OHLC nor archived price lines exist.
+  if(isCrypto&&candles.length<2&&!archivedPrices&&asset.coingeckoId&&!controller.signal.aborted){
    for(const days of [365,30]){
     try{
      const fetched=await chartCoinGeckoCandles(asset,days,controller);
@@ -6552,10 +6558,12 @@ async function loadAllChartHistory(force=false){
  if(candles.length<2&&isCrypto&&id!=='ore'){
   const priceController=new AbortController(),timer=setTimeout(()=>priceController.abort(),9000);
   chartFetchState.abort=priceController;
-  let observed=null;
-  try{observed=await chartLoadObservedPriceArchive(asset,priceController.signal);}
-  catch(_error){/* The archive is absent for some tokens; don't invent a chart. */}
-  finally{clearTimeout(timer);}
+  let observed=archivedPrices;
+  if(!observed){
+   try{observed=await chartLoadObservedPriceArchive(asset,priceController.signal);}
+   catch(_error){/* The archive is absent for some tokens; don't invent a chart. */}
+  }
+  clearTimeout(timer);
   if(seq!==chartFetchState.sequence)return;
   if(observed?.points?.length>=2){
    const result={id,range:'MAX',candles:[],pricePoints:observed.points,kind:'price-line',
