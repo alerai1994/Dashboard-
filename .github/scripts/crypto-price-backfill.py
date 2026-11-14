@@ -105,7 +105,20 @@ def request_group(batch, start):
             ident: normalize_prices((result.get("coingecko:" + coin) or {}).get("prices"))
             for ident, coin in batch
         }
-    except (HTTPError, URLError, OSError, TypeError, ValueError) as exc:
+    except HTTPError as exc:
+        try:
+            detail = exc.read(600).decode("utf-8", "replace")
+        except (OSError, UnicodeError):
+            detail = ""
+        print("DefiLlama price batch HTTP", exc.code, "count", len(batch),
+              "detail", detail[:250])
+        if len(batch) > 1 and exc.code in (400, 404, 422):
+            middle = len(batch) // 2
+            first = request_group(batch[:middle], start)
+            second = request_group(batch[middle:], start)
+            return {**first, **second}
+        return {}
+    except (URLError, OSError, TypeError, ValueError) as exc:
         print("DefiLlama price batch unavailable:", type(exc).__name__, str(exc)[:120])
         return {}
 
