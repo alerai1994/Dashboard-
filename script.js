@@ -1948,9 +1948,10 @@ function marketForceAssetOptions(){
 }
 function marketForceChooseAsset(id){
  if(!marketForceAssets().some(a=>a.id===id))return;
- // Open the annual candle archive when choosing a cryptocurrency. The
- // shorter intraday windows require true intraday trading observations.
- marketForceBullishPeriod=ASSET_BY_ID[id]?.group==='crypto'?'1A':'1D';
+ // All supported crypto intervals stay within the 1H to 1W range.
+ // Keep the user's selected interval when switching assets.
+ if(!MARKET_FORCE_BULLISH_PERIODS.includes(marketForceBullishPeriod))
+  marketForceBullishPeriod='1D';
  marketForceSelectedAssets[marketForceFilter]=id;
  save('marketForceSelectedAssets',marketForceSelectedAssets);
  marketForceAssetSearch='';
@@ -2011,9 +2012,9 @@ function marketForceCoverageText(mood){
 
 /* Detail view opened from Forza rialzista.
    Pressure cards are a transparent price-change proxy, never order-flow metrics. */
-const MARKET_FORCE_BULLISH_PERIODS=['1H','4H','1D','1W','1A'];
+const MARKET_FORCE_BULLISH_PERIODS=['1H','4H','1D','1W'];
 const MARKET_FORCE_BULLISH_CIRCUMFERENCE=2*Math.PI*132;
-let marketForceBullishPeriod=ASSET_BY_ID[marketForceLeadId()]?.group==='crypto'?'1A':'1D';
+let marketForceBullishPeriod='1D';
 function marketForceDatedCandles(id,period){
  const q=quote(id),raw=Array.isArray(q?.candles)?q.candles:[];
  const hours={'1H':1,'4H':4,'1D':24,'1W':168}[period];
@@ -2573,7 +2574,7 @@ function marketForceBullishPanel(){
  '<select id="bullishAsset" aria-label="Seleziona un mercato">'+marketForceAssetOptions()+'</select>'+chev+'</div></div>'+
  '<div class="bullish-detail-field"><span class="bullish-detail-label">'+calendarIcon+'<span>Periodo</span></span>'+
  '<div class="bullish-detail-periods" role="group" aria-label="Periodo di analisi">'+
- MARKET_FORCE_BULLISH_PERIODS.filter(p=>p!=='1A'||asset?.group==='crypto')
+ MARKET_FORCE_BULLISH_PERIODS
  .map(p=>'<button type="button" data-bullish-period="'+p+'" aria-pressed="'+String(p===marketForceBullishPeriod)+'"'+(p===marketForceBullishPeriod?' class="active"':'')+'>'+p+'</button>').join('')+
  '</div></div></div>'+
  '<div class="bullish-detail-body"><div class="bullish-detail-dial-wrap">'+
@@ -2693,7 +2694,8 @@ function setMarketForceFilter(key){
  if(!MARKET_FORCE_FILTERS.some(([id])=>id===key)||key===marketForceFilter)return;
  bullishCategoryMenuOpen=false;
  marketForceFilter=key;
- marketForceBullishPeriod=key==='crypto'?'1A':'1D';
+ if(!MARKET_FORCE_BULLISH_PERIODS.includes(marketForceBullishPeriod))
+  marketForceBullishPeriod='1D';
  marketForceAssetSearch='';
  save('marketForceFilter',key);
  const panel=document.querySelector('#pageContainer .market-force-section');
