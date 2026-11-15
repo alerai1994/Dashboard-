@@ -2189,6 +2189,58 @@ async function forceMarketObservedCoinGecko(asset,period,now){
    interval:days===7?'1 ora':'5 minuti'}:null;
  }catch(_error){return null}finally{clearTimeout(timer)}
 }
+
+/* Candles grouped from real price samples are labeled CAMPIONATE, not OHLC exchange. */
+function forceMarketSampledCandles(points,period){
+ if(!Array.isArray(points)||points.length<4)return [];
+ const seconds={'1H':900,'4H':1200,'1D':3600,'1W':14400}[period];
+ if(!seconds)return [];
+ const buckets=new Map(),sorted=points.filter(p=>Number.isFinite(p.t)&&Number.isFinite(p.v)&&p.v>0)
+  .slice().sort((a,b)=>a.t-b.t);
+ for(const p of sorted){
+  const t=Math.floor(p.t/seconds)*seconds;
+  let b=buckets.get(t);
+  if(!b){b={t,o:p.v,h:p.v,l:p.v,c:p.v,n:0};buckets.set(t,b)}
+  b.h=Math.max(b.h,p.v);b.l=Math.min(b.l,p.v);b.c=p.v;b.n++;
+ }
+ return [...buckets.values()].filter(b=>b.n>=2).map(({n,...b})=>b);
+}
+async function forceMarketFetchTrueOHLC(asset,period){
+ if(asset?.group!=='crypto'||!asset.coingeckoId||asset.id==='ore'||period==='1A')return null;
+ const days=period==='1W'?7:1,controller=new AbortController();
+ const timer=setTimeout(()=>controller.abort(),7000);
+ try{
+  const response=await fetch('https://api.coingecko.com/api/v3/coins/'+
+   encodeURIComponent(asset.coingeckoId)+'/ohlc?vs_currency=usd&days='+days,
+   {cache:'no-store',signal:controller.signal});
+  if(!response.ok)return null;
+  const raw=await response.json();
+  if(!Array.isArray(raw))return null;
+  const list=chartReadAllCandles(raw.map(p=>Array.isArray(p)&&p.length>=5?
+   [Math.floor(Number(p[0])/1000),...p.slice(1,5)]:[]));
+  const bars=forceOHLCSelect(list,FORCE_OHLC_PERIODS[period],Date.now());
+  return bars.length>=2?{bars,source:'CoinGecko · OHLC reale in USD',
+   interval:days===7?'4 ore':'30 minuti'}:null;
+ }catch(_error){return null}finally{clearTimeout(timer)}
+}
+async function forceMarketFetchPublishedOHLC(asset,period,now){
+ if(asset?.group!=='crypto'||!asset.coingeckoId||asset.id==='ore'||period==='1A')return null;
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),5500);
+ try{
+  const response=await fetch('./chart-history/crypto/ohlc/'+
+   encodeURIComponent(asset.id)+'.json?v='+Math.floor(now/1800000),
+   {cache:'no-store',signal:controller.signal});
+  if(!response.ok)return null;
+  const data=await response.json();
+  if(data?.id!==asset.id||data.coingeckoId!==asset.coingeckoId||
+   data.kind!=='verified-ohlc')return null;
+  const set=period==='1W'?data.sets?.week:data.sets?.short;
+  const bars=forceOHLCSelect(chartReadAllCandles(set?.candles),
+   FORCE_OHLC_PERIODS[period],Date.now());
+  return bars.length>=2?{bars,source:data.source||'OHLC verificato',
+   interval:set?.interval||'OHLC'}:null;
+ }catch(_error){return null}finally{clearTimeout(timer)}
+}
 async function marketForceLoadOHLC(id,period){
  const a=ASSET_BY_ID[id],cfg=FORCE_OHLC_PERIODS[period],key=id+':'+period;
  if(!a||!cfg||marketForceOHLCLoading.has(key))return;
@@ -2199,11 +2251,13 @@ async function marketForceLoadOHLC(id,period){
    error='Nessuna candela verificata o campionabile per il periodo';
   const now=Date.now();
   if(a.group==='crypto'&&period!=='1A'){
-   const observed=await forceMarketObservedArchive(a,period,now);
+   const published=await forceMarketFetchPublishedOHLC(a,period,now);
+   if(published){bars=published.bars;source=published.source;interval=published.interval;}
+   const observed=bars.length<2?await forceMarketObservedArchive(a,period,now):null;
    if(observed){
     points=observed.points;observedSource=observed.source;observedInterval=observed.interval;
     marketForceOHLC.set(key,{bars:[],points,source:observedSource,
-     interval:observedInterval,error:'',sampled:false,at:Date.now()});
+     interval:observedInterval,error:'',sampled:true,at:Date.now()});
     if(!document.hidden&&marketForceLeadId()===id&&marketForceBullishPeriod===period)
      requestAnimationFrame(()=>patchMarketForceBullish());
    }
@@ -2311,6 +2365,13 @@ async function marketForceLoadOHLC(id,period){
    }
   }
   const actual=bars.length>=2?(sampledBars?bars:forceOHLCAggregate(bars,cfg.group)):[];
+  if(!actual.length&&a.group==='crypto'&&period!=='1A'){
+   const verified=await forceMarketFetchTrueOHLC(a,period);
+   if(verified){
+    actual.push(...forceOHLCAggregate(verified.bars,cfg.group));
+    source=verified.source;interval=verified.interval;
+   }
+  }
   if(!actual.length&&points.length<2&&a.group==='crypto'&&period!=='1A'){
    let observed=await forceMarketObservedDirect(a,period,Date.now());
    if(!observed)observed=await forceMarketObservedCoinGecko(a,period,Date.now());
@@ -2403,9 +2464,10 @@ function marketForceBullishPricePlot(m,data,period){
 function marketForceBullishPlot(m){
  const period=marketForceBullishPeriod,data=forceOHLCGet(m.id,period);
  if(!data)return '<div class="bullish-detail-unavailable" role="status">Caricamento candele OHLC '+period+'…</div>';
- const bars=data.bars;
- if(bars.length<2&&data.points?.length>=2)
-  return marketForceBullishPricePlot(m,data,period);
+ const realBars=data.bars||[];
+ const observed=realBars.length<2?forceMarketSampledCandles(data.points||[],period):[];
+ const bars=realBars.length>=2?realBars:observed;
+ const sampled=!!(data.sampled||observed.length>=2);
  if(bars.length<2)return '<div class="bullish-detail-unavailable" role="status">'+
   esc(data.error||'Storico OHLC non disponibile')+' · '+period+'</div>';
  const w=490,h=190,L=10,R=77,T=8,B=31,pw=w-L-R,ph=h-T-B;
@@ -2439,13 +2501,13 @@ function marketForceBullishPlot(m){
  const last=new Intl.DateTimeFormat('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Rome'}).format(new Date(bars.at(-1).t*1000));
  return '<div class="bullish-live-chart-content force-ohlc-chart">'+
   '<div class="force-ohlc-legend"><span><i class="up"></i>Rialzo</span>'+
-  '<span><i class="down"></i>Ribasso</span><b>'+(data.sampled?'Candele campionate':'OHLC reale')+' · '+period+'</b></div>'+
+  '<span><i class="down"></i>Ribasso</span><b>'+(sampled?'Candele campionate':'OHLC reale')+' · '+period+'</b></div>'+
   '<svg class="force-ohlc-svg" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" role="img" aria-label="'+
-  (data.sampled?'Candele settimanali da prezzi rilevati ':'Candele reali OHLC ')+
+  (sampled?'Candele campionate da prezzi osservati ':'Candele reali OHLC ')+
   esc(ASSET_BY_ID[m.id]?.name||m.id)+' · '+period+'">'+levels+candles+labels+'</svg>'+
   '<span class="bullish-detail-chart-note">'+esc(data.source)+' · '+esc(data.interval)+
   ' · ultima '+esc(last)+' · '+bars.length+
-  (data.sampled?' candele CAMPIONATE (massimo e minimo tra prezzi giornalieri, non intraday)':' candele reali OHLC')+
+  (sampled?' candele CAMPIONATE (open/close, massimo/minimo fra campioni; non OHLC exchange)':' candele reali OHLC')+
   '</span></div>';
 }
 /* The ring signals the prevailing real price-movement component; its orbit is decorative. */
