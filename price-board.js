@@ -32,7 +32,7 @@ function page(){
  '<div class="price-board-buttons" role="group" aria-label="Controlli">'+
  '<button type="button" data-price-board-step="-1" aria-label="Mercato precedente">←</button>'+
  '<button type="button" data-price-board-step="1" aria-label="Mercato successivo">→</button>'+
- '<button type="button" class="price-board-fs" id="priceBoardFullscreen" data-price-board-fullscreen>⛶ Schermo intero</button>'+
+ '<button type="button" class="price-board-fs" id="priceBoardFullscreen" data-price-board-fullscreen aria-label="Schermo intero" title="Schermo intero" aria-pressed="false"><span aria-hidden="true">⛶</span></button>'+
  '</div></div>'+
  '<div class="price-board-hero"><h2 class="price-board-market" id="priceBoardName"></h2>'+
  '<div class="price-board-symbol" id="priceBoardSymbol"></div>'+
@@ -48,7 +48,9 @@ function fullscreenActive(){
 function syncFullscreen(){
  const button=document.getElementById('priceBoardFullscreen');if(!button)return;
  const expanded=fullscreenActive();
- button.textContent=expanded?'✕ Esci dallo schermo intero':'⛶ Schermo intero';
+ button.querySelector('[aria-hidden="true"]').textContent=expanded?'✕':'⛶';
+ button.setAttribute('aria-label',expanded?'Esci dallo schermo intero':'Schermo intero');
+ button.setAttribute('title',expanded?'Esci dallo schermo intero':'Schermo intero');
  button.setAttribute('aria-pressed',String(expanded));
 }
 function paint(){
