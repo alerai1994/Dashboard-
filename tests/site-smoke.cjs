@@ -6,6 +6,7 @@ const read=path=>fs.readFileSync(path,'utf8');
 const source=read('script.js'),html=read('index.html'),css=read('style.css');
 new Function(source);
 new Function(read('price-board.js'));
+new Function(read('vertex-liquidations.js'));
 new Function(read('crypto-extended.js'));
 const screenshotCatalog=JSON.parse(read('crypto-extended.js').match(/window\.__VERTEX_EXTRA_CRYPTO__\s*=\s*(\[[\s\S]*?\]);/)[1]);
 assert.equal(screenshotCatalog.length,220,'Expected 220 screenshot cryptocurrencies');
@@ -233,7 +234,20 @@ assert(!priceBoardHtml.includes('⛶ Schermo intero'),'Fullscreen toggle must no
 const priceBoardSource=read('price-board.js');
 assert(priceBoardSource.includes("expanded?'✕':'⛶'"),'Fullscreen exit must show only the exit icon');
 assert(!priceBoardSource.includes("'✕ Esci dallo schermo intero'"),'Fullscreen exit must not render visible text');
-assert.equal(Object.keys(app.PAGE_RENDERERS).length,13);
+new Function('window','document','localStorage',read('vertex-liquidations.js'))(appWindow,document,emptyStorage);
+assert.equal(typeof appWindow.VertexLiquidations.page,'function','Liquidation Heatmap module unavailable');
+const liquidationPage=app.PAGE_RENDERERS.liquidations();
+assert(liquidationPage.includes('id="vertexLiqCoin"'),'Heatmap crypto selection missing');
+assert(liquidationPage.includes('https://blockmetric.io/embed/heatmap?coin=BTC'),
+ 'Heatmap must show a real-source embed, not fabricated liquidation bands');
+assert(liquidationPage.includes('https://blockmetric.io/embed/liq-levels?coin=BTC'),
+ 'Selected crypto must also show corresponding liquidation levels');
+assert(liquidationPage.includes('Dati di'),'Mandatory visible attribution must be present');
+assert(!liquidationPage.includes('1 Year'),'Do not claim year-long historical heatmap availability');
+assert(html.includes('data-page="liquidations"'),'New sidebar heatmap entry missing');
+assert(html.includes('vertex-liquidations.js?v='),'Liquidation module script not loaded');
+assert(html.includes('vertex-liquidations.css?v='),'Liquidation module style not loaded');
+assert.equal(Object.keys(app.PAGE_RENDERERS).length,14);
 assert.equal(typeof app.PAGE_RENDERERS.workspace,'function','Workspace route missing');
 // Regression uses controlled fixture changes so it does not depend on live market direction.
 const savedForceQuotes=Object.fromEntries(['btc','inj','sp500'].map(id=>[id,app.state.quotes[id]]));
