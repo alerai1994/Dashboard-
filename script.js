@@ -2120,15 +2120,77 @@ function forceOREFromSnapshot(payload,cfg,period,now=Date.now()){
  }
  return null;
 }
+
+/* Price observations are not OHLC, so never manufacture candlesticks. */
+function forceMarketPricePoints(raw,period,now=Date.now()){
+ const cfg=FORCE_OHLC_PERIODS[period];if(!cfg||!Array.isArray(raw))return [];
+ const result=new Map(),min=now-cfg.ms-Math.max(900000,cfg.step);
+ for(const row of raw){
+  const ts=Number(Array.isArray(row)?row[0]:row?.timestamp);
+  const price=Number(Array.isArray(row)?row[1]:row?.price);
+  const t=ts>1e11?ts/1000:ts;
+  if(!Number.isFinite(t)||!Number.isFinite(price)||t<946684800||price<=0||
+   t*1000<min||t*1000>now+300000)continue;
+  result.set(t,{t,v:price});
+ }
+ const points=[...result.values()].sort((a,b)=>a.t-b.t);
+ if(points.length<2)return [];
+ const age=now-points.at(-1).t*1000;
+ const maxAge=period==='1H'?4200000:period==='4H'?7200000:
+  period==='1D'?14400000:21600000;
+ return age<=maxAge&&points.at(-1).t-points[0].t>=cfg.ms/1000*.25?points:[];
+}
+async function forceMarketObservedArchive(asset,period,now){
+ if(asset.group!=='crypto'||asset.id==='ore'||period==='1A'||!asset.coingeckoId)return null;
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),4500);
+ try{
+  const response=await fetch('./chart-history/crypto/intraday/'+encodeURIComponent(asset.id)+
+   '.json?v='+Math.floor(now/1800000),{cache:'no-store',signal:controller.signal});
+  if(!response.ok)return null;
+  const data=await response.json();
+  if(data?.id!==asset.id||data.coingeckoId!==asset.coingeckoId||
+   data.kind!=='observed-price-line')return null;
+  const points=forceMarketPricePoints(data.periods?.[period],period,now);
+  return points.length>=2?{points,source:data.source||'Prezzi reali osservati in USD',
+   interval:period==='1W'?'1 ora':'5 minuti'}:null;
+ }catch(_error){return null}finally{clearTimeout(timer)}
+}
+async function forceMarketObservedDirect(asset,period,now){
+ if(asset.group!=='crypto'||asset.id==='ore'||period==='1A'||!asset.coingeckoId)return null;
+ const weekly=period==='1W',span=weekly?177:315,step=weekly?3600:300;
+ const key='coingecko:'+asset.coingeckoId;
+ const url='https://coins.llama.fi/chart/'+encodeURIComponent(key)+
+  '?start='+(Math.floor(now/1000)-span*step)+'&span='+span+
+  '&period='+(weekly?'1h':'5m');
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),5500);
+ try{
+  const response=await fetch(url,{cache:'no-store',signal:controller.signal});
+  if(!response.ok)return null;
+  const data=await response.json();
+  const points=forceMarketPricePoints(data?.coins?.[key]?.prices,period,Date.now());
+  return points.length>=2?{points,source:'DefiLlama · prezzi reali osservati (non OHLC)',
+   interval:weekly?'1 ora':'5 minuti'}:null;
+ }catch(_error){return null}finally{clearTimeout(timer)}
+}
 async function marketForceLoadOHLC(id,period){
  const a=ASSET_BY_ID[id],cfg=FORCE_OHLC_PERIODS[period],key=id+':'+period;
  if(!a||!cfg||marketForceOHLCLoading.has(key))return;
  const old=marketForceOHLC.get(key),ttl=a.group==='crypto'?60000:120000;
  if(old&&Date.now()-old.at<(old.bars.length?ttl:90000))return;
  const job=(async()=>{
-  let bars=[],source='',interval='',sampledBars=false,
+  let bars=[],source='',interval='',sampledBars=false,points=[],observedSource='',observedInterval='',
    error='Nessuna candela verificata o campionabile per il periodo';
   const now=Date.now();
+  if(a.group==='crypto'&&period!=='1A'){
+   const observed=await forceMarketObservedArchive(a,period,now);
+   if(observed){
+    points=observed.points;observedSource=observed.source;observedInterval=observed.interval;
+    marketForceOHLC.set(key,{bars:[],points,source:observedSource,
+     interval:observedInterval,error:'',sampled:false,at:Date.now()});
+    if(!document.hidden&&marketForceLeadId()===id&&marketForceBullishPeriod===period)
+     requestAnimationFrame(()=>patchMarketForceBullish());
+   }
+  }
   if(period==='1A'&&a.group==='crypto'){
    const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),11000);
    try{
@@ -2232,8 +2294,18 @@ async function marketForceLoadOHLC(id,period){
    }
   }
   const actual=bars.length>=2?(sampledBars?bars:forceOHLCAggregate(bars,cfg.group)):[];
-  marketForceOHLC.set(key,{bars:actual,source,interval,sampled:sampledBars,
-   error:actual.length?'':error,at:Date.now()});
+  if(!actual.length&&points.length<2&&a.group==='crypto'&&period!=='1A'){
+   const observed=await forceMarketObservedDirect(a,period,Date.now());
+   if(observed){
+    points=observed.points;observedSource=observed.source;observedInterval=observed.interval;
+   }
+  }
+  if(!actual.length&&points.length>=2){
+   source=observedSource;interval=observedInterval;
+  }
+  marketForceOHLC.set(key,{bars:actual,points:actual.length?[]:points,
+   source,interval,sampled:sampledBars,
+   error:actual.length||points.length>=2?'':error,at:Date.now()});
   if(marketForceOHLC.size>28)marketForceOHLC.delete(marketForceOHLC.keys().next().value);
  })().catch(()=>{
   marketForceOHLC.set(key,{bars:[],error:'Storico OHLC non raggiungibile',source:'',interval:'',at:Date.now()});
