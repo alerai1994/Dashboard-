@@ -2237,7 +2237,7 @@ async function forceMarketFetchPublishedOHLC(asset,period,now){
   const set=period==='1W'?data.sets?.week:data.sets?.short;
   const bars=forceOHLCSelect(chartReadAllCandles(set?.candles),
    FORCE_OHLC_PERIODS[period],Date.now());
-  return bars.length>=2?{bars,source:data.source||'OHLC verificato',
+  return bars.length>=2?{bars,source:set?.source||data.source||'OHLC verificato',
    interval:set?.interval||'OHLC'}:null;
  }catch(_error){return null}finally{clearTimeout(timer)}
 }
@@ -2429,38 +2429,6 @@ function marketForceBullishMetrics(){
   down:valid&&delta<0?intensity:0,flat:valid?100-intensity:0};
 }
 
-function marketForceBullishPricePlot(m,data,period){
- const points=data.points,w=490,h=190,L=10,R=77,T=8,B=31,pw=w-L-R,ph=h-T-B;
- const values=points.map(p=>p.v),low=Math.min(...values),high=Math.max(...values);
- const pad=Math.max((high-low)*.1,Math.abs(high)*.00015,1e-12);
- const min=Math.max(0,low-pad),max=high+pad,range=max-min;
- const x=i=>L+i*pw/(points.length-1),y=v=>T+(max-v)/range*ph;
- const path=points.map((p,i)=>(i?'L':'M')+x(i).toFixed(2)+' '+y(p.v).toFixed(2)).join(' ');
- const fmt=n=>new Intl.NumberFormat('it-IT',{maximumFractionDigits:n>=100?2:n>=1?4:8}).format(n);
- const lines=[0,.5,1].map(v=>'<line class="force-ohlc-grid" x1="'+L+
-  '" y1="'+(T+v*ph)+'" x2="'+(w-R)+'" y2="'+(T+v*ph)+'"/>'+
-  '<text class="force-ohlc-axis" x="'+(w-R+7)+'" y="'+(T+v*ph+4)+'">'+
-  esc(fmt(max-v*range))+'</text>').join('');
- const time=t=>new Intl.DateTimeFormat('it-IT',period==='1W'?
-  {day:'2-digit',month:'2-digit',hour:'2-digit',timeZone:'Europe/Rome'}:
-  {hour:'2-digit',minute:'2-digit',timeZone:'Europe/Rome'}).format(new Date(t*1000));
- const labels=[0,Math.floor(points.length/2),points.length-1].map((index,i)=>
-  '<text class="force-ohlc-axis" x="'+(L+i*pw/2)+'" y="'+(h-5)+
-  '" text-anchor="'+(i===0?'start':i===2?'end':'middle')+'">'+
-  esc(time(points[index].t))+'</text>').join('');
- const color=points.at(-1).v>=points[0].v?'var(--green)':'var(--red)';
- return '<div class="bullish-live-chart-content force-ohlc-chart">'+
-  '<div class="force-ohlc-legend"><b>Storico '+period+
-  ' · prezzi osservati (linea, non candele OHLC)</b></div>'+
-  '<svg class="force-ohlc-svg" viewBox="0 0 '+w+' '+h+
-  '" preserveAspectRatio="none" role="img" aria-label="Prezzi storici di '+
-  esc(ASSET_BY_ID[m.id]?.name||m.id)+' · '+period+'">'+lines+
-  '<path d="'+path+'" fill="none" stroke="'+color+
-  '" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>'+
-  labels+'</svg><span class="bullish-detail-chart-note">'+esc(data.source)+
-  ' · intervallo '+esc(data.interval)+' · '+points.length+' osservazioni reali'+
-  ' · ultimo '+esc(time(points.at(-1).t))+'</span></div>';
-}
 function marketForceBullishPlot(m){
  const period=marketForceBullishPeriod,data=forceOHLCGet(m.id,period);
  if(!data)return '<div class="bullish-detail-unavailable" role="status">Caricamento candele OHLC '+period+'…</div>';
