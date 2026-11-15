@@ -57,10 +57,10 @@ assert(source.includes("status:'ready',candles:sampled.slice(-48),sampled:true")
 assert(source.includes("sampled?'Candele campionate'")||
  source.includes("historical.sampled?'Candele campionate'"),
  'Markets sampled candles must be clearly distinguished from real OHLC');
-assert(source.includes("marketForceBullishPeriod=ASSET_BY_ID[id]?.group==='crypto'?'1A':'1D'"),
- 'Forza mercato must show historical candles on crypto selection');
-assert(source.includes("MARKET_FORCE_BULLISH_PERIODS=['1H','4H','1D','1W','1A']"),
- 'Forza mercato requires annual candles timeframe');
+assert(source.includes("let marketForceBullishPeriod='1D'"),
+ 'Forza mercato must start on a supported timeframe');
+assert(source.includes("MARKET_FORCE_BULLISH_PERIODS=['1H','4H','1D','1W']"),
+ 'Forza mercato must offer exactly 1H, 4H, 1D, 1W');
 assert(source.includes("sampled?'Candele campionate'"),
  'Forza mercato must label real vs sampled candles distinctly');
 assert(source.includes('function forceMarketSampledCandles('),
@@ -312,9 +312,13 @@ assert(css.includes('.bullish-detail-category-list'),'Category menu not styled')
 assert(css.includes('justify-content:flex-end'),'Market selector must align by bottom edge');
 assert(css.includes('margin-top:auto'),'Category dropdown must share instrument bottom edge');
 assert(!css.includes('.bullish-detail-instrument-spacer'),'Obsolete spacer CSS must be removed');
-// New crypto default to the one-year archive for actual / sampled candles.
-assert(app.PAGE_RENDERERS.marketforce().includes('data-bullish-period="1A"'),
- 'Forza mercato must offer annual candle history for cryptocurrencies');
+// Market Force shows only 1H / 4H / 1D / 1W, even for cryptocurrencies.
+assert(!app.PAGE_RENDERERS.marketforce().includes('data-bullish-period="1A"'),
+ 'Forza mercato must not show 1A for cryptocurrencies');
+for(const period of ['1H','4H','1D','1W']){
+ assert(app.PAGE_RENDERERS.marketforce().includes('data-bullish-period="'+period+'"'),
+  'Forza mercato is missing '+period);
+}
 app.marketForceSetBullishPeriod('1D');
 const dayMetrics=app.marketForceBullishMetrics();
 assert(dayMetrics.valid,'1D quote should be valid once selected');
