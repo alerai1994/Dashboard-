@@ -50,3 +50,32 @@
  border:1px solid #385e7c;border-radius:11px;background:#142735;
  color:#b9d1e7;font:500 12px/1.6 Inter,sans-serif}
 .vlx-price-fallback strong{color:#e7f3ff}
+
+/* Liquidation-level overlays: real CoinGlass clusters only when a data
+   archive is provided; isolated theoretical scenarios are visibly labeled. */
+.vlx-levels{display:grid;gap:12px;margin:13px 4px 14px;padding:15px;
+ border:1px solid #3a516a;border-radius:14px;background:#192433;color:#dce9f6}
+.vlx-levels-head{display:flex;justify-content:space-between;align-items:end;gap:10px;flex-wrap:wrap}
+.vlx-levels-head h3{margin:0 0 4px;font:750 clamp(15px,1.6vw,19px) Inter,sans-serif;color:#e9f3ff}
+.vlx-levels-head span{color:#a6bdd3;font:500 12px/1.55 Inter,sans-serif}
+.vlx-levels-head label{display:flex;align-items:center;gap:8px;font:650 12px Inter,sans-serif;color:#b7cce1}
+.vlx-levels-head select{min-height:36px;background:#273b50;color:#eaf7ff;border:1px solid #486683;border-radius:8px;
+ padding:6px 10px;font:700 13px Inter,sans-serif}
+.vlx-levels-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.vlx-level-card{min-width:0;border:1px solid #486477;border-radius:11px;padding:12px 13px;
+ display:flex;flex-direction:column;gap:5px;background:#213342}
+.vlx-level-card span{font:650 12px/1.4 Inter,sans-serif;color:#d2e0ed}
+.vlx-level-card strong{font:780 clamp(16px,2vw,21px)/1.25 Inter,sans-serif;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.vlx-level-card small{font:500 11px/1.4 Inter,sans-serif;color:#aebfd0}
+.vlx-level-short{border-color:#936273;background:#352d3a}
+.vlx-level-short strong{color:#ff91a7}
+.vlx-level-long{border-color:#3d8b83;background:#1d3d3d}
+.vlx-level-long strong{color:#49ead0}
+.vlx-levels-await{grid-column:1/-1;font:500 13px/1.5 Inter,sans-serif;color:#b5c5d5;margin:0}
+.vlx-levels-note{margin:1px 0 0;font:500 11px/1.6 Inter,sans-serif;color:#aebed1}
+@media(max-width:560px){
+ .vlx-levels{padding:11px;margin:11px 5px}
+ .vlx-levels-grid{grid-template-columns:1fr}
+ .vlx-level-card{padding:11px 12px}
+ .vlx-levels-head{align-items:start}
+}
