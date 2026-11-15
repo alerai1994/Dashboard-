@@ -10,7 +10,7 @@ const RANGES=[['12h','12 ore'],['24h','24 ore'],['3d','3 giorni'],['7d','7 giorn
 const allowed=new Set(COINS.map(x=>x[0])),validRanges=new Set(RANGES.map(x=>x[0]));
 const storage='vertex-liquidations-selected-coin';
 let coin='BTC',range='1y',model='model1';
-let dataset=null,sourceLabel='',verifiedIdentity=false,loadSeq=0,threshold=.59;
+let dataset=null,priceOnly=null,sourceLabel='',verifiedIdentity=false,loadSeq=0,threshold=.59;
 const cache=new Map();
 try{const saved=JSON.parse(localStorage.getItem(storage));if(allowed.has(saved))coin=saved}catch(_e){}
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -43,7 +43,7 @@ function page(){
     '<div class="vlx-gradient" aria-label="Scala intensità dal viola al giallo">'+
      '<span id="vlxMaximum">Intensità</span><div class="vlx-scale-bar"></div><span>0</span></div>'+
     '<div class="vlx-canvas-wrap">'+
-     '<canvas id="vlxCanvas" height="510" role="img" aria-label="Grafico CoinGlass: heatmap e candele OHLC reali, solo quando sono disponibili dati autorizzati"></canvas>'+
+     '<canvas id="vlxCanvas" height="510" role="img" aria-label="Grafico OHLC reale con intensità di liquidazione solo se disponibile il dataset CoinGlass"></canvas>'+
      '<div class="vlx-empty" id="vlxEmpty" role="status">'+
       '<strong>Storico annuale CoinGlass: dati autorizzati richiesti</strong>'+
       '<span>Lo storico Binance '+coin+'/USDT per '+esc(rangeName())+' richiede un abbonamento API CoinGlass Professional o superiore. Puoi importare un archivio JSON CoinGlass autorizzato o consultare il grafico ufficiale. Non vengono simulati livelli di liquidazione.</span>'+
@@ -53,6 +53,7 @@ function page(){
      '<div id="vlxHover" class="vlx-hover" hidden></div>'+
     '</div></div>'+
    '<input id="vlxFile" type="file" accept=".json,application/json" hidden>'+
+   '<p id="vlxPriceFallback" class="vlx-price-fallback" hidden><strong>Candele OHLC reali</strong> · Le fasce delle liquidazioni CoinGlass non sono disponibili senza dati autorizzati. Il grafico mostra solo i prezzi, non una heatmap di liquidazioni.</p>'+
    '<div class="vlx-status"><span id="vlxStatus">Ricerca di dati CoinGlass autorizzati…</span>'+
     '<span id="vlxSource">CoinGlass Model 1 · Binance '+coin+'/USDT · '+esc(rangeName())+'</span></div>'+
    '<p class="vlx-notice">La scala rappresenta l’<strong>intensità stimata dal modello</strong>, non USD liquidati. '+
@@ -124,12 +125,21 @@ function paint(){
  ctx.setTransform(dpr,0,0,dpr,0,0);
  const W=cssWidth,H=cssHeight,left=8,right=67,top=16,bottom=87,plotW=W-left-right,plotH=H-top-bottom;
  ctx.fillStyle='#151921';ctx.fillRect(0,0,W,H);
- ctx.fillStyle='#420052';ctx.fillRect(left,top,plotW,plotH);
- const obj=dataset;
+ ctx.fillStyle=priceOnly&&!dataset?'#111d29':'#420052';ctx.fillRect(left,top,plotW,plotH);
+ const obj=dataset||priceOnly;
+ const pricesOnly=!!priceOnly&&!dataset;
  const empty=document.getElementById('vlxEmpty');
  if(empty)empty.hidden=!!obj;
+ const plot=document.getElementById('vlxPlot');
+ if(plot)plot.classList.toggle('vlx-price-mode',pricesOnly);
+ const scaleWidget=document.querySelector('.vlx-gradient');
+ if(scaleWidget)scaleWidget.hidden=pricesOnly;
+ const legend=document.querySelector('.vlx-legend');
+ if(legend)legend.classList.toggle('vlx-no-liq',pricesOnly);
+ const note=document.getElementById('vlxPriceFallback');
+ if(note)note.hidden=!pricesOnly;
  const scale=document.getElementById('vlxMaximum');
- if(scale)scale.textContent=obj?'Intensità max '+fmt(obj.max,0):'Intensità';
+ if(scale)scale.textContent=dataset?'Intensità max '+fmt(dataset.max,0):'Intensità';
  if(!obj){
   ctx.strokeStyle='rgba(218,218,235,.08)';ctx.lineWidth=1;
   for(let k=0;k<=5;k++){const y=top+k*plotH/5;ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(left+plotW,y);ctx.stroke();}
@@ -146,7 +156,7 @@ function paint(){
  const cellH=Math.max(1,plotH*resY/span+1.3);
  const minCut=threshold*.075;
  const step=Math.max(1,Math.ceil(heat.length/420000));
- for(let k=0;k<heat.length;k+=step){
+ for(let k=0;k<(pricesOnly?0:heat.length);k+=step){
   const [xi,yi,v]=heat[k];
   const t=Math.log1p(v)/Math.log1p(max);
   if(t<minCut)continue;
@@ -193,7 +203,7 @@ function status(text,error=false){
 }
 function setData(raw,label){
  const parsed=normalize(raw);
- dataset=parsed;sourceLabel=label;verifiedIdentity=parsed.verified;
+ dataset=parsed;priceOnly=null;sourceLabel=label;verifiedIdentity=parsed.verified;
  const heading=document.getElementById('vlxTitle');
  if(heading)heading.textContent=verifiedIdentity?nativeTitle():
   'Liquidation Heatmap · origine mercato non verificata';
@@ -204,11 +214,46 @@ function setData(raw,label){
  if(el)el.textContent=label+(verifiedIdentity?' · Binance '+coin+'/USDT':' · verificare manualmente provenienza');
  paint();
 }
+async function loadPriceOnly(current){
+ if(current!==loadSeq)return;
+ const provider=window.VertexLiqPriceFallback;
+ if(!provider||typeof provider.load!=='function'){
+  status('Archivio CoinGlass assente; caricatore prezzi OHLC non disponibile.',true);
+  paint();return;
+ }
+ status('CoinGlass non collegato · recupero storico OHLC reale in corso…');
+ try{
+  const result=await provider.load(coin,range);
+  if(current!==loadSeq)return;
+  if(!result||!Array.isArray(result.candles)||result.candles.length<2)
+   throw Error('Prezzi OHLC non disponibili per '+coin+' · '+rangeName());
+  const lows=result.candles.map(b=>b.l),highs=result.candles.map(b=>b.h);
+  priceOnly={candles:result.candles,levels:[Math.min(...lows),Math.max(...highs)],
+   heat:[],max:0};
+  dataset=null;
+  const quote=result.quote||'USDT';
+  const title=document.getElementById('vlxTitle');
+  if(title)title.textContent=coin+'/'+quote+' · Prezzi OHLC reali (non liquidation heatmap)';
+  const latest=new Date(result.latest*1000).toLocaleString('it-IT');
+  const source=document.getElementById('vlxSource');
+  if(source)source.textContent='Fonte: '+result.source+
+   ' · '+result.interval+' · ultima candela '+latest;
+  status('Candele OHLC caricate: '+result.candles.length+
+   ' · La heatmap delle liquidazioni richiede dati CoinGlass autorizzati.');
+  paint();
+ }catch(error){
+  if(current!==loadSeq)return;
+  priceOnly=null;dataset=null;
+  status('Dati CoinGlass non collegati; prezzi storici non disponibili: '+
+   String(error.message||error),true);
+  paint();
+ }
+}
 function activate(force=false){
  if(!force&&dataset&&sourceLabel.startsWith('File locale ')){
   paint();return;
  }
- dataset=null;paint();status('Controllo disponibilità dei dati '+model+' · '+rangeName()+'…');
+ dataset=null;priceOnly=null;paint();status('Controllo disponibilità dei dati '+model+' · '+rangeName()+'…');
  const current=++loadSeq,key=filename(),found=cache.get(key);
  if(found){try{setData(found,'Archivio CoinGlass autorizzato')}catch(e){status(e.message,true)}return}
  fetch(archive(),{cache:'no-store'}).then(r=>{
@@ -222,20 +267,20 @@ function activate(force=false){
   setData(raw,'Archivio CoinGlass autorizzato');
  }).catch(()=>{
   if(current!==loadSeq)return;
-  dataset=null;status('Dati CoinGlass '+rangeName()+' non collegati: carica un JSON autorizzato o apri la fonte.');
-  paint();
+  dataset=null;
+  loadPriceOnly(current);
  });
 }
 function updateCoin(next){
  if(!allowed.has(next))return;
- if(next!==coin){coin=next;dataset=null;sourceLabel='';try{localStorage.setItem(storage,JSON.stringify(coin))}catch(_e){}}
+ if(next!==coin){coin=next;dataset=null;priceOnly=null;sourceLabel='';try{localStorage.setItem(storage,JSON.stringify(coin))}catch(_e){}}
  const title=document.getElementById('vlxTitle');if(title)title.textContent=nativeTitle();
  const select=document.getElementById('vertexLiqCoin');if(select&&select.value!==coin)select.value=coin;
  activate();
 }
 function modelSelect(next){
  if(!['model1','model2','model3'].includes(next))return;
- model=next;dataset=null;sourceLabel='';
+ model=next;dataset=null;priceOnly=null;sourceLabel='';
  document.querySelectorAll('[data-vlx-model]').forEach(b=>{
   const on=b.dataset.vlxModel===model;b.classList.toggle('is-active',on);b.setAttribute('aria-pressed',String(on));
  });
@@ -245,7 +290,7 @@ function modelSelect(next){
 document.addEventListener('change',e=>{
  if(e.target?.id==='vertexLiqCoin')updateCoin(e.target.value);
  if(e.target?.id==='vlxRange'&&validRanges.has(e.target.value)){
-  range=e.target.value;dataset=null;sourceLabel='';document.getElementById('vlxTitle').textContent=nativeTitle();activate();
+  range=e.target.value;dataset=null;priceOnly=null;sourceLabel='';document.getElementById('vlxTitle').textContent=nativeTitle();activate();
  }
  if(e.target?.id==='vlxFile'){
   const file=e.target.files?.[0];if(!file)return;
@@ -291,6 +336,6 @@ document.addEventListener('mousemove',e=>{
 document.addEventListener('mouseout',e=>{
  if(e.target?.id==='vlxCanvas'){const hover=document.getElementById('vlxHover');if(hover)hover.hidden=true}
 });
-window.addEventListener('resize',()=>{if(dataset)paint()});
+window.addEventListener('resize',()=>{if(dataset||priceOnly)paint()});
 window.VertexLiquidations=Object.freeze({page,activate,select:coin=>updateCoin(coin),parse:normalize});
 })();
