@@ -124,6 +124,83 @@ function color(t){
  }
  return 'rgb(255,238,17)';
 }
+/* Model intensity levels: selected from the last 12% of supplied
+   time-indexed CoinGlass observations. Scores are NOT liquidation amounts. */
+function liquidationZones(data,count=2){
+ if(!data||!Array.isArray(data.heat)||!data.heat.length)return [];
+ const last=data.candles?.at(-1)?.c;
+ if(!Number.isFinite(last)||last<=0)return [];
+ const cutoff=Math.max(0,data.candles.length-Math.max(8,Math.ceil(data.candles.length*.12)));
+ const scores=new Map();
+ for(const [x,y,v] of data.heat){
+  if(x<cutoff||!Number.isFinite(v)||v<=0)continue;
+  scores.set(y,(scores.get(y)||0)+v);
+ }
+ const raw=[...scores].map(([i,total])=>({price:data.levels[i],total}))
+  .filter(p=>Number.isFinite(p.price)&&p.price>0&&Number.isFinite(p.total)&&p.total>0);
+ const peak=Math.max(0,...raw.map(p=>p.total)),gap=last*.002;
+ const pick=side=>{
+  const ranked=raw.filter(p=>side==='above'?p.price>last:p.price<last)
+   .sort((a,b)=>b.total-a.total||Math.abs(a.price-last)-Math.abs(b.price-last));
+  const selected=[];
+  for(const item of ranked){
+   if(selected.some(x=>Math.abs(x.price-item.price)<gap))continue;
+   selected.push({side,kind:'model',price:item.price,score:item.total,
+    relative:peak>0?item.total/peak:0});
+   if(selected.length>=count)break;
+  }
+  return selected;
+ };
+ return [...pick('above'),...pick('below')];
+}
+/* P ± P/L illustrates a full initial-margin move only; it does not
+   calculate liquidation prices. Actual exchange liquidation uses mark
+   price, maintenance margin, balances, fees and margin mode. */
+function theoreticalLevels(last,L=leverage){
+ const p=Number(last),lev=Number(L);
+ if(!Number.isFinite(p)||p<=0||![5,10,20,50].includes(lev))return [];
+ return [
+  {side:'above',kind:'scenario',leverage:lev,price:p*(1+1/lev)},
+  {side:'below',kind:'scenario',leverage:lev,price:p*(1-1/lev)}
+ ];
+}
+function activeLevelLines(){
+ if(dataset)return liquidationZones(dataset);
+ if(priceOnly)return theoreticalLevels(priceOnly.candles?.at(-1)?.c);
+ return [];
+}
+function showLevelPanel(lines){
+ const type=document.getElementById('vlxLevelsType'),list=document.getElementById('vlxLevelList'),
+  note=document.getElementById('vlxLevelsNote'),lev=document.getElementById('vlxLeverageWrap');
+ if(!list)return;
+ const real=!!dataset,scenario=!!priceOnly&&!real;
+ if(lev)lev.hidden=!scenario;
+ if(type)type.textContent=real?'Zone di intensità CoinGlass, non importi liquidati':scenario?
+  'Livelli teorici: NON indicano posizioni reali':'In attesa dei dati';
+ if(note)note.textContent=real?
+  'Le zone sono ricavate dalla parte finale della heatmap CoinGlass; i valori sono intensità relative del modello, non somme in dollari o liquidazioni confermate. Sopra il prezzo: possibili short; sotto: possibili long.':
+  scenario?'Scenari didattici: P ± P/leva, con P uguale alla chiusura dell’ultima candela ('+
+   priceQuote+'). Ignorano margine di mantenimento, costi, saldo, funding e mark price. Non sono prezzi di liquidazione effettivi.':
+   'Per mostrare le zone reali del modello è necessario un archivio CoinGlass autorizzato.';
+ if(!lines.length){
+  list.innerHTML='<p class="vlx-levels-await">'+
+   (real?'Nessuna zona significativa trovata negli ultimi campioni.':
+    'Non sono disponibili prezzi sufficienti per calcolare i livelli.')+'</p>';
+  return;
+ }
+ const quote=real?'USDT':priceQuote;
+ list.innerHTML=lines.map(item=>{
+  const above=item.side==='above';
+  const label=real?(above?'Zona sopra il prezzo · possibili short':'Zona sotto il prezzo · possibili long'):
+   (above?'Short teorico · leva '+item.leverage+'×':'Long teorico · leva '+item.leverage+'×');
+  const details=real?'Intensità relativa '+fmt(item.relative*100,1)+'%':
+   'Scenario, non liquidazione reale';
+  return '<div class="vlx-level-card '+(above?'vlx-level-short':'vlx-level-long')+'">'+
+   '<span>'+esc(label)+'</span><strong>'+fmt(item.price,item.price>=100?2:6)+' '+
+   esc(quote)+'</strong><small>'+esc(details)+'</small></div>';
+ }).join('');
+}
+
 function paint(){
  const canvas=document.getElementById('vlxCanvas');
  if(!canvas)return;
