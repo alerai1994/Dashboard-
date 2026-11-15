@@ -238,11 +238,14 @@ new Function('window','document','localStorage',read('vertex-liquidations.js'))(
 assert.equal(typeof appWindow.VertexLiquidations.page,'function','Liquidation Heatmap module unavailable');
 const liquidationPage=app.PAGE_RENDERERS.liquidations();
 assert(liquidationPage.includes('id="vertexLiqCoin"'),'Heatmap crypto selection missing');
-assert(liquidationPage.includes('https://blockmetric.io/embed/heatmap?coin=BTC'),
- 'Heatmap must show a real-source embed, not fabricated liquidation bands');
-assert(liquidationPage.includes('https://blockmetric.io/embed/liq-levels?coin=BTC'),
- 'Selected crypto must also show corresponding liquidation levels');
-assert(liquidationPage.includes('Dati di'),'Mandatory visible attribution must be present');
+assert(liquidationPage.includes('class="vlx-native"'),
+ 'CoinGlass historical heatmap must be the only visible mode');
+assert(!liquidationPage.includes('class="vlx-live"'),
+ 'Removed live heatmap must not be present in DOM');
+assert(!liquidationPage.includes('data-vlx-mode="free"'),
+ 'No switch back to removed Live 24H mode should remain');
+assert(!liquidationPage.includes('Blockmetric'),
+ 'Removed Blockmetric embed must not appear on the page');
 assert(liquidationPage.includes('id="vlxCanvas"'),
  'CoinGlass-style native annual heatmap canvas must be present');
 assert(liquidationPage.includes('Binance BTC/USDT Liquidation Heatmap (1 anno)'),
@@ -257,14 +260,8 @@ assert(liquidationPage.includes('id="vlxFile"'),
  'The native chart must accept authorized API data files');
 assert(liquidationPage.includes('Storico annuale CoinGlass: dati autorizzati richiesti'),
  'Annual API access requirement must be disclosed clearly');
-assert(liquidationPage.includes('class="vlx-native" hidden'),
- 'Annual CoinGlass placeholder must not be the default blank screen');
-assert(liquidationPage.includes('class="vlx-live"'),
- 'The actual 24H liquidation heatmap must be shown by default');
-assert(liquidationPage.includes('data-vlx-mode="free"'),
- 'Users must be able to switch to an available real data source');
-assert(liquidationPage.includes('Visualizza heatmap LIVE 24H'),
- 'The annual unconnected message must link directly back to working live heatmap');
+assert(!liquidationPage.includes('LIVE 24H'),
+ 'No leftover live timeframe buttons or fallback labels');
 assert(liquidationPage.includes('https://www.coinglass.com/pro/futures/LiquidationHeatMap'),
  'Provide the original CoinGlass chart when API data is unavailable');
 const liqSource=read('vertex-liquidations.js');
