@@ -10,7 +10,7 @@ const RANGES=[['12h','12 ore'],['24h','24 ore'],['3d','3 giorni'],['7d','7 giorn
 const allowed=new Set(COINS.map(x=>x[0])),validRanges=new Set(RANGES.map(x=>x[0]));
 const storage='vertex-liquidations-selected-coin';
 let coin='BTC',range='1y',model='model1';
-let dataset=null,priceOnly=null,sourceLabel='',verifiedIdentity=false,loadSeq=0,threshold=.59;
+let dataset=null,priceOnly=null,sourceLabel='',verifiedIdentity=false,loadSeq=0,threshold=.59,leverage=10,priceQuote='USDT';
 const cache=new Map();
 try{const saved=JSON.parse(localStorage.getItem(storage));if(allowed.has(saved))coin=saved}catch(_e){}
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -53,7 +53,18 @@ function page(){
      '<div id="vlxHover" class="vlx-hover" hidden></div>'+
     '</div></div>'+
    '<input id="vlxFile" type="file" accept=".json,application/json" hidden>'+
-   '<p id="vlxPriceFallback" class="vlx-price-fallback" hidden><strong>Candele OHLC reali</strong> · Le fasce delle liquidazioni CoinGlass non sono disponibili senza dati autorizzati. Il grafico mostra solo i prezzi, non una heatmap di liquidazioni.</p>'+
+   '<p id="vlxPriceFallback" class="vlx-price-fallback" hidden><strong>Candele OHLC reali</strong> · Le fasce delle liquidazioni CoinGlass non sono disponibili senza dati autorizzati. Il grafico mostra i prezzi OHLC e, quando possibile, livelli di leva teorici tratteggiati: non rappresentano posizioni o liquidazioni effettive.</p>'+
+   '<section class="vlx-levels" id="vlxLevels" aria-labelledby="vlxLevelsTitle">'+
+    '<div class="vlx-levels-head"><div><h3 id="vlxLevelsTitle">Livelli di liquidazione</h3>'+
+     '<span id="vlxLevelsType">Verifica dei livelli disponibili…</span></div>'+
+     '<label id="vlxLeverageWrap" for="vlxLeverage" hidden>Leva teorica '+
+      '<select id="vlxLeverage" aria-label="Leva per livelli teorici">'+
+       '<option value="5">5×</option><option value="10" selected>10×</option>'+
+       '<option value="20">20×</option><option value="50">50×</option></select></label></div>'+
+    '<div id="vlxLevelList" class="vlx-levels-grid" aria-live="polite">'+
+     '<p class="vlx-levels-await">In attesa di prezzi reali verificabili.</p></div>'+
+    '<p id="vlxLevelsNote" class="vlx-levels-note">Per i prezzi effettivi di liquidazione servono informazioni sulle posizioni e sul margine.</p>'+
+   '</section>'+
    '<div class="vlx-status"><span id="vlxStatus">Ricerca di dati CoinGlass autorizzati…</span>'+
     '<span id="vlxSource">CoinGlass Model 1 · Binance '+coin+'/USDT · '+esc(rangeName())+'</span></div>'+
    '<p class="vlx-notice">La scala rappresenta l’<strong>intensità stimata dal modello</strong>, non USD liquidati. '+
