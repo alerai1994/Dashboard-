@@ -259,6 +259,12 @@ assert(liquidationPage.includes('id="vlxCanvas"'),
  'CoinGlass-style native annual heatmap canvas must be present');
 assert(liquidationPage.includes('id="vlxPriceFallback"'),
  'Price fallback must transparently explain absent CoinGlass liquidation levels');
+assert(liquidationPage.includes('id="vlxLevelsTitle"'),
+ 'Liquidation levels panel must be present');
+assert(liquidationPage.includes('id="vlxLevelList"'),
+ 'Liquidation levels prices must be visible');
+assert(liquidationPage.includes('id="vlxLeverage"'),
+ 'Price-only fallback needs a labeled theoretical leverage control');
 assert(liquidationPage.includes('Binance BTC/USDT Liquidation Heatmap (1 anno)'),
  'Native chart title must match the reference market and period');
 assert(liquidationPage.includes('id="vlxThresholdInput"'),
@@ -285,6 +291,10 @@ assert(liqSource.includes('const obj=dataset||priceOnly;'),
  'The chart must render real price-only OHLC when liquidation intensities are absent');
 assert(liqSource.includes('loadPriceOnly(current);'),
  'Missing CoinGlass archive must not leave a blank chart');
+assert(liqSource.includes("ctx.setLineDash([7,5])"),
+ 'Level prices must appear as dashed horizontal lines on the chart');
+assert(liqSource.includes('showLevelPanel(overlays)'),
+ 'Liquidation level cards must update when data is loaded');
 assert(html.indexOf('vertex-liquidations-prices.js?v=')<
  html.indexOf('vertex-liquidations.js?v='),
  'Verified price loader must load before CoinGlass heatmap module');
@@ -301,6 +311,25 @@ const parsedHeatmap=appWindow.VertexLiquidations.parse(validHeatmap);
 assert(parsedHeatmap.verified,'CoinGlass data must verify explicit pair/model/range metadata');
 assert.equal(parsedHeatmap.heat.length,2);
 assert.equal(parsedHeatmap.max,10);
+assert.equal(typeof appWindow.VertexLiquidations.computeModelLevels,'function');
+assert.equal(typeof appWindow.VertexLiquidations.computeTheoreticalLevels,'function');
+const verifiedZones=appWindow.VertexLiquidations.computeModelLevels(parsedHeatmap);
+assert.equal(verifiedZones.length,2,'Actual CoinGlass heatmap clusters should be ranked above/below last price');
+assert.equal(verifiedZones[0].kind,'model');
+assert.equal(verifiedZones[0].price,110);
+assert.equal(verifiedZones[0].relative,1);
+assert.equal(verifiedZones[1].price,105);
+assert.equal(verifiedZones[1].relative,0.6);
+const estimatedLevels=appWindow.VertexLiquidations.computeTheoreticalLevels(100,10);
+assert.equal(estimatedLevels.length,2);
+assert.equal(estimatedLevels[0].kind,'scenario','Prices without CoinGlass must never be labeled real clusters');
+assert(Math.abs(estimatedLevels[0].price-110)<1e-9,'Theoretical 10x short must be above sample entry price');
+assert(Math.abs(estimatedLevels[1].price-90)<1e-9,'Theoretical 10x long must be below sample entry price');
+assert.deepEqual(appWindow.VertexLiquidations.computeTheoreticalLevels(NaN,10),[],
+ 'No fictional level without a verified real reference price');
+assert.deepEqual(appWindow.VertexLiquidations.computeModelLevels({
+ candles:[{c:100}],heat:[],levels:[98,102]}),[],
+ 'Missing liquidation data cannot be silently invented');
 assert.throws(()=>appWindow.VertexLiquidations.parse({...validHeatmap,symbol:'ETHUSDT'}),
  /differente/,'A mismatched exchange or pair must never display as BTCUSDT');
 assert(html.includes('data-page="liquidations"'),'New sidebar heatmap entry missing');
