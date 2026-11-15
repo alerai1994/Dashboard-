@@ -176,6 +176,7 @@ const SECTIONS={
 home:['Home','La tua panoramica dei mercati e degli strumenti.'],
 global:['Global','Global market data across every region, market and asset class.'],
 marketforce:['Forza mercato','Conta mercati rialzisti, neutri e ribassisti con dati verificati.'],
+liquidations:['Liquidation Heatmap','Heatmap delle liquidazioni e concentrazioni di rischio nelle crypto.'],
 markets:['Markets','Prezzi, variazioni, grafici e mercati mondiali.'],
 watchlist:['Watchlist','I mercati che vuoi seguire, salvati sul tuo dispositivo.'],
 portfolio:['Portfolio','Tieni traccia delle posizioni inserite manualmente.'],
@@ -5075,7 +5076,7 @@ function workspacePage(){
 }
 
 window.__vertexPriceBoardBackend=Object.freeze({assets:ASSETS,getQuote:quote,formatValue,getStatus:instrumentQuoteStatus,pct});
-const PAGE_RENDERERS={home:homePage,global:globalPage,marketforce:marketForcePage,markets:marketsPage,watchlist:watchlistPage,portfolio:portfolioPage,news:newsPage,analytics:analyticsPage,orderbook:orderBookPage,workspace:workspacePage,etf:etfPage,priceboard:()=>window.VertexPriceBoard?.page()||'<section class="panel">Display non disponibile.</section>',settings:settingsPage};
+const PAGE_RENDERERS={home:homePage,global:globalPage,marketforce:marketForcePage,liquidations:()=>window.VertexLiquidations?.page()||'<section class="panel" style="padding:24px">Heatmap non disponibile: controlla la connessione al fornitore.</section>',markets:marketsPage,watchlist:watchlistPage,portfolio:portfolioPage,news:newsPage,analytics:analyticsPage,orderbook:orderBookPage,workspace:workspacePage,etf:etfPage,priceboard:()=>window.VertexPriceBoard?.page()||'<section class="panel">Display non disponibile.</section>',settings:settingsPage};
 function updateNav(){
  $$('.side-link[data-page]').forEach(b=>{const sel=b.dataset.page===state.page;b.classList.toggle('active',sel);if(sel)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
  updateCryptoAlertIndicator();
@@ -5126,7 +5127,7 @@ function render(){
    try{if(typeof loadExtraGlobalCharts==='function')loadExtraGlobalCharts()}catch(err){console.error('Special charts:',err)}
   }
  }
- const hideSearch=['global','marketforce','portfolio','settings','analytics','orderbook','workspace','etf','news'].includes(state.page);
+ const hideSearch=['global','marketforce','liquidations','portfolio','settings','analytics','orderbook','workspace','etf','news'].includes(state.page);
  const searchWrap=$('.search-wrap');
  if(searchWrap)searchWrap.hidden=hideSearch;
  if(hideSearch){
