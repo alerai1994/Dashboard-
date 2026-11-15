@@ -129,7 +129,7 @@ function color(t){
 function paint(){
  const canvas=document.getElementById('vlxCanvas');
  if(!canvas||mode!=='coinglass')return;
- const cssWidth=Math.max(350,canvas.getBoundingClientRect().width||950);
+ const cssWidth=Math.max(250,canvas.getBoundingClientRect().width||950);
  const cssHeight=510,dpr=Math.min(2,window.devicePixelRatio||1);
  canvas.width=Math.round(cssWidth*dpr);
  canvas.height=Math.round(cssHeight*dpr);
@@ -208,6 +208,9 @@ function status(text,error=false){
 function setData(raw,label){
  const parsed=normalize(raw);
  dataset=parsed;sourceLabel=label;verifiedIdentity=parsed.verified;
+ const heading=document.getElementById('vlxTitle');
+ if(heading)heading.textContent=verifiedIdentity?nativeTitle():
+  'Liquidation Heatmap · origine mercato non verificata';
  const date=parsed.updated?new Date(parsed.updated).toLocaleString('it-IT'):'non indicata';
  status((verifiedIdentity?'Dati e identità verificati':'Dati reali importati · identità della coppia non verificata')+
   ' · '+parsed.candles.length+' candele · '+fmt(parsed.heat.length,0)+' celle · aggiornamento '+date);
@@ -215,8 +218,11 @@ function setData(raw,label){
  if(el)el.textContent=label+(verifiedIdentity?' · Binance '+coin+'/USDT':' · verificare manualmente provenienza');
  paint();
 }
-function activate(){
+function activate(force=false){
  if(mode!=='coinglass')return;
+ if(!force&&dataset&&sourceLabel.startsWith('File locale ')){
+  paint();return;
+ }
  dataset=null;paint();status('Controllo disponibilità dei dati '+model+' · '+rangeName()+'…');
  const current=++loadSeq,key=filename(),found=cache.get(key);
  if(found){try{setData(found,'Archivio CoinGlass autorizzato')}catch(e){status(e.message,true)}return}
@@ -237,7 +243,7 @@ function activate(){
 }
 function updateCoin(next,refresh=false){
  if(!allowed.has(next))return;
- if(next!==coin){coin=next;try{localStorage.setItem(storage,JSON.stringify(coin))}catch(_e){}}
+ if(next!==coin){coin=next;dataset=null;sourceLabel='';try{localStorage.setItem(storage,JSON.stringify(coin))}catch(_e){}}
  const title=document.getElementById('vlxTitle');if(title)title.textContent=nativeTitle();
  const liveTitle=document.getElementById('vlxLiveTitle');if(liveTitle)liveTitle.textContent=coin+' · Liquidation Heatmap LIVE (24 ore)';
  const free=document.getElementById('vlxFreeCoin');if(free&&free.value!==coin)free.value=coin;
@@ -260,7 +266,7 @@ function switchMode(target){
 }
 function modelSelect(next){
  if(!['model1','model2','model3'].includes(next))return;
- model=next;
+ model=next;dataset=null;sourceLabel='';
  document.querySelectorAll('[data-vlx-model]').forEach(b=>{
   const on=b.dataset.vlxModel===model;b.classList.toggle('is-active',on);b.setAttribute('aria-pressed',String(on));
  });
@@ -270,7 +276,7 @@ function modelSelect(next){
 document.addEventListener('change',e=>{
  if(e.target?.id==='vertexLiqCoin'||e.target?.id==='vlxFreeCoin')updateCoin(e.target.value);
  if(e.target?.id==='vlxRange'&&validRanges.has(e.target.value)){
-  range=e.target.value;document.getElementById('vlxTitle').textContent=nativeTitle();activate();
+  range=e.target.value;dataset=null;sourceLabel='';document.getElementById('vlxTitle').textContent=nativeTitle();activate();
  }
  if(e.target?.id==='vlxFile'){
   const file=e.target.files?.[0];if(!file)return;
@@ -296,7 +302,7 @@ document.addEventListener('click',e=>{
  if(!btn)return;
  if(btn.dataset.vlxMode){switchMode(btn.dataset.vlxMode);return}
  if(btn.dataset.vlxModel){modelSelect(btn.dataset.vlxModel);return}
- if(btn.dataset.vlxAction==='reload'){cache.delete(filename());activate();return}
+ if(btn.dataset.vlxAction==='reload'){cache.delete(filename());sourceLabel='';activate(true);return}
  if(btn.dataset.vlxAction==='live-refresh'){updateCoin(coin,true)}
 });
 document.addEventListener('mousemove',e=>{
