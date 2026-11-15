@@ -594,8 +594,10 @@ assert(source.includes("symbol:'EURUSD=X'"),'Forex pair must remain intact');
 assert(html.includes('script.js?v=20261115-marketforce-candles-v9'));
 assert(source.includes('function forceMarketObservedArchive('),'Forza mercato must read same-origin crypto intraday archives');
 assert(source.includes('function forceMarketObservedDirect('),'Forza mercato needs live verified price history fallback');
-assert(source.includes('function marketForceBullishPricePlot('),'Forza mercato must render observed historical prices without fake OHLC');
-assert(source.includes('data.points?.length>=2'),'Forza mercato must use price line fallback when candles are unavailable');
+assert(source.includes('function forceMarketSampledCandles('),
+ 'Forza mercato must render sampled observed prices as labeled candles, not lines');
+assert(source.includes('const bars=realBars.length>=2?realBars:observed;'),
+ 'Forza mercato must render true OHLC first, sampled candles only as a fallback');
 assert(html.includes('price-board.js?v=20261114-board-dropdown-names-v6'));
 
 /* Swipe control persists across all sections and prioritizes the exposed right strip. */
