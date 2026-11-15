@@ -9,7 +9,7 @@ const COINS=[['BTC','Bitcoin'],['ETH','Ethereum'],['SOL','Solana'],['HYPE','Hype
 const RANGES=[['12h','12 ore'],['24h','24 ore'],['3d','3 giorni'],['7d','7 giorni'],['30d','30 giorni'],['90d','3 mesi'],['180d','6 mesi'],['1y','1 anno']];
 const allowed=new Set(COINS.map(x=>x[0])),validRanges=new Set(RANGES.map(x=>x[0]));
 const storage='vertex-liquidations-selected-coin';
-let coin='BTC',range='1y',model='model1',mode='coinglass';
+let coin='BTC',range='1y',model='model1',mode='free';
 let dataset=null,sourceLabel='',verifiedIdentity=false,loadSeq=0,threshold=.59;
 const cache=new Map();
 try{const saved=JSON.parse(localStorage.getItem(storage));if(allowed.has(saved))coin=saved}catch(_e){}
@@ -29,8 +29,8 @@ function page(){
  const models=['model1','model2','model3'].map((name,i)=>'<button type="button" class="vlx-model'+(model===name?' is-active':'')+'" data-vlx-model="'+name+'" aria-pressed="'+(model===name)+'">Model '+(i+1)+'</button>').join('');
  return '<section class="vertex-liquidations vlx" aria-label="Liquidation Heatmap">'+
   '<div class="vlx-switch" role="group" aria-label="Tipo di visualizzazione">'+
-   '<button data-vlx-mode="coinglass" class="'+(mode==='coinglass'?'is-active':'')+'" aria-pressed="'+(mode==='coinglass')+'">Heatmap annuale · CoinGlass</button>'+
-   '<button data-vlx-mode="free" class="'+(mode==='free'?'is-active':'')+'" aria-pressed="'+(mode==='free')+'">Heatmap live · 24H</button></div>'+
+   '<button data-vlx-mode="coinglass" class="'+(mode==='coinglass'?'is-active':'')+'" aria-pressed="'+(mode==='coinglass')+'">CoinGlass · 1 anno (richiede API)</button>'+
+   '<button data-vlx-mode="free" class="'+(mode==='free'?'is-active':'')+'" aria-pressed="'+(mode==='free')+'">Heatmap reale · LIVE 24H</button></div>'+
   '<div class="vlx-native"'+(mode==='free'?' hidden':'')+'>'+
    '<header class="vlx-head"><h2 id="vlxTitle">'+esc(nativeTitle())+'</h2>'+
     '<div class="vlx-models" role="group" aria-label="Modello di liquidazioni">'+models+'</div>'+
@@ -49,9 +49,9 @@ function page(){
     '<div class="vlx-canvas-wrap">'+
      '<canvas id="vlxCanvas" height="510" role="img" aria-label="Grafico CoinGlass: heatmap e candele OHLC reali, solo quando sono disponibili dati autorizzati"></canvas>'+
      '<div class="vlx-empty" id="vlxEmpty" role="status">'+
-      '<strong>Storico CoinGlass non collegato</strong>'+
-      '<span>Per visualizzare le fasce colorate e le candele reali per '+esc(rangeName())+', carica un file JSON CoinGlass autorizzato. Nessuna liquidazione viene simulata.</span>'+
-      '<div class="vlx-empty-actions"><label for="vlxFile" class="vlx-upload">Carica dati CoinGlass (.json)</label>'+
+      '<strong>Storico annuale CoinGlass: dati autorizzati richiesti</strong>'+
+      '<span>Lo storico Binance '+coin+'/USDT per '+esc(rangeName())+' richiede un abbonamento API CoinGlass Professional o superiore. Puoi importare i dati autorizzati oppure utilizzare la heatmap reale Hyperliquid 24H. Non vengono simulati livelli di liquidazione.</span>'+
+      '<div class="vlx-empty-actions"><button type="button" data-vlx-mode="free" class="vlx-upload">Visualizza heatmap LIVE 24H</button><label for="vlxFile" class="vlx-upload">Carica dati CoinGlass (.json)</label>'+
        '<a href="'+official+'" target="_blank" rel="noopener noreferrer">Apri la heatmap ufficiale ↗</a></div>'+
       '</div>'+
      '<div id="vlxHover" class="vlx-hover" hidden></div>'+
@@ -66,14 +66,14 @@ function page(){
    '</div>'+
   '<div class="vlx-live"'+(mode==='coinglass'?' hidden':'')+'>'+
    '<h2 id="vlxLiveTitle">'+coin+' · Liquidation Heatmap LIVE (24 ore)</h2>'+
-   '<p class="vlx-live-intro">Heatmap gratuita delle posizioni pubbliche su <strong>Hyperliquid</strong>; non è la heatmap annuale di Binance/CoinGlass.</p>'+
+   '<p class="vlx-live-intro">Dati reali da posizioni pubbliche <strong>Hyperliquid</strong>, ultime 24 ore. Non equivalgono alla heatmap annuale Binance/CoinGlass, che richiede accesso API autorizzato.</p>'+
    '<div class="vlx-live-tools"><label for="vlxFreeCoin">Criptovaluta</label><select id="vlxFreeCoin">'+coinOptions+'</select>'+
     '<button data-vlx-action="live-refresh">Aggiorna</button></div>'+
    '<div class="vlx-live-frames"><article><h3>'+coin+' · Heatmap 24H</h3>'+
     '<iframe id="vertexLiqHeatmap" src="'+freeUrl(coin,'heatmap')+'" title="Heatmap 24 ore '+coin+' Blockmetric" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" width="100%" height="510"></iframe></article>'+
     '<article><h3>'+coin+' · Livelli di liquidazione</h3>'+
      '<iframe id="vertexLiqLevels" src="'+freeUrl(coin,'liq-levels')+'" title="Livelli di liquidazione '+coin+' Blockmetric" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" width="100%" height="510"></iframe></article></div>'+
-   '<p class="vlx-credit">Dati di <a href="https://blockmetric.io/widgets" target="_blank" rel="noopener">Blockmetric</a> · Fonte Hyperliquid · Uso soggetto ai termini del fornitore.</p></div>'+
+   '<p class="vlx-credit">Dati di <a href="https://blockmetric.io/widgets" target="_blank" rel="noopener">Blockmetric</a> · Fonte Hyperliquid · Copertura dipendente dalla crypto selezionata · Uso soggetto ai termini del fornitore.</p></div>'+
   '</section>';
 }
 function normalize(raw){
