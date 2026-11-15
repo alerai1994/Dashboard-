@@ -41,3 +41,12 @@
 .vlx-notice{margin:10px 5px 2px;color:#b3becf;font:400 12px/1.65 Inter,sans-serif}
 .vlx-notice strong{color:#e0e7f3}
 @media(max-width:700px){.vlx-native{padding:12px 5px 12px;border-radius:13px}.vlx-head h2{padding:0 6px;font-size:18px}.vlx-controls{justify-content:center;padding:0 5px}.vlx-controls select{max-width:150px}.vlx-legend{gap:7px;font-size:10px}.vlx-plot{grid-template-columns:23px minmax(0,1fr);gap:4px}.vlx-gradient .vlx-scale-bar{width:16px}.vlx-gradient span{font-size:8px;max-width:23px}.vlx-canvas-wrap canvas{height:440px}.vlx-empty{top:24%;left:7%;right:7%;padding:13px}.vlx-empty-actions{flex-direction:column}.vlx-status{padding-left:7px;padding-right:7px}.vlx-notice{padding:0 5px}.vlx-plot{overflow:hidden}}
+
+/* When CoinGlass data is absent, show truthful price-only OHLC
+   without a fake purple liquidation background or intensity legend. */
+.vlx-plot.vlx-price-mode{grid-template-columns:minmax(0,1fr)}
+.vlx-legend.vlx-no-liq span:first-child,.vlx-legend.vlx-no-liq label{display:none}
+.vlx-price-fallback{margin:10px 4px 5px;padding:11px 13px;
+ border:1px solid #385e7c;border-radius:11px;background:#142735;
+ color:#b9d1e7;font:500 12px/1.6 Inter,sans-serif}
+.vlx-price-fallback strong{color:#e7f3ff}
