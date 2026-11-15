@@ -5103,6 +5103,7 @@ function render(){
   main.innerHTML='<section class="panel" style="padding:24px"><h2>Impossibile mostrare questa sezione</h2><p>Riprova a ricaricare la pagina. I servizi dati sono indipendenti dalla dashboard.</p></section>';
  }
  if(state.page==='priceboard')window.VertexPriceBoard?.paint();
+ if(state.page==='liquidations')requestAnimationFrame(()=>window.VertexLiquidations?.activate());
  if(state.page==='markets')window.VertexHeatmap?.activate();
  if(['markets','workspace'].includes(state.page))
   requestAnimationFrame(observeMarketCryptoHistoryPreviews);
