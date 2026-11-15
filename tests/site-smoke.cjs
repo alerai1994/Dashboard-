@@ -568,7 +568,11 @@ assert(source.includes("function marketForceSelectLabel(asset){\n return asset.n
 assert(read('price-board.js').includes("function dropdownLabel(a){\n return a.name;"));
 assert(source.includes("symbol:'BTC-USD'"),'Original market symbol must remain intact');
 assert(source.includes("symbol:'EURUSD=X'"),'Forex pair must remain intact');
-assert(html.includes('script.js?v=20261114-crypto-candles-force-v6'));
+assert(html.includes('script.js?v=20261115-marketforce-hist-v7'));
+assert(source.includes('function forceMarketObservedArchive('),'Forza mercato must read same-origin crypto intraday archives');
+assert(source.includes('function forceMarketObservedDirect('),'Forza mercato needs live verified price history fallback');
+assert(source.includes('function marketForceBullishPricePlot('),'Forza mercato must render observed historical prices without fake OHLC');
+assert(source.includes('data.points?.length>=2'),'Forza mercato must use price line fallback when candles are unavailable');
 assert(html.includes('price-board.js?v=20261114-board-dropdown-names-v6'));
 
 /* Swipe control persists across all sections and prioritizes the exposed right strip. */
