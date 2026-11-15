@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-15T11:47:18.855953+00:00",
+  "generatedAt": "2026-11-15T11:48:09.406503+00:00",
   "source": "Yahoo Finance chart + CoinGecko, delayed/not real-time",
   "markets": [
     {
@@ -14541,25 +14541,25 @@
     {
       "id": "tadawul",
       "symbol": "^TASI.SR",
-      "value": 10270.58,
-      "change": -0.5412,
+      "value": 10270.62,
+      "change": -0.5408,
       "currency": "SAR",
       "history": [
-        10270.580078125
+        10270.6201171875
       ],
       "candles": [
         {
-          "t": 1794742338,
+          "t": 1794742387,
           "o": 10302.0400391,
           "h": 10342.0595703,
           "l": 10261.2900391,
-          "c": 10270.5800781
+          "c": 10270.6201172
         }
       ],
-      "time": "2026-11-15T11:32:18+00:00",
+      "time": "2026-11-15T11:33:07+00:00",
       "source": "Yahoo Finance · quotazione della fonte",
       "previousClose": 10326.47,
-      "changeBasis": "previous verified session snapshot"
+      "changeBasis": "saved previous close for same session"
     },
     {
       "id": "nikkei",
@@ -96338,7 +96338,7 @@
         71342.96875,
         68249.2734375,
         64128.05078125,
-        65464.140625
+        65464.30859375
       ],
       "candles": [
         {
@@ -98159,7 +98159,7 @@
           "o": 64119.78125,
           "h": 65889.234375,
           "l": 62093.515625,
-          "c": 65464.140625
+          "c": 65464.3085938
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -98214,7 +98214,7 @@
         2016.8297119140625,
         1927.5888671875,
         1769.1204833984375,
-        1833.0400390625
+        1833.489990234375
       ],
       "candles": [
         {
@@ -100035,7 +100035,7 @@
           "o": 1768.76672363,
           "h": 1837.72094727,
           "l": 1714.29296875,
-          "c": 1833.04003906
+          "c": 1833.48999023
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -101966,7 +101966,7 @@
         7.455766201019287,
         8.071840286254883,
         6.790322780609131,
-        7.01800012588501
+        7.019000053405762
       ],
       "candles": [
         {
@@ -103787,7 +103787,7 @@
           "o": 6.78971004486,
           "h": 7.18636131287,
           "l": 6.59158945084,
-          "c": 7.01800012589
+          "c": 7.01900005341
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -103842,7 +103842,7 @@
         656.0533447265625,
         629.433349609375,
         581.3782348632812,
-        597.489990234375
+        597.5499877929688
       ],
       "candles": [
         {
@@ -105663,7 +105663,7 @@
           "o": 581.37322998,
           "h": 598.637756348,
           "l": 568.197021484,
-          "c": 597.489990234
+          "c": 597.549987793
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -105849,13 +105849,6 @@
         89.07934170588285
       ],
       "candles": [
-        {
-          "t": 1792137600,
-          "o": 116.84,
-          "h": 124.15,
-          "l": 116.31,
-          "c": 122.41
-        },
         {
           "t": 1792152000,
           "o": 122.4,
@@ -107108,6 +107101,13 @@
           "h": 90.98,
           "l": 76.31,
           "c": 90.14
+        },
+        {
+          "t": 1794729600,
+          "o": 90.14,
+          "h": 90.17,
+          "l": 86.64,
+          "c": 86.67
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -107116,7 +107116,7 @@
       "circulating_supply": 521387.07152873895,
       "cap_updated_at": "2026-11-15T11:46:51.000Z",
       "candleSource": "CoinGecko USD",
-      "ohlcCheckedAt": "2026-11-15T05:47:34.837973+00:00"
+      "ohlcCheckedAt": "2026-11-15T11:48:11.378597+00:00"
     },
     {
       "id": "xrp",
@@ -107164,7 +107164,7 @@
         1.0399279594421387,
         1.009443998336792,
         0.9130309820175171,
-        0.9668999910354614
+        0.9672999978065491
       ],
       "candles": [
         {
@@ -108985,7 +108985,7 @@
           "o": 0.913190662861,
           "h": 0.976678848267,
           "l": 0.902955532074,
-          "c": 0.966899991035
+          "c": 0.967299997807
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -110916,7 +110916,7 @@
         0.1741349995136261,
         0.168162003159523,
         0.14752499759197235,
-        0.15547999739646912
+        0.1554899960756302
       ],
       "candles": [
         {
@@ -112737,7 +112737,7 @@
           "o": 0.147546947002,
           "h": 0.155693307519,
           "l": 0.143245980144,
-          "c": 0.155479997396
+          "c": 0.155489996076
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -112792,7 +112792,7 @@
         8.344382286071777,
         8.221081733703613,
         7.091214179992676,
-        7.239999771118164
+        7.238999843597412
       ],
       "candles": [
         {
@@ -114613,7 +114613,7 @@
           "o": 7.09189176559,
           "h": 7.30849552155,
           "l": 6.783452034,
-          "c": 7.23999977112
+          "c": 7.2389998436
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -114668,7 +114668,7 @@
         10.131871223449707,
         9.831422805786133,
         8.872721672058105,
-        9.267000198364258
+        9.270999908447266
       ],
       "candles": [
         {
@@ -116489,7 +116489,7 @@
           "o": 8.87367630005,
           "h": 9.28469467163,
           "l": 8.66926193237,
-          "c": 9.26700019836
+          "c": 9.27099990845
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -116544,7 +116544,7 @@
         0.8332039713859558,
         0.8173810243606567,
         0.7057949900627136,
-        0.7350000143051147
+        0.7354000210762024
       ],
       "candles": [
         {
@@ -118365,7 +118365,7 @@
           "o": 0.705801963806,
           "h": 0.737627446651,
           "l": 0.687478601933,
-          "c": 0.735000014305
+          "c": 0.735400021076
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -118420,7 +118420,7 @@
         0.31540700793266296,
         0.31182199716567993,
         0.3066520094871521,
-        0.30859044194221497
+        0.30859458446502686
       ],
       "candles": [
         {
@@ -120239,9 +120239,9 @@
         {
           "t": 1794700800,
           "o": 0.306658357382,
-          "h": 0.308590441942,
+          "h": 0.308594584465,
           "l": 0.304971665144,
-          "c": 0.308590441942
+          "c": 0.308594584465
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -122254,7 +122254,7 @@
       "circulating_supply": 2857366790.4878397,
       "cap_updated_at": "2026-11-15T11:46:51.000Z",
       "candleSource": "Binance Spot USDT",
-      "ohlcCheckedAt": "2026-11-15T05:47:34.837973+00:00"
+      "ohlcCheckedAt": "2026-11-15T11:48:11.378597+00:00"
     },
     {
       "id": "sui",
@@ -124249,9 +124249,9 @@
         {
           "t": 1794700800,
           "o": 0.7011,
-          "h": 0.7267,
+          "h": 0.7339,
           "l": 0.6759,
-          "c": 0.7213
+          "c": 0.7312
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -124260,7 +124260,7 @@
       "circulating_supply": 4139043544.1303763,
       "cap_updated_at": "2026-11-15T11:46:51.000Z",
       "candleSource": "Binance Spot USDT",
-      "ohlcCheckedAt": "2026-11-15T05:47:34.837973+00:00"
+      "ohlcCheckedAt": "2026-11-15T11:48:11.378597+00:00"
     },
     {
       "id": "ltc",
@@ -124308,7 +124308,7 @@
         49.98236083984375,
         49.32375717163086,
         44.385414123535156,
-        45.51900100708008
+        45.50400161743164
       ],
       "candles": [
         {
@@ -126129,7 +126129,7 @@
           "o": 44.3886299133,
           "h": 45.7056808472,
           "l": 42.8925933838,
-          "c": 45.5190010071
+          "c": 45.5040016174
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -128131,9 +128131,9 @@
         {
           "t": 1794700800,
           "o": 201.3,
-          "h": 208.2,
+          "h": 210.3,
           "l": 195.7,
-          "c": 206.2
+          "c": 209.9
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -128142,7 +128142,7 @@
       "circulating_supply": 20117028.02165076,
       "cap_updated_at": "2026-11-15T11:46:51.000Z",
       "candleSource": "Binance Spot USDT",
-      "ohlcCheckedAt": "2026-11-15T05:47:34.837973+00:00"
+      "ohlcCheckedAt": "2026-11-15T11:48:11.378597+00:00"
     },
     {
       "id": "xlm",
@@ -130137,9 +130137,9 @@
         {
           "t": 1794700800,
           "o": 0.1355,
-          "h": 0.1393,
+          "h": 0.1406,
           "l": 0.1304,
-          "c": 0.1381
+          "c": 0.1396
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -130148,7 +130148,7 @@
       "circulating_supply": 35407560560.25353,
       "cap_updated_at": "2026-11-15T11:46:51.000Z",
       "candleSource": "Binance Spot USDT",
-      "ohlcCheckedAt": "2026-11-15T05:47:34.837973+00:00"
+      "ohlcCheckedAt": "2026-11-15T11:48:11.378597+00:00"
     },
     {
       "id": "hbar",
@@ -130196,7 +130196,7 @@
         0.06370999664068222,
         0.061455000191926956,
         0.05615700036287308,
-        0.05877000093460083
+        0.05875999853014946
       ],
       "candles": [
         {
@@ -132017,7 +132017,7 @@
           "o": 0.0561591349542,
           "h": 0.0588491372764,
           "l": 0.0552612990141,
-          "c": 0.0587700009346
+          "c": 0.0587599985301
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -134019,9 +134019,9 @@
         {
           "t": 1794700800,
           "o": 3.03,
-          "h": 3.169,
+          "h": 3.211,
           "l": 2.92,
-          "c": 3.125
+          "c": 3.189
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -134030,7 +134030,7 @@
       "circulating_supply": 1311777620.0,
       "cap_updated_at": "2026-11-15T11:46:51.000Z",
       "candleSource": "Binance Spot USDT",
-      "ohlcCheckedAt": "2026-11-15T05:47:34.837973+00:00"
+      "ohlcCheckedAt": "2026-11-15T11:48:11.378597+00:00"
     },
     {
       "id": "apt",
@@ -136025,9 +136025,9 @@
         {
           "t": 1794700800,
           "o": 0.4494,
-          "h": 0.4612,
+          "h": 0.4623,
           "l": 0.4333,
-          "c": 0.4543
+          "c": 0.4577
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -136036,7 +136036,7 @@
       "circulating_supply": 889030605.7094655,
       "cap_updated_at": "2026-11-15T11:46:51.000Z",
       "candleSource": "Binance Spot USDT",
-      "ohlcCheckedAt": "2026-11-15T05:47:34.837973+00:00"
+      "ohlcCheckedAt": "2026-11-15T11:48:11.378597+00:00"
     },
     {
       "id": "atom",
@@ -138031,9 +138031,9 @@
         {
           "t": 1794700800,
           "o": 1.261,
-          "h": 1.3,
+          "h": 1.313,
           "l": 1.225,
-          "c": 1.284
+          "c": 1.311
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -138042,7 +138042,7 @@
       "circulating_supply": 542011517.755874,
       "cap_updated_at": "2026-11-15T11:46:51.000Z",
       "candleSource": "Binance Spot USDT",
-      "ohlcCheckedAt": "2026-11-15T05:47:34.837973+00:00"
+      "ohlcCheckedAt": "2026-11-15T11:48:11.378597+00:00"
     },
     {
       "id": "uni",
@@ -140037,9 +140037,9 @@
         {
           "t": 1794700800,
           "o": 4.886,
-          "h": 5.093,
+          "h": 5.2,
           "l": 4.68,
-          "c": 5.026
+          "c": 5.166
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -140048,7 +140048,7 @@
       "circulating_supply": 607599895.875979,
       "cap_updated_at": "2026-11-15T11:46:51.000Z",
       "candleSource": "Binance Spot USDT",
-      "ohlcCheckedAt": "2026-11-15T05:47:34.837973+00:00"
+      "ohlcCheckedAt": "2026-11-15T11:48:11.378597+00:00"
     },
     {
       "id": "aave",
@@ -142043,9 +142043,9 @@
         {
           "t": 1794700800,
           "o": 100.65,
-          "h": 106.12,
+          "h": 107.59,
           "l": 96.6,
-          "c": 105.61
+          "c": 107.15
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -142054,7 +142054,7 @@
       "circulating_supply": 15440985.58901734,
       "cap_updated_at": "2026-11-15T11:46:51.000Z",
       "candleSource": "Binance Spot USDT",
-      "ohlcCheckedAt": "2026-11-15T05:47:34.837973+00:00"
+      "ohlcCheckedAt": "2026-11-15T11:48:11.378597+00:00"
     },
     {
       "id": "arb",
@@ -144049,9 +144049,9 @@
         {
           "t": 1794700800,
           "o": 0.128,
-          "h": 0.1335,
+          "h": 0.1363,
           "l": 0.1229,
-          "c": 0.1327
+          "c": 0.1357
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -144060,7 +144060,7 @@
       "circulating_supply": 6892115031.0,
       "cap_updated_at": "2026-11-15T11:46:51.000Z",
       "candleSource": "Binance Spot USDT",
-      "ohlcCheckedAt": "2026-11-15T05:47:34.837973+00:00"
+      "ohlcCheckedAt": "2026-11-15T11:48:11.378597+00:00"
     },
     {
       "id": "op",
@@ -146055,9 +146055,9 @@
         {
           "t": 1794700800,
           "o": 0.0798,
-          "h": 0.0823,
+          "h": 0.0829,
           "l": 0.0774,
-          "c": 0.0816
+          "c": 0.0825
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -146066,7 +146066,7 @@
       "circulating_supply": 2290771093.0,
       "cap_updated_at": "2026-11-15T11:46:51.000Z",
       "candleSource": "Binance Spot USDT",
-      "ohlcCheckedAt": "2026-11-15T05:47:34.837973+00:00"
+      "ohlcCheckedAt": "2026-11-15T11:48:11.378597+00:00"
     },
     {
       "id": "shib",
@@ -148061,9 +148061,9 @@
         {
           "t": 1794700800,
           "o": 3.83e-06,
-          "h": 3.93e-06,
+          "h": 3.98e-06,
           "l": 3.7e-06,
-          "c": 3.9e-06
+          "c": 3.95e-06
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -148072,7 +148072,7 @@
       "circulating_supply": 589238104025903.0,
       "cap_updated_at": "2026-11-15T11:46:51.000Z",
       "candleSource": "Binance Spot USDT",
-      "ohlcCheckedAt": "2026-11-15T05:47:34.837973+00:00"
+      "ohlcCheckedAt": "2026-11-15T11:48:11.378597+00:00"
     },
     {
       "id": "pepe",
@@ -150067,9 +150067,9 @@
         {
           "t": 1794700800,
           "o": 3.89e-06,
-          "h": 3.98e-06,
+          "h": 4.08e-06,
           "l": 3.75e-06,
-          "c": 3.95e-06
+          "c": 4.02e-06
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -150078,7 +150078,7 @@
       "circulating_supply": 420690000000000.0,
       "cap_updated_at": "2026-11-15T11:46:51.000Z",
       "candleSource": "Binance Spot USDT",
-      "ohlcCheckedAt": "2026-11-15T05:47:34.837973+00:00"
+      "ohlcCheckedAt": "2026-11-15T11:48:11.378597+00:00"
     },
     {
       "id": "render",
@@ -152073,9 +152073,9 @@
         {
           "t": 1794700800,
           "o": 1.361,
-          "h": 1.4,
+          "h": 1.416,
           "l": 1.311,
-          "c": 1.377
+          "c": 1.412
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -152084,7 +152084,7 @@
       "circulating_supply": 556473422.3488758,
       "cap_updated_at": "2026-11-15T11:46:51.000Z",
       "candleSource": "Binance Spot USDT",
-      "ohlcCheckedAt": "2026-11-15T05:47:34.837973+00:00"
+      "ohlcCheckedAt": "2026-11-15T11:48:11.378597+00:00"
     },
     {
       "id": "ray",
@@ -154008,7 +154008,7 @@
         3.7999998312443495e-05,
         3.7000001611886546e-05,
         3.400000059627928e-05,
-        3.48991816281341e-05
+        3.4899116144515574e-05
       ],
       "candles": [
         {
@@ -155829,7 +155829,7 @@
           "o": 3.3812764741e-05,
           "h": 3.50132504536e-05,
           "l": 3.31686533173e-05,
-          "c": 3.48991816281e-05
+          "c": 3.48991161445e-05
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -156015,13 +156015,6 @@
         5.258565268312059e-06
       ],
       "candles": [
-        {
-          "t": 1792137600,
-          "o": 1.002e-05,
-          "h": 1.012e-05,
-          "l": 9.97e-06,
-          "c": 9.98e-06
-        },
         {
           "t": 1792152000,
           "o": 9.96e-06,
@@ -157274,6 +157267,13 @@
           "h": 5.28e-06,
           "l": 5.04e-06,
           "c": 5.19e-06
+        },
+        {
+          "t": 1794729600,
+          "o": 5.19e-06,
+          "h": 5.25e-06,
+          "l": 5.13e-06,
+          "c": 5.14e-06
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -157282,7 +157282,7 @@
       "circulating_supply": 284487373216.2642,
       "cap_updated_at": "2026-11-15T11:46:51.000Z",
       "candleSource": "CoinGecko USD",
-      "ohlcCheckedAt": "2026-11-15T05:47:34.837973+00:00"
+      "ohlcCheckedAt": "2026-11-15T11:48:11.378597+00:00"
     },
     {
       "id": "wlfi",
@@ -159277,9 +159277,9 @@
         {
           "t": 1794700800,
           "o": 0.0466,
-          "h": 0.047,
+          "h": 0.0476,
           "l": 0.0458,
-          "c": 0.0466
+          "c": 0.0475
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -159288,7 +159288,7 @@
       "circulating_supply": 31780433392.0,
       "cap_updated_at": "2026-11-15T11:46:51.000Z",
       "candleSource": "Binance Spot USDT",
-      "ohlcCheckedAt": "2026-11-15T05:47:34.837973+00:00"
+      "ohlcCheckedAt": "2026-11-15T11:48:11.378597+00:00"
     },
     {
       "id": "hot",
@@ -161283,9 +161283,9 @@
         {
           "t": 1794700800,
           "o": 0.000342,
-          "h": 0.000351,
+          "h": 0.000362,
           "l": 0.000335,
-          "c": 0.000347
+          "c": 0.000354
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -161294,7 +161294,7 @@
       "circulating_supply": 177619433541.14133,
       "cap_updated_at": "2026-11-15T11:46:51.000Z",
       "candleSource": "Binance Spot USDT",
-      "ohlcCheckedAt": "2026-11-15T05:47:34.837973+00:00"
+      "ohlcCheckedAt": "2026-11-15T11:48:11.378597+00:00"
     },
     {
       "id": "ksm",
@@ -165037,7 +165037,7 @@
         {
           "t": 1794700800,
           "o": 0.255022317171,
-          "h": 0.266241133213,
+          "h": 0.266316026449,
           "l": 0.248840004206,
           "c": 0.266000002623
         }
@@ -165094,7 +165094,7 @@
         0.1482270061969757,
         0.147940993309021,
         0.12724299728870392,
-        0.133650004863739
+        0.1335899978876114
       ],
       "candles": [
         {
@@ -166915,7 +166915,7 @@
           "o": 0.127246782184,
           "h": 0.134670346975,
           "l": 0.123831048608,
-          "c": 0.133650004864
+          "c": 0.133589997888
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -167101,13 +167101,6 @@
         0.29803719237912085
       ],
       "candles": [
-        {
-          "t": 1792137600,
-          "o": 0.578462,
-          "h": 0.579609,
-          "l": 0.557718,
-          "c": 0.562357
-        },
         {
           "t": 1792152000,
           "o": 0.56236,
@@ -168360,6 +168353,13 @@
           "h": 0.297735,
           "l": 0.290216,
           "c": 0.293409
+        },
+        {
+          "t": 1794729600,
+          "o": 0.293488,
+          "h": 0.295649,
+          "l": 0.288196,
+          "c": 0.289919
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -168368,7 +168368,7 @@
       "circulating_supply": 19436019.0,
       "cap_updated_at": "2026-11-15T11:46:51.000Z",
       "candleSource": "CoinGecko USD",
-      "ohlcCheckedAt": "2026-11-15T05:47:34.837973+00:00"
+      "ohlcCheckedAt": "2026-11-15T11:48:11.378597+00:00"
     },
     {
       "id": "tai",
@@ -168547,13 +168547,6 @@
         0.002366028088798975
       ],
       "candles": [
-        {
-          "t": 1792137600,
-          "o": 0.00407671,
-          "h": 0.00412649,
-          "l": 0.00405748,
-          "c": 0.00407331
-        },
         {
           "t": 1792152000,
           "o": 0.00407487,
@@ -169806,6 +169799,13 @@
           "h": 0.00239946,
           "l": 0.00233026,
           "c": 0.00234355
+        },
+        {
+          "t": 1794729600,
+          "o": 0.00234355,
+          "h": 0.00236283,
+          "l": 0.00232842,
+          "c": 0.00235052
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -169814,7 +169814,7 @@
       "circulating_supply": 4502359.61357248,
       "cap_updated_at": "2026-11-15T11:46:51.000Z",
       "candleSource": "CoinGecko USD",
-      "ohlcCheckedAt": "2026-11-15T05:47:34.837973+00:00"
+      "ohlcCheckedAt": "2026-11-15T11:48:11.378597+00:00"
     },
     {
       "id": "virtual",
@@ -169862,7 +169862,7 @@
         0.5286239981651306,
         0.512017011642456,
         0.435355007648468,
-        0.45003920793533325
+        0.44995254278182983
       ],
       "candles": [
         {
@@ -171683,7 +171683,7 @@
           "o": 0.435636430979,
           "h": 0.450685590506,
           "l": 0.423115372658,
-          "c": 0.450039207935
+          "c": 0.449952542782
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -173685,9 +173685,9 @@
         {
           "t": 1794700800,
           "o": 183.8,
-          "h": 191.9,
+          "h": 193.8,
           "l": 178.8,
-          "c": 189.2
+          "c": 193.3
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -173696,7 +173696,7 @@
       "circulating_supply": 11729527.41931538,
       "cap_updated_at": "2026-11-15T11:46:51.000Z",
       "candleSource": "Binance Spot USDT",
-      "ohlcCheckedAt": "2026-11-15T05:47:34.837973+00:00"
+      "ohlcCheckedAt": "2026-11-15T11:48:11.378597+00:00"
     },
     {
       "id": "luna",
@@ -175691,9 +175691,9 @@
         {
           "t": 1794700800,
           "o": 0.0308,
-          "h": 0.0317,
+          "h": 0.0318,
           "l": 0.03,
-          "c": 0.0314
+          "c": 0.0317
         }
       ],
       "time": "2026-11-15T11:46:51.000Z",
@@ -175702,7 +175702,7 @@
       "circulating_supply": 709984438.91686,
       "cap_updated_at": "2026-11-15T11:46:51.000Z",
       "candleSource": "Binance Spot USDT",
-      "ohlcCheckedAt": "2026-11-15T05:47:34.837973+00:00"
+      "ohlcCheckedAt": "2026-11-15T11:48:11.378597+00:00"
     },
     {
       "id": "usdt",
@@ -175741,7 +175741,7 @@
     {
       "id": "figr_heloc",
       "symbol": "FIGR_HELOC",
-      "name": "Figure Heloc",
+      "name": "Figure HELOC",
       "value": 1.066,
       "change": null,
       "currency": "USD",
@@ -175809,7 +175809,7 @@
     {
       "id": "leo",
       "symbol": "LEO",
-      "name": "LEO Token",
+      "name": "UNUS SED LEO",
       "value": 9.11,
       "change": -2.45048,
       "currency": "USD",
@@ -175928,7 +175928,7 @@
     {
       "id": "usd1",
       "symbol": "USD1",
-      "name": "USD1",
+      "name": "World Liberty Financial USD",
       "value": 0.998021,
       "change": 0.01142,
       "currency": "USD",
@@ -175945,7 +175945,7 @@
     {
       "id": "gram",
       "symbol": "GRAM",
-      "name": "Gram (prev. Toncoin)",
+      "name": "GRAM",
       "value": 1.066,
       "change": -2.81221,
       "currency": "USD",
@@ -175996,7 +175996,7 @@
     {
       "id": "rain",
       "symbol": "RAIN",
-      "name": "Rain",
+      "name": "RAIN",
       "value": 0.0036609,
       "change": -0.78291,
       "currency": "USD",
@@ -176081,7 +176081,7 @@
     {
       "id": "usyc",
       "symbol": "USYC",
-      "name": "Circle USYC",
+      "name": "USYC",
       "value": 1.14,
       "change": 0.0,
       "currency": "USD",
@@ -176098,7 +176098,7 @@
     {
       "id": "eursafo",
       "symbol": "EURSAFO",
-      "name": "Spiko Amundi Overnight Swap Fund (EUR)",
+      "name": "EURSAFO",
       "value": 1.12,
       "change": -0.00485,
       "currency": "USD",
@@ -176166,7 +176166,7 @@
     {
       "id": "usdf",
       "symbol": "USDF",
-      "name": "Falcon USD",
+      "name": "USDF",
       "value": 0.995245,
       "change": 0.07347,
       "currency": "USD",
@@ -176200,7 +176200,7 @@
     {
       "id": "buidl",
       "symbol": "BUIDL",
-      "name": "BlackRock USD Institutional Digital Liquidity Fund",
+      "name": "BlackRock BUIDL",
       "value": 1.0,
       "change": 0.0,
       "currency": "USD",
@@ -176234,7 +176234,7 @@
     {
       "id": "u",
       "symbol": "U",
-      "name": "United Stables",
+      "name": "U",
       "value": 0.99958,
       "change": 0.02219,
       "currency": "USD",
@@ -176319,7 +176319,7 @@
     {
       "id": "htx",
       "symbol": "HTX",
-      "name": "HTX DAO",
+      "name": "HTX",
       "value": 1.49e-06,
       "change": -1.30142,
       "currency": "USD",
@@ -176455,7 +176455,7 @@
     {
       "id": "btw",
       "symbol": "BTW",
-      "name": "Bitway",
+      "name": "BTW",
       "value": 0.613333,
       "change": -7.79016,
       "currency": "USD",
@@ -176489,7 +176489,7 @@
     {
       "id": "ousd",
       "symbol": "OUSD",
-      "name": "Open USD",
+      "name": "Origin Dollar",
       "value": 0.999854,
       "change": 0.06909,
       "currency": "USD",
@@ -176506,7 +176506,7 @@
     {
       "id": "kcs",
       "symbol": "KCS",
-      "name": "KuCoin",
+      "name": "KuCoin Token",
       "value": 6.2,
       "change": -4.3547,
       "currency": "USD",
@@ -176540,7 +176540,7 @@
     {
       "id": "gt",
       "symbol": "GT",
-      "name": "Gate",
+      "name": "GateToken",
       "value": 7.93,
       "change": -7.95577,
       "currency": "USD",
@@ -176557,7 +176557,7 @@
     {
       "id": "pol",
       "symbol": "POL",
-      "name": "POL (ex-MATIC)",
+      "name": "POL",
       "value": 0.081391,
       "change": -2.75123,
       "currency": "USD",
@@ -176642,7 +176642,7 @@
     {
       "id": "lit",
       "symbol": "LIT",
-      "name": "Lighter",
+      "name": "LIT",
       "value": 3.02,
       "change": -2.17989,
       "currency": "USD",
@@ -176710,7 +176710,7 @@
     {
       "id": "ustb",
       "symbol": "USTB",
-      "name": "Invesco Short Duration US Government Securities Fund",
+      "name": "USTB",
       "value": 11.28,
       "change": 0.0,
       "currency": "USD",
@@ -176761,7 +176761,7 @@
     {
       "id": "pearl",
       "symbol": "PEARL",
-      "name": "Pearl",
+      "name": "PEARL",
       "value": 1.51,
       "change": -1.40213,
       "currency": "USD",
@@ -176778,7 +176778,7 @@
     {
       "id": "jaaa",
       "symbol": "JAAA",
-      "name": "Janus Henderson Anemoy AAA CLO Fund",
+      "name": "JAAA",
       "value": 1.056,
       "change": 0.0,
       "currency": "USD",
@@ -176846,7 +176846,7 @@
     {
       "id": "ethfi",
       "symbol": "ETHFI",
-      "name": "Ether.fi",
+      "name": "ether.fi",
       "value": 0.506254,
       "change": -7.07219,
       "currency": "USD",
@@ -176965,7 +176965,7 @@
     {
       "id": "pieverse",
       "symbol": "PIEVERSE",
-      "name": "Pieverse",
+      "name": "PIEVERSE",
       "value": 1.92,
       "change": 8.26387,
       "currency": "USD",
@@ -176982,7 +176982,7 @@
     {
       "id": "eutbl",
       "symbol": "EUTBL",
-      "name": "Spiko EU T-Bills Money Market Fund",
+      "name": "EUTBL",
       "value": 1.17,
       "change": -0.00485,
       "currency": "USD",
@@ -177033,7 +177033,7 @@
     {
       "id": "stable",
       "symbol": "STABLE",
-      "name": "​​Stable",
+      "name": "STABLE",
       "value": 0.02489635,
       "change": -4.76589,
       "currency": "USD",
@@ -177050,7 +177050,7 @@
     {
       "id": "crypto-5e01-5b89-4eba-751f",
       "symbol": "币安人生",
-      "name": "币安人生 (BinanceLife)",
+      "name": "币安人生",
       "value": 0.474155,
       "change": 3.72857,
       "currency": "USD",
@@ -177101,7 +177101,7 @@
     {
       "id": "hash",
       "symbol": "HASH",
-      "name": "Provenance Blockchain",
+      "name": "HASH",
       "value": 0.00643082,
       "change": 0.20756,
       "currency": "USD",
@@ -177118,7 +177118,7 @@
     {
       "id": "reusd",
       "symbol": "REUSD",
-      "name": "Re Protocol reUSD",
+      "name": "REUSD",
       "value": 1.11,
       "change": 0.00701,
       "currency": "USD",
@@ -177203,7 +177203,7 @@
     {
       "id": "sofid",
       "symbol": "SOFID",
-      "name": "SoFiUSD",
+      "name": "SOFID",
       "value": 0.999496,
       "change": 0.00534,
       "currency": "USD",
@@ -177220,7 +177220,7 @@
     {
       "id": "aero",
       "symbol": "AERO",
-      "name": "Aero",
+      "name": "Aerodrome Finance",
       "value": 0.441145,
       "change": -3.16073,
       "currency": "USD",
@@ -177237,7 +177237,7 @@
     {
       "id": "ff",
       "symbol": "FF",
-      "name": "Falcon Finance",
+      "name": "FF",
       "value": 0.094916,
       "change": 4.38137,
       "currency": "USD",
@@ -177254,7 +177254,7 @@
     {
       "id": "ousg",
       "symbol": "OUSG",
-      "name": "Ondo Short-Term U.S. Government Bond Fund",
+      "name": "OUSG",
       "value": 117.25,
       "change": 0.0,
       "currency": "USD",
@@ -177356,7 +177356,7 @@
     {
       "id": "apxusd",
       "symbol": "APXUSD",
-      "name": "apxUSD",
+      "name": "APXUSD",
       "value": 0.984956,
       "change": -0.77038,
       "currency": "USD",
@@ -177390,7 +177390,7 @@
     {
       "id": "sun",
       "symbol": "SUN",
-      "name": "Sun Token",
+      "name": "SUN",
       "value": 0.0148607,
       "change": -1.41232,
       "currency": "USD",
@@ -177407,7 +177407,7 @@
     {
       "id": "drv",
       "symbol": "DRV",
-      "name": "Derive",
+      "name": "DRV",
       "value": 0.286888,
       "change": 7.4973,
       "currency": "USD",
@@ -177458,7 +177458,7 @@
     {
       "id": "ake",
       "symbol": "AKE",
-      "name": "Akedo",
+      "name": "AKE",
       "value": 0.01064608,
       "change": -11.56823,
       "currency": "USD",
@@ -177509,7 +177509,7 @@
     {
       "id": "ub",
       "symbol": "UB",
-      "name": "Unibase",
+      "name": "UB",
       "value": 0.104705,
       "change": 1.16576,
       "currency": "USD",
@@ -177526,7 +177526,7 @@
     {
       "id": "apepe",
       "symbol": "APEPE",
-      "name": "Ape and Pepe",
+      "name": "APEPE",
       "value": 1.21e-06,
       "change": -0.6618,
       "currency": "USD",
@@ -177543,7 +177543,7 @@
     {
       "id": "safo",
       "symbol": "SAFO",
-      "name": "Spiko Amundi Overnight Swap Fund",
+      "name": "SAFO",
       "value": 1.028,
       "change": 0.0,
       "currency": "USD",
@@ -177645,7 +177645,7 @@
     {
       "id": "pc0000031",
       "symbol": "PC0000031",
-      "name": "Tradable NA Rent Financing Platform SSTN",
+      "name": "PC0000031",
       "value": 1.0,
       "change": null,
       "currency": "USD",
@@ -177679,7 +177679,7 @@
     {
       "id": "frax",
       "symbol": "FRAX",
-      "name": "Legacy Frax Dollar",
+      "name": "Frax",
       "value": 0.993434,
       "change": 0.26239,
       "currency": "USD",
@@ -177713,7 +177713,7 @@
     {
       "id": "bp",
       "symbol": "BP",
-      "name": "Backpack",
+      "name": "BP",
       "value": 0.824941,
       "change": -0.39827,
       "currency": "USD",
@@ -177764,7 +177764,7 @@
     {
       "id": "ozo",
       "symbol": "OZO",
-      "name": "Ozone Chain",
+      "name": "OZO",
       "value": 0.216736,
       "change": 2.24936,
       "currency": "USD",
@@ -177781,7 +177781,7 @@
     {
       "id": "cap",
       "symbol": "CAP",
-      "name": "Cap",
+      "name": "CAP",
       "value": 0.105992,
       "change": -2.52847,
       "currency": "USD",
@@ -177832,7 +177832,7 @@
     {
       "id": "nft",
       "symbol": "NFT",
-      "name": "AINFT",
+      "name": "APENFT",
       "value": 1.90204e-07,
       "change": -1.93541,
       "currency": "USD",
@@ -177866,7 +177866,7 @@
     {
       "id": "eurcv",
       "symbol": "EURCV",
-      "name": "EUR CoinVertible",
+      "name": "EURCV",
       "value": 1.098,
       "change": -0.19385,
       "currency": "USD",
@@ -177883,7 +177883,7 @@
     {
       "id": "mglo",
       "symbol": "MGLO",
-      "name": "Midas Fasanara Global Open",
+      "name": "MGLO",
       "value": 1.011,
       "change": 0.0,
       "currency": "USD",
@@ -177917,7 +177917,7 @@
     {
       "id": "mon",
       "symbol": "MON",
-      "name": "Monad",
+      "name": "MON",
       "value": 0.01604771,
       "change": 0.87379,
       "currency": "USD",
@@ -177934,7 +177934,7 @@
     {
       "id": "shfl",
       "symbol": "SHFL",
-      "name": "Shuffle",
+      "name": "SHFL",
       "value": 0.361698,
       "change": -1.44809,
       "currency": "USD",
@@ -177951,7 +177951,7 @@
     {
       "id": "btse",
       "symbol": "BTSE",
-      "name": "BTSE Token",
+      "name": "BTSE",
       "value": 1.15,
       "change": -0.14212,
       "currency": "USD",
@@ -178070,7 +178070,7 @@
     {
       "id": "zbcn",
       "symbol": "ZBCN",
-      "name": "Zebec Network",
+      "name": "ZBCN",
       "value": 0.00178307,
       "change": 0.9757,
       "currency": "USD",
@@ -178104,7 +178104,7 @@
     {
       "id": "ustbl",
       "symbol": "USTBL",
-      "name": "Spiko US T-Bills Money Market Fund",
+      "name": "USTBL",
       "value": 1.1,
       "change": 0.0,
       "currency": "USD",
@@ -178138,7 +178138,7 @@
     {
       "id": "spcxb",
       "symbol": "SPCXB",
-      "name": "SpaceX (bStocks Tokenized Stock)",
+      "name": "SPCXB",
       "value": 138.25,
       "change": 1.7242,
       "currency": "USD",
@@ -178155,7 +178155,7 @@
     {
       "id": "geod",
       "symbol": "GEOD",
-      "name": "Geodnet",
+      "name": "GEOD",
       "value": 0.207333,
       "change": -4.71918,
       "currency": "USD",
@@ -178189,7 +178189,7 @@
     {
       "id": "pc0000033",
       "symbol": "PC0000033",
-      "name": "Tradable APAC Diversified Finance Provider SSTN",
+      "name": "PC0000033",
       "value": 1.0,
       "change": 0.0,
       "currency": "USD",
@@ -178206,7 +178206,7 @@
     {
       "id": "cards",
       "symbol": "CARDS",
-      "name": "Collector Crypt",
+      "name": "CARDS",
       "value": 0.173493,
       "change": -3.96094,
       "currency": "USD",
@@ -178240,7 +178240,7 @@
     {
       "id": "anvl",
       "symbol": "ANVL",
-      "name": "Anvil",
+      "name": "ANVL",
       "value": 0.00156038,
       "change": -17.22214,
       "currency": "USD",
@@ -178257,7 +178257,7 @@
     {
       "id": "fluid",
       "symbol": "FLUID",
-      "name": "Fluid",
+      "name": "FLUID",
       "value": 1.81,
       "change": -4.37696,
       "currency": "USD",
@@ -178291,7 +178291,7 @@
     {
       "id": "usdai",
       "symbol": "USDAI",
-      "name": "USDai",
+      "name": "USDAI",
       "value": 0.999421,
       "change": 0.02164,
       "currency": "USD",
@@ -178308,7 +178308,7 @@
     {
       "id": "nvdab",
       "symbol": "NVDAB",
-      "name": "NVIDIA (bStocks Tokenized Stock)",
+      "name": "NVDAB",
       "value": 160.88,
       "change": -0.75877,
       "currency": "USD",
@@ -178359,7 +178359,7 @@
     {
       "id": "bat",
       "symbol": "BAT",
-      "name": "Basic Attention",
+      "name": "Basic Attention Token",
       "value": 0.093842,
       "change": -8.61817,
       "currency": "USD",
@@ -178393,7 +178393,7 @@
     {
       "id": "ausd",
       "symbol": "AUSD",
-      "name": "AUSD",
+      "name": "Agora Dollar",
       "value": 0.999329,
       "change": 0.0095,
       "currency": "USD",
@@ -178410,7 +178410,7 @@
     {
       "id": "gusd",
       "symbol": "GUSD",
-      "name": "GUSD",
+      "name": "Gemini Dollar",
       "value": 0.997857,
       "change": 0.02629,
       "currency": "USD",
@@ -178427,7 +178427,7 @@
     {
       "id": "zama",
       "symbol": "ZAMA",
-      "name": "Zama",
+      "name": "ZAMA",
       "value": 0.054944,
       "change": -5.04905,
       "currency": "USD",
@@ -178461,7 +178461,7 @@
     {
       "id": "gomining",
       "symbol": "GOMINING",
-      "name": "GoMining Token",
+      "name": "GOMINING",
       "value": 0.357738,
       "change": -1.64173,
       "currency": "USD",
@@ -178478,7 +178478,7 @@
     {
       "id": "eigen",
       "symbol": "EIGEN",
-      "name": "EigenCloud (prev. EigenLayer)",
+      "name": "EigenLayer",
       "value": 0.133671,
       "change": -7.49406,
       "currency": "USD",
@@ -178529,7 +178529,7 @@
     {
       "id": "apyusd",
       "symbol": "APYUSD",
-      "name": "apyUSD",
+      "name": "APYUSD",
       "value": 1.41,
       "change": -0.50954,
       "currency": "USD",
@@ -178563,7 +178563,7 @@
     {
       "id": "br",
       "symbol": "BR",
-      "name": "Bedrock",
+      "name": "BR",
       "value": 0.429461,
       "change": -6.97452,
       "currency": "USD",
@@ -178614,7 +178614,7 @@
     {
       "id": "pc0000097",
       "symbol": "PC0000097",
-      "name": "Tradable LatAm Fintech SSTN",
+      "name": "PC0000097",
       "value": 1.0,
       "change": 0.0,
       "currency": "USD",
@@ -178631,7 +178631,7 @@
     {
       "id": "q",
       "symbol": "Q",
-      "name": "Quack AI",
+      "name": "Q",
       "value": 0.02462821,
       "change": -9.38591,
       "currency": "USD",
@@ -178665,7 +178665,7 @@
     {
       "id": "crclb",
       "symbol": "CRCLB",
-      "name": "Circle Internet Group (bStocks Tokenized Stock)",
+      "name": "CRCLB",
       "value": 58.07,
       "change": -4.04786,
       "currency": "USD",
@@ -178682,7 +178682,7 @@
     {
       "id": "coco",
       "symbol": "COCO",
-      "name": "coco",
+      "name": "COCO",
       "value": 0.132527,
       "change": -1.89636,
       "currency": "USD",
@@ -178699,7 +178699,7 @@
     {
       "id": "usd3",
       "symbol": "USD3",
-      "name": "3Jane USD3",
+      "name": "USD3",
       "value": 1.19,
       "change": 0.00052,
       "currency": "USD",
@@ -178716,7 +178716,7 @@
     {
       "id": "mx",
       "symbol": "MX",
-      "name": "MX",
+      "name": "MX Token",
       "value": 1.41,
       "change": 0.07304,
       "currency": "USD",
@@ -178784,7 +178784,7 @@
     {
       "id": "bc",
       "symbol": "BC",
-      "name": "BCGame Coin",
+      "name": "BC",
       "value": 0.03883045,
       "change": -0.99375,
       "currency": "USD",
@@ -178818,7 +178818,7 @@
     {
       "id": "sn51",
       "symbol": "SN51",
-      "name": "lium",
+      "name": "SN51",
       "value": 22.37,
       "change": -8.96117,
       "currency": "USD",
@@ -178835,7 +178835,7 @@
     {
       "id": "vsn",
       "symbol": "VSN",
-      "name": "Vision",
+      "name": "VSN",
       "value": 0.03153253,
       "change": -2.41199,
       "currency": "USD",
