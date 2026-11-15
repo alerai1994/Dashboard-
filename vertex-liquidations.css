@@ -2,9 +2,6 @@
    Color cells come ONLY from real authorized liquidation intensity data. */
 .vlx{min-width:0;display:grid;gap:14px;--vlx-bg:#14191f;color:#edf1f7}
 .vlx [hidden]{display:none!important}
-.vlx-switch{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 3px}
-.vlx-switch button{background:var(--surface);color:var(--muted);border:1px solid var(--line);border-radius:11px;padding:10px 15px;cursor:pointer;font:650 13px Inter,sans-serif}
-.vlx-switch button.is-active{background:#183551;border-color:#3685d3;color:#c8eeff}
 .vlx-native{background:var(--vlx-bg);border:1px solid #303845;border-radius:18px;padding:17px 13px 15px;min-width:0;box-shadow:0 12px 40px #0004}
 .vlx-head h2{font-size:clamp(18px,2.4vw,29px);font-weight:530;text-align:center;margin:0 0 16px;letter-spacing:-.01em;color:#edf0f8}
 .vlx-models{display:flex;align-items:center;justify-content:center;gap:3px;margin:0 auto 12px}
@@ -17,7 +14,7 @@
 .vlx-controls select,.vlx-controls button{background:#252d41;color:#fff;border:1px solid #546582;border-radius:9px;min-height:37px;padding:7px 10px;font:600 13px Inter,sans-serif}
 .vlx-controls button{cursor:pointer;font-size:20px;line-height:1}
 .vlx-controls a{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;color:#d2e9fc;border:1px solid #456583;border-radius:9px;min-height:37px;padding:6px 11px;font:600 12px Inter,sans-serif}
-.vlx-controls :is(select,button,a):focus-visible,.vlx-switch button:focus-visible,.vlx-models button:focus-visible{outline:2px solid #82dcff;outline-offset:2px}
+.vlx-controls :is(select,button,a):focus-visible,.vlx-models button:focus-visible{outline:2px solid #82dcff;outline-offset:2px}
 .vlx-legend{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;font:600 11px Inter,sans-serif;margin-bottom:10px;color:#ccd3e1}
 .vlx-legend span{display:inline-flex;gap:5px;align-items:center}
 .vlx-legend i{height:8px;width:8px;display:inline-block}
@@ -43,17 +40,5 @@
 .vlx-status [data-error=true]{color:#ff9db1}
 .vlx-notice{margin:10px 5px 2px;color:#b3becf;font:400 12px/1.65 Inter,sans-serif}
 .vlx-notice strong{color:#e0e7f3}
-.vlx-live{display:grid;gap:14px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px;min-width:0}
-.vlx-live h2{margin:0;font:750 22px Inter,sans-serif}
-.vlx-live-intro{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
-.vlx-live-tools{display:flex;align-items:center;flex-wrap:wrap;gap:10px}
-.vlx-live-tools label{font-weight:650;font-size:12px;color:var(--muted)}
-.vlx-live-tools select,.vlx-live-tools button{background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 13px;font:inherit;cursor:pointer}
-.vlx-live-frames{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(280px,1fr);gap:14px;min-width:0}
-.vlx-live-frames article{min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:10px}
-.vlx-live-frames h3{font-size:15px;margin:7px 3px 10px}
-.vlx-live-frames iframe{border:0;border-radius:9px;display:block;background:#101824;width:100%;min-height:480px}
-.vlx-credit{margin:0;color:var(--muted);font-size:12px;line-height:1.5}
-.vlx-credit a{color:var(--text)}
 @media(max-width:1080px){.vlx-live-frames{grid-template-columns:minmax(0,1fr)}.vlx-live-frames iframe{height:450px}}
 @media(max-width:700px){.vlx-native{padding:12px 5px 12px;border-radius:13px}.vlx-head h2{padding:0 6px;font-size:18px}.vlx-controls{justify-content:center;padding:0 5px}.vlx-controls select{max-width:150px}.vlx-legend{gap:7px;font-size:10px}.vlx-plot{grid-template-columns:23px minmax(0,1fr);gap:4px}.vlx-gradient .vlx-scale-bar{width:16px}.vlx-gradient span{font-size:8px;max-width:23px}.vlx-canvas-wrap canvas{height:440px}.vlx-empty{top:24%;left:7%;right:7%;padding:13px}.vlx-empty-actions{flex-direction:column}.vlx-status{padding-left:7px;padding-right:7px}.vlx-notice{padding:0 5px}.vlx-plot{overflow:hidden}}
