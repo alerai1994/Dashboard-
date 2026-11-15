@@ -1,0 +1,47 @@
+name: Vertex Market Force Verified OHLC Candles
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/scripts/market-force-ohlc.py
+      - .github/workflows/market-force-ohlc.yml
+  schedule:
+    - cron: '39 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: vertex-market-force-verified-ohlc
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate OHLC collector
+        run: python3 -m py_compile .github/scripts/market-force-ohlc.py
+      - name: Gather exact ID-matched real candles for crypto assets
+        run: python3 .github/scripts/market-force-ohlc.py
+      - name: Commit verified OHLC snapshots (no fabricated candles)
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p chart-history/crypto/ohlc
+          git add chart-history/crypto/ohlc/
+          if git diff --cached --quiet; then exit 0; fi
+          mkdir -p "$RUNNER_TEMP/market-ohlc-snapshot"
+          cp -R chart-history/crypto/ohlc/. "$RUNNER_TEMP/market-ohlc-snapshot/"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            mkdir -p chart-history/crypto/ohlc
+            cp -R "$RUNNER_TEMP/market-ohlc-snapshot/." chart-history/crypto/ohlc/
+            git add chart-history/crypto/ohlc/
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -m "data: publish real crypto OHLC candles [skip ci]"
+            if git push origin HEAD:main; then exit 0; fi
+            sleep 2
+          done
+          exit 1
