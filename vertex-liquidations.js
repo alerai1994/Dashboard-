@@ -229,13 +229,17 @@ function paint(){
  const scale=document.getElementById('vlxMaximum');
  if(scale)scale.textContent=dataset?'Intensità max '+fmt(dataset.max,0):'Intensità';
  if(!obj){
+  showLevelPanel([]);
   ctx.strokeStyle='rgba(218,218,235,.08)';ctx.lineWidth=1;
   for(let k=0;k<=5;k++){const y=top+k*plotH/5;ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(left+plotW,y);ctx.stroke();}
   return;
  }
  const {levels,candles,heat,max}=obj;
- const minPrice=Math.min(...levels,...candles.map(c=>c.l));
- const maxPrice=Math.max(...levels,...candles.map(c=>c.h));
+ const overlays=activeLevelLines();
+ showLevelPanel(overlays);
+ const values=overlays.map(item=>item.price);
+ const minPrice=Math.min(...levels,...candles.map(c=>c.l),...values);
+ const maxPrice=Math.max(...levels,...candles.map(c=>c.h),...values);
  const span=Math.max(1,maxPrice-minPrice),X=i=>left+(i+.5)*plotW/candles.length;
  const Y=v=>top+(maxPrice-v)/span*plotH;
  const cellW=Math.max(1,plotW/candles.length+0.55);
@@ -270,6 +274,18 @@ function paint(){
   const a=Y(Math.max(c.o,c.c)),b=Y(Math.min(c.o,c.c));
   ctx.fillRect(x-bodyW/2,a,bodyW,Math.max(1,b-a));
  }
+ for(const line of overlays){
+  const yy=Y(line.price);
+  if(yy<top||yy>top+plotH)continue;
+  const shade=line.side==='above'?'#ff849a':'#29e5bc';
+  ctx.save();ctx.globalAlpha=.9;ctx.strokeStyle=shade;ctx.lineWidth=1.5;
+  ctx.setLineDash([7,5]);ctx.beginPath();ctx.moveTo(left,yy);
+  ctx.lineTo(left+plotW,yy);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle=shade;ctx.font='600 10px Inter,sans-serif';ctx.textAlign='right';
+  const label=(line.kind==='model'?'CG ':'TEOR. ')+fmt(line.price,line.price>=100?2:6);
+  ctx.fillText(label,left+plotW-5,Math.max(top+11,Math.min(yy-5,top+plotH-2)));
+  ctx.restore();
+ }
  const dateFmt=new Intl.DateTimeFormat('it-IT',{day:'2-digit',month:'short',timeZone:'UTC'});
  ctx.fillStyle='#d0c9e2';ctx.font='10px Inter,sans-serif';ctx.textAlign='center';
  for(let j=0;j<=7;j++){const ix=Math.min(candles.length-1,Math.floor((candles.length-1)*j/7));ctx.fillText(dateFmt.format(new Date(candles[ix].t*1000)),X(ix),H-bottom+20)}
@@ -291,7 +307,7 @@ function status(text,error=false){
 }
 function setData(raw,label){
  const parsed=normalize(raw);
- dataset=parsed;priceOnly=null;sourceLabel=label;verifiedIdentity=parsed.verified;
+ dataset=parsed;priceOnly=null;sourceLabel=label;verifiedIdentity=parsed.verified;priceQuote='USDT';
  const heading=document.getElementById('vlxTitle');
  if(heading)heading.textContent=verifiedIdentity?nativeTitle():
   'Liquidation Heatmap · origine mercato non verificata';
@@ -319,7 +335,7 @@ async function loadPriceOnly(current){
   priceOnly={candles:result.candles,levels:[Math.min(...lows),Math.max(...highs)],
    heat:[],max:0};
   dataset=null;
-  const quote=result.quote||'USDT';
+  const quote=result.quote||'USDT';priceQuote=quote;
   const title=document.getElementById('vlxTitle');
   if(title)title.textContent=coin+'/'+quote+' · Prezzi OHLC reali (non liquidation heatmap)';
   const latest=new Date(result.latest*1000).toLocaleString('it-IT');
@@ -376,6 +392,10 @@ function modelSelect(next){
  activate();
 }
 document.addEventListener('change',e=>{
+ if(e.target?.id==='vlxLeverage'){
+  const next=Number(e.target.value);
+  if([5,10,20,50].includes(next)){leverage=next;paint();}
+ }
  if(e.target?.id==='vertexLiqCoin')updateCoin(e.target.value);
  if(e.target?.id==='vlxRange'&&validRanges.has(e.target.value)){
   range=e.target.value;dataset=null;priceOnly=null;sourceLabel='';document.getElementById('vlxTitle').textContent=nativeTitle();activate();
@@ -425,5 +445,6 @@ document.addEventListener('mouseout',e=>{
  if(e.target?.id==='vlxCanvas'){const hover=document.getElementById('vlxHover');if(hover)hover.hidden=true}
 });
 window.addEventListener('resize',()=>{if(dataset||priceOnly)paint()});
-window.VertexLiquidations=Object.freeze({page,activate,select:coin=>updateCoin(coin),parse:normalize});
+window.VertexLiquidations=Object.freeze({page,activate,select:coin=>updateCoin(coin),parse:normalize,
+ computeModelLevels:liquidationZones,computeTheoreticalLevels:theoreticalLevels});
 })();
