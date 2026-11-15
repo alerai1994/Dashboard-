@@ -243,7 +243,41 @@ assert(liquidationPage.includes('https://blockmetric.io/embed/heatmap?coin=BTC')
 assert(liquidationPage.includes('https://blockmetric.io/embed/liq-levels?coin=BTC'),
  'Selected crypto must also show corresponding liquidation levels');
 assert(liquidationPage.includes('Dati di'),'Mandatory visible attribution must be present');
-assert(!liquidationPage.includes('1 Year'),'Do not claim year-long historical heatmap availability');
+assert(liquidationPage.includes('id="vlxCanvas"'),
+ 'CoinGlass-style native annual heatmap canvas must be present');
+assert(liquidationPage.includes('Binance BTC/USDT Liquidation Heatmap (1 anno)'),
+ 'Native chart title must match the reference market and period');
+assert(liquidationPage.includes('id="vlxThresholdInput"'),
+ 'The reference-style liquidity threshold control is missing');
+assert(liquidationPage.includes('vlx-gradient'),
+ 'Liquidation intensity scale must be visible on the left');
+assert(liquidationPage.includes('data-vlx-model="model2"'),
+ 'Liquidation heatmap models 1/2/3 must be selectable');
+assert(liquidationPage.includes('id="vlxFile"'),
+ 'The native chart must accept authorized API data files');
+assert(liquidationPage.includes('Storico CoinGlass non collegato'),
+ 'Empty annual data must be explicitly disclosed, never invented');
+assert(liquidationPage.includes('https://www.coinglass.com/pro/futures/LiquidationHeatMap'),
+ 'Provide the original CoinGlass chart when API data is unavailable');
+const liqSource=read('vertex-liquidations.js');
+assert(!liqSource.includes('Math.random('),'Never invent liquidation heatmap colors');
+assert(liqSource.includes('d.liquidation_leverage_data'),
+ 'Real liquidation heatmap data must be validated before drawing');
+assert(source.includes('window.VertexLiquidations?.activate()'),
+ 'Native heatmap must activate when its page opens');
+const t0=1794660000;
+const validHeatmap={
+ exchange:'Binance',symbol:'BTCUSDT',range:'1y',model:'model1',
+ data:{y_axis:[100,105,110],
+ price_candlesticks:[[t0,100,104,99,102,1000],[t0+3600,102,110,101,108,1000]],
+ liquidation_leverage_data:[[0,1,6],[1,2,10]],update_time:1794745000000}
+};
+const parsedHeatmap=appWindow.VertexLiquidations.parse(validHeatmap);
+assert(parsedHeatmap.verified,'CoinGlass data must verify explicit pair/model/range metadata');
+assert.equal(parsedHeatmap.heat.length,2);
+assert.equal(parsedHeatmap.max,10);
+assert.throws(()=>appWindow.VertexLiquidations.parse({...validHeatmap,symbol:'ETHUSDT'}),
+ /differente/,'A mismatched exchange or pair must never display as BTCUSDT');
 assert(html.includes('data-page="liquidations"'),'New sidebar heatmap entry missing');
 assert(html.includes('vertex-liquidations.js?v='),'Liquidation module script not loaded');
 assert(html.includes('vertex-liquidations.css?v='),'Liquidation module style not loaded');
