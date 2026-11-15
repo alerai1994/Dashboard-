@@ -6,6 +6,7 @@ const read=path=>fs.readFileSync(path,'utf8');
 const source=read('script.js'),html=read('index.html'),css=read('style.css');
 new Function(source);
 new Function(read('price-board.js'));
+new Function(read('vertex-liquidations-prices.js'));
 new Function(read('vertex-liquidations.js'));
 new Function(read('crypto-extended.js'));
 const screenshotCatalog=JSON.parse(read('crypto-extended.js').match(/window\.__VERTEX_EXTRA_CRYPTO__\s*=\s*(\[[\s\S]*?\]);/)[1]);
@@ -234,6 +235,14 @@ assert(!priceBoardHtml.includes('⛶ Schermo intero'),'Fullscreen toggle must no
 const priceBoardSource=read('price-board.js');
 assert(priceBoardSource.includes("expanded?'✕':'⛶'"),'Fullscreen exit must show only the exit icon');
 assert(!priceBoardSource.includes("'✕ Esci dallo schermo intero'"),'Fullscreen exit must not render visible text');
+new Function('window',read('vertex-liquidations-prices.js'))(appWindow);
+assert.equal(typeof appWindow.VertexLiqPriceFallback.load,'function',
+ 'The price-only backup must load real OHLC candles for Binance pairs');
+const priceRows=appWindow.VertexLiqPriceFallback.parse([
+ [1794744000000,'20','24','19','22'],[1794744300000,'22','25','21','24']
+]);
+assert.equal(priceRows.length,2,'Binance candle parser must accept genuine OHLC inputs');
+assert.deepEqual(priceRows.map(x=>[x.o,x.h,x.l,x.c]),[[20,24,19,22],[22,25,21,24]]);
 new Function('window','document','localStorage',read('vertex-liquidations.js'))(appWindow,document,emptyStorage);
 assert.equal(typeof appWindow.VertexLiquidations.page,'function','Liquidation Heatmap module unavailable');
 const liquidationPage=app.PAGE_RENDERERS.liquidations();
@@ -248,6 +257,8 @@ assert(!liquidationPage.includes('Blockmetric'),
  'Removed Blockmetric embed must not appear on the page');
 assert(liquidationPage.includes('id="vlxCanvas"'),
  'CoinGlass-style native annual heatmap canvas must be present');
+assert(liquidationPage.includes('id="vlxPriceFallback"'),
+ 'Price fallback must transparently explain absent CoinGlass liquidation levels');
 assert(liquidationPage.includes('Binance BTC/USDT Liquidation Heatmap (1 anno)'),
  'Native chart title must match the reference market and period');
 assert(liquidationPage.includes('id="vlxThresholdInput"'),
@@ -268,6 +279,15 @@ const liqSource=read('vertex-liquidations.js');
 assert(!liqSource.includes('Math.random('),'Never invent liquidation heatmap colors');
 assert(liqSource.includes('d.liquidation_leverage_data'),
  'Real liquidation heatmap data must be validated before drawing');
+assert(liqSource.includes('async function loadPriceOnly('),
+ 'Unavailable CoinGlass data must trigger genuine OHLC price recovery');
+assert(liqSource.includes('const obj=dataset||priceOnly;'),
+ 'The chart must render real price-only OHLC when liquidation intensities are absent');
+assert(liqSource.includes('loadPriceOnly(current);'),
+ 'Missing CoinGlass archive must not leave a blank chart');
+assert(html.indexOf('vertex-liquidations-prices.js?v=')<
+ html.indexOf('vertex-liquidations.js?v='),
+ 'Verified price loader must load before CoinGlass heatmap module');
 assert(source.includes('window.VertexLiquidations?.activate()'),
  'Native heatmap must activate when its page opens');
 const t0=1794660000;
