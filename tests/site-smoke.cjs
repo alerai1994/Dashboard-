@@ -255,8 +255,16 @@ assert(liquidationPage.includes('data-vlx-model="model2"'),
  'Liquidation heatmap models 1/2/3 must be selectable');
 assert(liquidationPage.includes('id="vlxFile"'),
  'The native chart must accept authorized API data files');
-assert(liquidationPage.includes('Storico CoinGlass non collegato'),
- 'Empty annual data must be explicitly disclosed, never invented');
+assert(liquidationPage.includes('Storico annuale CoinGlass: dati autorizzati richiesti'),
+ 'Annual API access requirement must be disclosed clearly');
+assert(liquidationPage.includes('class="vlx-native" hidden'),
+ 'Annual CoinGlass placeholder must not be the default blank screen');
+assert(liquidationPage.includes('class="vlx-live"'),
+ 'The actual 24H liquidation heatmap must be shown by default');
+assert(liquidationPage.includes('data-vlx-mode="free"'),
+ 'Users must be able to switch to an available real data source');
+assert(liquidationPage.includes('Visualizza heatmap LIVE 24H'),
+ 'The annual unconnected message must link directly back to working live heatmap');
 assert(liquidationPage.includes('https://www.coinglass.com/pro/futures/LiquidationHeatMap'),
  'Provide the original CoinGlass chart when API data is unavailable');
 const liqSource=read('vertex-liquidations.js');
