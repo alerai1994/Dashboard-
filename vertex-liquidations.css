@@ -40,5 +40,4 @@
 .vlx-status [data-error=true]{color:#ff9db1}
 .vlx-notice{margin:10px 5px 2px;color:#b3becf;font:400 12px/1.65 Inter,sans-serif}
 .vlx-notice strong{color:#e0e7f3}
-@media(max-width:1080px){.vlx-live-frames{grid-template-columns:minmax(0,1fr)}.vlx-live-frames iframe{height:450px}}
 @media(max-width:700px){.vlx-native{padding:12px 5px 12px;border-radius:13px}.vlx-head h2{padding:0 6px;font-size:18px}.vlx-controls{justify-content:center;padding:0 5px}.vlx-controls select{max-width:150px}.vlx-legend{gap:7px;font-size:10px}.vlx-plot{grid-template-columns:23px minmax(0,1fr);gap:4px}.vlx-gradient .vlx-scale-bar{width:16px}.vlx-gradient span{font-size:8px;max-width:23px}.vlx-canvas-wrap canvas{height:440px}.vlx-empty{top:24%;left:7%;right:7%;padding:13px}.vlx-empty-actions{flex-direction:column}.vlx-status{padding-left:7px;padding-right:7px}.vlx-notice{padding:0 5px}.vlx-plot{overflow:hidden}}
