@@ -61,8 +61,31 @@ assert(source.includes("marketForceBullishPeriod=ASSET_BY_ID[id]?.group==='crypt
  'Forza mercato must show historical candles on crypto selection');
 assert(source.includes("MARKET_FORCE_BULLISH_PERIODS=['1H','4H','1D','1W','1A']"),
  'Forza mercato requires annual candles timeframe');
-assert(source.includes("data.sampled?'Candele campionate'"),
- 'Forza mercato must label sampled candles distinctly');
+assert(source.includes("sampled?'Candele campionate'"),
+ 'Forza mercato must label real vs sampled candles distinctly');
+assert(source.includes('function forceMarketSampledCandles('),
+ 'Forza mercato needs truthful sampled candles when exchange OHLC is absent');
+assert(source.includes('function forceMarketFetchTrueOHLC('),
+ 'Forza mercato needs verified CoinGecko OHLC on-demand');
+assert(source.includes('function forceMarketFetchPublishedOHLC('),
+ 'Forza mercato needs first-party verified OHLC archives');
+assert(!source.includes('function marketForceBullishPricePlot('),
+ 'Forza mercato must no longer draw price lines');
+const forceSampledCode=source.slice(
+ source.indexOf('function forceMarketSampledCandles('),
+ source.indexOf('async function forceMarketFetchTrueOHLC('));
+const forceSampled=new Function(forceSampledCode+';return forceMarketSampledCandles;')();
+const forceExamples=[
+ {t:1794729600,v:20},{t:1794729660,v:23},
+ {t:1794729720,v:19},{t:1794729780,v:22},
+ {t:1794730500,v:24},{t:1794730560,v:26},
+ {t:1794730620,v:25}
+];
+const sampledForce=forceSampled(forceExamples,'1H');
+assert(sampledForce.length>=2,'1H Force history needs distinct sampled candle bodies');
+assert(sampledForce.every(row=>row.h>=Math.max(row.o,row.c)&&
+ row.l<=Math.min(row.o,row.c)),
+ 'Sampled Force candle high/low must bound sampled opens and closes');
 assert(source.includes("a.group==='crypto'?'MAX':'1D'"),
  'All crypto must open the real or sampled historical chart by default');
 // Verify the sampled-candle computation against actual first/high/low/last
@@ -568,7 +591,7 @@ assert(source.includes("function marketForceSelectLabel(asset){\n return asset.n
 assert(read('price-board.js').includes("function dropdownLabel(a){\n return a.name;"));
 assert(source.includes("symbol:'BTC-USD'"),'Original market symbol must remain intact');
 assert(source.includes("symbol:'EURUSD=X'"),'Forex pair must remain intact');
-assert(html.includes('script.js?v=20261115-marketforce-hist-v8'));
+assert(html.includes('script.js?v=20261115-marketforce-candles-v9'));
 assert(source.includes('function forceMarketObservedArchive('),'Forza mercato must read same-origin crypto intraday archives');
 assert(source.includes('function forceMarketObservedDirect('),'Forza mercato needs live verified price history fallback');
 assert(source.includes('function marketForceBullishPricePlot('),'Forza mercato must render observed historical prices without fake OHLC');
