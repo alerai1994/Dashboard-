@@ -6,8 +6,6 @@ const read=path=>fs.readFileSync(path,'utf8');
 const source=read('script.js'),html=read('index.html'),css=read('style.css');
 new Function(source);
 new Function(read('price-board.js'));
-new Function(read('vertex-liquidations-prices.js'));
-new Function(read('vertex-liquidations.js'));
 new Function(read('crypto-extended.js'));
 const screenshotCatalog=JSON.parse(read('crypto-extended.js').match(/window\.__VERTEX_EXTRA_CRYPTO__\s*=\s*(\[[\s\S]*?\]);/)[1]);
 assert.equal(screenshotCatalog.length,220,'Expected 220 screenshot cryptocurrencies');
@@ -235,107 +233,13 @@ assert(!priceBoardHtml.includes('⛶ Schermo intero'),'Fullscreen toggle must no
 const priceBoardSource=read('price-board.js');
 assert(priceBoardSource.includes("expanded?'✕':'⛶'"),'Fullscreen exit must show only the exit icon');
 assert(!priceBoardSource.includes("'✕ Esci dallo schermo intero'"),'Fullscreen exit must not render visible text');
-new Function('window',read('vertex-liquidations-prices.js'))(appWindow);
-assert.equal(typeof appWindow.VertexLiqPriceFallback.load,'function',
- 'The price-only backup must load real OHLC candles for Binance pairs');
-const priceRows=appWindow.VertexLiqPriceFallback.parse([
- [1794744000000,'20','24','19','22'],[1794744300000,'22','25','21','24']
-]);
-assert.equal(priceRows.length,2,'Binance candle parser must accept genuine OHLC inputs');
-assert.deepEqual(priceRows.map(x=>[x.o,x.h,x.l,x.c]),[[20,24,19,22],[22,25,21,24]]);
-new Function('window','document','localStorage',read('vertex-liquidations.js'))(appWindow,document,emptyStorage);
-assert.equal(typeof appWindow.VertexLiquidations.page,'function','Liquidation Heatmap module unavailable');
-const liquidationPage=app.PAGE_RENDERERS.liquidations();
-assert(liquidationPage.includes('id="vertexLiqCoin"'),'Heatmap crypto selection missing');
-assert(liquidationPage.includes('class="vlx-native"'),
- 'CoinGlass historical heatmap must be the only visible mode');
-assert(!liquidationPage.includes('class="vlx-live"'),
- 'Removed live heatmap must not be present in DOM');
-assert(!liquidationPage.includes('data-vlx-mode="free"'),
- 'No switch back to removed Live 24H mode should remain');
-assert(!liquidationPage.includes('Blockmetric'),
- 'Removed Blockmetric embed must not appear on the page');
-assert(liquidationPage.includes('id="vlxCanvas"'),
- 'CoinGlass-style native annual heatmap canvas must be present');
-assert(liquidationPage.includes('id="vlxPriceFallback"'),
- 'Price fallback must transparently explain absent CoinGlass liquidation levels');
-assert(liquidationPage.includes('id="vlxLevelsTitle"'),
- 'Liquidation levels panel must be present');
-assert(liquidationPage.includes('id="vlxLevelList"'),
- 'Liquidation levels prices must be visible');
-assert(liquidationPage.includes('id="vlxLeverage"'),
- 'Price-only fallback needs a labeled theoretical leverage control');
-assert(liquidationPage.includes('Binance BTC/USDT Liquidation Heatmap (1 anno)'),
- 'Native chart title must match the reference market and period');
-assert(liquidationPage.includes('id="vlxThresholdInput"'),
- 'The reference-style liquidity threshold control is missing');
-assert(liquidationPage.includes('vlx-gradient'),
- 'Liquidation intensity scale must be visible on the left');
-assert(liquidationPage.includes('data-vlx-model="model2"'),
- 'Liquidation heatmap models 1/2/3 must be selectable');
-assert(liquidationPage.includes('id="vlxFile"'),
- 'The native chart must accept authorized API data files');
-assert(liquidationPage.includes('Storico annuale CoinGlass: dati autorizzati richiesti'),
- 'Annual API access requirement must be disclosed clearly');
-assert(!liquidationPage.includes('LIVE 24H'),
- 'No leftover live timeframe buttons or fallback labels');
-assert(liquidationPage.includes('https://www.coinglass.com/pro/futures/LiquidationHeatMap'),
- 'Provide the original CoinGlass chart when API data is unavailable');
-const liqSource=read('vertex-liquidations.js');
-assert(!liqSource.includes('Math.random('),'Never invent liquidation heatmap colors');
-assert(liqSource.includes('d.liquidation_leverage_data'),
- 'Real liquidation heatmap data must be validated before drawing');
-assert(liqSource.includes('async function loadPriceOnly('),
- 'Unavailable CoinGlass data must trigger genuine OHLC price recovery');
-assert(liqSource.includes('const obj=dataset||priceOnly;'),
- 'The chart must render real price-only OHLC when liquidation intensities are absent');
-assert(liqSource.includes('loadPriceOnly(current);'),
- 'Missing CoinGlass archive must not leave a blank chart');
-assert(liqSource.includes("ctx.setLineDash([7,5])"),
- 'Level prices must appear as dashed horizontal lines on the chart');
-assert(liqSource.includes('showLevelPanel(overlays)'),
- 'Liquidation level cards must update when data is loaded');
-assert(html.indexOf('vertex-liquidations-prices.js?v=')<
- html.indexOf('vertex-liquidations.js?v='),
- 'Verified price loader must load before CoinGlass heatmap module');
-assert(source.includes('window.VertexLiquidations?.activate()'),
- 'Native heatmap must activate when its page opens');
-const t0=1794660000;
-const validHeatmap={
- exchange:'Binance',symbol:'BTCUSDT',range:'1y',model:'model1',
- data:{y_axis:[100,105,110],
- price_candlesticks:[[t0,100,104,99,102,1000],[t0+3600,102,110,101,108,1000]],
- liquidation_leverage_data:[[0,1,6],[1,2,10]],update_time:1794745000000}
-};
-const parsedHeatmap=appWindow.VertexLiquidations.parse(validHeatmap);
-assert(parsedHeatmap.verified,'CoinGlass data must verify explicit pair/model/range metadata');
-assert.equal(parsedHeatmap.heat.length,2);
-assert.equal(parsedHeatmap.max,10);
-assert.equal(typeof appWindow.VertexLiquidations.computeModelLevels,'function');
-assert.equal(typeof appWindow.VertexLiquidations.computeTheoreticalLevels,'function');
-const verifiedZones=appWindow.VertexLiquidations.computeModelLevels(parsedHeatmap);
-assert.equal(verifiedZones.length,2,'Actual CoinGlass heatmap clusters should be ranked above/below last price');
-assert.equal(verifiedZones[0].kind,'model');
-assert.equal(verifiedZones[0].price,110);
-assert.equal(verifiedZones[0].relative,1);
-assert.equal(verifiedZones[1].price,105);
-assert.equal(verifiedZones[1].relative,0.6);
-const estimatedLevels=appWindow.VertexLiquidations.computeTheoreticalLevels(100,10);
-assert.equal(estimatedLevels.length,2);
-assert.equal(estimatedLevels[0].kind,'scenario','Prices without CoinGlass must never be labeled real clusters');
-assert(Math.abs(estimatedLevels[0].price-110)<1e-9,'Theoretical 10x short must be above sample entry price');
-assert(Math.abs(estimatedLevels[1].price-90)<1e-9,'Theoretical 10x long must be below sample entry price');
-assert.deepEqual(appWindow.VertexLiquidations.computeTheoreticalLevels(NaN,10),[],
- 'No fictional level without a verified real reference price');
-assert.deepEqual(appWindow.VertexLiquidations.computeModelLevels({
- candles:[{c:100}],heat:[],levels:[98,102]}),[],
- 'Missing liquidation data cannot be silently invented');
-assert.throws(()=>appWindow.VertexLiquidations.parse({...validHeatmap,symbol:'ETHUSDT'}),
- /differente/,'A mismatched exchange or pair must never display as BTCUSDT');
-assert(html.includes('data-page="liquidations"'),'New sidebar heatmap entry missing');
-assert(html.includes('vertex-liquidations.js?v='),'Liquidation module script not loaded');
-assert(html.includes('vertex-liquidations.css?v='),'Liquidation module style not loaded');
-assert.equal(Object.keys(app.PAGE_RENDERERS).length,14);
+assert(!html.includes('data-page="liquidations"'),'Liquidation Heatmap menu item must be removed');
+assert(!html.includes('vertex-liquidations.js'),'Removed Liquidation Heatmap must not load a script');
+assert(!html.includes('vertex-liquidations.css'),'Removed Liquidation Heatmap must not load a stylesheet');
+assert(!html.includes('vertex-liquidations-prices.js'),'Removed Liquidation Heatmap price helper must not load');
+assert(!Object.prototype.hasOwnProperty.call(app.PAGE_RENDERERS,'liquidations'),
+ 'Liquidation Heatmap must not remain a navigable route');
+assert.equal(Object.keys(app.PAGE_RENDERERS).length,13);
 assert.equal(typeof app.PAGE_RENDERERS.workspace,'function','Workspace route missing');
 // Regression uses controlled fixture changes so it does not depend on live market direction.
 const savedForceQuotes=Object.fromEntries(['btc','inj','sp500'].map(id=>[id,app.state.quotes[id]]));
