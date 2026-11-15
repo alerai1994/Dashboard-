@@ -609,7 +609,7 @@ assert(source.includes('function forceMarketSampledCandles('),
  'Forza mercato must render sampled observed prices as labeled candles, not lines');
 assert(source.includes('const bars=realBars.length>=2?realBars:observed;'),
  'Forza mercato must render true OHLC first, sampled candles only as a fallback');
-assert(html.includes('price-board.js?v=20261114-board-dropdown-names-v6'));
+assert(html.includes('price-board.js?v=20261115-icon-only-fullscreen-v7'));
 
 /* Swipe control persists across all sections and prioritizes the exposed right strip. */
 assert(source.includes('function setupSidebarSwipe()'));
