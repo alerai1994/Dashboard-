@@ -13,7 +13,8 @@
 .price-board-buttons{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .price-board-buttons button{min-height:43px;border:1px solid var(--line);border-radius:10px;padding:9px 13px;background:var(--surface);color:var(--text);font-weight:700}
 .price-board-buttons button:hover{border-color:var(--brand)}
-.price-board-buttons .price-board-fs{background:var(--brand);border-color:var(--brand);color:#fff}
+.price-board-buttons .price-board-fs{background:var(--brand);border-color:var(--brand);color:#fff;display:inline-flex;align-items:center;justify-content:center;min-width:47px;font-size:23px;line-height:1;white-space:nowrap}
+.price-board-buttons .price-board-fs [aria-hidden="true"]{display:inline-flex;align-items:center;justify-content:center;line-height:1}
 .price-board-hero{flex:1;min-height:250px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:clamp(13px,2vh,25px);width:100%;padding:24px 4px}
 .price-board-market{max-width:100%;margin:0;font-size:clamp(23px,3vw,45px);line-height:1.18;letter-spacing:-.025em;font-weight:760;overflow-wrap:anywhere}
 .price-board-symbol{font-size:clamp(13px,1.55vw,20px);font-weight:630;letter-spacing:.05em;color:var(--muted);overflow-wrap:anywhere}
