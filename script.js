@@ -2172,6 +2172,23 @@ async function forceMarketObservedDirect(asset,period,now){
    interval:weekly?'1 ora':'5 minuti'}:null;
  }catch(_error){return null}finally{clearTimeout(timer)}
 }
+/* A second ID-matched provider helps crypto omitted by the first price source. */
+async function forceMarketObservedCoinGecko(asset,period,now){
+ if(asset.group!=='crypto'||!asset.coingeckoId||asset.id==='ore'||period==='1A')return null;
+ const days=period==='1W'?7:1,controller=new AbortController();
+ const timer=setTimeout(()=>controller.abort(),6000);
+ try{
+  const url='https://api.coingecko.com/api/v3/coins/'+
+   encodeURIComponent(asset.coingeckoId)+'/market_chart?vs_currency=usd&days='+days;
+  const response=await fetch(url,{cache:'no-store',signal:controller.signal});
+  if(!response.ok)return null;
+  const data=await response.json();
+  const points=forceMarketPricePoints(data?.prices,period,Date.now());
+  return points.length>=2?{points,
+   source:'CoinGecko · storico dei prezzi osservati (non OHLC)',
+   interval:days===7?'1 ora':'5 minuti'}:null;
+ }catch(_error){return null}finally{clearTimeout(timer)}
+}
 async function marketForceLoadOHLC(id,period){
  const a=ASSET_BY_ID[id],cfg=FORCE_OHLC_PERIODS[period],key=id+':'+period;
  if(!a||!cfg||marketForceOHLCLoading.has(key))return;
@@ -2295,7 +2312,8 @@ async function marketForceLoadOHLC(id,period){
   }
   const actual=bars.length>=2?(sampledBars?bars:forceOHLCAggregate(bars,cfg.group)):[];
   if(!actual.length&&points.length<2&&a.group==='crypto'&&period!=='1A'){
-   const observed=await forceMarketObservedDirect(a,period,Date.now());
+   let observed=await forceMarketObservedDirect(a,period,Date.now());
+   if(!observed)observed=await forceMarketObservedCoinGecko(a,period,Date.now());
    if(observed){
     points=observed.points;observedSource=observed.source;observedInterval=observed.interval;
    }
