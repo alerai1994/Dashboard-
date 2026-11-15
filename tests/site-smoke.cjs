@@ -226,6 +226,13 @@ const priceBoardHtml=app.PAGE_RENDERERS.priceboard();
 for(const label of ['Indici ed ETF','Azioni','Materie prime','Forex','Criptovalute'])
  assert(priceBoardHtml.includes('label="'+label+'"'),'Price board missing '+label);
 assert(priceBoardHtml.includes('id="priceBoardStage"'),'Missing price board fullscreen stage');
+assert(priceBoardHtml.includes('id="priceBoardFullscreen"'),'Missing native fullscreen toggle');
+assert(priceBoardHtml.includes('aria-label="Schermo intero"'),'Fullscreen icon needs accessible name');
+assert(priceBoardHtml.includes('<span aria-hidden="true">⛶</span>'),'Fullscreen toggle must show icon only');
+assert(!priceBoardHtml.includes('⛶ Schermo intero'),'Fullscreen toggle must not render a visible label');
+const priceBoardSource=read('price-board.js');
+assert(priceBoardSource.includes("expanded?'✕':'⛶'"),'Fullscreen exit must show only the exit icon');
+assert(!priceBoardSource.includes("'✕ Esci dallo schermo intero'"),'Fullscreen exit must not render visible text');
 assert.equal(Object.keys(app.PAGE_RENDERERS).length,13);
 assert.equal(typeof app.PAGE_RENDERERS.workspace,'function','Workspace route missing');
 // Regression uses controlled fixture changes so it does not depend on live market direction.
