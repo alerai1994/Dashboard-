@@ -21,7 +21,8 @@ ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "chart-history" / "crypto" / "intraday"
 BASE = runpy.run_path(str(ROOT / ".github/scripts/crypto-price-backfill.py"))
 HEADERS = {"Accept": "application/json", "User-Agent": "VertexMarketForceHistory/1.0"}
-WINDOWS = {"1H": 3600, "4H": 4 * 3600, "1D": 86400, "1W": 7 * 86400}
+WINDOWS = {"1H": 3600, "4H": 4 * 3600, "1D": 86400,
+           "1W": 7 * 86400, "2W": 14 * 86400}
 
 
 def normalize(rows, now):
@@ -120,7 +121,7 @@ def main():
     for offset in range(0, len(assets), 8):
         batch = assets[offset:offset + 8]
         fine = request_group(batch, "5m", 315, now)
-        hourly = request_group(batch, "1h", 177, now)
+        hourly = request_group(batch, "1h", 355, now)
         for ident, coin in batch:
             path = OUT / (ident + ".json")
             previous = previous_archive(path, ident, coin)
@@ -134,12 +135,12 @@ def main():
                 used_cg = used_cg or bool(fine_points)
                 time.sleep(0.2)
             if not hour_points:
-                hour_points = coingecko_market_chart(coin, 7, now)
+                hour_points = coingecko_market_chart(coin, 14, now)
                 used_cg = used_cg or bool(hour_points)
                 time.sleep(0.2)
             periods = {}
             for timeframe, seconds in WINDOWS.items():
-                observations = hour_points if timeframe == "1W" else fine_points
+                observations = hour_points if timeframe in ("1W", "2W") else fine_points
                 chosen = select_window(observations, seconds, now)
                 if not chosen:
                     # Retain verified earlier snapshots if the API is temporarily down,
