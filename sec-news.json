@@ -1,6 +1,6 @@
 {
   "source": "U.S. Securities and Exchange Commission",
-  "updated_at": "2026-11-16T18:54:23Z",
+  "updated_at": "2026-11-16T19:13:15Z",
   "seed_date": "2026-10-31T12:00:00Z",
   "feeds_updated": [
     "press",
@@ -196,6 +196,13 @@
       "url": "https://www.sec.gov/newsroom/speeches-statements/selway-remarks-market-structure-conference-101426",
       "date": "2026-10-14T17:49:25Z",
       "summary": "Jamie Selway, Director, Division of Trading and Markets"
+    },
+    {
+      "category": "speeches",
+      "title": "Considering the Materiality of Financial Information in Municipal Disclosure",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/sanchez-nabl-workshop-101426",
+      "date": "2026-10-14T17:32:01Z",
+      "summary": "Dave A. Sanchez, Director, SEC Office of Municipal Securities"
     },
     {
       "category": "press",
