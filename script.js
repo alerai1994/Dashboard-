@@ -2983,6 +2983,12 @@ async function loadMarketCryptoHistoryPreview(id){
     first:sampled[Math.max(0,sampled.length-48)].t,
     last:sampled[sampled.length-1].t,partial:true
    };
+   // Two true price observations are sufficient for a LINE, not for
+   // inventing candle high/low data. A short honest chart beats no chart.
+   return {status:'ready',linePoints:prices.points.slice(-120),
+    source:prices.source,resolution:'rilevazioni disponibili',
+    first:prices.points[0].t,last:prices.points.at(-1).t,
+    partial:true};
   }
  }catch(_error){/* Price history might not be indexed for this token. */}
  if(Date.now()<marketCryptoHistoryApiPauseUntil)return null;
@@ -3081,6 +3087,24 @@ function marketChartPlot(id){
  const q=quote(id),W=320,H=142,L=10,R=10,T=10,B=14,chartW=W-L-R,chartH=H-T-B;
  const grid='<path d="M10 42H310 M10 82H310 M10 122H310" stroke="currentColor" stroke-opacity=".13" stroke-width=".7" fill="none"/>';
  const plot=(svg,note)=>'<svg viewBox="0 0 320 142" preserveAspectRatio="none" aria-hidden="true">'+grid+svg+'</svg><span class="market-chart-note">'+note+'</span>';
+ const observed=marketCryptoHistoryPreviews.get(id);
+ if(observed?.status==='ready'&&Array.isArray(observed.linePoints)&&
+    observed.linePoints.length>=2){
+  const values=observed.linePoints.map(p=>Number(p.p));
+  const low=Math.min(...values),high=Math.max(...values);
+  const pad=Math.max((high-low)*.08,high*.0001,1e-12);
+  const first=Number(observed.linePoints[0].t),last=Number(observed.linePoints.at(-1).t);
+  const timeSpan=Math.max(1,last-first),span=Math.max(1e-12,high-low+pad*2);
+  const path=observed.linePoints.map((point,i)=>
+   (i?'L':'M')+(L+(Number(point.t)-first)/timeSpan*chartW).toFixed(2)+' '+
+   (T+(high+pad-Number(point.p))/span*chartH).toFixed(2)).join(' ');
+  const color=values.at(-1)>=values[0]?'#18d8a0':'#f57185';
+  return plot('<path d="'+path+'" stroke="'+color+
+   '" stroke-width="2" fill="none" stroke-linejoin="round" stroke-linecap="round"/>',
+   'Prezzi realmente osservati · linea (non OHLC) · '+
+   esc(marketCryptoHistoryDate(first))+' – '+esc(marketCryptoHistoryDate(last))+
+   ' · '+esc(observed.source));
+ }
  const candles=marketPreviewCandleData(id);
  if(candles.length>=2){
   const low=Math.min(...candles.map(c=>Number(c.l))),high=Math.max(...candles.map(c=>Number(c.h)));
@@ -3162,6 +3186,12 @@ const marketMiniDirty=new Set();
 let miniCandlePointer=null,miniCandleHover=null,miniCandleSuppressClickUntil=0;
 function inspectMiniCandle(card,clientX){
  if(!card||!card.isConnected)return;
+ // Observed price lines are not OHLC candlesticks; omit OHLC tooltip.
+ if(marketCryptoHistoryPreviews.get(card.dataset.asset)?.linePoints?.length>=2){
+  const tip=card.querySelector('.mini-candle-tooltip');
+  if(tip)tip.hidden=true;
+  return;
+ }
  const svg=card.querySelector('.market-mini-chart svg');
  const tooltip=card.querySelector('.mini-candle-tooltip');
  if(!svg||!tooltip)return;
@@ -7132,6 +7162,27 @@ function chartSampledCandlesFromPrices(points,days=7){
 /* Genuine observed price history fallback for coins without published OHLC.
    Never reconstruct exchange OHLC from one observed daily price. */
 const chartObservedHistoryDirectCache=new Map();
+const sharedCryptoObservedSnapshot={expiresAt:0,promise:null};
+async function chartReadCatalogObservedSnapshots(asset,signal){
+ // Same-origin verified price observations, gathered periodically for all
+ // 288 assets. This is a price line and never exchange OHLC.
+ if(!sharedCryptoObservedSnapshot.promise||Date.now()>sharedCryptoObservedSnapshot.expiresAt){
+  sharedCryptoObservedSnapshot.expiresAt=Date.now()+5*60000;
+  sharedCryptoObservedSnapshot.promise=fetch(
+   './crypto-heatmap-data.json?v='+Math.floor(Date.now()/120000),
+   {cache:'force-cache'}
+  ).then(response=>response.ok?response.json():null)
+   .catch(()=>null);
+ }
+ const payload=await sharedCryptoObservedSnapshot.promise;
+ if(signal?.aborted||!Array.isArray(payload?.coins)||payload.catalogSize!==288)return null;
+ const row=payload.coins.find(item=>item.localId===asset.id&&item.id===asset.coingeckoId);
+ if(!row||!Array.isArray(row.priceObservations))return null;
+ const points=chartReadHistoricalPricePoints(row.priceObservations);
+ return points.length>=2?{points,
+  source:'CoinGecko · rilevazioni osservate in USD (non OHLC exchange)'}:null;
+}
+
 async function chartLoadObservedPriceArchive(asset,signal){
  if(!asset||asset.group!=='crypto'||asset.id==='ore')return null;
  const url='./chart-history/crypto/prices/'+encodeURIComponent(asset.id)+
@@ -7152,6 +7203,11 @@ async function chartLoadObservedPriceArchive(asset,signal){
  if(typeof coin!=='string'||!/^[a-z0-9-]{1,100}$/.test(coin))return null;
  const cached=chartObservedHistoryDirectCache.get(coin);
  if(cached&&Date.now()-cached.at<15*60000)return cached.result;
+ const local=await chartReadCatalogObservedSnapshots(asset,signal);
+ if(local?.points?.length>=2){
+  chartObservedHistoryDirectCache.set(coin,{result:local,at:Date.now()});
+  return local;
+ }
  const key='coingecko:'+coin,now=Math.floor(Date.now()/1000);
  const params='?start='+(now-365*86400)+'&span=365&period=1d';
  try{
