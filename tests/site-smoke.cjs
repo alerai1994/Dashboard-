@@ -124,6 +124,42 @@ const croBars=forceSampled(observedCro.periods['4H'].map(
  ([t,v])=>({t,v})),'4H');
 assert(croBars.length>=16,
  'Real Cronos 4H archived observations should provide dense sampled candles');
+// Markets and Market Force now share same-origin market history with no
+// invented OHLC; test five-minute and hourly observations at real timestamps.
+assert(source.includes('async function chartCryptoIntradayResolution('),
+ 'Crypto detail charts must use verified OHLC/observed archives before sparse remote responses');
+assert(source.includes('await chartCryptoIntradayResolution(asset,period,from,now)'),
+ 'All crypto, including extended tokens, must try archived short-range history');
+assert(source.includes('await chartCryptoIntradayResolution(asset,period,now-period.ms,now)'),
+ 'Markets card previews must first load recent dense history');
+assert(source.includes('function chartSampledMoves('),
+ 'Common sampled-price candles must be available without fake OHLC');
+assert(source.includes('if(sampled.length>=8&&(bars.length<8||sampled.length>bars.length*1.6))'),
+ 'Markets must prefer denser price observations over a few distant bars');
+assert(source.includes('chartSampledMoves(within,86400)'),
+ 'Monthly crypto timeframes need observed daily sampled fallback when OHLC is too sparse');
+assert(source.includes('Math.min(sample.length<32?26:14,step*.80)'),
+ 'Markets full chart candle bodies must occupy most of their slots');
+assert(source.includes('Math.min(11,step*.82)'),
+ 'Markets mini candles must no longer have wide gaps around 6-pixel bodies');
+const movesFn=source.slice(source.indexOf('function chartSampledMoves('),
+ source.indexOf('async function chartCryptoIntradayResolution('));
+const sampledMoves=new Function(movesFn+';return chartSampledMoves;')();
+for(const seconds of [300,600,1800,3600,86400]){
+ const prices=Array.from({length:21},(_,i)=>({t:1794729600+i*seconds+3,
+  v:80+i*.03+Math.sin(i)*.4}));
+ const bars=sampledMoves(prices,seconds);
+ assert.equal(bars.length,20,'Historical '+seconds+'s bars must retain every observed movement');
+ assert(bars.every(c=>c.sampled===true&&c.h===Math.max(c.o,c.c)&&
+  c.l===Math.min(c.o,c.c)),
+  'Sampled prices must not invent high/low movements');
+ const withGap=sampledMoves([prices[0],prices[1],prices[14],prices[15]],seconds);
+ assert.equal(withGap.length,2,'Missing historical time on '+seconds+'s must not be invented');
+}
+const croArchive=JSON.parse(read('chart-history/crypto/intraday/cro.json'));
+const croActual=croArchive.periods['4H'].map(([t,v])=>({t,v}));
+assert(sampledMoves(croActual,600).length>=16,
+ 'Real Cronos 4H observations must supply a dense Market candlestick preview');
 assert(source.includes("a.group==='crypto'?'MAX':'1D'"),
  'All crypto must open the real or sampled historical chart by default');
 // Verify the sampled-candle computation against actual first/high/low/last
