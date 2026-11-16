@@ -6,7 +6,7 @@
 const API='https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false&price_change_percentage=24h';
 const intervalMs=150000;
 const state={coins:[],fetchedAt:0,attemptedAt:0,fetching:false,error:'',query:'',sort:'cap',all:false,
- logoAt:0,logoLoading:false,logoCache:new Map()};
+ logoAt:0,logoLoading:false,logoCache:new Map(),snapshotAt:0,snapshotStatus:''};
 const LOGO_STORE='vertex-heatmap-coingecko-logos-v1';
 try{
  const cached=JSON.parse(localStorage.getItem(LOGO_STORE)||'{}');
@@ -64,14 +64,59 @@ function fallback(){
  return data;
 }
 function list(){
- // Show the user's exact crypto catalog, not unrelated top-250 market entries.
- // CoinGecko data enriches only exact identities, never ticker collisions.
- const marketById=new Map(state.coins.map(c=>[c.id,c]));
+ // CoinGecko ID and Vertex local ID must both match the catalog identity.
+ // Last-known stale data must not masquerade as a green or red fresh quote.
+ const byId=new Map(state.coins.map(c=>[c.id,c]));
+ const byLocal=new Map(state.coins.filter(c=>c.localId).map(c=>[c.localId,c]));
  return fallback().map(local=>{
-  const live=marketById.get(local.id);
-  return live?{...local,...live,localId:local.localId,
-   image:logo(live.image)||logo(local.image)||logo(state.logoCache.get(local.id))}:local;
+  const record=byLocal.get(local.localId)||byId.get(local.id);
+  if(!record)return local;
+  const timestamp=Date.parse(record.observedAt||'');
+  const fresh=Number.isFinite(timestamp)&&Date.now()-timestamp>=0&&
+   Date.now()-timestamp<2*3600000;
+  const validFromSource=fresh&&finite(record.price)&&record.price>0;
+  const verifiedLocal=finite(local.price)&&local.price>0;
+  return {...local,...record,localId:local.localId,
+   id:local.id,name:local.name,symbol:local.symbol,
+   price:validFromSource?record.price:verifiedLocal?local.price:null,
+   change:validFromSource?record.change:verifiedLocal?local.change:null,
+   image:logo(record.image)||logo(local.image)||logo(state.logoCache.get(local.id)),
+   stale:!fresh&&!verifiedLocal};
  });
+}
+async function loadCatalogSnapshot(){
+ try{
+  const response=await fetch('./crypto-heatmap-data.json?v='+Math.floor(Date.now()/120000),
+   {cache:'no-store'});
+  if(!response.ok)throw Error('Snapshot HTTP '+response.status);
+  const data=await response.json();
+  if(data?.catalogSize!==288||!Array.isArray(data.coins))throw Error('Invalid catalog');
+  const catalog=new Map(coinAssets().map(asset=>[asset.id,asset.coingeckoId||asset.id]));
+  const verified=[];
+  for(const raw of data.coins){
+   if(!raw||catalog.get(raw.localId)!==raw.id)continue;
+   const image=logo(raw.image);
+   const price=Number(raw.price);
+   const change=raw.change===null?null:Number(raw.change);
+   const date=Date.parse(raw.observedAt||'');
+   const fresh=Number.isFinite(date)&&date<=Date.now()+300000&&
+    Date.now()-date<2*3600000;
+   if(image)state.logoCache.set(raw.id,image);
+   verified.push({id:raw.id,localId:raw.localId,
+    price:fresh&&finite(price)&&price>0?price:null,
+    change:fresh&&finite(change)?change:null,
+    marketCap:raw.marketCap??null,volume:raw.volume??null,rank:raw.rank??null,
+    image,observedAt:raw.observedAt,source:'CoinGecko · snapshot verificato'});
+  }
+  // Leave newer direct quotes in place; snapshot fills catalog-wide gaps.
+  const known=new Map(state.coins.map(c=>[c.id,c]));
+  for(const item of verified)if(!known.has(item.id))known.set(item.id,item);
+  state.coins=[...known.values()];
+  state.snapshotAt=Date.parse(data.generatedAt)||0;
+  state.snapshotStatus=verified.length+' / '+data.catalogSize;
+  rememberLogos();
+  paint();
+ }catch(_error){state.snapshotStatus='non raggiungibile'}
 }
 // Asynchronous logo hydration: independent of the price API and resilient to
 // CoinGecko throttling. Token identity is the exact CoinGecko ID, not ticker.
@@ -193,6 +238,8 @@ function sourceLabel(){
   return 'Fonte: CoinGecko · rilevazione '+stamp+stale+
    (state.error?' · ultimo dato valido':'')+'. Le quotazioni possono essere differite.';
  }
+ if(state.snapshotAt)return 'Fonte: CoinGecko · snapshot per catalogo '+state.snapshotStatus+
+  ' · dati differiti; le celle senza quotazione verificata restano grigie.';
  return state.fetching?'Caricamento elenco esteso… · intanto vengono mostrati i dati Vertex':
   (state.error?'CoinGecko non raggiungibile · ':'')+'Fonte: feed Vertex · prezzi disponibili, aggiornamento secondo fonte.';
 }
@@ -251,7 +298,10 @@ async function refresh(force=false){
     image:logo(c.image)
    }));
   if(coins.length<20)throw new Error('Nessun dato validato');
-  state.coins=coins;state.fetchedAt=Date.now();
+  const merged=new Map(state.coins.map(c=>[c.id,c]));
+  const observedAt=new Date().toISOString();
+  for(const c of coins)merged.set(c.id,{...merged.get(c.id),...c,observedAt});
+  state.coins=[...merged.values()];state.fetchedAt=Date.now();
   for(const c of coins)if(logo(c.image))state.logoCache.set(c.id,logo(c.image));
   rememberLogos();
  }catch(error){
@@ -267,7 +317,7 @@ function activate(){
  if(document.getElementById('vhGrid')){
   // Begin image hydration immediately, even if the price API is slow.
   // All 288 assets are eligible, including tiles with no current quotation.
-  loadCatalogLogos();
+  loadCatalogSnapshot().finally(()=>loadCatalogLogos());
   refresh().finally(()=>{if(Date.now()-state.logoAt>60000)loadCatalogLogos()});
  }
 }
