@@ -111,3 +111,12 @@
  .vh-foot{padding:8px 10px 12px}
 }
 @media(prefers-reduced-motion:reduce){.vh-shell .vh-tile{transition:none;transform:none!important}}
+
+/* Blink only the price when an actual UPPER/LOW threshold is crossed.
+   15-second expiry is controlled by the existing shared alert engine. */
+@keyframes vhVerifiedThresholdBlink{0%,48%{opacity:1}49%,100%{opacity:.25}}
+.vh-tile .vh-price.crypto-price-upper{color:#ffe272!important;text-shadow:0 0 9px rgba(255,218,82,.8);animation:vhVerifiedThresholdBlink .8s steps(1,end) infinite}
+.vh-tile .vh-price.crypto-price-lower{color:#ff8a9b!important;text-shadow:0 0 9px rgba(255,66,104,.8);animation:vhVerifiedThresholdBlink .8s steps(1,end) infinite}
+@media(prefers-reduced-motion:reduce){
+ .vh-tile .vh-price.crypto-price-upper,.vh-tile .vh-price.crypto-price-lower{animation:none!important;opacity:1!important}
+}
