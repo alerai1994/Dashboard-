@@ -142,6 +142,13 @@ assert(source.includes('Math.min(sample.length<32?26:14,step*.80)'),
  'Markets full chart candle bodies must occupy most of their slots');
 assert(source.includes('Math.min(11,step*.82)'),
  'Markets mini candles must no longer have wide gaps around 6-pixel bodies');
+assert(source.includes('const slots=Math.max(18,candles.length),lead=slots-candles.length;'),
+ 'Sparse Markets candles must be grouped at the right instead of spanning the full card');
+assert(source.includes('const xInSvg=10+(lead+index+.5)*300/slots;'),
+ 'Market preview hover must match its adjusted candle positions');
+assert(source.includes('let sampledMax=false;'),
+ 'MAX crypto charts must consider truthful dense partial daily samples');
+
 const movesFn=source.slice(source.indexOf('function chartSampledMoves('),
  source.indexOf('async function chartCryptoIntradayResolution('));
 const sampledMoves=new Function(movesFn+';return chartSampledMoves;')();
