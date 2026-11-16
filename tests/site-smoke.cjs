@@ -167,6 +167,10 @@ assert(collector.includes('"2W": 14 * 86400'),
  'Automated collection must include 14-day real observed price history');
 assert(collector.includes('request_group(batch, "1h", 355, now)'),
  'The 2W archive needs more than 336 hours of hourly observations');
+assert(source.includes('forceMarketObservedDirect(asset,remotePeriod,now)'),
+ 'Niche crypto without archives need verified live price history fallback');
+assert(source.includes('forceMarketObservedCoinGecko(asset,remotePeriod,now)'),
+ 'The second fallback must match the exact token identity, never a random ticker');
 assert(source.includes('const snapshot=await chartCryptoIntradayResolution('),
  'Months without full OHLC should show a clearly partial historical view');
 assert(source.includes('async function chartCryptoIntradayResolution('),
