@@ -6263,6 +6263,48 @@ function selectChartRange(range){
 // No interpolation: periods without transactions remain absent.
 // Use actual tick trades for second OHLC where the exchange exposes them.
 // Otherwise retain an honest, labelled lower-resolution chart rather than an empty one.
+/* Exact native Binance 1-second candles, paginated to cover the entire
+   selected 2/10/30/60-minute window. Never fill absent exchange bars. */
+async function chartBinanceSecondOHLC(symbol,period,controller,now){
+ if(!/^[A-Z0-9]{3,24}$/.test(symbol)||!period?.seconds)return null;
+ const start=Math.floor((now-period.ms)/1000)*1000;
+ const requests=[];
+ for(let t=start;t<=now;t+=950000){
+  requests.push({from:t,to:Math.min(now,t+949999)});
+  if(requests.length>=5)break;
+ }
+ for(const host of ['https://data-api.binance.vision','https://api.binance.com']){
+  try{
+   const pages=await Promise.all(requests.map(async window=>{
+    const url=host+'/api/v3/klines?symbol='+encodeURIComponent(symbol)+
+     '&interval=1s&startTime='+window.from+'&endTime='+window.to+'&limit=1000';
+    const response=await fetch(url,{signal:controller.signal,cache:'no-store'});
+    if(!response.ok)throw Error('Binance 1s HTTP '+response.status);
+    const raw=await response.json();
+    if(!Array.isArray(raw))throw Error('Formato Binance 1s non valido');
+    return raw;
+   }));
+   const actual=chartNormalizeCandles(pages.flat(),'Binance',start,now,1000);
+   if(actual.length<2)throw Error('Candele 1s insufficienti');
+   const grouped=new Map();
+   for(const tick of actual){
+    const t=Math.floor(tick.t*1000/period.step)*period.step/1000;
+    const bar=grouped.get(t);
+    if(bar){
+     bar.h=Math.max(bar.h,tick.h);bar.l=Math.min(bar.l,tick.l);bar.c=tick.c;
+    }else grouped.set(t,{t,o:tick.o,h:tick.h,l:tick.l,c:tick.c});
+   }
+   const candles=[...grouped.values()].sort((a,b)=>a.t-b.t);
+   if(candles.length<2)throw Error('Intervalli con scambi insufficienti');
+   const partial=candles[0].t*1000>start+period.step*2||
+    candles.at(-1).t*1000<now-period.step*3;
+   return {candles,source:'Binance Spot · '+symbol+' · OHLC '+period.seconds+
+    's da candele native reali a 1s · copertura effettiva della fonte',
+    partial,visibleCount:Math.min(140,candles.length)};
+  }catch(_error){if(controller.signal.aborted)break;}
+ }
+ return null;
+}
 async function loadSecondChartHistory(force=false){
  const asset=ASSET_BY_ID[state.dialogId],selected=chartRange;
  const period=CHART_PERIOD_BY_ID[selected];
@@ -6270,13 +6312,6 @@ async function loadSecondChartHistory(force=false){
  const seq=++chartFetchState.sequence;
  if(chartFetchState.abort)chartFetchState.abort.abort();
  chartFetchState.abort=null;
- if(asset.extended){
-  chartSeries={id:asset.id,range:selected,candles:[],source:'',loading:false,partial:false,
-   error:'Storico al secondo non disponibile da una fonte verificata per '+
-    asset.name+'. Seleziona 1H, 1D, 1W, 1M o TUTTO.'};
-  updateChartHistoryStatus();scheduleDetailChartDraw();
-  return;
- }
  const key=asset.id+':'+selected,cached=chartFetchState.cache.get(key);
  if(!force&&cached&&Date.now()-cached.loadedAt<15000){
   chartSeries={...cached,id:asset.id,range:selected,loading:false};
@@ -6289,43 +6324,20 @@ async function loadSecondChartHistory(force=false){
  const controller=new AbortController();chartFetchState.abort=controller;
  const timer=setTimeout(()=>controller.abort(),8500);
  const now=Date.now();
- let candles=[],source='',partial=true,visibleCount=0,error='';
+ let candles=[],source='',partial=true,visibleCount=0,error='',sampled=false,resolutionFallback='';
  try{
   if(asset.group==='crypto'){
    const isOre=asset.id==='ore',symbol=isOre?'ore_usdt':asset.id.toUpperCase()+'USDT';
    // Binance publishes native 1-second OHLC. Aggregate *complete real bars*
    // into 5s/15s/30s rather than inferring prices from minute bars.
    if(!isOre){
-    const count=Math.min(1000,Math.max(300,Math.ceil(period.ms/1000)));
-    for(const domain of ['https://api.binance.com','https://api1.binance.com']){
-     try{
-      const url=domain+'/api/v3/klines?symbol='+encodeURIComponent(symbol)+
-       '&interval=1s&limit='+count;
-      const response=await fetch(url,{signal:controller.signal,cache:'no-store'});
-      if(!response.ok)throw Error('HTTP '+response.status);
-      const rows=await response.json();
-      if(!Array.isArray(rows)||rows.length<2)throw Error('Second klines unavailable');
-      const seconds=chartNormalizeCandles(rows,'Binance',0,now,1000);
-      if(seconds.length<2)throw Error('Insufficient 1s klines');
-      const buckets=new Map();
-      for(const candle of seconds){
-       const t=Math.floor(candle.t*1000/period.step)*period.step/1000;
-       const bar=buckets.get(t);
-       if(bar){
-        bar.h=Math.max(bar.h,candle.h);bar.l=Math.min(bar.l,candle.l);
-        bar.c=candle.c;bar.count++;
-       }else buckets.set(t,{t,o:candle.o,h:candle.h,l:candle.l,c:candle.c,count:1});
-      }
-      // Only include fully observed multi-second periods. A partial current
-      // candle may be rendered, but distinguish it from closed historical bars.
-      candles=[...buckets.values()].sort((a,b)=>a.t-b.t)
-       .map(({count,...bar})=>bar);
-      if(candles.length<2)throw Error('Insufficient candles');
-      source='Binance Spot · '+symbol+' · OHLC '+selected+
-       ' da candele native 1s · ultime '+seconds.length+' candele 1s';
-      visibleCount=Math.min(120,candles.length);
-      break;
-     }catch(err){if(controller.signal.aborted)break;}
+    const verified=CHART_APPROVED_BINANCE_SPOT[asset.id];
+    if(verified){
+     const resolved=await chartBinanceSecondOHLC(verified,period,controller,now);
+     if(resolved){
+      candles=resolved.candles;source=resolved.source;
+      visibleCount=resolved.visibleCount;partial=resolved.partial;
+     }
     }
    }else{
     const paths=[
@@ -6370,8 +6382,9 @@ async function loadSecondChartHistory(force=false){
    const fallbackUrls=crypto?
     (asset.id==='ore'?
      ['./ore-chart-history.json?v='+Math.floor(now/60000)]:
-     chartMarketUrls(asset,{interval:'1m',lbank:'minute1',step:60000},now-3600000,now)
-      .map(endpoint=>endpoint.url)):
+     CHART_APPROVED_BINANCE_SPOT[asset.id]?
+      chartMarketUrls(asset,{interval:'1m',lbank:'minute1',step:60000},now-3600000,now)
+       .filter(endpoint=>endpoint.venue==='Binance').map(endpoint=>endpoint.url):[]):
     ['./chart-history/'+encodeURIComponent(asset.id)+'.json?v='+Math.floor(now/120000)];
    for(const url of fallbackUrls){
     try{
@@ -6398,10 +6411,27 @@ async function loadSecondChartHistory(force=false){
      candles=chartNormalizeCandles(raw,venue,0,now,60000);
      if(candles.length<2){candles=[];continue;}
      visibleCount=Math.min(120,candles.length);
+     partial=true;
+     // The selected seconds cannot be reconstructed from real minute OHLC.
+     source+=' · vista alternativa: ultime 1H, non '+selected;
      break;
     }catch(err){
      if(controller.signal.aborted)break;
     }
+   }
+  }
+  if(candles.length<2&&asset.group==='crypto'&&asset.id!=='ore'){
+   // Missing seconds data: a truthfully labelled longer window is better
+   // than a blank plot, but must never masquerade as native 1s/5s/15s/30s.
+   const fallback=await chartCryptoIntradayResolution(
+    asset,CHART_PERIOD_BY_ID['1h'],now-3600000,now);
+   if(fallback?.candles?.length>=2){
+    candles=fallback.candles.slice(-80);
+    visibleCount=Math.min(80,candles.length);
+    source='Vista alternativa 1H (non '+selected+') · '+fallback.source;
+    partial=true;
+    sampled=fallback.sampled===true;
+    resolutionFallback='1H';
    }
   }
  }catch(err){error=String(err?.message||err);}
@@ -6409,7 +6439,9 @@ async function loadSecondChartHistory(force=false){
  if(seq!==chartFetchState.sequence)return;
  if(candles.length>=2){
   const result={id:asset.id,range:selected,candles,source,loading:false,
-   error:'',partial,visibleCount,loadedAt:Date.now()};
+   error:'',partial,sampled,visibleCount,
+   resolutionFallback:resolutionFallback||(source.includes('vista alternativa')?'1H':''),
+   loadedAt:Date.now()};
   chartSeries=result;chartFetchState.cache.set(key,result);
   if(chartFetchState.cache.size>100)
    chartFetchState.cache.delete(chartFetchState.cache.keys().next().value);
