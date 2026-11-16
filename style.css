@@ -4693,3 +4693,13 @@ body.page-global :is(.photo-cover,.map-svg,.spark){
  -webkit-backdrop-filter:none!important;
 }
 
+
+/* Global crypto notifications live only in Settings, never in Market Force. */
+.crypto-global-alert-overview details{margin-top:12px;border:1px solid var(--border,rgba(130,130,130,.25));border-radius:10px;padding:12px}
+.crypto-global-alert-overview summary{cursor:pointer;font-weight:600}
+.crypto-global-alert-scroll{overflow:auto;max-height:360px;margin-top:12px}
+.crypto-global-alert-scroll table{border-collapse:collapse;width:100%;font-size:12px;text-align:left}
+.crypto-global-alert-scroll th,.crypto-global-alert-scroll td{padding:8px 10px;border-bottom:1px solid var(--border,rgba(130,130,130,.2));white-space:nowrap}
+.crypto-global-alert-scroll th{position:sticky;top:0;background:var(--card,var(--surface,#20242c));z-index:1}
+.crypto-global-alert-history{margin:12px 0 0;padding-left:22px;max-height:260px;overflow:auto}
+.crypto-global-alert-history li{padding:5px 0;line-height:1.5}
