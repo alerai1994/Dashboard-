@@ -5524,6 +5524,50 @@ const snapshotFetch={busy:false,etag:null,age:null,fullAt:0,lightAt:0,fastRetryA
 // GitHub Actions creates a new verified market snapshot every ~5 minutes.
 // The compact feed is polled frequently; long OHLC history is refreshed less often.
 const FULL_FEED_INTERVAL=30*60*1000;
+/* Enrich the full 288-coin catalog with exact-ID snapshots.
+   This source is delayed, never declared streaming/LIVE. */
+const catalogQuoteFeed={loadedAt:0,items:new Map(),busy:null};
+async function loadCatalogQuoteFeed(){
+ if(Date.now()-catalogQuoteFeed.loadedAt<5*60000)return catalogQuoteFeed.items;
+ if(catalogQuoteFeed.busy)return catalogQuoteFeed.busy;
+ catalogQuoteFeed.busy=(async()=>{
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),9000);
+  try{
+   const response=await fetch('./crypto-heatmap-data.json?v='+Math.floor(Date.now()/120000),
+    {cache:'no-store',signal:controller.signal});
+   if(!response.ok)throw Error('catalog HTTP '+response.status);
+   const body=await response.json();
+   if(body?.catalogSize!==288||!Array.isArray(body.coins))throw Error('catalog invalid');
+   const items=new Map();
+   for(const row of body.coins){
+    const asset=ASSET_BY_ID[row?.localId];
+    if(asset?.group!=='crypto'||asset.coingeckoId!==row.id)continue;
+    const stamp=Date.parse(row.observedAt||'');
+    const age=Date.now()-stamp;
+    const price=Number(row.price);
+    // Do not present aged or invalid prices as a current market direction.
+    if(!Number.isFinite(stamp)||age< -300000||age>2*3600000||
+       !Number.isFinite(price)||price<=0)continue;
+    const percentage=row.change===null?null:Number(row.change);
+    const icon=coinLogoUrl(row.image);
+    items.set(asset.id,{id:asset.id,value:price,
+     change:Number.isFinite(percentage)?percentage:null,
+     time:new Date(stamp).toISOString(),currency:'USD',
+     source:'CoinGecko · rilevazione periodica',logo:icon||undefined,
+     live:false});
+   }
+   catalogQuoteFeed.items=items;catalogQuoteFeed.loadedAt=Date.now();
+  }catch(_error){
+   // Keep previous timestamped observations only within their valid window.
+   catalogQuoteFeed.items=new Map([...catalogQuoteFeed.items].filter(([,row])=>
+    Date.now()-Date.parse(row.time||'')<2*3600000));
+   catalogQuoteFeed.loadedAt=Date.now();
+  }finally{clearTimeout(timer)}
+  return catalogQuoteFeed.items;
+ })().finally(()=>{catalogQuoteFeed.busy=null});
+ return catalogQuoteFeed.busy;
+}
+
 async function fetchQuotes(isManual=false,forceFull=false){
  if(snapshotFetch.busy)return;
  snapshotFetch.busy=true;
@@ -5563,8 +5607,23 @@ async function fetchQuotes(isManual=false,forceFull=false){
   snapshotFetch.fastRetryAfter=0;
   const {payload:data,response}=answer;
   ingestCryptoEtfQuotes(data.etfs);
+  const catalog=await loadCatalogQuoteFeed();
   const all=[...(data.markets||[]),...(data.bigtech||[]),...(data.commodities||[]),
    ...(data.forex||[]),...(data.crypto||[])];
+  const already=new Map(all.map((row,index)=>[row.id,index]));
+  for(const [id,candidate] of catalog){
+   const index=already.get(id);
+   if(index===undefined){already.set(id,all.length);all.push(candidate);continue;}
+   const original=all[index];
+   const oldTime=Date.parse(original?.time||''),catalogTime=Date.parse(candidate.time);
+   if(!Number.isFinite(Number(original?.value))||Number(original.value)<=0||
+      Number.isFinite(oldTime)&&catalogTime>oldTime){
+    // Preserve full-feed candle history, replacing only quote fields.
+    all[index]={...original,...candidate,logo:candidate.logo||original.logo};
+   }else if(!coinLogoUrl(original?.logo)&&candidate.logo){
+    all[index]={...original,logo:candidate.logo};
+   }
+  }
   if(!all.some(x=>x&&x.id&&Number.isFinite(Number(x.value))&&Number(x.value)>0))
    throw new Error('No verified quotes');
   const base=Object.fromEntries(all.filter(x=>x&&x.id&&ASSET_BY_ID[x.id]).map(x=>{
