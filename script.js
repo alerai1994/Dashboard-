@@ -7110,18 +7110,44 @@ function chartSampledCandlesFromPrices(points,days=7){
  }
  return [...buckets.values()].filter(c=>c.observations>=2).sort((a,b)=>a.t-b.t);
 }
+/* Genuine observed price history fallback for coins without published OHLC.
+   Never reconstruct exchange OHLC from one observed daily price. */
+const chartObservedHistoryDirectCache=new Map();
 async function chartLoadObservedPriceArchive(asset,signal){
  if(!asset||asset.group!=='crypto'||asset.id==='ore')return null;
  const url='./chart-history/crypto/prices/'+encodeURIComponent(asset.id)+
   '.json?v='+Math.floor(Date.now()/3600000);
- const response=await fetch(url,{signal,cache:'force-cache'});
- if(!response.ok)return null;
- const data=await response.json();
- if(!data||data.id!==asset.id||data.kind!=='observed-price-line'||
-   (asset.coingeckoId&&data.coingeckoId!==asset.coingeckoId))return null;
- const points=chartReadHistoricalPricePoints(data.points);
- if(points.length<2)return null;
- return {points,source:String(data.source||'Prezzi storici osservati').slice(0,180)};
+ try{
+  const response=await fetch(url,{signal,cache:'force-cache'});
+  if(response.ok){
+   const data=await response.json();
+   if(data?.id===asset.id&&data.kind==='observed-price-line'&&
+     (!asset.coingeckoId||data.coingeckoId===asset.coingeckoId)){
+    const points=chartReadHistoricalPricePoints(data.points);
+    if(points.length>=2)return {points,
+     source:String(data.source||'Prezzi storici osservati').slice(0,180)};
+   }
+  }
+ }catch(_error){/* Try the exact-ID price-history provider below. */}
+ const coin=asset.coingeckoId;
+ if(typeof coin!=='string'||!/^[a-z0-9-]{1,100}$/.test(coin))return null;
+ const cached=chartObservedHistoryDirectCache.get(coin);
+ if(cached&&Date.now()-cached.at<15*60000)return cached.result;
+ const key='coingecko:'+coin,now=Math.floor(Date.now()/1000);
+ const params='?start='+(now-365*86400)+'&span=365&period=1d';
+ try{
+  const response=await fetch('https://coins.llama.fi/chart/'+encodeURIComponent(key)+params,
+   {signal,cache:'no-store'});
+  if(!response.ok)return null;
+  const payload=await response.json(),entries=payload?.coins?.[key]?.prices;
+  if(!Array.isArray(entries))return null;
+  const points=chartReadHistoricalPricePoints(entries.map(row=>
+   [row?.timestamp,row?.price]));
+  const result=points.length>=2?
+   {points,source:'DefiLlama · prezzi giornalieri osservati (non OHLC exchange)'}:null;
+  if(result)chartObservedHistoryDirectCache.set(coin,{result,at:Date.now()});
+  return result;
+ }catch(_error){return null}
 }
 async function loadAllChartHistory(force=false){
  const asset=ASSET_BY_ID[state.dialogId];
