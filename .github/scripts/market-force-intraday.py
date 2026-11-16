@@ -69,6 +69,26 @@ def request_group(batch, period, span, now):
     return {}
 
 
+
+def coingecko_market_chart(coin, days, now):
+    """CoinGecko-ID fallback for genuine observations absent at DefiLlama.
+    Millisecond timestamps are normalized; no OHLC/high-low is fabricated.
+    """
+    url = ("https://api.coingecko.com/api/v3/coins/" + quote(coin, safe="") +
+           "/market_chart?" + urlencode({"vs_currency": "usd", "days": days}))
+    try:
+        with urlopen(Request(url, headers=HEADERS), timeout=18) as response:
+            data = json.load(response)
+        if not isinstance(data, dict):
+            return []
+        return normalize(data.get("prices"), now)
+    except HTTPError as error:
+        print("CoinGecko historical prices", coin, days, "HTTP", error.code)
+    except (URLError, OSError, ValueError, TypeError) as error:
+        print("CoinGecko historical prices", coin, days, type(error).__name__)
+    return []
+
+
 def previous_archive(path, ident, coin):
     try:
         archive = json.loads(path.read_text(encoding="utf-8"))
@@ -104,9 +124,22 @@ def main():
         for ident, coin in batch:
             path = OUT / (ident + ".json")
             previous = previous_archive(path, ident, coin)
+            # The catalog includes niche assets absent from the first price
+            # provider. Only these missing identities trigger CoinGecko calls.
+            fine_points = fine.get(ident, [])
+            hour_points = hourly.get(ident, [])
+            used_cg = False
+            if not fine_points:
+                fine_points = coingecko_market_chart(coin, 1, now)
+                used_cg = used_cg or bool(fine_points)
+                time.sleep(0.2)
+            if not hour_points:
+                hour_points = coingecko_market_chart(coin, 7, now)
+                used_cg = used_cg or bool(hour_points)
+                time.sleep(0.2)
             periods = {}
             for timeframe, seconds in WINDOWS.items():
-                observations = hourly.get(ident, []) if timeframe == "1W" else fine.get(ident, [])
+                observations = hour_points if timeframe == "1W" else fine_points
                 chosen = select_window(observations, seconds, now)
                 if not chosen:
                     # Retain verified earlier snapshots if the API is temporarily down,
@@ -120,7 +153,8 @@ def main():
             payload = {
                 "id": ident, "coingeckoId": coin,
                 "kind": "observed-price-line", "currency": "USD",
-                "source": "DefiLlama · prezzi osservati in USD (non OHLC)",
+                "source": ("DefiLlama / CoinGecko · prezzi osservati in USD (non OHLC)"
+                           if used_cg else "DefiLlama · prezzi osservati in USD (non OHLC)"),
                 "capturedAt": datetime.now(timezone.utc).isoformat(),
                 "periods": periods,
             }
