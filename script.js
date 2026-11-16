@@ -6168,9 +6168,15 @@ function chartNormalizeCandles(raw,venue,from,to,step){
  parsed.sort((a,b)=>a.t-b.t);
  return parsed.filter((row,i)=>i===0||row.t!==parsed[i-1].t);
 }
+/* Approved spot pairs mirror the manually verified catalog in
+   .github/scripts/market-force-ohlc.py. A random ticker match is never
+   enough to identify a cryptocurrency on an exchange. */
+const CHART_APPROVED_BINANCE_SPOT=Object.freeze({"btc":"BTCUSDT","eth":"ETHUSDT","sol":"SOLUSDT","bnb":"BNBUSDT","xrp":"XRPUSDT","hype":"HYPEUSDT","ada":"ADAUSDT","doge":"DOGEUSDT","link":"LINKUSDT","avax":"AVAXUSDT","dot":"DOTUSDT","sui":"SUIUSDT","trx":"TRXUSDT","ltc":"LTCUSDT","xmr":"XMRUSDT","aave":"AAVEUSDT","shib":"SHIBUSDT","pepe":"PEPEUSDT","inj":"INJUSDT","lunc":"LUNCUSDT","ton":"TONUSDT","hbar":"HBARUSDT","xlm":"XLMUSDT","uni":"UNIUSDT","arb":"ARBUSDT","apt":"APTUSDT","near":"NEARUSDT","fil":"FILUSDT","atom":"ATOMUSDT","op":"OPUSDT","render":"RENDERUSDT","fet":"FETUSDT","wld":"WLDUSDT","tao":"TAOUSDT","jup":"JUPUSDT","ray":"RAYUSDT","crv":"CRVUSDT","ens":"ENSUSDT","sand":"SANDUSDT","mana":"MANAUSDT","bonk":"BONKUSDT","floki":"FLOKIUSDT","bch":"BCHUSDT","etc":"ETCUSDT","eos":"EOSUSDT","grt":"GRTUSDT","stx":"STXUSDT","cake":"CAKEUSDT","algo":"ALGOUSDT","icp":"ICPUSDT","kava":"KAVAUSDT","ena":"ENAUSDT","ethfi":"ETHFIUSDT","pyth":"PYTHUSDT","gala":"GALAUSDT","ftm":"FTMUSDT","sei":"SEIUSDT"});
 function chartMarketUrls(asset,period,from,to){
- // CoinGecko token IDs are verified; a matching Binance ticker alone is not.
- if(asset.extended)return [];
+ // A verified listing, not merely a matching ticker, authorizes Binance
+ // requests for catalog coins. Remaining extended coins use CoinGecko ID.
+ const approved=CHART_APPROVED_BINANCE_SPOT[asset.id];
+ if(asset.extended&&!approved)return [];
  const count=Math.min(750,Math.max(32,Math.ceil((to-from)/period.step)+4));
  const symbol=asset.id==='ore'?'ore_usdt':asset.id.toUpperCase()+'_usdt';
  const params='symbol='+encodeURIComponent(symbol)+'&type='+period.lbank+
@@ -6180,13 +6186,13 @@ function chartMarketUrls(asset,period,from,to){
    venue:'LBank',source:'LBank Spot · ORE/USDT',url:domain+'/v2/kline.do?'+params
   }));
  }
- const binanceSymbol=asset.id.toUpperCase()+'USDT';
+ const binanceSymbol=approved||asset.id.toUpperCase()+'USDT';
  const binanceParams='symbol='+encodeURIComponent(binanceSymbol)+'&interval='+period.interval+
   '&startTime='+Math.max(0,from-period.step)+'&endTime='+to+'&limit='+Math.min(1000,count);
- const first=['https://api.binance.com','https://api1.binance.com'].map(domain=>({
+ const first=['https://data-api.binance.vision','https://api.binance.com'].map(domain=>({
   venue:'Binance',source:'Binance Spot · '+binanceSymbol,url:domain+'/api/v3/klines?'+binanceParams
  }));
- const second=['https://api.lbank.info'].map(domain=>({
+ const second=(asset.extended?[]:['https://api.lbank.info']).map(domain=>({
   venue:'LBank',source:'LBank Spot · '+symbol.toUpperCase(),url:domain+'/v2/kline.do?'+params
  }));
  return [...first,...second];
@@ -6624,24 +6630,6 @@ async function loadCryptoChartHistory(force=false){
    chartFetchState.cache.delete(chartFetchState.cache.keys().next().value);
   updateChartHistoryStatus();scheduleDetailChartDraw();return;
  }
- // New crypto are resolved by CoinGecko ID: ticker-only exchange pairs
- // are ambiguous and may refer to an entirely different project.
- if(asset.extended){
-  let result=null;
-  try{result=await chartExtendedCryptoHistory(asset,period,from,now,force);}
-  catch(_error){/* Missing or rate-limited upstream history stays unavailable. */}
-  if(seq!==chartFetchState.sequence)return;
-  if(result?.candles?.length>=2||result?.pricePoints?.length>=2){
-   const output={id:asset.id,range:selected,candles:[],...result,loading:false,error:'',
-    loadedAt:Date.now()};
-   chartSeries=output;chartFetchState.cache.set(key,output);
-   if(chartFetchState.cache.size>100)
-    chartFetchState.cache.delete(chartFetchState.cache.keys().next().value);
-   updateChartHistoryStatus();scheduleDetailChartDraw();return;
-  }
-  failure='CoinGecko non ha restituito candele OHLC verificate per '+asset.name+
-   ' e il periodo '+selected+'. Prova TUTTO o un intervallo più ampio.';
- }
  for(const endpoint of chartMarketUrls(asset,period,from,now)){
   if(seq!==chartFetchState.sequence)return;
   const controller=new AbortController();
@@ -6671,6 +6659,26 @@ async function loadCryptoChartHistory(force=false){
   }catch(err){
    failure='Impossibile caricare '+selected+' da Binance/LBank. Verifica rete o disponibilità del mercato.';
   }finally{clearTimeout(timeout)}
+ }
+ // If a verified Binance pair has no usable candles, resolve the asset by
+ // its exact CoinGecko identity. Other extended coins go straight here.
+ // New crypto are resolved by CoinGecko ID: ticker-only exchange pairs
+ // are ambiguous and may refer to an entirely different project.
+ if(asset.extended){
+  let result=null;
+  try{result=await chartExtendedCryptoHistory(asset,period,from,now,force);}
+  catch(_error){/* Missing or rate-limited upstream history stays unavailable. */}
+  if(seq!==chartFetchState.sequence)return;
+  if(result?.candles?.length>=2||result?.pricePoints?.length>=2){
+   const output={id:asset.id,range:selected,candles:[],...result,loading:false,error:'',
+    loadedAt:Date.now()};
+   chartSeries=output;chartFetchState.cache.set(key,output);
+   if(chartFetchState.cache.size>100)
+    chartFetchState.cache.delete(chartFetchState.cache.keys().next().value);
+   updateChartHistoryStatus();scheduleDetailChartDraw();return;
+  }
+  failure='CoinGecko non ha restituito candele OHLC verificate per '+asset.name+
+   ' e il periodo '+selected+'. Prova TUTTO o un intervallo più ampio.';
  }
  if(seq!==chartFetchState.sequence)return;
  // Only use authenticated snapshot OHLC timestamps falling inside the chosen
