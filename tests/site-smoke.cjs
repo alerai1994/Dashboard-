@@ -744,7 +744,7 @@ assert(source.includes('function forceMarketObservedArchive('),'Forza mercato mu
 assert(source.includes('function forceMarketObservedDirect('),'Forza mercato needs live verified price history fallback');
 assert(source.includes('function forceMarketSampledCandles('),
  'Forza mercato must render sampled observed prices as labeled candles, not lines');
-assert(source.includes('const bars=realBars.length>=2?realBars:observed;'),
+assert(source.includes('const fullBars=realBars.length>=2?realBars:observed;'),
  'Forza mercato must render true OHLC first, sampled candles only as a fallback');
 assert(html.includes('price-board.js?v=20261115-icon-only-fullscreen-v7'));
 
