@@ -200,13 +200,17 @@ def main():
     # Third independent source only for still missing changes: timestamps must
     # truly bracket 24 hours. Market direction is never inferred from a daily
     # high, a 0% placeholder or another token's similarly named ticker.
+    # Verify both missing and reported-zero changes from timestamped prices.
+    # Only an actual measurable 24h move can override the official zero.
     remaining=[(ident,cg) for ident,cg in coins.items()
                if result.get(ident,{}).get("id")==cg and
-               result[ident].get("change") is None and positive(result[ident].get("price"))]
+               result[ident].get("change") in (None,0) and
+               positive(result[ident].get("price"))]
     now_ts=int(datetime.now(timezone.utc).timestamp())
     for i,(ident,cg) in enumerate(remaining):
         movement=observed_24h_change(cg,now_ts)
-        if movement is not None and math.isfinite(movement):
+        if movement is not None and math.isfinite(movement) and (
+                result[ident].get("change") is None or abs(movement)>0.000001):
             result[ident]["change"]=float(f"{movement:.9g}")
             result[ident]["changeSource"]="DefiLlama · due prezzi realmente osservati a 24h"
         if i<len(remaining)-1:time.sleep(1.2)
