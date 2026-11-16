@@ -242,8 +242,9 @@ function activate(){
  // navigation, so the module never binds to an element that gets replaced.
  paint();
  if(document.getElementById('vhGrid')){
-  refresh();
-  if(Date.now()-state.logoAt>300000)loadCatalogLogos();
+  refresh().finally(()=>{
+   if(Date.now()-state.logoAt>300000)loadCatalogLogos();
+  });
  }
 }
 document.addEventListener('input',event=>{
