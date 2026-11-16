@@ -212,6 +212,22 @@ function sortCoins(coins){
  else items.sort((a,b)=>(a.rank||1e9)-(b.rank||1e9) || (b.marketCap||0)-(a.marketCap||0));
  return items;
 }
+function alertBoundary(id){
+ const direction=backend()?.getAlertBoundary?.(id);
+ return direction==='above'||direction==='below'?direction:null;
+}
+function paintAlertSignals(){
+ const grid=document.getElementById('vhGrid');
+ if(!grid)return;
+ grid.querySelectorAll('.vh-tile[data-asset]').forEach(tile=>{
+  const direction=alertBoundary(tile.dataset.asset);
+  const price=tile.querySelector('.vh-price');
+  if(price){
+   price.classList.toggle('crypto-price-upper',direction==='above');
+   price.classList.toggle('crypto-price-lower',direction==='below');
+  }
+ });
+}
 function tile(c){
  const valid=finite(c.change)&&finite(c.price)&&c.price>0;
  const tone=!valid?'neutral':c.change>0?'up':c.change<0?'down':'neutral';
@@ -223,7 +239,7 @@ function tile(c){
  const content='<span class="vh-coin-logo" aria-hidden="true">'+icon+'</span>'+
   '<span class="vh-symbol">'+esc(c.symbol.toUpperCase())+'</span>'+
   '<span class="vh-change">'+esc(changeText(c.change))+'</span>'+
-  '<span class="vh-price">'+esc(priceText(c.price))+'</span>';
+  '<span class="vh-price'+(alertBoundary(c.localId)==='above'?' crypto-price-upper':alertBoundary(c.localId)==='below'?' crypto-price-lower':'')+'">'+esc(priceText(c.price))+'</span>';
  const attrs='class="vh-tile vh-'+tone+'" title="'+info+'" aria-label="'+info+'"';
  if(c.localId)return '<button type="button" '+attrs+' data-asset="'+esc(c.localId)+'">'+content+'</button>';
  const id=encodeURIComponent(c.id);
@@ -291,6 +307,7 @@ function paint(){
  if(!grid)return;
  const {all,filtered,visible,markup}=gridHtml();
  grid.innerHTML=markup||'<p class="vh-empty">Nessuna criptovaluta trovata.</p>';
+ paintAlertSignals();
  const stats=document.getElementById('vhStats');
  if(stats)stats.innerHTML=statistics(all);
  const status=document.getElementById('vhStatus');
@@ -388,5 +405,5 @@ setInterval(()=>{
  refresh();
  if(Date.now()-state.snapshotCheckedAt>5*60000)loadCatalogSnapshot();
 },30000);
-window.VertexHeatmap=Object.freeze({page,activate,paint,refresh});
+window.VertexHeatmap=Object.freeze({page,activate,paint,refresh,paintAlertSignals});
 })();
