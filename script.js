@@ -889,14 +889,27 @@ function patchSummary(){
 function updatePriceDom(){
  const ids=[...streamStatus.dirty];streamStatus.dirty.clear();
  if(document.hidden)return;
- // A single page DOM traversal handles all currently dirty prices.
+ // Sparse ticks target only their price cards; bulk feed changes use
+ // one traversal. Avoid walking all 288+ cards on every streaming tick.
  const dirty=new Set(ids),nodesById=new Map();
- if(ids.length)document.querySelectorAll('#pageContainer [data-asset]').forEach(el=>{
-  const id=el.dataset.asset;
-  if(!dirty.has(id))return;
+ const addNode=(id,el)=>{
   if(!nodesById.has(id))nodesById.set(id,[]);
   nodesById.get(id).push(el);
- });
+ };
+ if(ids.length<=24){
+  for(const id of ids){
+   const escaped=typeof CSS!=='undefined'&&CSS.escape?CSS.escape(id):
+    id.replace(/[^a-z0-9_-]/gi,'');
+   if(!escaped)continue;
+   document.querySelectorAll('#pageContainer [data-asset="'+escaped+'"]')
+    .forEach(el=>addNode(id,el));
+  }
+ }else if(ids.length){
+  document.querySelectorAll('#pageContainer [data-asset]').forEach(el=>{
+   const id=el.dataset.asset;
+   if(dirty.has(id))addNode(id,el);
+  });
+ }
  for(const id of ids){
   const a=ASSET_BY_ID[id],q=quote(id);
   if(!a||!q)continue;
