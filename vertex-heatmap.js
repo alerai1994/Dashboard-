@@ -73,39 +73,62 @@ function list(){
    image:logo(live.image)||logo(local.image)||logo(state.logoCache.get(local.id))}:local;
  });
 }
+// Asynchronous logo hydration: independent of the price API and resilient to
+// CoinGecko throttling. Token identity is the exact CoinGecko ID, not ticker.
+let logoRetryAt=0,logoRetryDelay=45000,logoTimer=null;
+function scheduleLogoRetry(ms){
+ if(logoTimer!==null)clearTimeout(logoTimer);
+ logoTimer=setTimeout(()=>{
+  logoTimer=null;
+  if(document.getElementById('vhGrid')&&!document.hidden)loadCatalogLogos();
+ },ms);
+}
 async function loadCatalogLogos(){
  if(state.logoLoading||document.hidden)return;
  const ids=[...new Set(coinAssets().map(a=>a.coingeckoId).filter(id=>
   typeof id==='string'&&/^[a-z0-9-]{1,100}$/.test(id)))];
  const missing=ids.filter(id=>!logo(state.logoCache.get(id))&&!state.coins.some(c=>c.id===id&&logo(c.image)));
- if(!missing.length)return;
- // Batch by exact CoinGecko coin ID. No symbol-only icon inference.
- // Persist successful image URLs, respect public API limits, retry on later visits.
+ if(!missing.length){logoRetryDelay=45000;return}
+ if(Date.now()<logoRetryAt){scheduleLogoRetry(logoRetryAt-Date.now()+200);return}
  state.logoLoading=true;
+ let failed=false,updated=0;
  try{
-  for(let i=0;i<missing.length;i+=75){
-   const group=missing.slice(i,i+75);
-   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
+  // Smaller batches avoid oversized URL / gateway requests. Don't abandon the
+  // entire catalog after one failed segment; retry unresolved IDs later.
+  for(let i=0;i<missing.length;i+=30){
+   if(document.hidden)break;
+   const group=missing.slice(i,i+30);
+   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),14000);
    try{
     const params=new URLSearchParams({vs_currency:'usd',ids:group.join(','),
      order:'market_cap_desc',per_page:'100',page:'1',sparkline:'false'});
     const response=await fetch('https://api.coingecko.com/api/v3/coins/markets?'+params,
      {cache:'no-store',signal:controller.signal});
-    if(response.status===429||response.status===403)break;
-    if(!response.ok)continue;
+    if(response.status===429||response.status===403||response.status===401){
+     failed=true;break;
+    }
+    if(!response.ok){failed=true;continue}
     const body=await response.json();
-    if(!Array.isArray(body))continue;
+    if(!Array.isArray(body)){failed=true;continue}
     const allowed=new Set(group);
     for(const c of body){
-     if(allowed.has(c?.id)&&logo(c.image))state.logoCache.set(c.id,logo(c.image));
+     const verified=logo(c?.image);
+     if(allowed.has(c?.id)&&verified){state.logoCache.set(c.id,verified);updated++}
     }
-    rememberLogos();
-    if(document.getElementById('vhGrid'))paint();
-   }catch(_error){/* A missing icon never creates a fake identity. */}
+    if(updated){rememberLogos();if(document.getElementById('vhGrid'))paint()}
+   }catch(_error){failed=true}
    finally{clearTimeout(timer)}
-   if(i+75<missing.length)await new Promise(resolve=>setTimeout(resolve,1100));
+   if(i+30<missing.length)await new Promise(resolve=>setTimeout(resolve,1900));
   }
- }finally{state.logoLoading=false;state.logoAt=Date.now()}
+ }finally{
+  state.logoLoading=false;state.logoAt=Date.now();
+  const remaining=ids.some(id=>!logo(state.logoCache.get(id))&&!state.coins.some(c=>c.id===id&&logo(c.image)));
+  if(remaining){
+   logoRetryDelay=failed?Math.min(10*60000,logoRetryDelay*2):Math.max(60000,logoRetryDelay);
+   logoRetryAt=Date.now()+logoRetryDelay;
+   scheduleLogoRetry(logoRetryDelay);
+  }else{logoRetryDelay=45000;logoRetryAt=0}
+ }
 }
 function sortCoins(coins){
  const q=state.query.trim().toLocaleLowerCase('it-IT');
@@ -242,9 +265,10 @@ function activate(){
  // navigation, so the module never binds to an element that gets replaced.
  paint();
  if(document.getElementById('vhGrid')){
-  refresh().finally(()=>{
-   if(Date.now()-state.logoAt>300000)loadCatalogLogos();
-  });
+  // Begin image hydration immediately, even if the price API is slow.
+  // All 288 assets are eligible, including tiles with no current quotation.
+  loadCatalogLogos();
+  refresh().finally(()=>{if(Date.now()-state.logoAt>60000)loadCatalogLogos()});
  }
 }
 document.addEventListener('input',event=>{
