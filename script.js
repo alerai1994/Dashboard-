@@ -4900,6 +4900,36 @@ function evaluateCryptoAlerts(){
  updateCryptoAlertIndicator();
  paintCryptoPriceHighlights();
 }
+/* Global crypto notification overview. This uses the whole catalog, never
+   the asset selected in Market Force. No synthetic prices are displayed. */
+function cryptoGlobalAlertOverview(){
+ const crypto=ASSETS.filter(asset=>asset.group==='crypto');
+ const events=cryptoAlertHistory.slice(0,12);
+ const history=events.length?events.map(event=>{
+  const asset=ASSET_BY_ID[event.id],label=asset?.name||event.id;
+  const date=new Date(event.at);
+  const when=Number.isFinite(date.getTime())?date.toLocaleString('it-IT'):'';
+  return '<li><strong>'+esc(event.operator==='above'?'UPPER ↑':'LOW ↓')+'</strong> · '+
+   esc(label)+' · '+esc(formatValue(event.price,asset))+
+   '<small> · '+esc(when)+'</small></li>';
+ }).join(''):'<li>Nessun avviso registrato in questa sessione o in precedenza.</li>';
+ const rows=crypto.map(asset=>{
+  const price=Number(quote(asset.id)?.value),base=cryptoAutoBaselines.get(asset.id);
+  const ready=Number.isFinite(price)&&price>0&&Number.isFinite(base)&&base>0;
+  const factor=state.cryptoAutoPercent/100;
+  return '<tr><td>'+esc(asset.name)+'</td><td>'+
+   (ready?esc(formatValue(base*(1+factor),asset)):'In attesa di prezzo')+
+   '</td><td>'+(ready?esc(formatValue(base*(1-factor),asset)):'In attesa di prezzo')+
+   '</td><td>'+(ready?'Monitorata':'In attesa')+'</td></tr>';
+ }).join('');
+ return '<section class="content-card panel settings-preferences crypto-global-alert-overview">'+
+  '<h3>Avvisi generali UPPER / LOW · tutte le criptovalute</h3>'+
+  '<p class="subnote">Copertura del catalogo: '+crypto.length+' criptovalute. Gli avvisi vengono controllati per ogni asset con quotazione valida, indipendentemente dalla criptovaluta selezionata e dal timeframe in Forza Mercato. Le soglie sono ricalibrate dopo ogni segnale.</p>'+
+  '<details><summary>Visualizza soglie UPPER e LOW per tutte le '+crypto.length+' crypto</summary>'+
+  '<div class="crypto-global-alert-scroll"><table><thead><tr><th>Criptovaluta</th><th>UPPER ↑</th><th>LOW ↓</th><th>Stato</th></tr></thead><tbody>'+rows+'</tbody></table></div></details>'+
+  '<details><summary>Ultimi avvisi UPPER e LOW ('+events.length+')</summary><ol class="crypto-global-alert-history">'+history+'</ol></details>'+
+  '<p class="subnote">Questi avvisi richiedono la dashboard aperta e un feed prezzi disponibile. La campanella controlla il suono; non sono notifiche push a browser chiuso.</p></section>';
+}
 function settingsPage(){
  const choices=[['light','☀','Chiaro','Grigio perla e azzurro tenue'],['dark','☾','Scuro','Blu ardesia riposante'],['ocean','◈','Oceano','Blu e turchese'],['emerald','❖','Smeraldo','Verde elegante'],['violet','✦','Viola','Viola moderno'],['sand','☼','Sabbia','Crema e terracotta'],['ice','❅','Ghiaccio','Bianco e azzurro ghiaccio'],['sunset','◒','Tramonto','Corallo e prugna'],['graphite','◆','Grafite','Grigio e oro'],['ruby','♦','Rubino','Bordeaux e rosa']];
  return secHeader('Impostazioni','Personalizza aspetto, icona e suoni della dashboard')+
@@ -4952,6 +4982,7 @@ function settingsPage(){
  '<p class="subnote settings-audio-help">I pulsanti di prova riproducono solo un suono, senza generare falsi avvisi di prezzo. Per ascoltare gli avvisi reali attiva la campanella in alto a destra. Su iPhone e iPad serve un primo tocco per sbloccare l’audio; browser e sistema possono silenziare le schede in background.</p>'+
  '<button type="button" class="btn btn-small" data-crypto-bell-reset="1">Ricalibra le crypto con prezzo disponibile ('+
  ASSETS.filter(a=>a.group==='crypto').length+' monitorate)</button></div></section>'+
+ cryptoGlobalAlertOverview()+
  '<section class="content-card panel settings-preferences"><div class="settings-sound-row"><div><h3>Suono al clic</h3><p class="subnote">Un breve suono quando premi i pulsanti. Puoi disattivarlo quando vuoi.</p></div>'+
  '<button type="button" data-sound-toggle="1" class="settings-sound-toggle'+(state.clickSound?' is-on':'')+'" role="switch" aria-checked="'+state.clickSound+'" aria-label="Suono al clic">'+(state.clickSound?'Attivo':'Disattivo')+'</button></div>'+
  '<div class="settings-audio-tests" role="group" aria-label="Prova il suono al clic"><button type="button" class="outline-button" data-test-click-sound="1">▶ Prova suono clic</button></div>'+
