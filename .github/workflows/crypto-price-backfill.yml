@@ -6,7 +6,7 @@ on:
       - .github/scripts/crypto-price-backfill.py
       - .github/workflows/crypto-price-backfill.yml
   schedule:
-    - cron: '13 */3 * * *'
+    - cron: '13 * * * *'
   workflow_dispatch:
 permissions:
   contents: write
