@@ -103,6 +103,39 @@ def fetch_missing_24h_changes(ids):
     return changes
 
 
+def observed_24h_change(coin_id, now_ts):
+    """Compute an evidence-based change from time-stamped DefiLlama prices.
+
+    Use an actual observation from approximately 24h ago and a recent last
+    observation. No old cached percentage, fabricated price or daily high/low.
+    """
+    from urllib.parse import quote
+    url=("https://coins.llama.fi/chart/"+quote("coingecko:"+coin_id,safe=":")
+         +"?"+urlencode({"start":now_ts-28*3600,"span":32,"period":"1h"}))
+    try:
+        with urlopen(Request(url,headers=HEADERS),timeout=18) as response:
+            payload=json.load(response)
+        rows=((payload.get("coins") or {}).get("coingecko:"+coin_id) or {}).get("prices") or []
+        samples={}
+        for row in rows:
+            try:
+                stamp=int(float(row.get("timestamp")))
+                value=positive(row.get("price"))
+                if value is not None and now_ts-30*3600<=stamp<=now_ts+300:
+                    samples[stamp]=value
+            except (TypeError,ValueError,OverflowError,AttributeError):continue
+        if len(samples)<2:return None
+        last=max(samples)
+        if now_ts-last>2*3600:return None
+        target=last-24*3600
+        earlier=min((t for t in samples if t<last),key=lambda t:abs(t-target),default=None)
+        if earlier is None or abs(earlier-target)>2*3600:return None
+        return (samples[last]/samples[earlier]-1.0)*100.0
+    except (HTTPError,URLError,OSError,ValueError,TypeError) as error:
+        print("DefiLlama 24h observed comparison unavailable:",coin_id,type(error).__name__)
+        return None
+
+
 def normalized(ident,cg,raw,now):
     price=positive(raw.get("current_price"))
     image=verified_image(raw.get("image"))
@@ -164,6 +197,19 @@ def main():
             if item and item.get("change") is None and cg in changes:
                 item["change"]=changes[cg]
                 item["changeSource"]="CoinGecko · simple/price · usd_24h_change"
+    # Third independent source only for still missing changes: timestamps must
+    # truly bracket 24 hours. Market direction is never inferred from a daily
+    # high, a 0% placeholder or another token's similarly named ticker.
+    remaining=[(ident,cg) for ident,cg in coins.items()
+               if result.get(ident,{}).get("id")==cg and
+               result[ident].get("change") is None and positive(result[ident].get("price"))]
+    now_ts=int(datetime.now(timezone.utc).timestamp())
+    for i,(ident,cg) in enumerate(remaining):
+        movement=observed_24h_change(cg,now_ts)
+        if movement is not None and math.isfinite(movement):
+            result[ident]["change"]=float(f"{movement:.9g}")
+            result[ident]["changeSource"]="DefiLlama · due prezzi realmente osservati a 24h"
+        if i<len(remaining)-1:time.sleep(1.2)
     # Reject any old entry no longer in the explicit catalog or with changed identity.
     rows=[result[ident] for ident,cg in coins.items()
           if ident in result and result[ident].get("id")==cg]
