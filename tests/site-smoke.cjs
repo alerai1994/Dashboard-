@@ -126,6 +126,49 @@ assert(croBars.length>=16,
  'Real Cronos 4H archived observations should provide dense sampled candles');
 // Markets and Market Force now share same-origin market history with no
 // invented OHLC; test five-minute and hourly observations at real timestamps.
+/* Every Markets crypto chart exposes the same nineteen historical choices.
+   The label must accurately describe the available source granularity. */
+const timeframeSegment=source.slice(source.indexOf('const CHART_PERIODS=['),
+ source.indexOf('const CHART_PERIOD_BY_ID='));
+const chartPeriods=new Function(timeframeSegment+';return CHART_PERIODS;')();
+assert.deepEqual(chartPeriods.map(p=>p.id),[
+ '1s','5s','15s','30s','1h','2h','3h','4h','5h','12h',
+ '1D','2D','3D','1W','2W','1M','2M','3M','MAX'
+],'Markets must retain all 19 requested crypto history timeframes');
+assert.equal(chartPeriods.find(p=>p.id==='1h').label,'1H');
+assert.equal(chartPeriods.find(p=>p.id==='MAX').label,'Tutto');
+const approvedMatch=source.match(/const CHART_APPROVED_BINANCE_SPOT=Object\.freeze\((\{[^\n]+\})\);/);
+assert(approvedMatch,'Binance pairs must be manually validated, not inferred by ticker');
+const approvedPairs=JSON.parse(approvedMatch[1]);
+const backendList=read('.github/scripts/market-force-ohlc.py')
+ .match(/BINANCE_SPOT\s*=\s*\{([\s\S]*?)\n\}/);
+assert(backendList,'Missing backend manually verified market pairing list');
+const backendPairs=Object.fromEntries([...backendList[1].matchAll(
+ /"([^"]+)":\s*"([^"]+)"/g)].map(m=>[m[1],m[2]]));
+assert.deepEqual(approvedPairs,backendPairs,
+ 'Markets must share the exact verified Binance identity allowlist');
+assert.equal(approvedPairs.btc,'BTCUSDT');
+assert(source.includes('async function chartBinanceSecondOHLC('),
+ 'Markets 1s-30s must request real 1-second OHLC from an exchange');
+assert(source.includes('&interval=1s&startTime='),
+ 'Binance second candles must be paged by time, not truncated to last 1000 ticks');
+assert(source.includes('requests.length>=5'),
+ 'Limit number of public OHLC requests in each seconds load');
+assert(source.includes('resolutionFallback=\'1H\''),
+ 'Without real seconds, provide a clearly labeled fallback, not fake ticks');
+assert(source.includes('const preferExchange='),
+ 'Verified pairs should prefer detailed exchange OHLC when more dense');
+assert(source.includes('period.ms>=1209600000'),
+ '2W should prefer full verified hourly exchange history');
+assert(source.includes("choice==='2W'?"),
+ '2W must use the 14-day archive rather than only 7 days');
+const collector=read('.github/scripts/market-force-intraday.py');
+assert(collector.includes('"2W": 14 * 86400'),
+ 'Automated collection must include 14-day real observed price history');
+assert(collector.includes('request_group(batch, "1h", 355, now)'),
+ 'The 2W archive needs more than 336 hours of hourly observations');
+assert(source.includes('const snapshot=await chartCryptoIntradayResolution('),
+ 'Months without full OHLC should show a clearly partial historical view');
 assert(source.includes('async function chartCryptoIntradayResolution('),
  'Crypto detail charts must use verified OHLC/observed archives before sparse remote responses');
 assert(source.includes('await chartCryptoIntradayResolution(asset,period,from,now)'),
