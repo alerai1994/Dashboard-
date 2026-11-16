@@ -7,7 +7,7 @@ on:
       - crypto-extended.js
       - .github/workflows/crypto-all-history.yml
   schedule:
-    - cron: '26 4,16 * * *'
+    - cron: '26 1,7,13,19 * * *'
   workflow_dispatch:
 permissions:
   contents: write
