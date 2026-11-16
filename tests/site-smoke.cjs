@@ -7,6 +7,15 @@ const source=read('script.js'),html=read('index.html'),css=read('style.css');
 new Function(source);
 new Function(read('price-board.js'));
 new Function(read('crypto-extended.js'));
+new Function(read('vertex-heatmap.js'));
+const heatmapSource=read('vertex-heatmap.js');
+assert(heatmapSource.includes('const incomingChange=finite(item.change)'),
+ 'Heatmap must reconcile fresh 24h change for already loaded crypto tiles');
+assert(heatmapSource.includes('change:finite(c.change)?c.change:'),
+ 'Heatmap direct feed must retain a verified percentage when provider omits it');
+assert(heatmapSource.includes("c.change>0?'up':c.change<0?'down':'neutral'"),
+ 'Heatmap green/red/neutral must follow actual 24h percentage');
+
 const screenshotCatalog=JSON.parse(read('crypto-extended.js').match(/window\.__VERTEX_EXTRA_CRYPTO__\s*=\s*(\[[\s\S]*?\]);/)[1]);
 assert.equal(screenshotCatalog.length,280,'Expected 280 extended catalog cryptocurrencies');
 assert.equal(new Set(screenshotCatalog.map(c=>c[0])).size,280,'Duplicate extended crypto ticker');
