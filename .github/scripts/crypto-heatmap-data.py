@@ -155,6 +155,42 @@ def normalized(ident,cg,raw,now):
             "image":image,"observedAt":now if price is not None else None,
             "source":"CoinGecko · coins/markets"}
 
+def record_verified_observation(item, prior, now):
+    """Retain real observed snapshots and derive 24h variation when supported.
+
+    Changes are never inferred from a single price or from two snapshots
+    captured close together. Observations from blocked requests stay unchanged.
+    """
+    past=prior.get("priceObservations",[]) if isinstance(prior,dict) else []
+    samples={}
+    for row in past:
+        if not isinstance(row,list) or len(row)!=2:continue
+        try:
+            stamp=int(row[0]);value=positive(row[1])
+            if value is not None and now-48*3600<=stamp<=now+300:
+                samples[stamp]=value
+        except (ValueError,TypeError,OverflowError):continue
+    new_value=positive(item.get("price"))
+    observed=item.get("observedAt")
+    try:
+        new_stamp=int(datetime.fromisoformat(observed.replace("Z","+00:00")).timestamp()) if observed else None
+    except (ValueError,TypeError,OverflowError,AttributeError):new_stamp=None
+    if new_value is not None and new_stamp is not None and now-48*3600<=new_stamp<=now+300:
+        samples[new_stamp]=new_value
+    item["priceObservations"]=[[t,v] for t,v in sorted(samples.items())[-150:]]
+    # A genuine nearest 24-hour reference, within a two-hour tolerance.
+    if new_stamp is None or now-new_stamp>2*3600:return
+    target=new_stamp-24*3600
+    reference=min((t for t in samples if t<new_stamp),
+                  key=lambda t:abs(t-target),default=None)
+    if reference is None or abs(reference-target)>2*3600:return
+    derived=100.0*(new_value/samples[reference]-1.0)
+    if not math.isfinite(derived):return
+    if item.get("change") is None or item.get("change")==0 and abs(derived)>0.000001:
+        item["change"]=float(f"{derived:.9g}")
+        item["changeSource"]="Rilevazioni verificabili ~24h · CoinGecko · prezzi osservati"
+
+
 def main():
     coins=catalog()
     assert len(coins)==288, f"Expected exactly 288 unique assets, found {len(coins)}"
@@ -214,6 +250,16 @@ def main():
             result[ident]["change"]=float(f"{movement:.9g}")
             result[ident]["changeSource"]="DefiLlama · due prezzi realmente osservati a 24h"
         if i<len(remaining)-1:time.sleep(1.2)
+    # Keep historical evidence across scheduled runs, including 429 outages.
+    # Missing/zero 24h changes can then recover from the same coin's actual
+    # observations only after a real 24h window has elapsed.
+    for ident,cg in coins.items():
+        item=result.get(ident)
+        if not item or item.get("id")!=cg:continue
+        prior=old.get(ident)
+        record_verified_observation(item,
+            prior if isinstance(prior,dict) and prior.get("id")==cg else {},
+            now_ts)
     # Reject any old entry no longer in the explicit catalog or with changed identity.
     rows=[result[ident] for ident,cg in coins.items()
           if ident in result and result[ident].get("id")==cg]
