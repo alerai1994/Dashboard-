@@ -1152,7 +1152,7 @@ window.__VERTEX_EXTRA_CRYPTO__ = [
  ["ZEN","Horizen","zencash"],
  ["KMD","Komodo","komodo"],
  ["ICX","ICON","icon"],
- ["ONG","Ontology Gas","ontology-gas"],
+ ["ONG","Ontology Gas","ong"],
  ["ONT","Ontology","ontology"],
  ["HNT","Helium","helium"],
  ["XCH","Chia","chia"],
