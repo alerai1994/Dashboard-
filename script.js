@@ -3002,9 +3002,12 @@ function marketChartPlot(id){
  if(candles.length>=2){
   const low=Math.min(...candles.map(c=>Number(c.l))),high=Math.max(...candles.map(c=>Number(c.h)));
   const pad=Math.max((high-low)*.09,high*.0002),min=low-pad,max=high+pad;
-  const y=v=>T+(max-v)/(max-min)*chartH,step=chartW/candles.length;
+  // Sparse real history stays sparse, but a handful of candles should sit
+  // together at the right instead of being stretched across the whole card.
+  const slots=Math.max(18,candles.length),lead=slots-candles.length;
+  const y=v=>T+(max-v)/(max-min)*chartH,step=chartW/slots;
   const paths=candles.map((c,i)=>{
-   const o=Number(c.o),cl=Number(c.c),x=L+(i+.5)*step,co=cl>=o?'#18d8a0':'#f57185';
+   const o=Number(c.o),cl=Number(c.c),x=L+(lead+i+.5)*step,co=cl>=o?'#18d8a0':'#f57185';
    const yo=y(o),yc=y(cl),cw=Math.max(1.8,Math.min(11,step*.82));
    return '<path d="M'+x.toFixed(2)+' '+y(Number(c.h)).toFixed(2)+'V'+y(Number(c.l)).toFixed(2)+'" stroke="'+co+'" stroke-width="1.15"/>'+
     '<rect x="'+(x-cw/2).toFixed(2)+'" y="'+Math.min(yo,yc).toFixed(2)+'" width="'+cw.toFixed(2)+'" height="'+Math.max(1,Math.abs(yo-yc)).toFixed(2)+'" rx=".5" fill="'+co+'"/>';
@@ -3084,8 +3087,10 @@ function inspectMiniCandle(card,clientX){
  const box=svg.getBoundingClientRect();
  if(!box.width)return;
  const chartX=((clientX-box.left)/box.width)*320;
- const index=Math.max(0,Math.min(candles.length-1,
-  Math.floor((chartX-10)/(300/candles.length))));
+ const slots=Math.max(18,candles.length),lead=slots-candles.length;
+ const candidate=Math.floor((chartX-10)/(300/slots))-lead;
+ if(candidate<0||candidate>=candles.length){tooltip.hidden=true;return;}
+ const index=candidate;
  const candle=candles[index];
  const tooltipKey=[candle.t,candle.h,candle.l,candle.observed||false].join(':');
  if(miniCandleHover?.card===card&&miniCandleHover.index===index&&
@@ -3104,7 +3109,7 @@ function inspectMiniCandle(card,clientX){
  const high=Math.max(...candles.map(c=>Number(c.h)));
  const pad=Math.max((high-low)*.09,high*.0002),min=low-pad,max=high+pad;
  const candleY=10+(max-Number(candle.l))/(max-min)*(142-10-14);
- const xInSvg=10+(index+.5)*300/candles.length;
+ const xInSvg=10+(lead+index+.5)*300/slots;
  const localX=box.left-cardBox.left+(xInSvg/320)*box.width;
  const localLowY=box.top-cardBox.top+(candleY/142)*box.height;
  positionCandleTooltip(tooltip,card,localX,localLowY);
@@ -3116,8 +3121,8 @@ function inspectMiniCandle(card,clientX){
   guide.setAttribute('pointer-events','none');
   svg.appendChild(guide);
  }
- const step=300/candles.length;
- guide.setAttribute('x',String(10+index*step));
+ const step=300/slots;
+ guide.setAttribute('x',String(10+(lead+index)*step));
  guide.setAttribute('y','10');
  guide.setAttribute('width',String(Math.max(1,step)));
  guide.setAttribute('height','118');
