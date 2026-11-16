@@ -94,10 +94,36 @@ const forceGap=forceSampled([
 ],'1H');
 assert.equal(forceGap.length,2,
  'A missing 5-minute interval must remain a real gap instead of a fake candle');
-assert(source.includes("period==='1H'?34:14"),
- 'On 1H the candle body must no longer be capped at 10px');
+assert(source.includes("period==='1H'?34:period==='4H'?24:14"),
+ '1H and 4H bodies must not be limited to old 10px widths');
 assert(source.includes('const betterSampled='),
- 'Denser 5-minute observed candles must take priority over sparse 1H OHLC');
+ 'Denser real observed prices must take priority over sparse OHLC on 1H and 4H');
+assert(source.includes("period==='4H'?16:2"),
+ '4H must fetch denser observed history when exchange OHLC is sparse');
+assert(source.includes("period==='4H'&&actual.length<16&&sampledCount>=16"),
+ '4H must prefer sufficient observed 10-minute candles over sparse hourly candles');
+// Four hours of observed 10-minute price points should be dense but truthful.
+const fourHourExamples=Array.from({length:25},(_,i)=>({
+ t:1794729600+i*600+7,v:50+Math.sin(i/3)+i*.08
+}));
+const fourHourBars=forceSampled(fourHourExamples,'4H');
+assert.equal(fourHourBars.length,24,
+ '4H must produce 24 close-to-close candles from 25 genuine 10-minute observations');
+assert.equal(fourHourBars[0].o,fourHourExamples[0].v);
+assert.equal(fourHourBars.at(-1).c,fourHourExamples.at(-1).v);
+assert(fourHourBars.every(b=>b.h===Math.max(b.o,b.c)&&
+ b.l===Math.min(b.o,b.c)),
+ '4H sampled candles must not invent intraperiod high or low values');
+const fourHourGap=forceSampled([
+ {t:1794729607,v:20},{t:1794730207,v:21},
+ {t:1794732007,v:22},{t:1794732607,v:23}
+],'4H');
+assert.equal(fourHourGap.length,2,'Missing intervals on 4H must not become fake candles');
+const observedCro=JSON.parse(read('chart-history/crypto/intraday/cro.json'));
+const croBars=forceSampled(observedCro.periods['4H'].map(
+ ([t,v])=>({t,v})),'4H');
+assert(croBars.length>=16,
+ 'Real Cronos 4H archived observations should provide dense sampled candles');
 assert(source.includes("a.group==='crypto'?'MAX':'1D'"),
  'All crypto must open the real or sampled historical chart by default');
 // Verify the sampled-candle computation against actual first/high/low/last
