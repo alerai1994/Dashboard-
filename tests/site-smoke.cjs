@@ -8,6 +8,17 @@ new Function(source);
 new Function(read('price-board.js'));
 new Function(read('crypto-extended.js'));
 new Function(read('vertex-heatmap.js'));
+assert(source.includes('getAlertBoundary:cryptoBoundaryFor'),
+ 'Global alert engine must expose actual UPPER LOW crossing to the heatmap');
+assert(source.includes('window.VertexHeatmap?.paintAlertSignals?.()'),
+ 'Alert engine must repaint heatmap prices on threshold crossing');
+assert(read('vertex-heatmap.js').includes("price.classList.toggle('crypto-price-upper'"),
+ 'Heatmap must blink its price for UPPER thresholds');
+assert(read('vertex-heatmap.js').includes("price.classList.toggle('crypto-price-lower'"),
+ 'Heatmap must blink its price for LOW thresholds');
+assert(read('vertex-heatmap.css').includes('prefers-reduced-motion:reduce'),
+ 'Threshold flash must respect reduced motion');
+
 const heatmapSource=read('vertex-heatmap.js');
 assert(heatmapSource.includes('const incomingChange=finite(item.change)'),
  'Heatmap must reconcile fresh 24h change for already loaded crypto tiles');
