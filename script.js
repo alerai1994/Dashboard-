@@ -6673,7 +6673,13 @@ async function loadCryptoChartHistory(force=false){
  try{firstParty=await chartCryptoIntradayResolution(asset,period,from,now)}
  catch(_error){/* Some assets still have no verified history. */}
  if(seq!==chartFetchState.sequence)return;
- if(firstParty?.candles?.length>=2){
+ // Verified 1m / 15m exchange OHLC has substantially more candles than
+ // published 5m / 1h archives on these ranges. Try it first, retaining
+ // the trusted same-origin archive when direct requests fail or are blocked.
+ const preferExchange=!!CHART_APPROVED_BINANCE_SPOT[asset.id]&&
+  (period.ms<=18000000||period.ms>=172800000&&period.ms<=259200000||
+   period.ms>=1209600000);
+ if(firstParty?.candles?.length>=2&&!preferExchange){
   const output={id:asset.id,range:selected,...firstParty,loading:false,error:'',
    loadedAt:Date.now()};
   chartSeries=output;chartFetchState.cache.set(key,output);
@@ -6710,6 +6716,16 @@ async function loadCryptoChartHistory(force=false){
   }catch(err){
    failure='Impossibile caricare '+selected+' da Binance/LBank. Verifica rete o disponibilità del mercato.';
   }finally{clearTimeout(timeout)}
+ }
+ // If Binance cannot be reached, restore the finer-grained verified
+ // archive instead of returning a blank chart or coarse CoinGecko result.
+ if(firstParty?.candles?.length>=2){
+  const output={id:asset.id,range:selected,...firstParty,loading:false,error:'',
+   loadedAt:Date.now()};
+  chartSeries=output;chartFetchState.cache.set(key,output);
+  if(chartFetchState.cache.size>100)
+   chartFetchState.cache.delete(chartFetchState.cache.keys().next().value);
+  updateChartHistoryStatus();scheduleDetailChartDraw();return;
  }
  // If a verified Binance pair has no usable candles, resolve the asset by
  // its exact CoinGecko identity. Other extended coins go straight here.
