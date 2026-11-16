@@ -5,7 +5,21 @@
 'use strict';
 const API='https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false&price_change_percentage=24h';
 const intervalMs=150000;
-const state={coins:[],fetchedAt:0,attemptedAt:0,fetching:false,error:'',query:'',sort:'cap',all:false};
+const state={coins:[],fetchedAt:0,attemptedAt:0,fetching:false,error:'',query:'',sort:'cap',all:false,
+ logoAt:0,logoLoading:false,logoCache:new Map()};
+const LOGO_STORE='vertex-heatmap-coingecko-logos-v1';
+try{
+ const cached=JSON.parse(localStorage.getItem(LOGO_STORE)||'{}');
+ if(cached&&typeof cached==='object'){
+  for(const [id,url] of Object.entries(cached)){
+   if(/^[a-z0-9-]{1,100}$/.test(id)&&typeof url==='string')
+    state.logoCache.set(id,url);
+  }
+ }
+}catch(_error){}
+function rememberLogos(){
+ try{localStorage.setItem(LOGO_STORE,JSON.stringify(Object.fromEntries(state.logoCache)))}catch(_error){}
+}
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const finite=x=>typeof x==='number'&&Number.isFinite(x);
 const backend=()=>window.__vertexPriceBoardBackend;
@@ -45,24 +59,53 @@ function fallback(){
   const lastPrice=Number.isFinite(price)&&price>0?price:null;
   data.push({id:a.coingeckoId||a.id,name:a.name,symbol:assetSymbol(a),price:lastPrice,
    change:q?.change==null?null:Number.isFinite(change)?change:null,
-   marketCap:null,volume:null,rank:null,image:logo(q?.logo),localId:a.id});
+   marketCap:null,volume:null,rank:null,image:logo(q?.logo)||logo(state.logoCache.get(a.coingeckoId)),localId:a.id});
  }
  return data;
 }
 function list(){
- const local=fallback();
- if(!state.coins.length)return local;
- // Exact CoinGecko IDs identify assets. A matching ticker alone can link
- // different token projects to the wrong chart or historical archive.
- const byCoinId=new Map(local.map(a=>[a.id,a]));
- const used=new Set();
- const merged=state.coins.map(coin=>{
-  const localMatch=byCoinId.get(coin.id);
-  if(localMatch)used.add(localMatch.localId);
-  return {...coin,localId:localMatch?.localId||null};
+ // Show the user's exact crypto catalog, not unrelated top-250 market entries.
+ // CoinGecko data enriches only exact identities, never ticker collisions.
+ const marketById=new Map(state.coins.map(c=>[c.id,c]));
+ return fallback().map(local=>{
+  const live=marketById.get(local.id);
+  return live?{...local,...live,localId:local.localId,
+   image:logo(live.image)||logo(local.image)||logo(state.logoCache.get(local.id))}:local;
  });
- for(const a of local)if(!used.has(a.localId))merged.push(a);
- return merged;
+}
+async function loadCatalogLogos(){
+ if(state.logoLoading||document.hidden)return;
+ const ids=[...new Set(coinAssets().map(a=>a.coingeckoId).filter(id=>
+  typeof id==='string'&&/^[a-z0-9-]{1,100}$/.test(id)))];
+ const missing=ids.filter(id=>!logo(state.logoCache.get(id))&&!state.coins.some(c=>c.id===id&&logo(c.image)));
+ if(!missing.length)return;
+ // Batch by exact CoinGecko coin ID. No symbol-only icon inference.
+ // Persist successful image URLs, respect public API limits, retry on later visits.
+ state.logoLoading=true;
+ try{
+  for(let i=0;i<missing.length;i+=75){
+   const group=missing.slice(i,i+75);
+   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
+   try{
+    const params=new URLSearchParams({vs_currency:'usd',ids:group.join(','),
+     order:'market_cap_desc',per_page:'100',page:'1',sparkline:'false'});
+    const response=await fetch('https://api.coingecko.com/api/v3/coins/markets?'+params,
+     {cache:'no-store',signal:controller.signal});
+    if(response.status===429||response.status===403)break;
+    if(!response.ok)continue;
+    const body=await response.json();
+    if(!Array.isArray(body))continue;
+    const allowed=new Set(group);
+    for(const c of body){
+     if(allowed.has(c?.id)&&logo(c.image))state.logoCache.set(c.id,logo(c.image));
+    }
+    rememberLogos();
+    if(document.getElementById('vhGrid'))paint();
+   }catch(_error){/* A missing icon never creates a fake identity. */}
+   finally{clearTimeout(timer)}
+   if(i+75<missing.length)await new Promise(resolve=>setTimeout(resolve,1100));
+  }
+ }finally{state.logoLoading=false;state.logoAt=Date.now()}
 }
 function sortCoins(coins){
  const q=state.query.trim().toLocaleLowerCase('it-IT');
@@ -78,7 +121,7 @@ function sortCoins(coins){
 function tile(c){
  const valid=finite(c.change);
  const tone=!valid?'neutral':c.change>0?'up':c.change<0?'down':'neutral';
- const image=logo(c.image);
+ const image=logo(c.image)||logo(state.logoCache.get(c.id));
  const icon=image?'<img src="'+esc(image)+'" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">':
   '<span class="vh-fallback-logo">'+esc((c.symbol||'?').slice(0,1).toUpperCase())+'</span>';
  const info=esc(c.name+' ('+c.symbol.toUpperCase()+') · '+priceText(c.price)+' · 24h '+changeText(c.change)+
@@ -116,7 +159,7 @@ function statistics(coins){
 function gridHtml(){
  const all=list();
  const filtered=sortCoins(all);
- const visible=state.all?filtered:filtered.slice(0,220);
+ const visible=state.all?filtered:filtered.slice(0,288);
  const markup=visible.map(tile).join('');
  return {all,filtered,visible,markup};
 }
@@ -144,7 +187,7 @@ function page(){
   '<div class="vh-grid" id="vhGrid" aria-live="off">'+(data.markup||'<p class="vh-empty">Dati crypto non ancora disponibili.</p>')+'</div>'+
   '<div class="vh-foot"><span id="vhStatus">'+esc(sourceLabel())+'</span>'+
    '<div class="vh-foot-actions"><span id="vhCount">'+data.visible.length+' / '+data.filtered.length+' asset</span>'+
-   '<button type="button" data-vh-more id="vhMore"'+(data.filtered.length<=220?' hidden':'')+'>'+(state.all?'Mostra meno':'Mostra tutti')+'</button></div></div>'+
+   '<button type="button" data-vh-more id="vhMore"'+(data.filtered.length<=288?' hidden':'')+'>'+(state.all?'Mostra meno':'Mostra tutti')+'</button></div></div>'+
  '</section>';
 }
 function paint(){
@@ -159,7 +202,7 @@ function paint(){
  const count=document.getElementById('vhCount');
  if(count)count.textContent=visible.length+' / '+filtered.length+' asset';
  const more=document.getElementById('vhMore');
- if(more){more.hidden=filtered.length<=220;more.textContent=state.all?'Mostra meno':'Mostra tutti';}
+ if(more){more.hidden=filtered.length<=288;more.textContent=state.all?'Mostra meno':'Mostra tutti';}
 }
 async function refresh(force=false){
  if(state.fetching||document.hidden)return;
@@ -186,6 +229,8 @@ async function refresh(force=false){
    }));
   if(coins.length<20)throw new Error('Nessun dato validato');
   state.coins=coins;state.fetchedAt=Date.now();
+  for(const c of coins)if(logo(c.image))state.logoCache.set(c.id,logo(c.image));
+  rememberLogos();
  }catch(error){
   state.error=String(error?.message||'Connessione non disponibile');
  }finally{
@@ -196,7 +241,10 @@ function activate(){
  // The same Markets section is reused on desktop and mobile and after every
  // navigation, so the module never binds to an element that gets replaced.
  paint();
- if(document.getElementById('vhGrid'))refresh();
+ if(document.getElementById('vhGrid')){
+  refresh();
+  if(Date.now()-state.logoAt>300000)loadCatalogLogos();
+ }
 }
 document.addEventListener('input',event=>{
  if(event.target?.id==='vhSearch'){
@@ -216,6 +264,15 @@ document.addEventListener('click',event=>{
  if(control.hasAttribute('data-vh-refresh')){state.attemptedAt=0;refresh(true);}
  if(control.hasAttribute('data-vh-more')){state.all=!state.all;paint();}
 });
+document.addEventListener('error',event=>{
+ const img=event.target;
+ if(!(img instanceof HTMLImageElement)||!img.closest('.vh-coin-logo'))return;
+ const tile=img.closest('.vh-tile'),symbol=tile?.querySelector('.vh-symbol')?.textContent||'?';
+ const fallback=document.createElement('span');
+ fallback.className='vh-fallback-logo';
+ fallback.textContent=symbol.slice(0,1);
+ img.replaceWith(fallback);
+},true);
 setInterval(()=>{if(document.getElementById('vhGrid')&&!document.hidden)refresh();},30000);
 window.VertexHeatmap=Object.freeze({page,activate,paint,refresh});
 })();
