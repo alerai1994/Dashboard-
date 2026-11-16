@@ -6,7 +6,7 @@
 const API='https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false&price_change_percentage=24h';
 const intervalMs=150000;
 const state={coins:[],fetchedAt:0,attemptedAt:0,fetching:false,error:'',query:'',sort:'cap',all:false,
- logoAt:0,logoLoading:false,logoCache:new Map(),snapshotAt:0,snapshotStatus:''};
+ logoAt:0,logoLoading:false,logoCache:new Map(),snapshotAt:0,snapshotStatus:'',snapshotCheckedAt:0};
 const LOGO_STORE='vertex-heatmap-coingecko-logos-v1';
 try{
  const cached=JSON.parse(localStorage.getItem(LOGO_STORE)||'{}');
@@ -85,6 +85,7 @@ function list(){
  });
 }
 async function loadCatalogSnapshot(){
+ state.snapshotCheckedAt=Date.now();
  try{
   const response=await fetch('./crypto-heatmap-data.json?v='+Math.floor(Date.now()/120000),
    {cache:'no-store'});
@@ -348,6 +349,10 @@ document.addEventListener('error',event=>{
  fallback.textContent=symbol.slice(0,1);
  img.replaceWith(fallback);
 },true);
-setInterval(()=>{if(document.getElementById('vhGrid')&&!document.hidden)refresh();},30000);
+setInterval(()=>{
+ if(!document.getElementById('vhGrid')||document.hidden)return;
+ refresh();
+ if(Date.now()-state.snapshotCheckedAt>5*60000)loadCatalogSnapshot();
+},30000);
 window.VertexHeatmap=Object.freeze({page,activate,paint,refresh});
 })();
