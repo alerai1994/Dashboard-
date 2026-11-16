@@ -4811,6 +4811,7 @@ function paintCryptoPriceHighlights(){
   price.classList.toggle('crypto-price-upper',boundary==='above');
   price.classList.toggle('crypto-price-lower',boundary==='below');
  });
+ window.VertexHeatmap?.paintAlertSignals?.();
  const dialogPrice=$('#dialogBody .dialog-stats strong');
  if(dialogPrice){
   const boundary=cryptoBoundaryFor(state.dialogId);
@@ -5234,7 +5235,7 @@ function workspacePage(){
  feedStatus()+'</section>';
 }
 
-window.__vertexPriceBoardBackend=Object.freeze({assets:ASSETS,getQuote:quote,formatValue,getStatus:instrumentQuoteStatus,pct});
+window.__vertexPriceBoardBackend=Object.freeze({assets:ASSETS,getQuote:quote,formatValue,getStatus:instrumentQuoteStatus,pct,getAlertBoundary:cryptoBoundaryFor});
 const PAGE_RENDERERS={home:homePage,global:globalPage,marketforce:marketForcePage,markets:marketsPage,watchlist:watchlistPage,portfolio:portfolioPage,news:newsPage,analytics:analyticsPage,orderbook:orderBookPage,workspace:workspacePage,etf:etfPage,priceboard:()=>window.VertexPriceBoard?.page()||'<section class="panel">Display non disponibile.</section>',settings:settingsPage};
 function updateNav(){
  $$('.side-link[data-page]').forEach(b=>{const sel=b.dataset.page===state.page;b.classList.toggle('active',sel);if(sel)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
