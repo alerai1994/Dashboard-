@@ -3003,6 +3003,9 @@ async function loadMarketCryptoHistoryPreview(id){
  }finally{clearTimeout(deadline);}
  return null;
 }
+
+const MARKET_HISTORY_SUCCESS_TTL=30*60000;
+const MARKET_HISTORY_RETRY_TTL=12*60000;
 function pumpMarketCryptoHistoryPreviews(){
  while(marketCryptoHistoryActive<MARKET_CRYPTO_PREVIEW_CONCURRENCY&&marketCryptoHistoryQueue.length){
   const id=marketCryptoHistoryQueue.shift();
@@ -3011,9 +3014,9 @@ function pumpMarketCryptoHistoryPreviews(){
   marketCryptoHistoryPreviews.set(id,{status:'loading'});
   redrawMarketCryptoHistoryPreview(id);
   loadMarketCryptoHistoryPreview(id).then(record=>{
-   marketCryptoHistoryPreviews.set(id,record||{status:'unavailable'});
+   marketCryptoHistoryPreviews.set(id,{...(record||{status:'unavailable'}),fetchedAt:Date.now()});
   }).catch(()=>{
-   marketCryptoHistoryPreviews.set(id,{status:'unavailable'});
+   marketCryptoHistoryPreviews.set(id,{status:'unavailable',fetchedAt:Date.now()});
   }).finally(()=>{
    marketCryptoHistoryActive--;
    redrawMarketCryptoHistoryPreview(id);
@@ -3023,7 +3026,11 @@ function pumpMarketCryptoHistoryPreviews(){
 }
 function queueMarketCryptoHistoryPreview(id){
  const asset=ASSET_BY_ID[id];
- if(!asset||asset.group!=='crypto'||marketCryptoHistoryPreviews.has(id))return;
+ if(!asset||asset.group!=='crypto')return;
+ const previous=marketCryptoHistoryPreviews.get(id);
+ if(previous?.status==='loading'||previous?.status==='queued')return;
+ const ttl=previous?.status==='ready'?MARKET_HISTORY_SUCCESS_TTL:MARKET_HISTORY_RETRY_TTL;
+ if(previous&&Date.now()-(previous.fetchedAt||0)<ttl)return;
  marketCryptoHistoryPreviews.set(id,{status:'queued'});
  marketCryptoHistoryQueue.push(id);
  pumpMarketCryptoHistoryPreviews();
@@ -4783,14 +4790,23 @@ function cryptoBoundaryFor(id){
  }
  return signal.direction;
 }
+/* Update only crypto prices with an active or just-expired threshold alert.
+   Crypto streaming ticks must not walk hundreds of cards each time. */
+const lastAlertPaintedIds=new Set();
 function paintCryptoPriceHighlights(){
- const main=$('#pageContainer');
- if(main){
-  main.querySelectorAll('[data-asset]').forEach(node=>{
-   const id=node.dataset.asset,boundary=cryptoBoundaryFor(id);
-   const selector='.asset-price,.mini-price,.tech-asset-value';
-   const values=node.querySelectorAll(selector);
-   values.forEach(price=>{
+ const affected=new Set(lastAlertPaintedIds);
+ for(const [id,signal] of cryptoPriceBoundaryStates){
+  if(Date.now()<signal.expiresAt)affected.add(id);
+  else cryptoPriceBoundaryStates.delete(id);
+ }
+ for(const id of affected){
+  const boundary=cryptoBoundaryFor(id);
+  if(boundary)lastAlertPaintedIds.add(id);
+  else lastAlertPaintedIds.delete(id);
+  const escaped=typeof CSS!=='undefined'&&CSS.escape?CSS.escape(id):id.replace(/[^a-z0-9_-]/gi,'');
+  if(!escaped)continue;
+  document.querySelectorAll('#pageContainer [data-asset="'+escaped+'"]').forEach(node=>{
+   node.querySelectorAll('.asset-price,.mini-price,.tech-asset-value').forEach(price=>{
     price.classList.toggle('crypto-price-upper',boundary==='above');
     price.classList.toggle('crypto-price-lower',boundary==='below');
    });
@@ -4802,22 +4818,21 @@ function paintCryptoPriceHighlights(){
     }
    }
   });
+  const menu=document.querySelector('#searchMenu:not([hidden])');
+  menu?.querySelectorAll('button[data-asset="'+escaped+'"]').forEach(node=>{
+   const price=node.lastElementChild;
+   if(!price)return;
+   price.classList.toggle('crypto-price-upper',boundary==='above');
+   price.classList.toggle('crypto-price-lower',boundary==='below');
+  });
+  if(state.dialogId===id){
+   const price=document.querySelector('#dialogBody .dialog-stats strong');
+   price?.classList.toggle('crypto-price-upper',boundary==='above');
+   price?.classList.toggle('crypto-price-lower',boundary==='below');
+  }
  }
- const menu=$('#searchMenu');
- if(menu&&!menu.hidden)menu.querySelectorAll('button[data-asset]').forEach(node=>{
-  const boundary=cryptoBoundaryFor(node.dataset.asset);
-  const price=node.lastElementChild;
-  if(!price)return;
-  price.classList.toggle('crypto-price-upper',boundary==='above');
-  price.classList.toggle('crypto-price-lower',boundary==='below');
- });
- window.VertexHeatmap?.paintAlertSignals?.();
- const dialogPrice=$('#dialogBody .dialog-stats strong');
- if(dialogPrice){
-  const boundary=cryptoBoundaryFor(state.dialogId);
-  dialogPrice.classList.toggle('crypto-price-upper',boundary==='above');
-  dialogPrice.classList.toggle('crypto-price-lower',boundary==='below');
- }
+ // The heatmap's dedicated renderer handles only the same affected IDs.
+ window.VertexHeatmap?.paintAlertSignals?.(affected);
 }
 function evaluateCryptoAlerts(){
  const newHits=[];
@@ -5589,6 +5604,9 @@ async function fetchQuotes(isManual=false,forceFull=false){
     throw new Error('Invalid '+file);
    return {payload,response};
   };
+  // Start fetching the supplementary catalog concurrently, so a slow
+  // 288-asset snapshot does not add its latency after the primary market feed.
+  const catalogPromise=loadCatalogQuoteFeed();
   let answer;
   try{answer=await requestFeed(full)}
   catch(error){
@@ -5608,7 +5626,7 @@ async function fetchQuotes(isManual=false,forceFull=false){
   snapshotFetch.fastRetryAfter=0;
   const {payload:data,response}=answer;
   ingestCryptoEtfQuotes(data.etfs);
-  const catalog=await loadCatalogQuoteFeed();
+  const catalog=await catalogPromise;
   const all=[...(data.markets||[]),...(data.bigtech||[]),...(data.commodities||[]),
    ...(data.forex||[]),...(data.crypto||[])];
   const already=new Map(all.map((row,index)=>[row.id,index]));
@@ -8791,6 +8809,12 @@ function startVertexApp(){
  setInterval(refreshVisibleQuoteFreshness,5000);
  setInterval(()=>{if(!document.hidden&&state.page==='global')refreshGlobalCryptoCaps()},GLOBAL_CRYPTO_CAP_POLL_MS);
  setInterval(pollCryptoPrices,15000);
+ // Retry charts which were previously unavailable when their real data
+ // archives are published; don't repeatedly hit providers on every tick.
+ setInterval(()=>{
+  if(document.hidden||!['markets','workspace'].includes(state.page))return;
+  observeMarketCryptoHistoryPreviews();
+ },5*60000);
  setInterval(keepStreamAlive,15000);
  setInterval(()=>{if(!document.hidden)connectForexStream();updateLiveBadges()},15000);
  document.addEventListener('visibilitychange',()=>{
