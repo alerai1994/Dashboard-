@@ -2192,15 +2192,16 @@ async function forceMarketObservedCoinGecko(asset,period,now){
 }
 
 /* Sampled candles reflect movements between ACTUAL observations, not OHLC.
-   1H uses five-minute price samples instead of sparse 15-minute buckets. */
+   1H uses 5-minute observations and 4H uses 10-minute sampled intervals.
+   Never invent intra-interval highs, lows or missing prices. */
 function forceMarketSampledCandles(points,period){
  if(!Array.isArray(points)||points.length<2)return [];
- const seconds={'1H':300,'4H':1200,'1D':3600,'1W':14400}[period];
+ const seconds={'1H':300,'4H':600,'1D':3600,'1W':14400}[period];
  if(!seconds)return [];
  const sorted=points.filter(p=>Number.isFinite(p.t)&&Number.isFinite(p.v)&&p.v>0)
   .slice().sort((a,b)=>a.t-b.t);
- if(period==='1H'){
-  // One observed close per 5-minute bucket. The preceding observed close
+ if(period==='1H'||period==='4H'){
+  // One observed close per 5/10-minute bucket. The preceding observed close
   // is the opening sample; no fabricated intermediate price or wick.
   const samples=new Map();
   for(const p of sorted)samples.set(Math.floor(p.t/seconds)*seconds,p.v);
@@ -2270,7 +2271,10 @@ async function marketForceLoadOHLC(id,period){
   if(a.group==='crypto'&&period!=='1A'){
    const published=await forceMarketFetchPublishedOHLC(a,period,now);
    if(published){bars=published.bars;source=published.source;interval=published.interval;}
-   const observed=bars.length<2?await forceMarketObservedArchive(a,period,now):null;
+   // Sparse but valid hourly candles can still look isolated. Fetch denser
+   // actual observations when the number of bars is too small for 1H/4H.
+   const minDense=period==='1H'?8:period==='4H'?16:2;
+   const observed=bars.length<minDense?await forceMarketObservedArchive(a,period,now):null;
    if(observed){
     points=observed.points;observedSource=observed.source;observedInterval=observed.interval;
     marketForceOHLC.set(key,{bars:[],points,source:observedSource,
@@ -2396,11 +2400,12 @@ async function marketForceLoadOHLC(id,period){
     points=observed.points;observedSource=observed.source;observedInterval=observed.interval;
    }
   }
-  // If a source offers only 1-2 long-interval candles for 1H, prefer
-  // the more detailed verified five-minute observed-price history.
-  // Keep these price-derived candles explicitly marked as sampled.
-  const betterSampled=period==='1H'&&actual.length<8&&
-   forceMarketSampledCandles(points,period).length>=8;
+  // Prefer a denser set of verified sampled movements when available
+  // exchange OHLC is too sparse on 1H or 4H. Keep samples labeled.
+  const sampledCount=period==='1H'||period==='4H'?
+   forceMarketSampledCandles(points,period).length:0;
+  const betterSampled=(period==='1H'&&actual.length<8&&sampledCount>=8)||
+   (period==='4H'&&actual.length<16&&sampledCount>=16);
   if((!actual.length||betterSampled)&&points.length>=2){
    source=observedSource;interval=observedInterval;
   }
@@ -2465,10 +2470,12 @@ function marketForceBullishPlot(m){
  const low=Math.min(...bars.map(b=>b.l)),high=Math.max(...bars.map(b=>b.h));
  const pad=Math.max((high-low)*.1,high*.0004,1e-9),min=Math.max(0,low-pad),max=high+pad;
  const y=v=>T+(max-v)/(max-min)*ph;
- // Fill most of the available slot on 1H; the old 10px maximum made
- // sparse charts look like isolated sticks on desktop.
+ // Keep candle bodies compact on 1H AND 4H, rather than isolated sticks.
+ // Wider bodies cannot fill actual holes in the market-data source.
  const width=pw/bars.length;
- const body=Math.max(1.8,Math.min(period==='1H'?34:14,width*(period==='1H'?.84:.72)));
+ const body=Math.max(1.8,Math.min(
+  period==='1H'?34:period==='4H'?24:14,
+  width*(period==='1H'?.84:period==='4H'?.8:.72)));
  const fmt=n=>new Intl.NumberFormat('it-IT',{maximumFractionDigits:n>=100?2:n>=1?4:8}).format(n);
  const levels=[0,.5,1].map(v=>{
   const yy=T+v*ph;
