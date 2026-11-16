@@ -4693,12 +4693,3 @@ body.page-global :is(.photo-cover,.map-svg,.spark){
  -webkit-backdrop-filter:none!important;
 }
 
-/* Market Force: visible price alert thresholds for the selected cryptocurrency. */
-.force-alert-levels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0;padding:0;max-width:100%;font-variant-numeric:tabular-nums}
-.force-alert-levels>span{display:flex;flex-direction:column;gap:3px;min-width:0;padding:10px 12px;border:1px solid var(--border,rgba(128,128,128,.25));border-radius:12px;background:rgba(128,128,128,.06)}
-.force-alert-levels b{font-size:11px;letter-spacing:.07em}
-.force-alert-levels strong{font-size:clamp(12px,1.2vw,15px);overflow-wrap:anywhere}
-.force-alert-upper b{color:#c99a18}
-.force-alert-lower b{color:#dc5661}
-.force-alert-levels>span.is-hit{border-width:2px}
-.force-alert-levels small{grid-column:1/-1;font-size:11px;opacity:.75;line-height:1.5}
