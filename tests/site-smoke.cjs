@@ -75,17 +75,29 @@ const forceSampledCode=source.slice(
  source.indexOf('function forceMarketSampledCandles('),
  source.indexOf('async function forceMarketFetchTrueOHLC('));
 const forceSampled=new Function(forceSampledCode+';return forceMarketSampledCandles;')();
-const forceExamples=[
- {t:1794729600,v:20},{t:1794729660,v:23},
- {t:1794729720,v:19},{t:1794729780,v:22},
- {t:1794730500,v:24},{t:1794730560,v:26},
- {t:1794730620,v:25}
-];
+// 13 real-price observations at 5-minute intervals yield 12 compact
+// close-to-close sampled candles. Missing time intervals are not invented.
+const forceExamples=Array.from({length:13},(_,i)=>({
+ t:1794729600+i*300+6,v:20+Math.sin(i*.7)+i*.04
+}));
 const sampledForce=forceSampled(forceExamples,'1H');
-assert(sampledForce.length>=2,'1H Force history needs distinct sampled candle bodies');
-assert(sampledForce.every(row=>row.h>=Math.max(row.o,row.c)&&
- row.l<=Math.min(row.o,row.c)),
- 'Sampled Force candle high/low must bound sampled opens and closes');
+assert.equal(sampledForce.length,12,
+ '1H must retain every observed 5-minute price movement, not 15-minute buckets');
+assert.equal(sampledForce[0].o,forceExamples[0].v);
+assert.equal(sampledForce[0].c,forceExamples[1].v);
+assert(sampledForce.every(row=>row.h===Math.max(row.o,row.c)&&
+ row.l===Math.min(row.o,row.c)),
+ 'Sampled Force candles may not invent highs, lows or wicks');
+const forceGap=forceSampled([
+ {t:1794729606,v:20},{t:1794729906,v:21},
+ {t:1794730806,v:22},{t:1794731106,v:23}
+],'1H');
+assert.equal(forceGap.length,2,
+ 'A missing 5-minute interval must remain a real gap instead of a fake candle');
+assert(source.includes("period==='1H'?34:14"),
+ 'On 1H the candle body must no longer be capped at 10px');
+assert(source.includes('const betterSampled='),
+ 'Denser 5-minute observed candles must take priority over sparse 1H OHLC');
 assert(source.includes("a.group==='crypto'?'MAX':'1D'"),
  'All crypto must open the real or sampled historical chart by default');
 // Verify the sampled-candle computation against actual first/high/low/last
