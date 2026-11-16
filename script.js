@@ -2396,11 +2396,17 @@ async function marketForceLoadOHLC(id,period){
     points=observed.points;observedSource=observed.source;observedInterval=observed.interval;
    }
   }
-  if(!actual.length&&points.length>=2){
+  // If a source offers only 1-2 long-interval candles for 1H, prefer
+  // the more detailed verified five-minute observed-price history.
+  // Keep these price-derived candles explicitly marked as sampled.
+  const betterSampled=period==='1H'&&actual.length<8&&
+   forceMarketSampledCandles(points,period).length>=8;
+  if((!actual.length||betterSampled)&&points.length>=2){
    source=observedSource;interval=observedInterval;
   }
-  marketForceOHLC.set(key,{bars:actual,points:actual.length?[]:points,
-   source,interval,sampled:sampledBars,
+  marketForceOHLC.set(key,{bars:betterSampled?[]:actual,
+   points:betterSampled||!actual.length?points:[],
+   source,interval,sampled:sampledBars||betterSampled,
    error:actual.length||points.length>=2?'':error,at:Date.now()});
   if(marketForceOHLC.size>28)marketForceOHLC.delete(marketForceOHLC.keys().next().value);
  })().catch(()=>{
