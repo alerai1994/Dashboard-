@@ -2191,13 +2191,29 @@ async function forceMarketObservedCoinGecko(asset,period,now){
  }catch(_error){return null}finally{clearTimeout(timer)}
 }
 
-/* Candles grouped from real price samples are labeled CAMPIONATE, not OHLC exchange. */
+/* Sampled candles reflect movements between ACTUAL observations, not OHLC.
+   1H uses five-minute price samples instead of sparse 15-minute buckets. */
 function forceMarketSampledCandles(points,period){
- if(!Array.isArray(points)||points.length<4)return [];
- const seconds={'1H':900,'4H':1200,'1D':3600,'1W':14400}[period];
+ if(!Array.isArray(points)||points.length<2)return [];
+ const seconds={'1H':300,'4H':1200,'1D':3600,'1W':14400}[period];
  if(!seconds)return [];
- const buckets=new Map(),sorted=points.filter(p=>Number.isFinite(p.t)&&Number.isFinite(p.v)&&p.v>0)
+ const sorted=points.filter(p=>Number.isFinite(p.t)&&Number.isFinite(p.v)&&p.v>0)
   .slice().sort((a,b)=>a.t-b.t);
+ if(period==='1H'){
+  // One observed close per 5-minute bucket. The preceding observed close
+  // is the opening sample; no fabricated intermediate price or wick.
+  const samples=new Map();
+  for(const p of sorted)samples.set(Math.floor(p.t/seconds)*seconds,p.v);
+  const entries=[...samples.entries()].sort((a,b)=>a[0]-b[0]);
+  const bars=[];
+  for(let i=1;i<entries.length;i++){
+   const [t,close]=entries[i],[previous,open]=entries[i-1];
+   if(t-previous>seconds*2)continue; // Preserve gaps in sparse data.
+   bars.push({t,o:open,h:Math.max(open,close),l:Math.min(open,close),c:close});
+  }
+  return bars;
+ }
+ const buckets=new Map();
  for(const p of sorted){
   const t=Math.floor(p.t/seconds)*seconds;
   let b=buckets.get(t);
@@ -2443,7 +2459,10 @@ function marketForceBullishPlot(m){
  const low=Math.min(...bars.map(b=>b.l)),high=Math.max(...bars.map(b=>b.h));
  const pad=Math.max((high-low)*.1,high*.0004,1e-9),min=Math.max(0,low-pad),max=high+pad;
  const y=v=>T+(max-v)/(max-min)*ph;
- const width=pw/bars.length,body=Math.max(1.5,Math.min(10,width*.65));
+ // Fill most of the available slot on 1H; the old 10px maximum made
+ // sparse charts look like isolated sticks on desktop.
+ const width=pw/bars.length;
+ const body=Math.max(1.8,Math.min(period==='1H'?34:14,width*(period==='1H'?.84:.72)));
  const fmt=n=>new Intl.NumberFormat('it-IT',{maximumFractionDigits:n>=100?2:n>=1?4:8}).format(n);
  const levels=[0,.5,1].map(v=>{
   const yy=T+v*ph;
@@ -2476,7 +2495,7 @@ function marketForceBullishPlot(m){
   esc(ASSET_BY_ID[m.id]?.name||m.id)+' · '+period+'">'+levels+candles+labels+'</svg>'+
   '<span class="bullish-detail-chart-note">'+esc(data.source)+' · '+esc(data.interval)+
   ' · ultima '+esc(last)+' · '+bars.length+
-  (sampled?' candele CAMPIONATE (open/close, massimo/minimo fra campioni; non OHLC exchange)':' candele reali OHLC')+
+  (sampled?' candele CAMPIONATE (variazioni fra prezzi osservati; non OHLC exchange)':' candele reali OHLC')+
   '</span></div>';
 }
 /* The ring signals the prevailing real price-movement component; its orbit is decorative. */
