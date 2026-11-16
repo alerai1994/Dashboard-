@@ -74,6 +74,35 @@ def fetch_group(ids):
         print("CoinGecko batch unavailable",type(error).__name__,len(ids))
     return {}
 
+def fetch_missing_24h_changes(ids):
+    """Query CoinGecko's independent 24h-change field for missing market rows.
+
+    This is a provider-reported 24h percentage, not a calculation inferred
+    from the market price or a 24h high/low. Failure remains None/neutral.
+    """
+    changes={}
+    for offset in range(0,len(ids),50):
+        subset=ids[offset:offset+50]
+        query=urlencode({"ids":",".join(subset),"vs_currencies":"usd",
+                         "include_24hr_change":"true"})
+        req=Request(HOSTS[0]+"/simple/price?"+query,headers=HEADERS)
+        try:
+            with urlopen(req,timeout=22) as response:
+                payload=json.load(response)
+            if not isinstance(payload,dict):continue
+            for ident in subset:
+                row=payload.get(ident)
+                raw=row.get("usd_24h_change") if isinstance(row,dict) else None
+                try:
+                    n=float(raw) if raw is not None else None
+                    if n is not None and math.isfinite(n):changes[ident]=n
+                except (ValueError,TypeError,OverflowError):pass
+        except (HTTPError,URLError,OSError,ValueError,TypeError) as error:
+            print("CoinGecko 24h change fallback unavailable:",type(error).__name__)
+        if offset+50<len(ids):time.sleep(4.0)
+    return changes
+
+
 def normalized(ident,cg,raw,now):
     price=positive(raw.get("current_price"))
     image=verified_image(raw.get("image"))
@@ -123,6 +152,18 @@ def main():
                 result[ident]=item
                 fetched+=1
         if start+35<len(cg_ids):time.sleep(5.0)
+    # Only fill missing percentages with a second official CoinGecko endpoint.
+    # An actual 0% remains neutral; a missing value is never fabricated as 0%.
+    unknown=[item["id"] for ident,item in result.items()
+             if ident in coins and coins[ident]==item.get("id") and
+             item.get("change") is None and positive(item.get("price"))]
+    if unknown:
+        changes=fetch_missing_24h_changes(sorted(set(unknown)))
+        for ident,cg in coins.items():
+            item=result.get(ident)
+            if item and item.get("change") is None and cg in changes:
+                item["change"]=changes[cg]
+                item["changeSource"]="CoinGecko · simple/price · usd_24h_change"
     # Reject any old entry no longer in the explicit catalog or with changed identity.
     rows=[result[ident] for ident,cg in coins.items()
           if ident in result and result[ident].get("id")==cg]
