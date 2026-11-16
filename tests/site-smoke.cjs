@@ -739,7 +739,7 @@ assert(source.includes("function marketForceSelectLabel(asset){\n return asset.n
 assert(read('price-board.js').includes("function dropdownLabel(a){\n return a.name;"));
 assert(source.includes("symbol:'BTC-USD'"),'Original market symbol must remain intact');
 assert(source.includes("symbol:'EURUSD=X'"),'Forex pair must remain intact');
-assert(/script\\.js\\?v=[^"']+/.test(html));
+assert(html.includes('script.js?v='));
 assert(source.includes('function forceMarketObservedArchive('),'Forza mercato must read same-origin crypto intraday archives');
 assert(source.includes('function forceMarketObservedDirect('),'Forza mercato needs live verified price history fallback');
 assert(source.includes('function forceMarketSampledCandles('),
