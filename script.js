@@ -6576,7 +6576,7 @@ async function chartCryptoIntradayResolution(asset,period,from,now){
  if(asset?.group!=='crypto'||!asset.coingeckoId||asset.id==='ore'||
   !period||period.months||period.all||!period.ms)return null;
  const choice=period.ms<=3600000?'1H':period.ms<=18000000?'4H':
-  period.ms<=86400000?'1D':'1W';
+  period.ms<=86400000?'1D':period.ms<=604800000?'1W':'2W';
  const seconds=choice==='1H'?300:choice==='4H'?600:
   choice==='1D'?1800:3600;
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),6500);
@@ -6605,7 +6605,10 @@ async function chartCryptoIntradayResolution(asset,period,from,now){
   }
   let sampled=[];
   if(observations?.kind==='observed-price-line'){
-   const points=forceMarketPricePoints(observations.periods?.[choice],choice,now);
+   const points=choice==='2W'?
+    chartReadHistoricalPricePoints(observations.periods?.['2W']||
+     observations.periods?.['1W']):
+    forceMarketPricePoints(observations.periods?.[choice],choice,now);
    sampled=chartSampledMoves(points,seconds).filter(
     c=>c.t*1000>=from-seconds*1000&&c.t*1000<=now+60000);
   }
