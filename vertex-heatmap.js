@@ -46,7 +46,9 @@ function smallAmount(n){
  return '$'+new Intl.NumberFormat('en-US',{maximumFractionDigits:0}).format(n);
 }
 function changeText(n){
- return finite(n)?(n>0?'+':'')+n.toFixed(2)+'%':'—';
+ if(!finite(n))return '—';
+ if(n!==0&&Math.abs(n)<.005)return (n>0?'+':'−')+'<0.01%';
+ return (n>0?'+':'')+n.toFixed(2)+'%';
 }
 function fallback(){
  const data=[];
@@ -109,9 +111,32 @@ async function loadCatalogSnapshot(){
     marketCap:raw.marketCap??null,volume:raw.volume??null,rank:raw.rank??null,
     image,observedAt:raw.observedAt,source:'CoinGecko · snapshot verificato'});
   }
-  // Leave newer direct quotes in place; snapshot fills catalog-wide gaps.
+  // Reconcile every verified asset, not only previously unseen ones. The old
+  // code ignored refreshed snapshot percentages once a coin was in the map.
   const known=new Map(state.coins.map(c=>[c.id,c]));
-  for(const item of verified)if(!known.has(item.id))known.set(item.id,item);
+  for(const item of verified){
+   const prior=known.get(item.id);
+   if(!prior){known.set(item.id,item);continue}
+   const currentTime=Date.parse(prior.observedAt||'');
+   const incomingTime=Date.parse(item.observedAt||'');
+   const newer=!Number.isFinite(currentTime)||
+    Number.isFinite(incomingTime)&&incomingTime>=currentTime;
+   const incomingChange=finite(item.change);
+   const previousChange=finite(prior.change);
+   known.set(item.id,{
+    ...prior,
+    ...(newer?item:{
+     // A new verified percentage may fill a missing one, but not replace
+     // a more recent verified move with an older move.
+     ...(incomingChange&&!previousChange?{change:item.change}:{}),
+     ...(logo(item.image)&&!logo(prior.image)?{image:item.image}:{})
+    }),
+    image:logo(item.image)||logo(prior.image),
+    // Do not discard a real 24h move when another provider omits this field.
+    change:newer&&incomingChange?item.change:
+     previousChange?prior.change:incomingChange?item.change:null
+   });
+  }
   state.coins=[...known.values()];
   state.snapshotAt=Date.parse(data.generatedAt)||0;
   state.snapshotStatus=verified.length+' / '+data.catalogSize;
@@ -188,7 +213,7 @@ function sortCoins(coins){
  return items;
 }
 function tile(c){
- const valid=finite(c.change);
+ const valid=finite(c.change)&&finite(c.price)&&c.price>0;
  const tone=!valid?'neutral':c.change>0?'up':c.change<0?'down':'neutral';
  const image=logo(c.image)||logo(state.logoCache.get(c.id));
  const icon=image?'<img src="'+esc(image)+'" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">':
@@ -301,7 +326,16 @@ async function refresh(force=false){
   if(coins.length<20)throw new Error('Nessun dato validato');
   const merged=new Map(state.coins.map(c=>[c.id,c]));
   const observedAt=new Date().toISOString();
-  for(const c of coins)merged.set(c.id,{...merged.get(c.id),...c,observedAt});
+  for(const c of coins){
+   const prior=merged.get(c.id);
+   merged.set(c.id,{...prior,...c,observedAt,
+    // CoinGecko can return the price while omitting the 24h change. In that
+    // case preserve the identity-matched, still recent verified percentage.
+    change:finite(c.change)?c.change:
+     prior&&finite(prior.change)&&Date.now()-Date.parse(prior.observedAt||'')<2*3600000?
+      prior.change:null,
+    image:logo(c.image)||logo(prior?.image)});
+  }
   state.coins=[...merged.values()];state.fetchedAt=Date.now();
   for(const c of coins)if(logo(c.image))state.logoCache.set(c.id,logo(c.image));
   rememberLogos();
