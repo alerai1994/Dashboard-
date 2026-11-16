@@ -6641,6 +6641,26 @@ async function chartCryptoIntradayResolution(asset,period,from,now){
    source:String(observations.source||'Prezzi osservati reali').slice(0,120)+
     ' · campionamento '+seconds/60+' min (non OHLC exchange)',
    visibleCount:sampled.length};
+  if(!CHART_APPROVED_BINANCE_SPOT[asset.id]){
+   // Last resort for small tokens with no published intraday archive.
+   // Both providers use the exact CoinGecko ID; their values are observed
+   // prices only, so the bars remain visibly marked as sampled.
+   const remotePeriod=choice==='2W'?'1W':choice;
+   const responses=await Promise.all([
+    forceMarketObservedDirect(asset,remotePeriod,now).catch(()=>null),
+    forceMarketObservedCoinGecko(asset,remotePeriod,now).catch(()=>null)
+   ]);
+   for(const found of responses){
+    if(!found?.points?.length)continue;
+    const genuine=chartSampledMoves(found.points,seconds).filter(
+     c=>c.t*1000>=from-seconds*1000&&c.t*1000<=now+60000);
+    if(genuine.length>=2)return {
+     candles:genuine,sampled:true,partial:true,visibleCount:genuine.length,
+     source:String(found.source||'Prezzi verificati').slice(0,120)+
+      ' · movimenti campionati, non OHLC · storico parziale '+choice
+    };
+   }
+  }
   return null;
  }finally{clearTimeout(timer)}
 }
