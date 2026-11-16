@@ -216,17 +216,23 @@ function alertBoundary(id){
  const direction=backend()?.getAlertBoundary?.(id);
  return direction==='above'||direction==='below'?direction:null;
 }
-function paintAlertSignals(){
+function paintAlertSignals(affected){
  const grid=document.getElementById('vhGrid');
  if(!grid)return;
- grid.querySelectorAll('.vh-tile[data-asset]').forEach(tile=>{
-  const direction=alertBoundary(tile.dataset.asset);
-  const price=tile.querySelector('.vh-price');
+ // During live ticks, repaint only the symbols whose UPPER/LOW state changed.
+ // After a grid re-render, omitted IDs repaint the visible active signals.
+ const ids=affected instanceof Set?affected:null;
+ const tiles=ids?[...ids].flatMap(id=>{
+  const safe=typeof CSS!=='undefined'&&CSS.escape?CSS.escape(id):id.replace(/[^a-z0-9_-]/gi,'');
+  return safe?[...grid.querySelectorAll('.vh-tile[data-asset="'+safe+'"]')]:[];
+ }):grid.querySelectorAll('.vh-tile[data-asset]');
+ for(const tile of tiles){
+  const direction=alertBoundary(tile.dataset.asset),price=tile.querySelector('.vh-price');
   if(price){
    price.classList.toggle('crypto-price-upper',direction==='above');
    price.classList.toggle('crypto-price-lower',direction==='below');
   }
- });
+ }
 }
 function tile(c){
  const valid=finite(c.change)&&finite(c.price)&&c.price>0;
