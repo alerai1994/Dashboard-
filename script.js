@@ -2989,7 +2989,7 @@ function marketChartPlot(id){
   const y=v=>T+(max-v)/(max-min)*chartH,step=chartW/candles.length;
   const paths=candles.map((c,i)=>{
    const o=Number(c.o),cl=Number(c.c),x=L+(i+.5)*step,co=cl>=o?'#18d8a0':'#f57185';
-   const yo=y(o),yc=y(cl),cw=Math.max(2,Math.min(6,step*.68));
+   const yo=y(o),yc=y(cl),cw=Math.max(1.8,Math.min(11,step*.82));
    return '<path d="M'+x.toFixed(2)+' '+y(Number(c.h)).toFixed(2)+'V'+y(Number(c.l)).toFixed(2)+'" stroke="'+co+'" stroke-width="1.15"/>'+
     '<rect x="'+(x-cw/2).toFixed(2)+'" y="'+Math.min(yo,yc).toFixed(2)+'" width="'+cw.toFixed(2)+'" height="'+Math.max(1,Math.abs(yo-yc)).toFixed(2)+'" rx=".5" fill="'+co+'"/>';
   }).join('');
@@ -3182,7 +3182,7 @@ function marketsPage(){
   '<section class="content-card panel markets-gallery"><div class="filter-row"><div class="tab-filters" role="group" aria-label="Categorie mercati">'+
  options.map(([id,label])=>'<button type="button" data-filter="'+id+'" class="'+(state.marketFilter===id?'active':'')+'">'+label+'</button>').join('')+
  '</div><input class="filter-input" type="search" id="marketSearch" value="'+esc(state.marketSearch)+'" placeholder="Cerca per nome o ticker..." aria-label="Filtra strumenti"></div>'+
- '<p class="markets-gallery-info">Solo candele OHLC reali. Se la fonte non fornisce apertura, massimo, minimo e chiusura, viene indicata la mancata disponibilità.</p>'+
+ '<p class="markets-gallery-info">Storico OHLC reale quando disponibile; dove manca, candele campionate dai prezzi osservati e dichiarate come non OHLC. Nessun prezzo mancante viene inventato.</p>'+
  '<div id="marketRows">'+marketsCards(filtered)+'</div></section>'+feedStatus();
 }
 
@@ -6479,6 +6479,77 @@ async function chartExtendedCryptoHistory(asset,period,from,now,force=false){
   return archive;
  }finally{clearTimeout(timer);}
 }
+/* Common verified intraday history for Markets and Forza mercato.
+   A sampled body spans two actual recorded prices; no OHLC is invented. */
+function chartSampledMoves(points,seconds){
+ if(!Array.isArray(points)||points.length<2||!Number.isFinite(seconds)||seconds<60)return [];
+ const buckets=new Map();
+ for(const p of points){
+  const t=Number(p?.t),v=Number(p?.v??p?.p);
+  if(!Number.isFinite(t)||!Number.isFinite(v)||v<=0||t<946684800)continue;
+  buckets.set(Math.floor(t/seconds)*seconds,v);
+ }
+ const samples=[...buckets.entries()].sort((a,b)=>a[0]-b[0]),bars=[];
+ for(let i=1;i<samples.length;i++){
+  const [t,c]=samples[i],[prev,o]=samples[i-1];
+  if(t-prev>seconds*2)continue;
+  bars.push({t,o,h:Math.max(o,c),l:Math.min(o,c),c,sampled:true});
+ }
+ return bars;
+}
+async function chartCryptoIntradayResolution(asset,period,from,now){
+ if(asset?.group!=='crypto'||!asset.coingeckoId||asset.id==='ore'||
+  !period||period.months||period.all||!period.ms)return null;
+ const choice=period.ms<=3600000?'1H':period.ms<=18000000?'4H':
+  period.ms<=86400000?'1D':'1W';
+ const seconds=choice==='1H'?300:choice==='4H'?600:
+  choice==='1D'?1800:3600;
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),6500);
+ const read=async path=>{
+  try{
+   const response=await fetch('./chart-history/crypto/'+path+'/'+
+    encodeURIComponent(asset.id)+'.json?v='+Math.floor(now/3600000),
+    {signal:controller.signal,cache:'force-cache'});
+   if(!response.ok)return null;
+   const data=await response.json();
+   if(data?.id!==asset.id||data.coingeckoId!==asset.coingeckoId)return null;
+   return data;
+  }catch(_error){return null}
+ };
+ try{
+  const [ohlc,observations]=await Promise.all([read('ohlc'),read('intraday')]);
+  let bars=[],origin='',resolution='';
+  if(ohlc?.kind==='verified-ohlc'){
+   const set=period.ms<=86400000?ohlc.sets?.short:ohlc.sets?.week;
+   bars=chartReadAllCandles(set?.candles).filter(
+    c=>c.t*1000>=from-period.step&&c.t*1000<=now+60000);
+   if(bars.length>=2){
+    origin=set?.source||ohlc.source||'Archivio OHLC verificato';
+    resolution=set?.interval||'OHLC';
+   }
+  }
+  let sampled=[];
+  if(observations?.kind==='observed-price-line'){
+   const points=forceMarketPricePoints(observations.periods?.[choice],choice,now);
+   sampled=chartSampledMoves(points,seconds).filter(
+    c=>c.t*1000>=from-seconds*1000&&c.t*1000<=now+60000);
+  }
+  if(sampled.length>=8&&(bars.length<8||sampled.length>bars.length*1.6)){
+   return {candles:sampled,sampled:true,partial:true,
+    source:String(observations.source||'Prezzi osservati reali').slice(0,120)+
+     ' · campionamento '+seconds/60+' min (non OHLC exchange)',
+    visibleCount:sampled.length};
+  }
+  if(bars.length>=2)return {candles:bars,sampled:false,partial:
+   bars.at(-1).t*1000<now-14400000||bars[0].t*1000>from+period.ms*.35,
+   source:origin+' · OHLC '+resolution+' reale',visibleCount:bars.length};
+  if(sampled.length>=2)return {candles:sampled,sampled:true,partial:true,
+   source:String(observations.source||'Prezzi osservati reali').slice(0,120)+
+    ' · campionamento '+seconds/60+' min (non OHLC exchange)',
+   visibleCount:sampled.length};
+  return null;
+ }finally{clearTimeout(timer)}
+}
 async function loadCryptoChartHistory(force=false){
  const asset=ASSET_BY_ID[state.dialogId];
  if(!asset||asset.group!=='crypto')return;
@@ -6502,6 +6573,20 @@ async function loadCryptoChartHistory(force=false){
  scheduleDetailChartDraw();
  const now=Date.now(),from=chartStartTime(period,now);
  let failure='Impossibile ricevere le candele OHLC per '+selected+' dalle fonti disponibili.';
+ // Real same-site OHLC or sampled observed prices for every listed crypto.
+ // Without this, extended coins often show only two 30-minute candles on 1H.
+ let firstParty=null;
+ try{firstParty=await chartCryptoIntradayResolution(asset,period,from,now)}
+ catch(_error){/* Some assets still have no verified history. */}
+ if(seq!==chartFetchState.sequence)return;
+ if(firstParty?.candles?.length>=2){
+  const output={id:asset.id,range:selected,...firstParty,loading:false,error:'',
+   loadedAt:Date.now()};
+  chartSeries=output;chartFetchState.cache.set(key,output);
+  if(chartFetchState.cache.size>100)
+   chartFetchState.cache.delete(chartFetchState.cache.keys().next().value);
+  updateChartHistoryStatus();scheduleDetailChartDraw();return;
+ }
  // New crypto are resolved by CoinGecko ID: ticker-only exchange pairs
  // are ambiguous and may refer to an entirely different project.
  if(asset.extended){
@@ -7494,7 +7579,9 @@ function drawChart(){
  const fibLayout={width,height,left,right,top:regions[0].top,bottom:regions[0].bottom,
   min,max,start,end,yPrice,useLog,priceAtY:gradual?.priceAtY,gradual:!!gradual};
  fibDraw(ctx,candles,start,end,fibLayout,'bands');
- const step=chartW/sample.length,cw=Math.max(chartRange==='MAX'?.65:2,Math.min(9,step*.58));
+ const step=chartW/sample.length;
+  const cw=Math.max(chartRange==='MAX'?.65:1.7,
+   Math.min(sample.length<32?26:14,step*.80));
  sample.forEach((c,i)=>{
    const x=ix(start+i),up=c.c>=c.o;
    const colorC=up?'#18df9d':'#f75d72';
