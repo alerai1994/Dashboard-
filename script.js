@@ -2695,7 +2695,6 @@ function marketForceBullishPanel(){
  '<div class="bullish-live-quote" data-bullish-quote><span>'+esc(marketForceLeadLabel(asset,q))+'</span>'+
  '<strong data-bullish-price>'+esc(assetValue(asset))+'</strong>'+
  '<em data-bullish-delta data-trend="'+trend(q?.change)+'">'+esc(pct(q?.change))+'</em></div>'+
- (asset?.group==='crypto'?marketForceCryptoAlertLevels(m.id):'')+
  '<div class="bullish-detail-assessment">'+
  '<strong data-bullish-assessment>'+esc(message[0])+'</strong>'+
  '<p data-bullish-description>'+esc(message[1])+'</p></div>'+
@@ -2724,12 +2723,6 @@ function patchMarketForceBullish(){
  const livePrice=panel.querySelector('[data-bullish-price]'),
        liveDelta=panel.querySelector('[data-bullish-delta]');
  if(livePrice&&livePrice.textContent!==assetValue(asset))livePrice.textContent=assetValue(asset);
- const alertLevels=panel.querySelector('[data-force-alert-levels]');
- if(alertLevels&&asset?.group==='crypto'){
-  const holder=document.createElement('div');holder.innerHTML=marketForceCryptoAlertLevels(m.id);
-  if(holder.firstElementChild&&holder.firstElementChild.innerHTML!==alertLevels.innerHTML)
-   alertLevels.replaceWith(holder.firstElementChild);
- }
  if(liveDelta){
   const value=pct(q?.change);
   if(liveDelta.textContent!==value)liveDelta.textContent=value;
@@ -4719,23 +4712,6 @@ function alertState(rule){
  const threshold=Number(rule.value);
  return (rule.operator==='above'?value>=threshold:value<=threshold)?
   'Soglia raggiunta':'In attesa';
-}
-/* Visible UPPER / LOW levels for the selected crypto, driven by the same
-   automatic thresholds already monitored for every crypto in the catalog. */
-function marketForceCryptoAlertLevels(id){
- const asset=ASSET_BY_ID[id],price=Number(quote(id)?.value);
- if(asset?.group!=='crypto')return '';
- if(!Number.isFinite(price)||price<=0)
-  return '<div class="force-alert-levels" data-force-alert-levels role="status">UPPER / LOW · in attesa di quotazione</div>';
- const base=cryptoAutoBaselines.get(id)||price;
- const factor=state.cryptoAutoPercent/100;
- const upper=base*(1+factor),lower=base*(1-factor);
- const upperHit=price>=upper,lowerHit=price<=lower;
- return '<div class="force-alert-levels" data-force-alert-levels aria-label="Soglie avviso della criptovaluta">'+
-  '<span class="force-alert-upper'+(upperHit?' is-hit':'')+'"><b>UPPER ↑</b><strong>'+esc(formatValue(upper,asset))+'</strong></span>'+
-  '<span class="force-alert-lower'+(lowerHit?' is-hit':'')+'"><b>LOW ↓</b><strong>'+esc(formatValue(lower,asset))+'</strong></span>'+
-  '<small>Soglie automatiche ±'+esc(state.cryptoAutoPercent.toLocaleString('it-IT',{maximumFractionDigits:1}))+
-  '% · campanella per attivare il suono</small></div>';
 }
 function triggeredAlerts(){
  return state.alerts.filter(rule=>alertState(rule)==='Soglia raggiunta');
