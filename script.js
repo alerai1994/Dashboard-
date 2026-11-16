@@ -2843,6 +2843,22 @@ function redrawMarketCryptoHistoryPreview(id){
 async function loadMarketCryptoHistoryPreview(id){
  const asset=ASSET_BY_ID[id];
  if(!asset||asset.group!=='crypto')return null;
+ // Markets thumbnail: show genuine recent 5-minute OHLC when available;
+ // otherwise show numerous observed, explicitly sampled 10-minute candles.
+ // Monthly candles are considered only if there is no recent detail.
+ if(id!=='ore'&&asset.coingeckoId){
+  try{
+   const period=CHART_PERIOD_BY_ID['4h'],now=Date.now();
+   const recent=await chartCryptoIntradayResolution(asset,period,now-period.ms,now);
+   if(recent?.candles?.length>=8){
+    const candles=recent.candles.slice(-48);
+    return {status:'ready',candles,sampled:recent.sampled===true,
+     source:recent.source,resolution:recent.sampled?'10 minuti campionati':
+      'candele OHLC di mercato',
+     first:candles[0].t,last:candles.at(-1).t,partial:recent.partial===true};
+   }
+  }catch(_error){/* Historic monthly OHLC is still considered below. */}
+ }
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),11500);
  let record=null;
  try{
@@ -6455,6 +6471,22 @@ async function chartExtendedCryptoHistory(asset,period,from,now,force=false){
    }catch(error){if(controller.signal.aborted)throw error;}
   }
   const archive=savedResult();
+  // A tiny number of monthly OHLC candles is too coarse for a detail chart.
+  // Where a licensed source publishes daily observed prices, close-to-close
+  // daily candles are a truthful, denser alternative (explicitly sampled).
+  if(period.months&&(!archive||archive.candles.length<14)){
+   try{
+    const savedPrices=await chartLoadObservedPriceArchive(asset,controller.signal);
+    const within=savedPrices?.points.filter(p=>
+     p.t*1000>=from-86400000&&p.t*1000<=now+60000)||[];
+    const sampled=chartSampledMoves(within,86400);
+    if(sampled.length>=8)return {
+     candles:sampled,source:savedPrices.source+
+      ' · variazioni giornaliere campionate (non OHLC exchange)',
+     sampled:true,partial:true,visibleCount:sampled.length
+    };
+   }catch(_error){/* Restore the real monthly OHLC archive if available. */}
+  }
   if(archive&&!force)return archive;
   // When OHLC is unavailable, a daily sampled-price LINE can still show
   // genuine historical movement over 2D/1W/1M, never synthetic candles.
