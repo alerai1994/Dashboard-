@@ -99,7 +99,13 @@ def main():
     old=previous()
     now=datetime.now(timezone.utc).isoformat()
     result=dict(old)
-    cg_ids=list(dict.fromkeys(coins.values()))
+    # Prioritize unresolved IDs first on each scheduled run. Public CoinGecko
+    # requests can be throttled mid-catalog; repeating the first 150 IDs would
+    # permanently starve the newest 100+ entries.
+    unresolved={cg for ident,cg in coins.items() if ident not in old or
+                old[ident].get("id")!=cg or not positive(old[ident].get("price")) or
+                not verified_image(old[ident].get("image"))}
+    cg_ids=sorted(set(coins.values()),key=lambda cg:(cg not in unresolved,cg))
     fetched=0
     for start in range(0,len(cg_ids),35):
         group=cg_ids[start:start+35]
