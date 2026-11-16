@@ -6987,9 +6987,23 @@ async function loadAllChartHistory(force=false){
    }
   }
  }
+ // When a young asset has just a few monthly OHLC candles, verified
+ // daily observed prices can produce a denser but explicitly partial chart.
+ // No extra days, extrema or artificial prices are inserted.
+ let sampledMax=false;
+ if(isCrypto&&id!=='ore'&&candles.length>=2&&candles.length<16){
+  try{
+   const observed=archivedPrices||await chartLoadObservedPriceArchive(asset,controller.signal);
+   const sampled=chartSampledMoves(observed?.points,86400);
+   if(sampled.length>=8&&sampled.length>candles.length*1.6){
+    candles=sampled;sampledMax=true;partial=true;failure='';
+    source=observed.source+' · movimenti giornalieri campionati (non OHLC exchange) · storico parziale';
+   }
+  }catch(_error){/* Keep valid genuine monthly OHLC if prices are unavailable. */}
+ }
  if(candles.length>=2){
   const result={id,range:'MAX',candles,visibleCount:candles.length,
-   source,partial,loading:false,error:partial?failure:'',
+   sampled:sampledMax,source,partial,loading:false,error:partial?failure:'',
    loadedAt:Date.now()};
   chartSeries=result;
   chartFetchState.cache.set(key,result);
