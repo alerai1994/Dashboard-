@@ -6208,7 +6208,9 @@ function updateChartHistoryStatus(){
   badge.textContent=info&&info.loading&&(!info.candles||!info.candles.length)&&!info.pricePoints?.length?
    'Caricamento '+rangeLabel+'…':
    info&&info.candles.length?rangeLabel+' · '+(info.visibleCount||info.candles.length)+
-    (info.sampled?' candele campionate':' candele OHLC')+(info.partial?' (parziale)':''):
+    (info.sampled?' candele campionate':' candele OHLC')+
+    (info.resolutionFallback?' · risoluzione alternativa '+info.resolutionFallback:'')+
+    (info.partial?' (parziale)':''):
    info&&info.pricePoints?.length>=2?rangeLabel+' · '+info.pricePoints.length+' prezzi reali (linea)':
    rangeLabel+' · dati non disponibili';
  }
@@ -6529,6 +6531,20 @@ async function chartExtendedCryptoHistory(asset,period,from,now,force=false){
      sampled:true,partial:true,visibleCount:sampled.length
     };
    }catch(_error){/* Restore the real monthly OHLC archive if available. */}
+  }
+  if(period.months&&(!archive||archive.candles.length<14)){
+   try{
+    // For tokens without 30–90 days of exchange OHLC, the real hourly
+    // observations from the last two weeks are a clearly partial fallback.
+    const snapshot=await chartCryptoIntradayResolution(
+     asset,CHART_PERIOD_BY_ID['2W'],now-14*86400000,now);
+    if(snapshot?.candles?.length>=8&&
+       (!archive||snapshot.candles.length>archive.candles.length*1.6)){
+     return {...snapshot,partial:true,
+      source:snapshot.source+' · ultime settimane disponibili, non tutto il periodo '+
+       period.months+'M'};
+    }
+   }catch(_error){/* A genuine monthly OHLC archive remains preferred. */}
   }
   if(archive&&!force)return archive;
   // When OHLC is unavailable, a daily sampled-price LINE can still show
