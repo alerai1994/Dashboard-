@@ -654,7 +654,14 @@ function assetLogo(a){
  if(a.group==='bigtech')return bigTechLogo(a);
  if(a.group==='commodities')return commodityLogo(a);
  if(a.group!=='crypto')return '<span class="asset-logo asset-'+esc(a.id)+'">'+fallback+'</span>';
- const q=quote(a.id),logo=coinLogoUrl(q&&q.logo);
+ const q=quote(a.id),verifiedLogo=coinLogoUrl(q&&q.logo);
+ // Prefer the identity-matched CoinGecko image from the market feed. If absent,
+ // request a symbol-based open icon set and retain initials when unavailable.
+ // Symbol icons are a visual fallback only, never evidence of token identity.
+ const ticker=String(a.symbol||'').replace(/-USD$/i,'').toLowerCase();
+ const fallbackLogo=/^[a-z0-9]{2,15}$/.test(ticker)?
+  'https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/'+encodeURIComponent(ticker)+'.png':'';
+ const logo=verifiedLogo||fallbackLogo;
  return '<span class="asset-logo crypto-logo asset-'+esc(a.id)+'" aria-hidden="true">'+
   '<span class="crypto-logo-fallback">'+fallback+'</span>'+
   (logo?'<img class="crypto-logo-image" src="'+esc(logo)+'" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">':'')+'</span>';
