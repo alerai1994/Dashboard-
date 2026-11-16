@@ -1,0 +1,50 @@
+name: Vertex Crypto Heatmap Verified Catalog Quotes
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/scripts/crypto-heatmap-data.py
+      - .github/workflows/crypto-heatmap-data.yml
+      - crypto-extended.js
+  schedule:
+    - cron: '4,24,44 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: vertex-crypto-heatmap-quotes
+  cancel-in-progress: false
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check collector syntax and exact catalog
+        run: |
+          python3 -m py_compile .github/scripts/crypto-heatmap-data.py
+          python3 - <<'PY'
+          import runpy
+          s=runpy.run_path('.github/scripts/crypto-heatmap-data.py')
+          assert len(s['catalog']()) == 288
+          print('PASS: 288 unique identities')
+          PY
+      - name: Retrieve verified CoinGecko quotes and icons
+        run: python3 .github/scripts/crypto-heatmap-data.py
+      - name: Publish refreshed heatmap data without overwriting unrelated changes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          cp crypto-heatmap-data.json "$RUNNER_TEMP/crypto-heatmap-data.json"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            cp "$RUNNER_TEMP/crypto-heatmap-data.json" crypto-heatmap-data.json
+            git add crypto-heatmap-data.json
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -m "data: refresh identity-verified crypto heatmap [skip ci]"
+            if git push origin HEAD:main; then exit 0; fi
+            sleep 2
+          done
+          exit 1
