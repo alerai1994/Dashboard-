@@ -20,6 +20,15 @@ assert(read('vertex-heatmap.css').includes('prefers-reduced-motion:reduce'),
  'Threshold flash must respect reduced motion');
 
 const heatmapSource=read('vertex-heatmap.js');
+assert(heatmapSource.includes("window.addEventListener('pageshow',resumeHeatmapFeeds)"),
+ 'Heatmap must refresh when iOS Safari PWA is reopened');
+assert(heatmapSource.includes("window.addEventListener('online',resumeHeatmapFeeds)"),
+ 'Heatmap must recover feeds after Android or desktop network reconnect');
+assert(heatmapSource.includes("document.addEventListener('visibilitychange'"),
+ 'Heatmap must resume when desktop or mobile browser becomes visible');
+assert(heatmapSource.includes("requestAnimationFrame(()=>{searchPaintFrame=null;paint()})"),
+ 'Heatmap search must coalesce expensive mobile repaint events');
+
 assert(heatmapSource.includes('const incomingChange=finite(item.change)'),
  'Heatmap must reconcile fresh 24h change for already loaded crypto tiles');
 assert(heatmapSource.includes('change:finite(c.change)?c.change:'),
