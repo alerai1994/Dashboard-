@@ -375,14 +375,17 @@ function activate(){
  if(document.getElementById('vhGrid')){
   // Begin image hydration immediately, even if the price API is slow.
   // All 288 assets are eligible, including tiles with no current quotation.
-  loadCatalogSnapshot().finally(()=>loadCatalogLogos());
-  refresh().finally(()=>{if(Date.now()-state.logoAt>60000)loadCatalogLogos()});
+  resumeHeatmapFeeds();
+  if(Date.now()-state.logoAt>60000)loadCatalogLogos();
  }
 }
+let searchPaintFrame=null;
 document.addEventListener('input',event=>{
  if(event.target?.id==='vhSearch'){
   state.query=event.target.value;
-  paint();
+  // Input is frequent on mobile keyboards: collapse paints into one frame.
+  if(searchPaintFrame!==null)cancelAnimationFrame(searchPaintFrame);
+  searchPaintFrame=requestAnimationFrame(()=>{searchPaintFrame=null;paint()});
  }
 });
 document.addEventListener('change',event=>{
@@ -406,10 +409,20 @@ document.addEventListener('error',event=>{
  fallback.textContent=symbol.slice(0,1);
  img.replaceWith(fallback);
 },true);
-setInterval(()=>{
- if(!document.getElementById('vhGrid')||document.hidden)return;
- refresh();
- if(Date.now()-state.snapshotCheckedAt>5*60000)loadCatalogSnapshot();
-},30000);
+// Shared browser/PWA lifecycle: desktop, Android Chrome, iOS/iPadOS Safari.
+// Suspend network work in background and catch up after an app switch or reconnect.
+function resumeHeatmapFeeds(){
+ if(document.hidden||!document.getElementById('vhGrid')||!navigator.onLine)return;
+ const now=Date.now();
+ if(!state.snapshotCheckedAt||now-state.snapshotCheckedAt>5*60000)
+  loadCatalogSnapshot().finally(()=>{if(now-state.logoAt>5*60000)loadCatalogLogos()});
+ if(!state.attemptedAt||now-state.attemptedAt>intervalMs)refresh();
+}
+document.addEventListener('visibilitychange',()=>{
+ if(!document.hidden)resumeHeatmapFeeds();
+});
+window.addEventListener('pageshow',resumeHeatmapFeeds);
+window.addEventListener('online',resumeHeatmapFeeds);
+setInterval(resumeHeatmapFeeds,30000);
 window.VertexHeatmap=Object.freeze({page,activate,paint,refresh,paintAlertSignals});
 })();
