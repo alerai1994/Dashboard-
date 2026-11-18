@@ -65,6 +65,21 @@ function fallback(){
  }
  return data;
 }
+/* True 24h movement reconstructed only when two timestamped observations
+   exist around 24h apart. Does not invent movement for fixed-price funds. */
+function observed24hChange(rows){
+ if(!Array.isArray(rows)||rows.length<2)return null;
+ const samples=rows.filter(row=>Array.isArray(row)&&row.length>=2&&
+  finite(Number(row[0]))&&finite(Number(row[1]))&&Number(row[1])>0)
+  .map(row=>[Number(row[0]),Number(row[1])]).sort((a,b)=>a[0]-b[0]);
+ if(samples.length<2)return null;
+ const latest=samples[samples.length-1],target=latest[0]-86400;
+ const before=samples.slice(0,-1).reduce((best,item)=>
+  !best||Math.abs(item[0]-target)<Math.abs(best[0]-target)?item:best,null);
+ if(!before||Math.abs(before[0]-target)>7200)return null;
+ const pct=(latest[1]/before[1]-1)*100;
+ return finite(pct)?pct:null;
+}
 function list(){
  // CoinGecko ID and Vertex local ID must both match the catalog identity.
  // Last-known stale data must not masquerade as a green or red fresh quote.
@@ -85,7 +100,13 @@ function list(){
   const preferLocal=hasLocalPrice&&(!hasSourcePrice||
    Number.isFinite(localTime)&&Number.isFinite(timestamp)&&localTime>timestamp);
   const price=preferLocal?local.price:hasSourcePrice?record.price:hasLocalPrice?local.price:null;
-  const change=preferLocal?local.change:hasSourcePrice?record.change:local.change;
+  const derived=observed24hChange(record.priceObservations);
+  const incomingChange=preferLocal?local.change:hasSourcePrice?record.change:local.change;
+  // A backend 0% is occasionally a missing/rounded fallback. Replace it
+  // only when actual 24h price observations prove a measurable difference.
+  // Never replace a reported nonzero move with a stale derived result.
+  const change=(incomingChange==null||incomingChange===0)&&finite(derived)&&
+    Math.abs(derived)>0.000001?derived:incomingChange;
   const activeAt=preferLocal&&Number.isFinite(localTime)?localTime:timestamp;
   return {...local,...record,localId:local.localId,
    id:local.id,name:local.name,symbol:local.symbol,price,
@@ -118,7 +139,8 @@ async function loadCatalogSnapshot(){
     price:finite(price)&&price>0?price:null,
     change:finite(change)?change:null,
     marketCap:raw.marketCap??null,volume:raw.volume??null,rank:raw.rank??null,
-    image,observedAt:raw.observedAt,source:'CoinGecko · snapshot verificato'});
+    image,observedAt:raw.observedAt,source:'CoinGecko · snapshot verificato',
+    priceObservations:Array.isArray(raw.priceObservations)?raw.priceObservations:[]});
   }
   // Reconcile every verified asset, not only previously unseen ones. The old
   // code ignored refreshed snapshot percentages once a coin was in the map.
@@ -310,8 +332,11 @@ function tile(c){
  const icon=image?'<img src="'+esc(image)+'" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">':
   '<span class="vh-fallback-logo">'+esc((c.symbol||'?').slice(0,1).toUpperCase())+'</span>';
  const when=c.observedAt?new Date(c.observedAt).toLocaleString('it-IT'):'orario non disponibile';
+ const status=finite(c.change)?
+  (c.change===0?' · nessuna variazione rilevata':' · variazione verificata'):
+  ' · variazione 24h non disponibile';
  const info=esc(c.name+' ('+c.symbol.toUpperCase()+') · '+priceText(c.price)+' · 24h '+changeText(c.change)+
-  (c.stale?' · ULTIMO DATO VERIFICATO, NON LIVE ('+when+')':' · rilevazione '+when)+
+  (c.stale?' · ULTIMO DATO VERIFICATO, NON LIVE ('+when+')':' · rilevazione '+when)+status+
   (c.localId?' · Tocca per aprire lo storico OHLC e gli indicatori':' · Vedi su CoinGecko'));
  const content='<span class="vh-coin-logo" aria-hidden="true">'+icon+'</span>'+
   '<span class="vh-symbol">'+esc(c.symbol.toUpperCase())+'</span>'+
