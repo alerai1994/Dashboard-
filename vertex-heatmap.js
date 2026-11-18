@@ -74,16 +74,25 @@ function list(){
   const record=byLocal.get(local.localId)||byId.get(local.id);
   if(!record)return local;
   const timestamp=Date.parse(record.observedAt||'');
-  const fresh=Number.isFinite(timestamp)&&Date.now()-timestamp>=0&&
-   Date.now()-timestamp<2*3600000;
-  const validFromSource=fresh&&finite(record.price)&&record.price>0;
-  const verifiedLocal=finite(local.price)&&local.price>0;
+  const age=Date.now()-timestamp;
+  const fresh=Number.isFinite(timestamp)&&age>=-300000&&age<2*3600000;
+  const hasSourcePrice=finite(record.price)&&record.price>0;
+  const hasLocalPrice=finite(local.price)&&local.price>0;
+  // Never discard an identity-verified LAST KNOWN value just because the
+  // background GitHub schedule missed its expected run. Show its age clearly.
+  // Prefer a newer current quote from the primary feed where available.
+  const localTime=Date.parse(backend()?.getQuote?.(local.localId)?.time||'');
+  const preferLocal=hasLocalPrice&&(!hasSourcePrice||
+   Number.isFinite(localTime)&&Number.isFinite(timestamp)&&localTime>timestamp);
+  const price=preferLocal?local.price:hasSourcePrice?record.price:hasLocalPrice?local.price:null;
+  const change=preferLocal?local.change:hasSourcePrice?record.change:local.change;
+  const activeAt=preferLocal&&Number.isFinite(localTime)?localTime:timestamp;
   return {...local,...record,localId:local.localId,
-   id:local.id,name:local.name,symbol:local.symbol,
-   price:validFromSource?record.price:verifiedLocal?local.price:null,
-   change:validFromSource?record.change:verifiedLocal?local.change:null,
+   id:local.id,name:local.name,symbol:local.symbol,price,
+   change:finite(change)?change:null,
    image:logo(record.image)||logo(local.image)||logo(state.logoCache.get(local.id)),
-   stale:!fresh&&!verifiedLocal};
+   stale:!Number.isFinite(activeAt)||Date.now()-activeAt>2*3600000,
+   observedAt:Number.isFinite(activeAt)?new Date(activeAt).toISOString():null};
  });
 }
 async function loadCatalogSnapshot(){
@@ -102,12 +111,12 @@ async function loadCatalogSnapshot(){
    const price=Number(raw.price);
    const change=raw.change===null?null:Number(raw.change);
    const date=Date.parse(raw.observedAt||'');
-   const fresh=Number.isFinite(date)&&date<=Date.now()+300000&&
-    Date.now()-date<2*3600000;
+   // Valid verified data remains readable as last known even after 2h.
+   // Its source timestamp is preserved and the tile exposes a stale hint.
    if(image)state.logoCache.set(raw.id,image);
    verified.push({id:raw.id,localId:raw.localId,
-    price:fresh&&finite(price)&&price>0?price:null,
-    change:fresh&&finite(change)?change:null,
+    price:finite(price)&&price>0?price:null,
+    change:finite(change)?change:null,
     marketCap:raw.marketCap??null,volume:raw.volume??null,rank:raw.rank??null,
     image,observedAt:raw.observedAt,source:'CoinGecko · snapshot verificato'});
   }
@@ -300,13 +309,16 @@ function tile(c){
  const image=logo(c.image)||logo(state.logoCache.get(c.id));
  const icon=image?'<img src="'+esc(image)+'" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">':
   '<span class="vh-fallback-logo">'+esc((c.symbol||'?').slice(0,1).toUpperCase())+'</span>';
- const info=esc(c.name+' ('+c.symbol.toUpperCase()+') · '+priceText(c.price)+' · 24h '+changeText(c.change)+(c.stale?' · ultima quotazione non recente':'')+
+ const when=c.observedAt?new Date(c.observedAt).toLocaleString('it-IT'):'orario non disponibile';
+ const info=esc(c.name+' ('+c.symbol.toUpperCase()+') · '+priceText(c.price)+' · 24h '+changeText(c.change)+
+  (c.stale?' · ULTIMO DATO VERIFICATO, NON LIVE ('+when+')':' · rilevazione '+when)+
   (c.localId?' · Tocca per aprire lo storico OHLC e gli indicatori':' · Vedi su CoinGecko'));
  const content='<span class="vh-coin-logo" aria-hidden="true">'+icon+'</span>'+
   '<span class="vh-symbol">'+esc(c.symbol.toUpperCase())+'</span>'+
   '<span class="vh-change">'+esc(changeText(c.change))+'</span>'+
   '<span class="vh-price'+(alertBoundary(c.localId)==='above'?' crypto-price-upper':alertBoundary(c.localId)==='below'?' crypto-price-lower':'')+'">'+esc(priceText(c.price))+'</span>';
- const attrs='class="vh-tile vh-'+tone+'" title="'+info+'" aria-label="'+info+'"';
+ const attrs='class="vh-tile vh-'+tone+(c.stale?' vh-stale':'')+
+  '" title="'+info+'" aria-label="'+info+'"';
  if(c.localId)return '<button type="button" '+attrs+' data-asset="'+esc(c.localId)+'">'+content+'</button>';
  const id=encodeURIComponent(c.id);
  return '<a '+attrs+' href="https://www.coingecko.com/en/coins/'+id+'" target="_blank" rel="noopener noreferrer">'+content+'</a>';
@@ -346,8 +358,9 @@ function sourceLabel(){
   return 'Fonte: CoinGecko · rilevazione '+stamp+stale+
    (state.error?' · ultimo dato valido':'')+'. Le quotazioni possono essere differite.';
  }
- if(state.snapshotAt)return 'Fonte: CoinGecko · snapshot per catalogo '+state.snapshotStatus+
-  ' · dati differiti; le celle senza quotazione verificata restano grigie.';
+ if(state.snapshotAt)return 'Fonte: CoinGecko · '+state.snapshotStatus+
+  ' · ultimo snapshot '+new Date(state.snapshotAt).toLocaleString('it-IT')+
+  ' · dati ritardati contrassegnati, aggiornamento automatico in corso.';
  return state.fetching?'Caricamento elenco esteso… · intanto vengono mostrati i dati Vertex':
   (state.error?'CoinGecko non raggiungibile · ':'')+'Fonte: feed Vertex · prezzi disponibili, aggiornamento secondo fonte.';
 }
