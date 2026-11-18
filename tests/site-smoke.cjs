@@ -20,6 +20,15 @@ assert(read('vertex-heatmap.css').includes('prefers-reduced-motion:reduce'),
  'Threshold flash must respect reduced motion');
 
 const heatmapSource=read('vertex-heatmap.js');
+assert(heatmapSource.includes('const hasSourcePrice=finite(record.price)&&record.price>0'),
+ 'Must preserve verified last-known prices when scheduled market snapshot is delayed');
+assert(heatmapSource.includes("stale:!Number.isFinite(activeAt)"),
+ 'Must visibly mark data older than two hours, not call it live');
+assert(heatmapSource.includes("ULTIMO DATO DISPONIBILE, NON LIVE"),
+ 'Footer must disclose stale observations');
+assert(read('vertex-heatmap.css').includes('.vh-tile.vh-stale::after'),
+ 'Delayed crypto prices must show a mobile and desktop stale indicator');
+
 assert(heatmapSource.includes('async function refreshMissingQuotes()'),
  'Full-catalog heatmap must fetch exact-ID quotes missing from top 250');
 assert(heatmapSource.includes('exactQuoteRetryAfter=Date.now()+5*60000'),
