@@ -4,6 +4,16 @@ const fs=require('node:fs');
 const assert=require('node:assert/strict');
 const read=path=>fs.readFileSync(path,'utf8');
 const source=read('script.js'),html=read('index.html'),css=read('style.css');
+assert(!source.includes('function cryptoRowAlertMarkup('),
+ 'Removed crypto arrow badge renderer must never return');
+assert(!source.includes("alert.textContent=active||'↑ ↓'"),
+ 'Live price updates must not reinsert arrow symbols');
+assert(css.includes('cryptoThresholdPriceBlink'),
+ 'Triggered UPPER/LOW prices must blink on desktop and mobile');
+assert(css.includes('.crypto-row-alert{display:none!important}'),
+ 'Even stale cached rows must hide the arrow badges');
+assert(html.includes('20261118-price-only-alert-v2'),
+ 'Updated JavaScript and styles must use fresh cache-busting URLs');
 assert(!source.includes("(alertRow?cryptoRowAlertMarkup(id):'')"),
  'Global crypto rows must not show the old up/down monitoring indicator');
 assert(!source.includes("crypto-alert-enabled':'"),
