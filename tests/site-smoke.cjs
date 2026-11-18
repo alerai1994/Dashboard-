@@ -4,6 +4,14 @@ const fs=require('node:fs');
 const assert=require('node:assert/strict');
 const read=path=>fs.readFileSync(path,'utf8');
 const source=read('script.js'),html=read('index.html'),css=read('style.css');
+assert(source.includes('async function pollCatalogPrices()'), 'Crypto catalog needs direct periodic quotes');
+assert(source.includes('include_last_updated_at=true'), 'Provider timestamps are mandatory');
+assert(source.includes('stamp<now-15*60000'), 'Stale catalog quotes must never look live');
+assert(source.includes('previousTime>=stamp'), 'Catalog poll must not overwrite newer market prices');
+assert(source.includes('setInterval(pollCatalogPrices,120000)'), 'Catalog must refresh without manual reload');
+assert(html.includes('script.js?v=20261118-crypto-catalog-updates-v6'),
+ 'All platforms must load the latest catalog polling script');
+
 assert(source.includes('map-pin')&&source.includes('data-trend='), 'Map pins must carry the regional trend');
 assert(source.includes('el.dataset.trend=trend(avg)'), 'Map pins must update with incoming region data');
 assert(css.includes('#worldMap .map-stage button.map-pin[data-trend="up"]'), 'Positive map pins must be green');
