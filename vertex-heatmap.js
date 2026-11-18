@@ -201,6 +201,66 @@ async function loadCatalogLogos(){
   }else{logoRetryDelay=45000;logoRetryAt=0}
  }
 }
+/* Fetch exact CoinGecko identities omitted by the top-250 market list.
+   One bounded batch per cycle keeps mobile browsers responsive and respects
+   API throttling; a 429 pauses requests rather than creating a tight loop. */
+let exactQuoteCursor=0,exactQuoteBusy=false,exactQuoteRetryAfter=0;
+async function refreshMissingQuotes(){
+ if(exactQuoteBusy||document.hidden||!navigator.onLine||
+    Date.now()<exactQuoteRetryAfter||!document.getElementById('vhGrid'))return;
+ const records=new Map(state.coins.map(item=>[item.id,item]));
+ const candidates=coinAssets().filter(asset=>{
+  const record=records.get(asset.coingeckoId||asset.id);
+  const stamp=Date.parse(record?.observedAt||'');
+  return !Number.isFinite(stamp)||Date.now()-stamp>10*60000||
+    !finite(record?.price)||record.price<=0||!finite(record?.change);
+ });
+ if(!candidates.length)return;
+ const count=Math.min(30,candidates.length);
+ const group=Array.from({length:count},(_,i)=>
+  candidates[(exactQuoteCursor+i)%candidates.length]);
+ exactQuoteCursor=(exactQuoteCursor+count)%candidates.length;
+ const allowed=new Map(group.map(asset=>[asset.coingeckoId||asset.id,asset.id]));
+ exactQuoteBusy=true;
+ const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),12000);
+ try{
+  const params=new URLSearchParams({vs_currency:'usd',ids:[...allowed.keys()].join(','),
+   order:'market_cap_desc',per_page:'100',page:'1',sparkline:'false',
+   price_change_percentage:'24h'});
+  const response=await fetch('https://api.coingecko.com/api/v3/coins/markets?'+params,
+   {cache:'no-store',signal:controller.signal});
+  if(response.status===429||response.status===403){
+   exactQuoteRetryAfter=Date.now()+5*60000;return;
+  }
+  if(!response.ok)throw Error('CoinGecko '+response.status);
+  const body=await response.json();
+  if(!Array.isArray(body))return;
+  const known=new Map(state.coins.map(item=>[item.id,item]));
+  const stamp=new Date().toISOString();
+  let changed=false;
+  for(const item of body){
+   const localId=allowed.get(item?.id),price=Number(item?.current_price);
+   if(!localId||!finite(price)||price<=0)continue;
+   const old=known.get(item.id);
+   const rawChange=item.price_change_percentage_24h;
+   const delta=finite(rawChange)?rawChange:null;
+   known.set(item.id,{...old,id:item.id,localId,
+    name:String(item.name||old?.name||localId),symbol:String(item.symbol||old?.symbol||''),
+    price,change:delta,
+    observedAt:stamp,image:logo(item.image)||logo(old?.image),
+    marketCap:finite(item.market_cap)?item.market_cap:old?.marketCap??null,
+    rank:Number.isInteger(item.market_cap_rank)?item.market_cap_rank:old?.rank??null,
+    volume:finite(item.total_volume)?item.total_volume:old?.volume??null});
+   if(logo(item.image))state.logoCache.set(item.id,logo(item.image));
+   changed=true;
+  }
+  if(changed){state.coins=[...known.values()];rememberLogos();paint()}
+ }catch(_error){
+  exactQuoteRetryAfter=Date.now()+60000;
+ }finally{
+  clearTimeout(timeout);exactQuoteBusy=false;
+ }
+}
 function sortCoins(coins){
  const q=state.query.trim().toLocaleLowerCase('it-IT');
  const entries=q?coins.filter(c=>(c.name+' '+c.symbol).toLocaleLowerCase('it-IT').includes(q)):coins;
@@ -240,7 +300,7 @@ function tile(c){
  const image=logo(c.image)||logo(state.logoCache.get(c.id));
  const icon=image?'<img src="'+esc(image)+'" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">':
   '<span class="vh-fallback-logo">'+esc((c.symbol||'?').slice(0,1).toUpperCase())+'</span>';
- const info=esc(c.name+' ('+c.symbol.toUpperCase()+') · '+priceText(c.price)+' · 24h '+changeText(c.change)+
+ const info=esc(c.name+' ('+c.symbol.toUpperCase()+') · '+priceText(c.price)+' · 24h '+changeText(c.change)+(c.stale?' · ultima quotazione non recente':'')+
   (c.localId?' · Tocca per aprire lo storico OHLC e gli indicatori':' · Vedi su CoinGecko'));
  const content='<span class="vh-coin-logo" aria-hidden="true">'+icon+'</span>'+
   '<span class="vh-symbol">'+esc(c.symbol.toUpperCase())+'</span>'+
@@ -417,6 +477,11 @@ function resumeHeatmapFeeds(){
  if(!state.snapshotCheckedAt||now-state.snapshotCheckedAt>5*60000)
   loadCatalogSnapshot().finally(()=>{if(now-state.logoAt>5*60000)loadCatalogLogos()});
  if(!state.attemptedAt||now-state.attemptedAt>intervalMs)refresh();
+ if(!exactQuoteBusy&&now>=exactQuoteRetryAfter&&
+   (!state.exactQuoteCheckedAt||now-state.exactQuoteCheckedAt>90*1000)){
+  state.exactQuoteCheckedAt=now;
+  refreshMissingQuotes();
+ }
 }
 document.addEventListener('visibilitychange',()=>{
  if(!document.hidden)resumeHeatmapFeeds();
