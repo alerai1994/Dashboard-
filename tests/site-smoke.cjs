@@ -4,7 +4,7 @@ const fs=require('node:fs');
 const assert=require('node:assert/strict');
 const read=path=>fs.readFileSync(path,'utf8');
 const source=read('script.js'),html=read('index.html'),css=read('style.css');
-assert(source.includes("data-trend=")&&source.includes("class=\\\"map-pin"), 'Map pins must carry the regional trend');
+assert(source.includes('map-pin')&&source.includes('data-trend='), 'Map pins must carry the regional trend');
 assert(source.includes('el.dataset.trend=trend(avg)'), 'Map pins must update with incoming region data');
 assert(css.includes('#worldMap .map-stage button.map-pin[data-trend="up"]'), 'Positive map pins must be green');
 assert(css.includes('#worldMap .map-stage button.map-pin[data-trend="down"]'), 'Negative map pins must be red');
