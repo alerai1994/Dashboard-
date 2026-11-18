@@ -20,6 +20,15 @@ assert(read('vertex-heatmap.css').includes('prefers-reduced-motion:reduce'),
  'Threshold flash must respect reduced motion');
 
 const heatmapSource=read('vertex-heatmap.js');
+assert(heatmapSource.includes('function observed24hChange(rows)'),
+ 'Use real 24h timestamped price evidence for missing heatmap percentages');
+assert(heatmapSource.includes('Math.abs(before[0]-target)>7200'),
+ 'Require a real price observation near 24h prior');
+assert(heatmapSource.includes('priceObservations:Array.isArray(raw.priceObservations)'),
+ 'Snapshot must carry authentic source price observations');
+assert(heatmapSource.includes('Math.abs(derived)>0.000001'),
+ 'Do not recolor fixed-price assets using fabricated movement');
+
 assert(heatmapSource.includes('const hasSourcePrice=finite(record.price)&&record.price>0'),
  'Must preserve verified last-known prices when scheduled market snapshot is delayed');
 assert(heatmapSource.includes("stale:!Number.isFinite(activeAt)"),
