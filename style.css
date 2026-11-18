@@ -4741,3 +4741,16 @@ body.page-global :is(.photo-cover,.map-svg,.spark){
   animation:none!important;
  }
 }
+
+/* Dedicated price-only UPPER/LOW blink on the Global list from LUNA onward.
+   Standard CSS animation works in desktop and mobile browsers. */
+.crypto-market-panel .instrument-row .asset-price.crypto-threshold-flash{
+ animation:cryptoThresholdPriceBlink .85s steps(1,end) infinite!important;
+}
+@media(prefers-reduced-motion:reduce){
+ .crypto-market-panel .instrument-row .asset-price.crypto-threshold-flash{
+  animation:none!important;
+  text-decoration:underline;
+  text-underline-offset:2px;
+ }
+}
