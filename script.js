@@ -5654,6 +5654,70 @@ async function loadCatalogQuoteFeed(){
  return catalogQuoteFeed.busy;
 }
 
+/* Frequent exact-ID CoinGecko quotes for non-streamed crypto.
+   This is provider-cached REST, NOT per-trade streaming. If throttled or
+   unavailable, preserve the last verified price and its original timestamp. */
+const catalogLivePoll={busy:false,lastAttempt:0,retryAt:0,failures:0};
+async function pollCatalogPrices(){
+ if(document.hidden||!navigator.onLine||catalogLivePoll.busy||
+    Date.now()<catalogLivePoll.retryAt)return;
+ const ids=new Map();
+ for(const asset of ASSETS){
+  if(asset.group!=='crypto'||!asset.coingeckoId)continue;
+  const coinId=String(asset.coingeckoId).trim();
+  if(coinId)ids.set(coinId,asset.id);
+ }
+ if(!ids.size)return;
+ catalogLivePoll.busy=true;catalogLivePoll.lastAttempt=Date.now();
+ const controller=new AbortController();
+ const timeout=setTimeout(()=>controller.abort(),12000);
+ try{
+  const allIds=[...ids.keys()],chunks=[];
+  for(let i=0;i<allIds.length;i+=95)chunks.push(allIds.slice(i,i+95));
+  const results=await Promise.all(chunks.map(async chunk=>{
+   const url='https://api.coingecko.com/api/v3/simple/price?ids='+
+    encodeURIComponent(chunk.join(','))+
+    '&vs_currencies=usd&include_24hr_change=true&include_last_updated_at=true';
+   const response=await fetch(url,{cache:'no-store',signal:controller.signal});
+   if(!response.ok)throw Error('CoinGecko HTTP '+response.status);
+   const json=await response.json();
+   if(!json||typeof json!=='object'||Array.isArray(json))throw Error('Invalid provider quote');
+   return json;
+  }));
+  const now=Date.now(),changed=[];
+  for(const prices of results){
+   for(const [coinId,row] of Object.entries(prices)){
+    const id=ids.get(coinId),asset=id&&ASSET_BY_ID[id];
+    if(asset?.group!=='crypto')continue;
+    const price=Number(row?.usd),stamp=Number(row?.last_updated_at)*1000;
+    if(!Number.isFinite(price)||price<=0||!Number.isFinite(stamp)||
+       stamp<now-15*60000||stamp>now+60000)continue;
+    const previous=state.quotes[id];
+    const previousTime=Date.parse(previous?.time||'');
+    // A recent exchange tick or newer verified snapshot always wins.
+    if(Number.isFinite(previousTime)&&previousTime>=stamp)continue;
+    const daily=Number(row?.usd_24h_change);
+    const incoming={...(previous||{id,history:[],candles:[]}),value:price,
+     change:Number.isFinite(daily)?daily:null,
+     currency:'USD',source:'CoinGecko · aggiornamento periodico (non streaming)',
+     time:new Date(stamp).toISOString(),live:false,polled:false,
+     delayed:false,received:now};
+    recordQuotePriceDirection(id,previous,incoming);
+    state.quotes[id]=incoming;
+    streamStatus.dirty.add(id);changed.push(id);
+    observeChartQuote(id,incoming);scheduleMarketMiniPaint();
+  }}
+  catalogLivePoll.failures=0;
+  catalogLivePoll.retryAt=Date.now()+120000;
+  if(changed.length)scheduleLivePaint();
+ }catch(_error){
+  catalogLivePoll.failures++;
+  // Respect public rate limits; never fabricate a moving price.
+  catalogLivePoll.retryAt=Date.now()+Math.min(15*60000,
+   120000*Math.pow(2,Math.min(3,catalogLivePoll.failures-1)));
+ }finally{clearTimeout(timeout);catalogLivePoll.busy=false}
+}
+
 async function fetchQuotes(isManual=false,forceFull=false){
  if(snapshotFetch.busy)return;
  snapshotFetch.busy=true;
@@ -8955,7 +9019,7 @@ function startVertexApp(){
     if(state.dialogId)scheduleDetailChartDraw();
    }).catch(()=>{});
  }
- fetchQuotes();
+ fetchQuotes().then(()=>pollCatalogPrices());
  connectCryptoStream();
  const fxLibrary=$('#fxSignalrLibrary');
  if(fxLibrary)fxLibrary.addEventListener('load',()=>{
@@ -8966,6 +9030,7 @@ function startVertexApp(){
  setInterval(refreshVisibleQuoteFreshness,5000);
  setInterval(()=>{if(!document.hidden&&state.page==='global')refreshGlobalCryptoCaps()},GLOBAL_CRYPTO_CAP_POLL_MS);
  setInterval(pollCryptoPrices,15000);
+ setInterval(pollCatalogPrices,120000);
  // Retry charts which were previously unavailable when their real data
  // archives are published; don't repeatedly hit providers on every tick.
  setInterval(()=>{
@@ -8980,13 +9045,13 @@ function startVertexApp(){
   if(document.hidden){closeStream();disconnectForexStream();stopOrderBookLive()}
   else {
    checkVertexRomeMidnight();
-   connectCryptoStream();connectForexStream();fetchQuotes();pollCryptoPrices();refreshVisibleQuoteFreshness();updateWorldSunlight(true);applyBrightness();
+   connectCryptoStream();connectForexStream();fetchQuotes().then(()=>pollCatalogPrices());pollCryptoPrices();refreshVisibleQuoteFreshness();updateWorldSunlight(true);applyBrightness();
    if(orderBookViewActive()){startOrderBookLive();refreshOrderBook()}
     if(state.dialogId){scheduleDetailChartDraw();scheduleChartLiveRefresh()}
   }
  });
  window.addEventListener('online',()=>{
-  checkVertexRomeMidnight();connectCryptoStream();connectForexStream();fetchQuotes();pollCryptoPrices();
+  checkVertexRomeMidnight();connectCryptoStream();connectForexStream();fetchQuotes().then(()=>pollCatalogPrices());pollCryptoPrices();
   if(orderBookViewActive()){startOrderBookLive(true);refreshOrderBook(true)}
  });
  window.addEventListener('offline',()=>{
