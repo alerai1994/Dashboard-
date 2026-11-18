@@ -1009,8 +1009,9 @@ function refreshVisibleQuoteFreshness(){
  });
  if(state.dialogId){
   const meta=document.querySelector('#dialogBody .dialog-meta');
-  const status=instrumentQuoteStatus(state.dialogId);
+  const status=detailVerifiedPriceStatus(state.dialogId);
   if(meta&&meta.textContent!==status)meta.textContent=status;
+  syncDetailVerifiedPrice();
  }
  updateLiveBadges();
 }
@@ -6354,10 +6355,68 @@ function forexBrokerObservedCandle(id){
   l:Math.min(...selected.map(x=>x.price)),c:last.price,
   observed:true,venue:'mt5'};
 }
+/* Asset detail header: an actual OHLC close is a usable last-known
+   historical price when live/snapshot quote coverage is missing. Do not
+   present that historical close as a current streaming quote. */
+function detailVerifiedPrice(id){
+ const q=quote(id),liveValue=Number(q?.value);
+ if(Number.isFinite(liveValue)&&liveValue>0)
+  return {value:liveValue,kind:'quote',time:q.time,change:q.change};
+ const series=[];
+ if(chartSeries.id===id)series.push(chartSeries);
+ for(const [key,entry] of chartFetchState.cache)
+  if(key.startsWith(id+':')&&entry!==chartSeries)series.push(entry);
+ if(Array.isArray(q?.candles))series.push({candles:q.candles});
+ let best=null;
+ for(const item of series){
+  for(const [records,field] of [[item?.candles,'c'],[item?.pricePoints,'p']]){
+   if(!Array.isArray(records)||!records.length)continue;
+   const last=records[records.length-1];
+   const value=Number(last?.[field]),time=Number(last?.t);
+   if(!Number.isFinite(value)||value<=0||!Number.isFinite(time)||
+      time<946684800||time*1000>Date.now()+300000)continue;
+   if(!best||time>best.time)best={value,time,kind:'history'};
+  }
+ }
+ return best;
+}
+function detailVerifiedPriceStatus(id){
+ const selected=detailVerifiedPrice(id);
+ if(!selected)return 'Quotazione non disponibile';
+ if(selected.kind==='quote')return instrumentQuoteStatus(id);
+ return 'Ultima chiusura storica verificata · '+localeDate(selected.time*1000,{
+  day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',
+  timeZone:'UTC'})+' UTC · non live';
+}
+function syncDetailVerifiedPrice(){
+ const id=state.dialogId,asset=ASSET_BY_ID[id];
+ if(!asset)return;
+ const item=detailVerifiedPrice(id);
+ const price=document.querySelector('#dialogBody .dialog-stats strong');
+ const change=document.querySelector('#dialogBody .dialog-stats .change');
+ const meta=document.querySelector('#dialogBody .dialog-meta');
+ if(!price)return;
+ const value=item?formatValue(item.value,asset):'—';
+ if(price.textContent!==value)price.textContent=value;
+ if(item?.kind==='history'){
+  price.classList.remove('quote-price-up','quote-price-down');
+  price.classList.add('quote-price-neutral');
+  if(change){change.textContent='—';setMovementClass(change,null);}
+ }else if(item?.kind==='quote'){
+  setQuotePriceMovement(price,id);
+  if(change){
+   const label=pct(item.change);
+   if(change.textContent!==label)change.textContent=label;
+   setMovementClass(change,item.change);
+  }
+ }
+ const status=detailVerifiedPriceStatus(id);
+ if(meta&&meta.textContent!==status)meta.textContent=status;
+}
 function updateChartLiveQuoteStatus(){
  const el=$('#chartLiveQuoteStatus');
  if(!el||!state.dialogId)return;
- const id=state.dialogId,q=quote(id),label=instrumentQuoteStatus(id);
+ const id=state.dialogId,q=quote(id),label=detailVerifiedPriceStatus(id);
  const venue=chartQuoteVenue(q),compatible=chartQuoteCompatible(id,venue,chartSeries.source);
  const visible=getCandles(id),updated=compatible&&visible.length>=2&&visible[visible.length-1].observed===true;
  const brokerBar=venue==='mt5'?forexBrokerObservedCandle(id):null;
@@ -6426,6 +6485,8 @@ function chartMarketUrls(asset,period,from,to){
  return [...first,...second];
 }
 function updateChartHistoryStatus(){
+ syncDetailVerifiedPrice();
+ updateChartLiveQuoteStatus();
  const badge=$('#chartHistoryBadge'),source=$('#chartHistorySource');
  const dates=$('#chartHistoryDates');
  if(!badge&&!source&&!dates)return;
@@ -7594,6 +7655,7 @@ function refreshDialog(){
   'Prezzi: Yahoo Finance. Candele OHLC: '+esc(q&&q.candleSource||'Yahoo Finance, se disponibile')+'. Storico non necessariamente in tempo reale.')+'</span>'+
  '<a href="'+esc(externalUrl(a))+'" target="_blank" rel="noopener noreferrer">Apri fonte '+sym('external')+'</a></div>';
  if(isCrypto)updateChartHistoryStatus();
+ syncDetailVerifiedPrice();
  updateChartLiveQuoteStatus();
  paintCryptoPriceHighlights();
  scheduleDetailChartDraw();
