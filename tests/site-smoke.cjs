@@ -4,6 +4,15 @@ const fs=require('node:fs');
 const assert=require('node:assert/strict');
 const read=path=>fs.readFileSync(path,'utf8');
 const source=read('script.js'),html=read('index.html'),css=read('style.css');
+assert(source.includes('function detailVerifiedPrice(id)'),
+ 'Crypto detail must resolve a real historical close when market quote is missing');
+assert(source.includes('Ultima chiusura storica verificata'),
+ 'Historical price must be labeled explicitly non-live');
+assert(source.includes('syncDetailVerifiedPrice();'),
+ 'Crypto dialog must update its header after historical candle loading');
+assert(source.includes('time*1000>Date.now()+300000'),
+ 'Historical fallback must reject future candle timestamps');
+
 new Function(source);
 new Function(read('price-board.js'));
 new Function(read('crypto-extended.js'));
