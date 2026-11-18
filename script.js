@@ -5605,22 +5605,30 @@ async function loadCatalogQuoteFeed(){
     const stamp=Date.parse(row.observedAt||'');
     const age=Date.now()-stamp;
     const price=Number(row.price);
-    // Do not present aged or invalid prices as a current market direction.
-    if(!Number.isFinite(stamp)||age< -300000||age>2*3600000||
+    // Keep the last independently verified value even after a snapshot
+    // schedule delay. The original observation timestamp is preserved so the
+    // interface cannot call an old quote live. Reject missing/future dates.
+    if(!Number.isFinite(stamp)||age< -300000||
        !Number.isFinite(price)||price<=0)continue;
-    const percentage=row.change===null?null:Number(row.change);
+    const percentage=row.change==null?null:Number(row.change);
     const icon=coinLogoUrl(row.image);
+    const delayed=age>2*3600000;
     items.set(asset.id,{id:asset.id,value:price,
      change:Number.isFinite(percentage)?percentage:null,
      time:new Date(stamp).toISOString(),currency:'USD',
-     source:'CoinGecko · rilevazione periodica',logo:icon||undefined,
-     live:false});
+     source:delayed?'CoinGecko · ultima rilevazione verificata (non live)':
+      'CoinGecko · rilevazione periodica',logo:icon||undefined,
+     live:false,delayed});
    }
    catalogQuoteFeed.items=items;catalogQuoteFeed.loadedAt=Date.now();
   }catch(_error){
-   // Keep previous timestamped observations only within their valid window.
-   catalogQuoteFeed.items=new Map([...catalogQuoteFeed.items].filter(([,row])=>
-    Date.now()-Date.parse(row.time||'')<2*3600000));
+   // A failed refresh must not erase the last source-verified catalog.
+   // Retain original timestamps and mark data delayed when necessary.
+   catalogQuoteFeed.items=new Map([...catalogQuoteFeed.items].map(([id,row])=>{
+    const age=Date.now()-Date.parse(row.time||'');
+    return [id,{...row,delayed:age>2*3600000,
+     source:age>2*3600000?'CoinGecko · ultima rilevazione verificata (non live)':row.source}];
+   }));
    catalogQuoteFeed.loadedAt=Date.now();
   }finally{clearTimeout(timer)}
   return catalogQuoteFeed.items;
