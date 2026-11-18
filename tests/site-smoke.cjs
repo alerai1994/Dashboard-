@@ -8,19 +8,21 @@ assert(!source.includes('function cryptoRowAlertMarkup('),
  'Removed crypto arrow badge renderer must never return');
 assert(!source.includes("alert.textContent=active||'↑ ↓'"),
  'Live price updates must not reinsert arrow symbols');
-assert(source.includes("const lunaStart=group.ids.indexOf('luna')"),
- 'Global crypto alert flashing must begin exactly at LUNA');
-assert(source.includes("price.classList.toggle('crypto-threshold-flash',eligible&&!!boundary)"),
- 'Price-only flashing must track live alert state without touching daily change');
+assert(source.includes("const cryptoAlertRow=crypto&&a?.group==='crypto'"),
+ 'Every Global cryptocurrency must be eligible for price-only threshold flashing');
+assert(source.includes("price.classList.toggle('crypto-threshold-flash',ASSET_BY_ID[id]?.group==='crypto'&&!!boundary)"),
+ 'All crypto prices must flash on verified alerts, with no dependence on listing order');
+assert(!source.includes("const lunaStart=group.ids.indexOf('luna')"),
+ 'Price flashing must no longer be limited to LUNA and subsequent rows');
 assert(css.includes('.asset-price.crypto-threshold-flash'),
  'The targeted price blinking style must be available');
-assert(html.includes('20261118-luna-price-flash-v3'),
+assert(html.includes('20261118-all-crypto-price-flash-v4'),
  'All browsers should load the versioned price blinking assets');
 assert(css.includes('cryptoThresholdPriceBlink'),
  'Triggered UPPER/LOW prices must blink on desktop and mobile');
 assert(css.includes('.crypto-row-alert{display:none!important}'),
  'Even stale cached rows must hide the arrow badges');
-assert(html.includes('20261118-price-only-alert-v2'),
+assert(html.includes('20261118-all-crypto-price-flash-v4'),
  'Updated JavaScript and styles must use fresh cache-busting URLs');
 assert(!source.includes("(alertRow?cryptoRowAlertMarkup(id):'')"),
  'Global crypto rows must not show the old up/down monitoring indicator');
