@@ -4,6 +4,17 @@ const fs=require('node:fs');
 const assert=require('node:assert/strict');
 const read=path=>fs.readFileSync(path,'utf8');
 const source=read('script.js'),html=read('index.html'),css=read('style.css');
+assert(source.includes("group.ids.indexOf(id)>=group.ids.indexOf('luna')"),
+ 'Global crypto UPPER LOW indicator must begin at LUNA');
+assert(source.includes("cryptoRowAlertMarkup(id)"),
+ 'Global crypto rows must display monitoring indicator');
+assert(source.includes("alert.textContent=active||'↑ ↓'"),
+ 'Global crypto indicator must reflect verified UPPER LOW crossing');
+assert(css.includes('cryptoRowAlertFlash'),
+ 'Alert state must blink on desktop and mobile browsers');
+assert(css.includes('prefers-reduced-motion:reduce'),
+ 'Mobile and desktop accessibility must suppress optional blinking');
+
 assert(source.includes('CoinGecko · ultima rilevazione verificata (non live)'),
  'Global must disclose delayed catalog quote age rather than erasing price');
 assert(source.includes("const delayed=age>2*3600000"),
