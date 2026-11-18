@@ -313,7 +313,18 @@ function recordQuotePriceDirection(id,previous,incoming){
  }
  quotePriceDirections.set(id,next>old?'up':'down');
 }
-const quotePriceClass=id=>'quote-price-'+(quotePriceDirections.get(id)||'neutral');
+// Cryptocurrencies show the latest comparable price-tick direction; where no
+// comparable tick exists, use the verified 24h price movement from the quote.
+// This ensures the Global catalog (including slow-updating coins) is colored.
+function quotePriceClass(id){
+ const asset=ASSET_BY_ID[id],direction=quotePriceDirections.get(id);
+ if(asset?.group==='crypto'&&(!direction||direction==='neutral')){
+  const change24h=Number(quote(id)?.change);
+  if(Number.isFinite(change24h)&&change24h!==0)
+   return 'quote-price-'+(change24h>0?'up':'down');
+ }
+ return 'quote-price-'+(direction||'neutral');
+}
 function setQuotePriceMovement(el,id){
  if(!el)return;
  const next=quotePriceClass(id);
