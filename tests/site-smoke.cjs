@@ -4,6 +4,13 @@ const fs=require('node:fs');
 const assert=require('node:assert/strict');
 const read=path=>fs.readFileSync(path,'utf8');
 const source=read('script.js'),html=read('index.html'),css=read('style.css');
+assert(source.includes('CoinGecko · ultima rilevazione verificata (non live)'),
+ 'Global must disclose delayed catalog quote age rather than erasing price');
+assert(source.includes("const delayed=age>2*3600000"),
+ 'Global must preserve delayed verified quote timestamp and percentage');
+assert(!source.includes("age>2*3600000||\n       !Number.isFinite(price)"),
+ 'Global must not discard all 288 crypto values after two hours');
+
 assert(source.includes('function detailVerifiedPrice(id)'),
  'Crypto detail must resolve a real historical close when market quote is missing');
 assert(source.includes('Ultima chiusura storica verificata'),
