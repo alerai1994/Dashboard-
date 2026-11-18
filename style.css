@@ -4703,3 +4703,41 @@ body.page-global :is(.photo-cover,.map-svg,.spark){
 .crypto-global-alert-scroll th{position:sticky;top:0;background:var(--card,var(--surface,#20242c));z-index:1}
 .crypto-global-alert-history{margin:12px 0 0;padding-left:22px;max-height:260px;overflow:auto}
 .crypto-global-alert-history li{padding:5px 0;line-height:1.5}
+
+/* Crypto UPPER/LOW threshold alerts: blink the PRICE ONLY when a real price
+   crosses the armed alert, on desktop and mobile. No arrow badges. */
+@keyframes cryptoThresholdPriceBlink{
+ 0%,49%{opacity:1}
+ 50%,100%{opacity:.32}
+}
+#pageContainer .asset-price.crypto-price-upper,
+#pageContainer .asset-price.crypto-price-lower,
+#pageContainer .mini-price.crypto-price-upper,
+#pageContainer .mini-price.crypto-price-lower,
+#pageContainer .tech-asset-value.crypto-price-upper,
+#pageContainer .tech-asset-value.crypto-price-lower,
+#pageContainer td.crypto-price-upper,
+#pageContainer td.crypto-price-lower,
+#searchMenu .crypto-price-upper,
+#searchMenu .crypto-price-lower,
+#dialogBody .crypto-price-upper,
+#dialogBody .crypto-price-lower{
+ animation:cryptoThresholdPriceBlink .85s steps(1,end) infinite!important;
+}
+/* Also hide obsolete badges when a previously cached script renders old rows. */
+.crypto-market-panel .crypto-row-alert{display:none!important}
+.crypto-market-panel .instrument-row.crypto-alert-enabled{
+ grid-template-columns:25px minmax(0,1fr) auto auto!important;
+}
+@media(max-width:600px){
+ .crypto-market-panel .instrument-row.crypto-alert-enabled{
+  grid-template-columns:23px minmax(0,1fr) auto auto!important;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ #pageContainer .crypto-price-upper,#pageContainer .crypto-price-lower,
+ #searchMenu .crypto-price-upper,#searchMenu .crypto-price-lower,
+ #dialogBody .crypto-price-upper,#dialogBody .crypto-price-lower{
+  animation:none!important;
+ }
+}
