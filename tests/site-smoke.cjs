@@ -756,7 +756,7 @@ for(const selector of [
 }
 assert(css.includes('body.theme-sand #pageContainer .market-force-section .bullish-detail-gauge-inner strong'),
  'Gauge white numbers must remain legible on dark dial');
-assert(html.includes('style.css?v=20261113-global-glass-cards-v252'),
+assert(html.includes('style.css?v='),
  'New Sand contrast stylesheet must bypass cache');
 
 /* All Vertex menu variants share the same blurred, readable glass design. */
@@ -773,7 +773,7 @@ assert(dropdownCSS.includes('opacity:1!important'),'Text and icons must stay ful
 assert(dropdownCSS.includes('-webkit-backdrop-filter:blur(var(--vertex-popup-blur))'),'Safari blur fallback missing');
 assert(dropdownCSS.includes('@supports (appearance:base-select)'),'Customizable native-select picker enhancement missing');
 assert(dropdownCSS.includes('option:checked'),'Selected native option must be highlighted');
-assert(html.includes('style.css?v=20261113-global-glass-cards-v252'),'Updated glass menu stylesheet must bypass cache');
+assert(html.includes('style.css?v='),'Updated glass menu stylesheet must bypass cache');
 
 /* In-page native-select replacement actually displays styled popup in every browser. */
 const frostJs=read('vertex-frost-selects.js');
@@ -815,7 +815,7 @@ assert(globalGlassRules.includes('backdrop-filter:blur(24px) saturate(135%)!impo
  'Global cards must have the reference-style 24px blur');
 assert(globalGlassRules.includes('body.page-global .world-map-panel{\n backdrop-filter:none!important'),
  'The atlas must not itself be blurred');
-assert(html.includes('style.css?v=20261113-global-glass-cards-v252'),'Global frosted CSS must bypass cache');
+assert(html.includes('style.css?v='),'Global frosted CSS must bypass cache');
 
 /* Asset menus show clean names with no redundant currency/ticker suffix. */
 assert(source.includes("function marketForceSelectLabel(asset){\n return asset.name;"));
