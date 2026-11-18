@@ -20,6 +20,15 @@ assert(read('vertex-heatmap.css').includes('prefers-reduced-motion:reduce'),
  'Threshold flash must respect reduced motion');
 
 const heatmapSource=read('vertex-heatmap.js');
+assert(heatmapSource.includes('async function refreshMissingQuotes()'),
+ 'Full-catalog heatmap must fetch exact-ID quotes missing from top 250');
+assert(heatmapSource.includes('exactQuoteRetryAfter=Date.now()+5*60000'),
+ 'Cross-platform fetch must back off after provider rate limits');
+assert(heatmapSource.includes('Math.min(30,candidates.length)'),
+ 'Keep top-250 fallback requests bounded for mobile networks');
+assert(heatmapSource.includes('refreshMissingQuotes();'),
+ 'Missing quote recovery must resume after navigation or reconnect');
+
 assert(heatmapSource.includes("window.addEventListener('pageshow',resumeHeatmapFeeds)"),
  'Heatmap must refresh when iOS Safari PWA is reopened');
 assert(heatmapSource.includes("window.addEventListener('online',resumeHeatmapFeeds)"),
