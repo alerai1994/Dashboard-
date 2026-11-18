@@ -4754,3 +4754,32 @@ body.page-global :is(.photo-cover,.map-svg,.spark){
   text-underline-offset:2px;
  }
 }
+
+
+/* World market map: region pins follow the SAME verified regional trend as
+   their nearby percentage callout. Explicit specificity prevents generic
+   button/theme styles from rendering the rings white on any browser. */
+#worldMap .map-stage button.map-pin[data-trend="up"]{
+ color:#25c28b!important;
+ -webkit-text-fill-color:#25c28b;
+}
+#worldMap .map-stage button.map-pin[data-trend="down"]{
+ color:#f16c78!important;
+ -webkit-text-fill-color:#f16c78;
+}
+#worldMap .map-stage button.map-pin[data-trend="up"]::before,
+#worldMap .map-stage button.map-pin[data-trend="up"]::after{
+ border-color:#25c28b!important;
+ background-color:#25c28b!important;
+ box-shadow:0 0 12px rgba(37,194,139,.58)!important;
+}
+#worldMap .map-stage button.map-pin[data-trend="down"]::before,
+#worldMap .map-stage button.map-pin[data-trend="down"]::after{
+ border-color:#f16c78!important;
+ background-color:#f16c78!important;
+ box-shadow:0 0 12px rgba(241,108,120,.58)!important;
+}
+#worldMap .map-stage button.map-pin[data-trend="up"]::before,
+#worldMap .map-stage button.map-pin[data-trend="down"]::before{
+ background-color:transparent!important;
+}
