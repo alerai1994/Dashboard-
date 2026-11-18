@@ -666,18 +666,6 @@ function assetLogo(a){
   '<span class="crypto-logo-fallback">'+fallback+'</span>'+
   (logo?'<img class="crypto-logo-image" src="'+esc(logo)+'" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">':'')+'</span>';
 }
-/* Compact alert indicator in Global crypto rows, starting with LUNA.
-   UPPER/LOW crossing is controlled by the existing global bell engine. */
-function cryptoRowAlertMarkup(id){
- const direction=cryptoBoundaryFor(id);
- const active=direction==='above'?'UPPER':direction==='below'?'LOW':null;
- const label=active||'↑ ↓';
- const title=active?active+' raggiunto · avviso sul prezzo (15 secondi)':
-  'Avvisi UPPER e LOW monitorati tramite la campanella generale';
- return '<span class="crypto-row-alert'+(active?' crypto-row-alert-'+direction:'')+
-  '" data-crypto-row-alert="'+esc(id)+'" role="status" aria-label="'+esc(title)+
-  '" title="'+esc(title)+'">'+esc(label)+'</span>';
-}
 function sidePanel(group){
  const crypto=group.group==='crypto';
  const visible=crypto&&!state.cryptoExpanded?group.ids.slice(0,8):group.ids;
@@ -4864,16 +4852,6 @@ function paintCryptoPriceHighlights(){
   const escaped=typeof CSS!=='undefined'&&CSS.escape?CSS.escape(id):id.replace(/[^a-z0-9_-]/gi,'');
   if(!escaped)continue;
   document.querySelectorAll('#pageContainer [data-asset="'+escaped+'"]').forEach(node=>{
-   const alert=node.querySelector('[data-crypto-row-alert]');
-   if(alert){
-    const active=boundary==='above'?'UPPER':boundary==='below'?'LOW':null;
-    const title=active?active+' raggiunto · avviso sul prezzo (15 secondi)':
-      'Avvisi UPPER e LOW monitorati tramite la campanella generale';
-    alert.textContent=active||'↑ ↓';
-    alert.classList.toggle('crypto-row-alert-above',boundary==='above');
-    alert.classList.toggle('crypto-row-alert-below',boundary==='below');
-    alert.title=title;alert.setAttribute('aria-label',title);
-   }
    node.querySelectorAll('.asset-price,.mini-price,.tech-asset-value').forEach(price=>{
     price.classList.toggle('crypto-price-upper',boundary==='above');
     price.classList.toggle('crypto-price-lower',boundary==='below');
