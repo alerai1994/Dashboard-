@@ -685,11 +685,9 @@ function sidePanel(group){
  return '<section class="market-panel panel'+(crypto?' crypto-market-panel':'')+'"><div class="section-topline"><h3>'+sym('globe')+' '+esc(group.title)+(crypto?'<span class="crypto-counter">'+count+'</span>':'')+'<span class="market-feed-pill" data-market-group="'+group.group+'">'+marketGroupStatus(group.group)+'</span>'+'</h3><button type="button" class="text-action" data-page="markets" data-category="'+group.group+'">View All</button></div>'+
  '<div class="instrument-rows">'+visible.map(id=>{
  const a=ASSET_BY_ID[id],q=quote(id);
- const alertRow=crypto&&group.ids.indexOf(id)>=group.ids.indexOf('luna')&&group.ids.indexOf('luna')>=0;
- return '<button type="button" class="instrument-row'+(alertRow?' crypto-alert-enabled':'')+
-  '" data-asset="'+id+'" aria-label="Apri '+esc(a.name)+'">'+assetLogo(a)+
+ return '<button type="button" class="instrument-row"'+
+  ' data-asset="'+id+'" aria-label="Apri '+esc(a.name)+'">'+assetLogo(a)+
   '<span class="asset-label">'+esc(a.name)+'</span>'+
-  (alertRow?cryptoRowAlertMarkup(id):'')+
   '<span class="asset-price '+quotePriceClass(id)+'">'+assetValue(a)+'</span><span class="asset-change '+classArrow(id)+'">'+pct(q&&q.change)+'</span></button>';
  }).join('')+'</div>'+
  (crypto?'<button type="button" class="crypto-expand-btn" data-crypto-expand="1" aria-expanded="'+String(state.cryptoExpanded)+'">'+(state.cryptoExpanded?'− Mostra meno':'＋ Mostra altre '+(count-visible.length)+' crypto')+'</button>':'')+'</section>';
