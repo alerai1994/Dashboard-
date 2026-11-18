@@ -4742,7 +4742,7 @@ body.page-global :is(.photo-cover,.map-svg,.spark){
  }
 }
 
-/* Dedicated price-only UPPER/LOW blink on the Global list from LUNA onward.
+/* Dedicated price-only UPPER/LOW blink on every crypto in the Global list.
    Standard CSS animation works in desktop and mobile browsers. */
 .crypto-market-panel .instrument-row .asset-price.crypto-threshold-flash{
  animation:cryptoThresholdPriceBlink .85s steps(1,end) infinite!important;
