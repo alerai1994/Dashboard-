@@ -4703,3 +4703,13 @@ body.page-global :is(.photo-cover,.map-svg,.spark){
 .crypto-global-alert-scroll th{position:sticky;top:0;background:var(--card,var(--surface,#20242c));z-index:1}
 .crypto-global-alert-history{margin:12px 0 0;padding-left:22px;max-height:260px;overflow:auto}
 .crypto-global-alert-history li{padding:5px 0;line-height:1.5}
+
+/* Global Crypto UPPER/LOW indicator (LUNA onwards), desktop and mobile. */
+.crypto-market-panel .instrument-row.crypto-alert-enabled{grid-template-columns:25px minmax(0,1fr) 31px auto auto}
+.crypto-market-panel .crypto-row-alert{display:inline-flex;align-items:center;justify-content:center;padding:2px 3px;min-width:29px;border-radius:5px;background:rgba(125,144,165,.12);border:1px solid rgba(125,144,165,.23);color:var(--muted);font-size:9px;font-weight:800;white-space:nowrap}
+.crypto-market-panel .crypto-row-alert-above{color:#facc15;border-color:rgba(250,204,21,.55);background:rgba(250,204,21,.12)}
+.crypto-market-panel .crypto-row-alert-below{color:#ff657d;border-color:rgba(255,65,91,.52);background:rgba(255,65,91,.12)}
+@keyframes cryptoRowAlertFlash{0%,49%{opacity:1}50%,100%{opacity:.4}}
+.crypto-market-panel :is(.crypto-row-alert-above,.crypto-row-alert-below){animation:cryptoRowAlertFlash .85s steps(1,end) infinite}
+@media(max-width:600px){.crypto-market-panel .instrument-row.crypto-alert-enabled{grid-template-columns:23px minmax(0,1fr) 29px auto auto;column-gap:4px}.crypto-market-panel .crypto-row-alert{font-size:8px;min-width:27px}}
+@media(prefers-reduced-motion:reduce){.crypto-market-panel :is(.crypto-row-alert-above,.crypto-row-alert-below){animation:none!important}}
