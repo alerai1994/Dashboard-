@@ -120,3 +120,13 @@
 @media(prefers-reduced-motion:reduce){
  .vh-tile .vh-price.crypto-price-upper,.vh-tile .vh-price.crypto-price-lower{animation:none!important;opacity:1!important}
 }
+
+/* Explicitly distinguish time-delayed last-known observations across browsers.
+   Keep the same true green/red movement colors rather than hiding known data. */
+.vh-tile.vh-stale{position:relative}
+.vh-tile.vh-stale::after{
+ content:"◷";position:absolute;top:3px;right:5px;
+ font-size:10px;line-height:1;color:rgba(255,255,255,.85);
+ background:rgba(12,19,29,.55);border-radius:3px;padding:2px 3px;
+ pointer-events:none
+}
