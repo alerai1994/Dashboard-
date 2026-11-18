@@ -4,6 +4,12 @@ const fs=require('node:fs');
 const assert=require('node:assert/strict');
 const read=path=>fs.readFileSync(path,'utf8');
 const source=read('script.js'),html=read('index.html'),css=read('style.css');
+assert(source.includes('data-trend="'+ "'+tr+'" +'"), 'Map pins must carry the regional trend');
+assert(source.includes('el.dataset.trend=trend(avg)'), 'Map pins must update with incoming region data');
+assert(css.includes('#worldMap .map-stage button.map-pin[data-trend="up"]'), 'Positive map pins must be green');
+assert(css.includes('#worldMap .map-stage button.map-pin[data-trend="down"]'), 'Negative map pins must be red');
+assert(html.includes('style.css?v=20261118-region-pin-trend-v6'), 'New map pin colors must bypass cached desktop/mobile CSS');
+
 assert(!source.includes('function cryptoRowAlertMarkup('),
  'Removed crypto arrow badge renderer must never return');
 assert(!source.includes("alert.textContent=active||'↑ ↓'"),
