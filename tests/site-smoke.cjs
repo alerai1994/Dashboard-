@@ -8,6 +8,14 @@ assert(!source.includes('function cryptoRowAlertMarkup('),
  'Removed crypto arrow badge renderer must never return');
 assert(!source.includes("alert.textContent=active||'↑ ↓'"),
  'Live price updates must not reinsert arrow symbols');
+assert(source.includes("const lunaStart=group.ids.indexOf('luna')"),
+ 'Global crypto alert flashing must begin exactly at LUNA');
+assert(source.includes("price.classList.toggle('crypto-threshold-flash',eligible&&!!boundary)"),
+ 'Price-only flashing must track live alert state without touching daily change');
+assert(css.includes('.asset-price.crypto-threshold-flash'),
+ 'The targeted price blinking style must be available');
+assert(html.includes('20261118-luna-price-flash-v3'),
+ 'All browsers should load the versioned price blinking assets');
 assert(css.includes('cryptoThresholdPriceBlink'),
  'Triggered UPPER/LOW prices must blink on desktop and mobile');
 assert(css.includes('.crypto-row-alert{display:none!important}'),
