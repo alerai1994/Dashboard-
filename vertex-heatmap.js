@@ -352,17 +352,17 @@ function gridHtml(){
  return {all,filtered,visible,markup};
 }
 function sourceLabel(){
- if(state.coins.length){
-  const stamp=new Date(state.fetchedAt).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
-  const stale=Date.now()-state.fetchedAt>10*60*1000?' · aggiornamento ritardato':'';
-  return 'Fonte: CoinGecko · rilevazione '+stamp+stale+
-   (state.error?' · ultimo dato valido':'')+'. Le quotazioni possono essere differite.';
+ const latest=Math.max(state.snapshotAt||0,state.fetchedAt||0);
+ if(latest){
+  const age=Date.now()-latest,delayed=age>2*3600000;
+  return 'Fonte: CoinGecko · '+(delayed?'ULTIMO DATO DISPONIBILE, NON LIVE':'rilevazione recente')+
+   ' · '+new Date(latest).toLocaleString('it-IT')+
+   (state.snapshotStatus?' · catalogo '+state.snapshotStatus:'')+
+   (state.error?' · aggiornamento diretto temporaneamente non disponibile':'')+
+   '. Prezzi e variazioni sono datati secondo la fonte.';
  }
- if(state.snapshotAt)return 'Fonte: CoinGecko · '+state.snapshotStatus+
-  ' · ultimo snapshot '+new Date(state.snapshotAt).toLocaleString('it-IT')+
-  ' · dati ritardati contrassegnati, aggiornamento automatico in corso.';
  return state.fetching?'Caricamento elenco esteso… · intanto vengono mostrati i dati Vertex':
-  (state.error?'CoinGecko non raggiungibile · ':'')+'Fonte: feed Vertex · prezzi disponibili, aggiornamento secondo fonte.';
+  (state.error?'CoinGecko non raggiungibile · ':'')+'Fonte: feed Vertex · aggiornamento secondo fonte.';
 }
 function page(){
  const data=gridHtml();
