@@ -8,6 +8,12 @@ assert(!source.includes('function cryptoRowAlertMarkup('),
  'Removed crypto arrow badge renderer must never return');
 assert(!source.includes("alert.textContent=active||'↑ ↓'"),
  'Live price updates must not reinsert arrow symbols');
+assert(source.includes("asset?.group==='crypto'&&(!direction||direction==='neutral')"),
+ 'All cryptocurrencies without comparable live ticks must derive price colors from verified 24h changes');
+assert(source.includes("return 'quote-price-'+(change24h>0?'up':'down')"),
+ 'Upward crypto price moves show green and downward moves show red');
+assert(source.includes("return 'quote-price-'+(direction||'neutral')"),
+ 'Fresh comparable quote ticks still determine direction where available');
 assert(source.includes("const cryptoAlertRow=crypto&&a?.group==='crypto'"),
  'Every Global cryptocurrency must be eligible for price-only threshold flashing');
 assert(source.includes("price.classList.toggle('crypto-threshold-flash',ASSET_BY_ID[id]?.group==='crypto'&&!!boundary)"),
@@ -16,13 +22,13 @@ assert(!source.includes("const lunaStart=group.ids.indexOf('luna')"),
  'Price flashing must no longer be limited to LUNA and subsequent rows');
 assert(css.includes('.asset-price.crypto-threshold-flash'),
  'The targeted price blinking style must be available');
-assert(html.includes('20261118-all-crypto-price-flash-v4'),
+assert(html.includes('20261118-crypto-price-trend-v5'),
  'All browsers should load the versioned price blinking assets');
 assert(css.includes('cryptoThresholdPriceBlink'),
  'Triggered UPPER/LOW prices must blink on desktop and mobile');
 assert(css.includes('.crypto-row-alert{display:none!important}'),
  'Even stale cached rows must hide the arrow badges');
-assert(html.includes('20261118-all-crypto-price-flash-v4'),
+assert(html.includes('20261118-crypto-price-trend-v5'),
  'Updated JavaScript and styles must use fresh cache-busting URLs');
 assert(!source.includes("(alertRow?cryptoRowAlertMarkup(id):'')"),
  'Global crypto rows must not show the old up/down monitoring indicator');
