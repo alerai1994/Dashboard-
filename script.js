@@ -673,12 +673,11 @@ function sidePanel(group){
  return '<section class="market-panel panel'+(crypto?' crypto-market-panel':'')+'"><div class="section-topline"><h3>'+sym('globe')+' '+esc(group.title)+(crypto?'<span class="crypto-counter">'+count+'</span>':'')+'<span class="market-feed-pill" data-market-group="'+group.group+'">'+marketGroupStatus(group.group)+'</span>'+'</h3><button type="button" class="text-action" data-page="markets" data-category="'+group.group+'">View All</button></div>'+
  '<div class="instrument-rows">'+visible.map(id=>{
  const a=ASSET_BY_ID[id],q=quote(id);
- const lunaStart=group.ids.indexOf('luna');
- const lunaAlertRow=crypto&&lunaStart>=0&&group.ids.indexOf(id)>=lunaStart;
+ const cryptoAlertRow=crypto&&a?.group==='crypto';
  return '<button type="button" class="instrument-row"'+
   ' data-asset="'+id+'" aria-label="Apri '+esc(a.name)+'">'+assetLogo(a)+
   '<span class="asset-label">'+esc(a.name)+'</span>'+
-  '<span class="asset-price '+quotePriceClass(id)+(lunaAlertRow&&cryptoBoundaryFor(id)?' crypto-threshold-flash':'')+'">'+assetValue(a)+'</span><span class="asset-change '+classArrow(id)+'">'+pct(q&&q.change)+'</span></button>';
+  '<span class="asset-price '+quotePriceClass(id)+(cryptoAlertRow&&cryptoBoundaryFor(id)?' crypto-threshold-flash':'')+'">'+assetValue(a)+'</span><span class="asset-change '+classArrow(id)+'">'+pct(q&&q.change)+'</span></button>';
  }).join('')+'</div>'+
  (crypto?'<button type="button" class="crypto-expand-btn" data-crypto-expand="1" aria-expanded="'+String(state.cryptoExpanded)+'">'+(state.cryptoExpanded?'− Mostra meno':'＋ Mostra altre '+(count-visible.length)+' crypto')+'</button>':'')+'</section>';
 }
@@ -4857,12 +4856,9 @@ function paintCryptoPriceHighlights(){
    node.querySelectorAll('.asset-price,.mini-price,.tech-asset-value').forEach(price=>{
     price.classList.toggle('crypto-price-upper',boundary==='above');
     price.classList.toggle('crypto-price-lower',boundary==='below');
-    // LUNA and every later coin in the Global list: blink its price, not its change.
+    // Every crypto in the Global list blinks only its price on a real crossing.
     if(node.closest('.crypto-market-panel')){
-     const cryptoIds=QUOTE_GROUPS.find(group=>group.group==='crypto')?.ids||[];
-     const start=cryptoIds.indexOf('luna');
-     const eligible=start>=0&&cryptoIds.indexOf(id)>=start;
-     price.classList.toggle('crypto-threshold-flash',eligible&&!!boundary);
+     price.classList.toggle('crypto-threshold-flash',ASSET_BY_ID[id]?.group==='crypto'&&!!boundary);
     }
    });
    if(node.matches('tr[data-asset]')){
