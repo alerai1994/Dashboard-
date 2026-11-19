@@ -1,6 +1,6 @@
 {
   "source": "U.S. Securities and Exchange Commission",
-  "updated_at": "2026-11-19T17:37:36Z",
+  "updated_at": "2026-11-19T23:47:11Z",
   "seed_date": "2026-10-31T12:00:00Z",
   "feeds_updated": [
     "press",
@@ -8,6 +8,20 @@
     "testimony"
   ],
   "items": [
+    {
+      "category": "speeches",
+      "title": "Remarks to the American Bar Association Federal Regulation of Securities Winter Meeting",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/uyeda-remarks-american-bar-association-meeting-111926",
+      "date": "2026-11-19T21:33:28Z",
+      "summary": "Commissioner Mark T. Uyeda"
+    },
+    {
+      "category": "speeches",
+      "title": "Opening Remarks at the 2026 Compliance Outreach Program National Seminar for Investment Advisers and Investment Companies",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/atkins-remarks-compliance-outreach-program-111926",
+      "date": "2026-11-19T18:39:47Z",
+      "summary": "Chairman Paul S. Atkins"
+    },
     {
       "category": "press",
       "title": "SEC: Eight Entities Used Fake Crypto Asset Trading Platforms to Steal More Than $37 Million From U.S. Investors",
