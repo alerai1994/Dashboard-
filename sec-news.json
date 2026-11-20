@@ -1,6 +1,6 @@
 {
   "source": "U.S. Securities and Exchange Commission",
-  "updated_at": "2026-11-20T16:02:19Z",
+  "updated_at": "2026-11-20T22:37:19Z",
   "seed_date": "2026-10-31T12:00:00Z",
   "feeds_updated": [
     "press",
@@ -8,6 +8,34 @@
     "testimony"
   ],
   "items": [
+    {
+      "category": "speeches",
+      "title": "Statement on Proposal to Restructure the Consolidated Audit Trail",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/atkins-statement-proposal-restructure-consolidated-audit-trail-112026",
+      "date": "2026-11-20T19:05:50Z",
+      "summary": "SEC Chairman Paul S. Atkins"
+    },
+    {
+      "category": "speeches",
+      "title": "Statement on Proposal to Restructure the Governance and Funding of the Consolidated Audit Trail",
+      "url": "https://www.sec.gov/newsroom/speeches-statements/uyeda-statement-consolidated-audit-trail-112026",
+      "date": "2026-11-20T19:04:22Z",
+      "summary": "Commissioner Mark T. Uyeda"
+    },
+    {
+      "category": "press",
+      "title": "SEC Issues Proposal to Restructure the Consolidated Audit Trail",
+      "url": "https://www.sec.gov/newsroom/press-releases/2026-117-sec-issues-proposal-restructure-consolidated-audit-trail",
+      "date": "2026-11-20T18:03:24Z",
+      "summary": "The Securities and Exchange Commission today issued a proposal to address the inefficiencies in the current governance and funding model of the Consolidated Audit Trail (CAT). The Commission is proposing to rescind Rule 613 of Reg"
+    },
+    {
+      "category": "press",
+      "title": "SEC Charges Indianapolis-Based Backward Hat Capital and Its Co-Founders With $560 Million Dollar Offering Fraud and Obtains Emergency Relief",
+      "url": "https://www.sec.gov/newsroom/press-releases/2026-116-sec-charges-indianapolis-based-backward-hat-capital-its-co-founders-560-million-dollar-offering",
+      "date": "2026-11-20T14:28:28Z",
+      "summary": "The Securities and Exchange Commission today announced that it has obtained a temporary restraining order, asset freeze, expedited discovery, and other relief against Indianapolis-based Backward Hat Capital, its co-founders Philli"
+    },
     {
       "category": "speeches",
       "title": "Remarks to the American Bar Association Federal Regulation of Securities Winter Meeting",
