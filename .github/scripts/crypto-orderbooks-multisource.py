@@ -26,7 +26,7 @@ OUT_JSON = Path("crypto-orderbooks.json")
 OUT_JS = Path("crypto-orderbooks-data.js")
 SOURCE_TTL = 7 * 86400
 BOOK_TTL = 25 * 60
-SCAN_INTERVAL = 8 * 3600
+SCAN_INTERVAL = 2 * 3600
 SCAN_BATCH = 32
 BOOK_BATCH = 220
 PRIORITY = ("btc", "eth", "sol", "usdt", "usdc", "hype", "usde", "xmr",
@@ -221,7 +221,7 @@ def exchange_info_url(venue, symbol, quote='USDT'):
 
 def discover_one(cid, symbol, coin_id, ts):
     if not coin_id or not re.fullmatch(r"[A-Z0-9]{2,20}", symbol):
-        return cid, []
+        return cid, None
     try:
         tickers = base.fetch(
             "https://api.coingecko.com/api/v3/coins/" +
@@ -270,7 +270,7 @@ def discover_one(cid, symbol, coin_id, ts):
                     continue
         return cid, sources
     except (OSError, ValueError, TypeError, KeyError):
-        return cid, []
+        return cid, None  # API failure, not proof that this market is absent.
 
 
 def bulk_exchange_candidates(tickers, registry):
@@ -576,9 +576,11 @@ def run():
                     for cid, sym, coin_id, _ in selected}
             for future in as_completed(jobs):
                 cid = jobs[future]
-                checked[cid] = ts
                 try:
                     _, new_markets = future.result()
+                    # On provider failure retry after 15 minutes; do not report the
+                    # asset as successfully verified merely because a call ran.
+                    checked[cid] = ts if new_markets is not None else ts - SCAN_INTERVAL + 900
                     if new_markets:
                         mapping = {s["venue"]: s for s in sources.get(cid, [])}
                         mapping.update({s["venue"]: s for s in new_markets})
@@ -586,7 +588,7 @@ def run():
                 except (OSError, ValueError, TypeError):
                     continue
 
-    # Each run scans two public ticker pages of one exchange, rotating venues.
+    # Each run scans four public ticker pages of one exchange, rotating venues.
     # The CoinGecko ticker's coin_id AND base symbol must agree with the Vertex
     # catalog; the exchange then independently confirms Spot trading status.
     # Missing IDs, DEX pool quotes and same-symbol impostors are rejected.
@@ -596,7 +598,7 @@ def run():
                    for venue, data in KNOWN.items()]
     bulk_venue, bulk_id = bulk_venues[int(ts // 300) % len(bulk_venues)]
     all_tickers = []
-    for page in (1, 2):
+    for page in (1, 2, 3, 4):
         try:
             result = base.fetch(
                 "https://api.coingecko.com/api/v3/exchanges/" +
@@ -650,6 +652,7 @@ def run():
             age = ts - stamp(old.get("capturedAt")) if isinstance(old, dict) else 1e12
             tasks.append((age, cid, source, old))
     # Refresh the least-recently-updated first; bounded for GitHub runners.
+    # All verified exchanges stay separate; do not synthesize a consolidated book.
     tasks.sort(key=lambda row: (-row[0], row[1]))
     tasks = tasks[:BOOK_BATCH]
     if tasks:
