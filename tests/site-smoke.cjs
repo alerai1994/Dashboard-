@@ -128,13 +128,13 @@ assert(!source.includes("const lunaStart=group.ids.indexOf('luna')"),
  'Price flashing must no longer be limited to LUNA and subsequent rows');
 assert(css.includes('.asset-price.crypto-threshold-flash'),
  'The targeted price blinking style must be available');
-assert(html.includes('20261121-288-crypto-orderbook-v1'),
+assert(html.includes('20261121-288-multi-source-v5'),
  'All browsers should load the versioned price blinking assets');
 assert(css.includes('cryptoThresholdPriceBlink'),
  'Triggered UPPER/LOW prices must blink on desktop and mobile');
 assert(css.includes('.crypto-row-alert{display:none!important}'),
  'Even stale cached rows must hide the arrow badges');
-assert(html.includes('20261121-288-crypto-orderbook-v1'),
+assert(html.includes('20261121-288-multi-source-v5'),
  'Updated JavaScript and styles must use fresh cache-busting URLs');
 assert(!source.includes("(alertRow?cryptoRowAlertMarkup(id):'')"),
  'Global crypto rows must not show the old up/down monitoring indicator');
