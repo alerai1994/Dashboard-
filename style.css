@@ -4783,3 +4783,38 @@ body.page-global :is(.photo-cover,.map-svg,.spark){
 #worldMap .map-stage button.map-pin[data-trend="down"]::before{
  background-color:transparent!important;
 }
+
+/* Verified ETF trading volume bars, responsive SVG wireframe inspired by
+   the selected seven-bar sketch. Values represent exchanged ETF shares. */
+.crypto-etf-volumes{display:grid;gap:6px;margin-top:12px;padding-top:11px;
+ border-top:1px solid var(--line-soft);min-width:0}
+.crypto-etf-volume-head{display:flex;flex-wrap:wrap;justify-content:space-between;
+ align-items:baseline;gap:5px 10px;font-size:11px}
+.crypto-etf-volume-head strong{font-weight:800;color:var(--text)}
+.crypto-etf-volume-head span{font-size:10px;color:var(--muted);
+ font-variant-numeric:tabular-nums}
+.crypto-etf-chart svg.etf-volume-svg{display:block;width:100%;height:124px;
+ overflow:visible;margin:2px 0}
+.crypto-etf-volumes .etf-volume-baseline{stroke:var(--muted);opacity:.6;
+ stroke-width:1.1;vector-effect:non-scaling-stroke}
+.crypto-etf-volumes .etf-volume-svg text{fill:var(--muted);font-size:10px;
+ font-weight:550}
+.etf-volume-bar{--etf-bar:#24bb8e}
+.etf-volume-bar.down{--etf-bar:#ee7180}
+.etf-volume-bar .etf-volume-front,.etf-volume-bar .etf-volume-side,
+.etf-volume-bar .etf-volume-top{stroke:var(--etf-bar);stroke-width:1.4;
+ stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.etf-volume-bar .etf-volume-front{fill:transparent}
+.etf-volume-bar .etf-volume-side{fill:var(--etf-bar);fill-opacity:.14}
+.etf-volume-bar .etf-volume-top{fill:var(--etf-bar);fill-opacity:.18}
+.crypto-etf-volumes>small,.crypto-etf-volume-empty{color:var(--muted);
+ font-size:10px;line-height:1.5}
+.crypto-etf-volume-empty{margin:0;padding:18px 6px;text-align:center}
+@media(max-width:760px){
+ .crypto-etf-chart svg.etf-volume-svg{height:105px}
+ .crypto-etf-volumes{margin-top:10px;padding-top:9px}
+ .crypto-etf-volume-head{font-size:10px}
+}
+@media(prefers-reduced-motion:reduce){
+ .etf-volume-bar,.etf-volume-bar path{animation:none!important;transition:none!important}
+}
