@@ -27,8 +27,8 @@ OUT_JS = Path("crypto-orderbooks-data.js")
 SOURCE_TTL = 7 * 86400
 BOOK_TTL = 25 * 60
 SCAN_INTERVAL = 8 * 3600
-SCAN_BATCH = 20
-BOOK_BATCH = 155
+SCAN_BATCH = 32
+BOOK_BATCH = 220
 PRIORITY = ("btc", "eth", "sol", "usdt", "usdc", "hype", "usde", "xmr",
             "rlusd", "figr_heloc", "pyusd", "shib", "link", "inj", "ore")
 KNOWN = {
@@ -719,6 +719,14 @@ def run():
 
     data["books"] = default_books
     data["available"] = len(default_books)
+    data["coverage"] = {
+        "catalogAssets": len(registry),
+        "verifiedBooks": len(default_books),
+        "assetsWithMultipleVenues": sum(1 for v in venue_books.values() if len(v) >= 2),
+        "verifiedVenueSnapshots": sum(len(v) for v in venue_books.values()),
+        "identitiesChecked": sum(1 for cid in registry if cid in checked),
+        "updatedAt": base.now().isoformat(),
+    }
     data["venueBooks"] = venue_books
     data["marketSources"] = sources
     data["multiDiscoveryVersion"] = 4
