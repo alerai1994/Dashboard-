@@ -39,8 +39,9 @@ KNOWN = {
     "OKX Spot": {"keys": {"okex", "okx"}},
     "KuCoin Spot": {"keys": {"kucoin"}},
     "Coinbase Exchange Spot": {"keys": {"gdax"}},
+    "Kraken Spot": {"keys": {"kraken"}},
 }
-VENUE_ORDER = ("Binance Spot", "Gate Spot", "MEXC Spot", "Bybit Spot", "OKX Spot", "KuCoin Spot", "Coinbase Exchange Spot", "LBank Spot")
+VENUE_ORDER = ("Binance Spot", "Gate Spot", "MEXC Spot", "Bybit Spot", "OKX Spot", "KuCoin Spot", "Coinbase Exchange Spot", "Kraken Spot", "LBank Spot")
 QUOTE_PRIORITY = ("USDT", "USDC", "USD")
 
 
@@ -135,6 +136,10 @@ def candidate_quoted_markets(rows, symbol):
             for venue, quotes in found.items()}
 
 
+def kraken_alias(symbol):
+    return {"BTC": "XBT", "DOGE": "XDG"}.get(symbol, symbol)
+
+
 def exchange_market_valid(venue, payload, symbol, quote='USDT'):
     if venue == "Binance Spot":
         return isinstance(payload, dict) and any(
@@ -186,6 +191,13 @@ def exchange_market_valid(venue, payload, symbol, quote='USDT'):
                 m.get("baseCurrency") == symbol and
                 m.get("quoteCurrency") == quote and
                 m.get("enableTrading") is True)
+    if venue == "Kraken Spot":
+        if not isinstance(payload, dict) or payload.get("error") or not isinstance(payload.get("result"), dict):
+            return False
+        expected = kraken_alias(symbol) + "/" + quote
+        return any(isinstance(m, dict) and m.get("wsname") == expected and
+                   m.get("status", "online") == "online"
+                   for m in payload["result"].values())
     if venue == "Coinbase Exchange Spot":
         return (isinstance(payload, dict) and
                 payload.get("id") == symbol + "-" + quote and
@@ -216,6 +228,8 @@ def exchange_info_url(venue, symbol, quote='USDT'):
     if venue == "Coinbase Exchange Spot":
         return ("https://api.exchange.coinbase.com/products/" +
                 symbol + "-" + quote)
+    if venue == "Kraken Spot":
+        return "https://api.kraken.com/0/public/AssetPairs?pair=" + kraken_alias(symbol) + quote
     raise ValueError("Unsupported venue")
 
 
@@ -361,6 +375,8 @@ def depth_url(venue, symbol, quote='USDT'):
     if venue == "Coinbase Exchange Spot":
         return ("https://api.exchange.coinbase.com/products/" +
                 symbol + "-" + quote + "/book?level=2")
+    if venue == "Kraken Spot":
+        return "https://api.kraken.com/0/public/Depth?pair=" + kraken_alias(symbol) + quote + "&count=20"
     raise ValueError("Unsupported venue")
 
 
@@ -381,6 +397,11 @@ def normalize_exchange_depth(venue, raw):
         if str(raw.get("code")) != "200000" or not isinstance(raw.get("data"), dict):
             raise ValueError("KuCoin API rejected spot orderbook")
         book = raw["data"]
+        return {"bids": book.get("bids"), "asks": book.get("asks")}
+    if venue == "Kraken Spot":
+        if raw.get("error") or not isinstance(raw.get("result"), dict) or len(raw["result"]) != 1:
+            raise ValueError("Kraken API rejected spot orderbook")
+        book = next(iter(raw["result"].values()))
         return {"bids": book.get("bids"), "asks": book.get("asks")}
     if venue == "Coinbase Exchange Spot":
         if not isinstance(raw.get("bids"), list) or not isinstance(raw.get("asks"), list):
@@ -425,6 +446,12 @@ def load_depth(cid, source, previous):
 
 def check_fixture():
     assert len(catalog_with_ids()) == 288
+    assert exchange_market_valid("Kraken Spot", {"error": [], "result": {
+        "XXBTZUSD": {"wsname": "XBT/USD", "status": "online"}}}, "BTC", "USD")
+    assert not exchange_market_valid("Kraken Spot", {"error": [], "result": {
+        "XXBTZUSD": {"wsname": "XBT/USD", "status": "online"}}}, "ETH", "USD")
+    assert normalize_exchange_depth("Kraken Spot", {"error": [], "result": {
+        "XXBTZUSD": {"bids": [["100", "1", 123]], "asks": [["101", "2", 123]]}}})["bids"]
     # Confirm a valid identity-specific USD market is still retained.
     assert candidate_quoted_markets([
         {"base": "BTC", "target": "USD",
