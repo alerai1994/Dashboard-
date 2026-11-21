@@ -3173,7 +3173,9 @@ function instrumentQuoteStatus(id){
  const q=quote(id);
  if(!q||!num(q.value)||q.value<=0)return 'Quotazione non disponibile';
  const asset=ASSET_BY_ID[id];
- const connected=asset&&asset.group==='crypto'?liveConnected():
+ const focusedLive=asset?.group==='crypto'&&focusedChartStream.id===id&&
+  focusedChartStream.connected&&Date.now()-focusedChartStream.last<25000;
+ const connected=asset&&asset.group==='crypto'?liveConnected()||focusedLive:
   asset&&asset.group==='forex'?fxConnected():false;
  const isLive=connected&&q.live===true&&Number.isFinite(q.received)&&
   Date.now()-q.received>=0&&Date.now()-q.received<(asset.group==='crypto'?25000:45000);
@@ -6699,6 +6701,74 @@ function chartNormalizeCandles(raw,venue,from,to,step){
    .github/scripts/market-force-ohlc.py. A random ticker match is never
    enough to identify a cryptocurrency on an exchange. */
 const CHART_APPROVED_BINANCE_SPOT=Object.freeze({"btc":"BTCUSDT","eth":"ETHUSDT","sol":"SOLUSDT","bnb":"BNBUSDT","xrp":"XRPUSDT","hype":"HYPEUSDT","ada":"ADAUSDT","doge":"DOGEUSDT","link":"LINKUSDT","avax":"AVAXUSDT","dot":"DOTUSDT","sui":"SUIUSDT","trx":"TRXUSDT","ltc":"LTCUSDT","xmr":"XMRUSDT","aave":"AAVEUSDT","shib":"SHIBUSDT","pepe":"PEPEUSDT","inj":"INJUSDT","lunc":"LUNCUSDT","ton":"TONUSDT","hbar":"HBARUSDT","xlm":"XLMUSDT","uni":"UNIUSDT","arb":"ARBUSDT","apt":"APTUSDT","near":"NEARUSDT","fil":"FILUSDT","atom":"ATOMUSDT","op":"OPUSDT","render":"RENDERUSDT","fet":"FETUSDT","wld":"WLDUSDT","tao":"TAOUSDT","jup":"JUPUSDT","ray":"RAYUSDT","crv":"CRVUSDT","ens":"ENSUSDT","sand":"SANDUSDT","mana":"MANAUSDT","bonk":"BONKUSDT","floki":"FLOKIUSDT","bch":"BCHUSDT","etc":"ETCUSDT","eos":"EOSUSDT","grt":"GRTUSDT","stx":"STXUSDT","cake":"CAKEUSDT","algo":"ALGOUSDT","icp":"ICPUSDT","kava":"KAVAUSDT","ena":"ENAUSDT","ethfi":"ETHFIUSDT","pyth":"PYTHUSDT","gala":"GALAUSDT","ftm":"FTMUSDT","sei":"SEIUSDT"});
+
+/* A dedicated WebSocket for the currently opened catalog coin, only where
+   our verified asset-to-Binance-Spot mapping identifies its exact market.
+   This never guesses exchange pairs from ticker names. */
+const focusedChartStream={socket:null,id:null,pair:null,connected:false,
+ last:0,retryAt:0};
+function closeFocusedCryptoStream(){
+ const ws=focusedChartStream.socket;
+ focusedChartStream.socket=null;focusedChartStream.connected=false;
+ focusedChartStream.id=null;focusedChartStream.pair=null;
+ if(ws){ws.onopen=null;ws.onmessage=null;ws.onerror=null;ws.onclose=null;
+  try{ws.close()}catch(_error){}}
+}
+function connectFocusedCryptoStream(){
+ const id=state.dialogId,asset=ASSET_BY_ID[id];
+ const pair=asset?.group==='crypto'?CHART_APPROVED_BINANCE_SPOT[id]:null;
+ // The shared stream already covers its selected assets.
+ if(!pair||STREAM_PAIRS[id]||document.hidden||!navigator.onLine||
+    typeof WebSocket==='undefined'){
+  if(focusedChartStream.socket)closeFocusedCryptoStream();
+  return;
+ }
+ if(focusedChartStream.id===id&&focusedChartStream.pair===pair&&
+    focusedChartStream.socket&&
+    [WebSocket.CONNECTING,WebSocket.OPEN].includes(focusedChartStream.socket.readyState))
+  return;
+ if(Date.now()<focusedChartStream.retryAt)return;
+ closeFocusedCryptoStream();
+ let ws;
+ try{ws=new WebSocket('wss://data-stream.binance.vision/ws/'+
+  pair.toLowerCase()+'@miniTicker')}
+ catch(_error){focusedChartStream.retryAt=Date.now()+15000;return}
+ focusedChartStream.socket=ws;focusedChartStream.id=id;focusedChartStream.pair=pair;
+ ws.onopen=()=>{if(focusedChartStream.socket===ws){
+  focusedChartStream.connected=true;focusedChartStream.last=Date.now();
+  focusedChartStream.retryAt=0;updateLiveBadges();
+ }};
+ ws.onmessage=event=>{
+  if(focusedChartStream.socket!==ws||state.dialogId!==id)return;
+  try{
+   const msg=JSON.parse(event.data),d=msg?.data||msg;
+   const value=Number(d?.c),open=Number(d?.o);
+   const received=Date.now(),stamp=Number(d?.E);
+   if(d?.e!=='24hrMiniTicker'||d.s!==pair||
+      !Number.isFinite(value)||value<=0||
+      !Number.isFinite(stamp)||stamp>received+60000||stamp<received-120000)return;
+   const previous=state.quotes[id],prior=Date.parse(previous?.time||'');
+   if(Number.isFinite(prior)&&stamp<prior)return;
+   const incoming={...(previous||{id}),id,value,
+    change:Number.isFinite(open)&&open>0?(value/open-1)*100:null,
+    currency:'USDT',source:'Binance Spot · WebSocket '+pair,
+    time:new Date(stamp).toISOString(),live:true,polled:false,received};
+   recordQuotePriceDirection(id,previous,incoming);
+   STREAM_OVERLAY.set(id,incoming);state.quotes[id]=incoming;
+   focusedChartStream.last=received;
+   observeChartQuote(id,incoming);
+   streamStatus.dirty.add(id);scheduleLivePaint();
+   syncDetailVerifiedPrice();updateChartLiveQuoteStatus();scheduleDetailChartDraw();
+  }catch(_error){}
+ };
+ ws.onerror=()=>{if(focusedChartStream.socket===ws)
+  focusedChartStream.connected=false};
+ ws.onclose=()=>{
+  if(focusedChartStream.socket!==ws)return;
+  closeFocusedCryptoStream();
+  focusedChartStream.retryAt=Date.now()+15000;
+ };
+}
 function chartMarketUrls(asset,period,from,to){
  // A verified listing, not merely a matching ticker, authorizes Binance
  // requests for catalog coins. Remaining extended coins use CoinGecko ID.
@@ -7226,7 +7296,7 @@ async function loadCryptoChartHistory(force=false){
  // published 5m / 1h archives on these ranges. Try it first, retaining
  // the trusted same-origin archive when direct requests fail or are blocked.
  const preferExchange=!!CHART_APPROVED_BINANCE_SPOT[asset.id]&&
-  (period.ms<=18000000||period.ms>=172800000&&period.ms<=259200000||
+  (period.ms<=86400000||period.ms>=172800000&&period.ms<=259200000||
    period.ms>=1209600000);
  if(firstParty?.candles?.length>=2&&!preferExchange){
   const output={id:asset.id,range:selected,...firstParty,loading:false,error:'',
@@ -7845,7 +7915,7 @@ function openAsset(id){
   if(a.group==='crypto')observeChartQuote(id,quote(id));
   loadChartHistory();
   scheduleChartLiveRefresh();
-  if(a.group==='crypto')pollFocusedCryptoQuote();
+  if(a.group==='crypto'){pollFocusedCryptoQuote();connectFocusedCryptoStream();}
   // Native fullscreen when permitted by the browser; viewport-filling CSS
   // remains the reliable fallback on mobile and restricted browsers.
   if(typeof dlg.requestFullscreen==='function'){
@@ -7857,6 +7927,7 @@ function openAsset(id){
 }
 function closeAsset(){
  stopChartLiveRefresh();
+ closeFocusedCryptoStream();
  if(chartLivePaintTimer!==null){clearTimeout(chartLivePaintTimer);chartLivePaintTimer=null;}
  const dlg=$('#assetDialog');
  if(dlg.open)dlg.close();
@@ -9208,6 +9279,7 @@ function startVertexApp(){
  setInterval(pollCryptoPrices,15000);
  setInterval(pollCatalogPrices,120000);
  setInterval(()=>{if(state.dialogId)pollFocusedCryptoQuote()},60000);
+ setInterval(()=>{if(state.dialogId)connectFocusedCryptoStream()},15000);
  // Source-verified ETF share prices and volume charts, never fictitious live ticks.
  setInterval(()=>{if(state.page==='etf'&&!document.hidden)loadCryptoEtfHistory()},60000);
  // Retry charts which were previously unavailable when their real data
@@ -9221,12 +9293,12 @@ function startVertexApp(){
  document.addEventListener('visibilitychange',()=>{
   if(!document.hidden&&navigator.serviceWorker?.controller)
    navigator.serviceWorker.controller.postMessage({type:'VERTEX_WIDGETS_REFRESH'});
-  if(document.hidden){closeStream();disconnectForexStream();stopOrderBookLive()}
+  if(document.hidden){closeStream();closeFocusedCryptoStream();disconnectForexStream();stopOrderBookLive()}
   else {
    checkVertexRomeMidnight();
    connectCryptoStream();connectForexStream();fetchQuotes().then(()=>pollCatalogPrices());pollCryptoPrices();refreshVisibleQuoteFreshness();updateWorldSunlight(true);applyBrightness();
    if(state.page==='etf')loadCryptoEtfHistory();
-   if(state.dialogId)pollFocusedCryptoQuote();
+   if(state.dialogId){pollFocusedCryptoQuote();connectFocusedCryptoStream();}
    if(orderBookViewActive()){startOrderBookLive();refreshOrderBook()}
     if(state.dialogId){scheduleDetailChartDraw();scheduleChartLiveRefresh()}
   }
@@ -9234,11 +9306,11 @@ function startVertexApp(){
  window.addEventListener('online',()=>{
   checkVertexRomeMidnight();connectCryptoStream();connectForexStream();fetchQuotes().then(()=>pollCatalogPrices());pollCryptoPrices();
   if(state.page==='etf')loadCryptoEtfHistory();
-  if(state.dialogId)pollFocusedCryptoQuote();
+  if(state.dialogId){pollFocusedCryptoQuote();connectFocusedCryptoStream();}
   if(orderBookViewActive()){startOrderBookLive(true);refreshOrderBook(true)}
  });
  window.addEventListener('offline',()=>{
-  closeStream();disconnectForexStream();stopOrderBookLive();updateLiveBadges();
+  closeStream();closeFocusedCryptoStream();disconnectForexStream();stopOrderBookLive();updateLiveBadges();
   if(orderBookViewActive())paintOrderBook();
  });
 }
