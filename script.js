@@ -4038,11 +4038,23 @@ function orderBookAssetList(){
  if(!assets.length)return '<div class="ob-empty-list">Nessuna crypto trovata.</div>';
  return assets.map(a=>{
   const src=orderBookSource(a.id),book=cryptoBookEntry(a.id),selected=orderBookState.id===a.id;
+  const sources=orderBookAvailableVenues(a.id);
+  const snapshots=cryptoBookBundle()?.venueBooks?.[a.id]||{};
+  const verifiedSnapshots=sources.filter(source=>{
+   const item=snapshots[source.venue];
+   return item&&item.pair===source.pair&&
+    Number.isFinite(Date.parse(item.capturedAt||''))&&
+    Date.now()-Date.parse(item.capturedAt)<3*3600000;
+  });
   const age=book?Math.floor((Date.now()-book.time)/60000):null;
   const price=book?'<span class="ob-coin-prices"><span class="color-up" title="Miglior prezzo BID">BID '+orderBookNumber(book.bids[0][0],true)+'</span><span class="color-down" title="Miglior prezzo ASK">ASK '+orderBookNumber(book.asks[0][0],true)+'</span></span>':
-    '<span class="ob-coin-unavailable">'+(src?'Book in attesa':a.extended?'Verifica Spot alla selezione':'Book non disponibile')+'</span>';
+    '<span class="ob-coin-unavailable">'+(src?'Book in attesa':a.extended?'Mercato Spot non verificato':'Book non disponibile')+'</span>';
+  const venueInfo=sources.length?
+   '<span class="ob-coin-sources" title="'+esc(sources.map(x=>x.venue+' '+x.pair).join(' · '))+'">'+
+   sources.length+' font'+(sources.length===1?'e':'i')+' Spot · '+verifiedSnapshots.length+' snapshot recenti</span>':
+   '<span class="ob-coin-sources">Nessuna fonte Spot verificata</span>';
   return '<button class="ob-coin'+(selected?' is-selected':'')+'" data-order-book-asset="'+esc(a.id)+'" type="button" aria-pressed="'+selected+'">'+
-   '<span class="ob-coin-logo">'+assetLogo(a)+'</span><span class="ob-coin-label"><strong>'+esc(a.short||a.name)+'</strong><small>'+esc(a.id==='ton'?'TON → GRAM':a.symbol.replace('-USD',''))+(book?' · '+esc(book.venue)+(age>30?' · '+age+' min':''):'')+'</small>'+price+'</span>'+
+   '<span class="ob-coin-logo">'+assetLogo(a)+'</span><span class="ob-coin-label"><strong>'+esc(a.short||a.name)+'</strong><small>'+esc(a.id==='ton'?'TON → GRAM':a.symbol.replace('-USD',''))+(book?' · '+esc(book.venue)+(age>30?' · '+age+' min':''):'')+'</small>'+price+venueInfo+'</span>'+
    '<span class="ob-coin-venue" title="'+esc(book?book.venue:(src?src.venue+' · in attesa':'Coppia non verificata'))+'">'+(book?'●':'—')+'</span></button>';
  }).join('');
 }
