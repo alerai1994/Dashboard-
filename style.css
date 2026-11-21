@@ -4784,8 +4784,8 @@ body.page-global :is(.photo-cover,.map-svg,.spark){
  background-color:transparent!important;
 }
 
-/* Verified ETF trading volume bars, responsive SVG wireframe inspired by
-   the selected seven-bar sketch. Values represent exchanged ETF shares. */
+/* Verified ETF trading volume bars, responsive flat 2D bars inspired by
+   the selected seven-bar sketch, without any depth or perspective. Values represent exchanged ETF shares. */
 .crypto-etf-volumes{display:grid;gap:6px;margin-top:12px;padding-top:11px;
  border-top:1px solid var(--line-soft);min-width:0}
 .crypto-etf-volume-head{display:flex;flex-wrap:wrap;justify-content:space-between;
@@ -4801,12 +4801,11 @@ body.page-global :is(.photo-cover,.map-svg,.spark){
  font-weight:550}
 .etf-volume-bar{--etf-bar:#24bb8e}
 .etf-volume-bar.down{--etf-bar:#ee7180}
-.etf-volume-bar .etf-volume-front,.etf-volume-bar .etf-volume-side,
-.etf-volume-bar .etf-volume-top{stroke:var(--etf-bar);stroke-width:1.4;
- stroke-linejoin:round;vector-effect:non-scaling-stroke}
-.etf-volume-bar .etf-volume-front{fill:transparent}
-.etf-volume-bar .etf-volume-side{fill:var(--etf-bar);fill-opacity:.14}
-.etf-volume-bar .etf-volume-top{fill:var(--etf-bar);fill-opacity:.18}
+.etf-volume-bar .etf-volume-rect{
+ fill:var(--etf-bar);
+ stroke:none;
+ shape-rendering:geometricPrecision;
+}
 .crypto-etf-volumes>small,.crypto-etf-volume-empty{color:var(--muted);
  font-size:10px;line-height:1.5}
 .crypto-etf-volume-empty{margin:0;padding:18px 6px;text-align:center}
@@ -4816,5 +4815,5 @@ body.page-global :is(.photo-cover,.map-svg,.spark){
  .crypto-etf-volume-head{font-size:10px}
 }
 @media(prefers-reduced-motion:reduce){
- .etf-volume-bar,.etf-volume-bar path{animation:none!important;transition:none!important}
+ .etf-volume-bar,.etf-volume-bar rect{animation:none!important;transition:none!important}
 }
