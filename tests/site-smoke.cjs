@@ -4,6 +4,18 @@ const fs=require('node:fs');
 const assert=require('node:assert/strict');
 const read=path=>fs.readFileSync(path,'utf8');
 const source=read('script.js'),html=read('index.html'),css=read('style.css');
+assert(source.includes('function cryptoEtfSyncedSamples(product,period,rows)'),
+ 'ETF curves must synchronize with newer verified share-price feed snapshots');
+assert(source.includes('if(etfQuotesChanged&&state.page===\'etf\')paintCryptoEtfCharts()'),
+ 'A verified new ETF quote must redraw its price graph immediately');
+assert(source.includes('return [...samples,[Math.floor(ms/1000),price,null]]'),
+ 'New ETF quote should not fabricate traded volume');
+assert(source.includes("if(period==='1D')"), '1D ETF graph must not mix adjacent trading sessions');
+assert(source.includes('String(latest.symbol).toUpperCase()!==String(fund.symbol'),
+ 'ETF graph must never mix prices from different exchanges');
+assert(html.includes('script.js?v=20261121-etf-synced-quotes-v5'),
+ 'Updated ETF graph synchronizer must bypass cached browser scripts');
+
 assert(source.includes("setInterval(()=>{if(state.page==='etf'&&!document.hidden)loadCryptoEtfHistory()},60000)"),
  'ETF volume and price history must refresh automatically when the ETF view is open');
 assert(source.includes('Date.now()-etfHistory.lastFetch<60000'),
