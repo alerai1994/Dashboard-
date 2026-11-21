@@ -3970,21 +3970,17 @@ function cryptoEtfVolumeChart(product,period,samples){
  const full=new Intl.NumberFormat('it-IT',{maximumFractionDigits:0});
  const day=t=>new Intl.DateTimeFormat('it-IT',{day:'2-digit',month:'2-digit',
   hour:'2-digit',minute:'2-digit',timeZone:'Europe/Rome'}).format(new Date(Number(t)*1000));
- const slot=465/count,width=Math.min(14,slot*.64),depth=Math.min(4,slot*.16),base=98;
+ const slot=465/count,width=Math.min(14,slot*.64),base=98;
  const bars=buckets.map((b,i)=>{
   const height=b.volume>0?Math.max(1,76*b.volume/maxVolume):0;
-  const x=27+i*slot+(slot-width)/2,y=base-height,w=width,d=depth;
-  const n=x=>Number(x).toFixed(2);
+  const x=27+i*slot+(slot-width)/2,y=base-height;
+  const n=value=>Number(value).toFixed(2);
   const tooltip=full.format(b.volume)+' quote scambiate · '+day(b.from)+
    (b.to!==b.from?' – '+day(b.to):'');
   return '<g class="etf-volume-bar '+b.direction+'">'+
    '<title>'+esc(tooltip)+'</title>'+
-   '<path class="etf-volume-front" d="M'+n(x)+' '+n(base)+'V'+n(y)+
-     'H'+n(x+w)+'V'+n(base)+'Z"/>'+
-   '<path class="etf-volume-side" d="M'+n(x+w)+' '+n(y)+'L'+n(x+w+d)+' '+
-     n(y-d)+'V'+n(base-d)+'L'+n(x+w)+' '+n(base)+'Z"/>'+
-   '<path class="etf-volume-top" d="M'+n(x)+' '+n(y)+'L'+n(x+d)+' '+
-     n(y-d)+'H'+n(x+w+d)+'L'+n(x+w)+' '+n(y)+'Z"/></g>';
+   '<rect class="etf-volume-rect" x="'+n(x)+'" y="'+n(y)+
+   '" width="'+n(width)+'" height="'+n(height)+'" rx="1" ry="1"/></g>';
  }).join('');
  const total=buckets.reduce((sum,b)=>sum+b.volume,0);
  return '<div class="crypto-etf-volumes">'+
