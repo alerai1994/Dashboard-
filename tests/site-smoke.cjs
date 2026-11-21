@@ -4,6 +4,17 @@ const fs=require('node:fs');
 const assert=require('node:assert/strict');
 const read=path=>fs.readFileSync(path,'utf8');
 const source=read('script.js'),html=read('index.html'),css=read('style.css');
+assert(source.includes('function cryptoEtfVolumeChart(product,period,samples)'), 'ETF chart must expose share-volume bars');
+assert(source.includes("p.length>=2"), 'ETF chart must keep backward compatibility with price-only data');
+assert(source.includes("p.length>=3"), 'ETF volumes require verified volume rows, not synthetic values');
+assert(source.includes('Nessun volume simulato'), 'ETF chart must explicitly report unavailable volume');
+assert(source.includes('cryptoEtfVolumeChart(product,period,samples)'), 'ETF volume bars must render with the selected period');
+assert(css.includes('.crypto-etf-chart svg.etf-volume-svg'), 'ETF volume chart must resize on mobile');
+assert(css.includes('.etf-volume-bar.down'), 'ETF volume bars need red and green trend styling');
+assert(html.includes('style.css?v=20261121-etf-traded-volume-v1')&&
+ html.includes('script.js?v=20261121-etf-traded-volume-v1'),
+ 'ETF volume resources must be refreshed across operating systems');
+
 assert(source.includes('async function pollCatalogPrices()'), 'Crypto catalog needs direct periodic quotes');
 assert(source.includes('include_last_updated_at=true'), 'Provider timestamps are mandatory');
 assert(source.includes('stamp<now-15*60000'), 'Stale catalog quotes must never look live');
