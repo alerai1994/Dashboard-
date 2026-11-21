@@ -3888,6 +3888,16 @@ function orderBookSource(id){
   'https://api.mexc.com/api/v3/depth?symbol=TAIUSDT&limit=20'
  ]};
  const asset=ASSET_BY_ID[id],published=cryptoBookBundle()?.verifiedMarkets?.[id];
+ // A currently verified primary USD/USDC pair takes precedence over a
+ // previously verified Binance USDT pair when the selected venue is unset.
+ const primaryBook=raw?.books?.[id],identity=raw?.marketSources?.[id];
+ if(!chosen&&asset?.extended&&primaryBook&&Array.isArray(identity)){
+  const listing=identity.find(x=>x?.venue===primaryBook.venue&&
+   x?.pair===primaryBook.pair&&x?.coingeckoId===asset.coingeckoId&&
+   Number(x.verifiedAt)>0&&Date.now()/1000-Number(x.verifiedAt)<7*86400);
+  const verified=orderBookVenueDescriptor(listing);
+  if(verified)return verified;
+ }
  if(asset?.extended&&published?.coingeckoId===asset.coingeckoId&&
     published?.symbol===asset.symbol.replace('-USD','')&&
     published?.pair===published.symbol+'/USDT'&&

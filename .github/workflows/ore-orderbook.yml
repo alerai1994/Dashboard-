@@ -41,7 +41,7 @@ jobs:
         run: |
           python3 -m py_compile .github/scripts/crypto-orderbooks-multisource.py
           python3 .github/scripts/crypto-orderbooks-multisource.py --selftest
-      - name: Collect separate Binance, Gate and MEXC order books
+      - name: Collect verified Spot books across Binance Gate MEXC Bybit OKX KuCoin Coinbase
         run: python3 .github/scripts/crypto-orderbooks-multisource.py
       - name: Publish verified depth snapshot
         shell: bash
