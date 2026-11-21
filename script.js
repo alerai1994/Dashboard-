@@ -3945,10 +3945,64 @@ function updateCryptoEtfQuoteDom(){
 const ETF_CHART_PERIODS=['1D','5D','1M','1A'];
 const etfPeriods=Object.create(null);
 const etfHistory={funds:{},lastFetch:0,loading:false,error:false};
+
+/* Historical ETF/ETP share-volume bars, from actual exchange volumes only.
+   Each group sums real Yahoo Finance volume points for the selected period.
+   No volume is estimated from prices or from the underlying crypto token. */
+function cryptoEtfVolumeChart(product,period,samples){
+ const valid=samples.filter(p=>Array.isArray(p)&&p.length>=3&&
+  Number.isFinite(Number(p[2]))&&Number(p[2])>=0);
+ if(!valid.length)return '<div class="crypto-etf-volumes">'+
+  '<div class="crypto-etf-volume-head"><strong>Volumi scambiati · '+esc(product.ticker)+'</strong></div>'+
+  '<p class="crypto-etf-volume-empty">Volumi ETF/ETP verificati non disponibili per '+esc(period)+'. Nessun volume simulato.</p></div>';
+ const count=Math.min(24,valid.length),buckets=[];
+ for(let i=0;i<count;i++){
+  const first=Math.floor(i*valid.length/count),last=Math.floor((i+1)*valid.length/count);
+  const chunk=valid.slice(first,Math.max(first+1,last));
+  const volume=chunk.reduce((total,p)=>total+Number(p[2]),0);
+  const firstPrice=Number(chunk[0][1]),lastPrice=Number(chunk[chunk.length-1][1]);
+  buckets.push({volume,from:chunk[0][0],to:chunk[chunk.length-1][0],
+   direction:lastPrice>=firstPrice?'up':'down'});
+ }
+ const maxVolume=Math.max(1,...buckets.map(b=>b.volume));
+ const compact=new Intl.NumberFormat('it-IT',{notation:'compact',maximumFractionDigits:1});
+ const full=new Intl.NumberFormat('it-IT',{maximumFractionDigits:0});
+ const day=t=>new Intl.DateTimeFormat('it-IT',{day:'2-digit',month:'2-digit',
+  hour:'2-digit',minute:'2-digit',timeZone:'Europe/Rome'}).format(new Date(Number(t)*1000));
+ const slot=465/count,width=Math.min(14,slot*.64),depth=Math.min(4,slot*.16),base=98;
+ const bars=buckets.map((b,i)=>{
+  const height=b.volume>0?Math.max(1,76*b.volume/maxVolume):0;
+  const x=27+i*slot+(slot-width)/2,y=base-height,w=width,d=depth;
+  const n=x=>Number(x).toFixed(2);
+  const tooltip=full.format(b.volume)+' quote scambiate · '+day(b.from)+
+   (b.to!==b.from?' – '+day(b.to):'');
+  return '<g class="etf-volume-bar '+b.direction+'">'+
+   '<title>'+esc(tooltip)+'</title>'+
+   '<path class="etf-volume-front" d="M'+n(x)+' '+n(base)+'V'+n(y)+
+     'H'+n(x+w)+'V'+n(base)+'Z"/>'+
+   '<path class="etf-volume-side" d="M'+n(x+w)+' '+n(y)+'L'+n(x+w+d)+' '+
+     n(y-d)+'V'+n(base-d)+'L'+n(x+w)+' '+n(base)+'Z"/>'+
+   '<path class="etf-volume-top" d="M'+n(x)+' '+n(y)+'L'+n(x+d)+' '+
+     n(y-d)+'H'+n(x+w+d)+'L'+n(x+w)+' '+n(y)+'Z"/></g>';
+ }).join('');
+ const total=buckets.reduce((sum,b)=>sum+b.volume,0);
+ return '<div class="crypto-etf-volumes">'+
+  '<div class="crypto-etf-volume-head"><strong>Volumi scambiati · '+esc(product.ticker)+'</strong>'+
+   '<span>'+esc(compact.format(total))+' quote · '+esc(period)+'</span></div>'+
+  '<svg class="etf-volume-svg" viewBox="0 0 520 120" preserveAspectRatio="none" role="img" '+
+   'aria-label="Volumi reali scambiati per '+esc(product.ticker)+', '+esc(period)+
+   ', totale '+esc(full.format(total))+' quote">'+
+   '<line class="etf-volume-baseline" x1="20" y1="98" x2="505" y2="98"/>'+
+   bars+
+   '<text x="25" y="13">Max '+esc(compact.format(maxVolume))+' quote</text>'+
+   '<text x="25" y="115">'+esc(day(valid[0][0]))+'</text>'+
+   '<text x="495" y="115" text-anchor="end">'+esc(day(valid[valid.length-1][0]))+'</text>'+
+  '</svg><small>Yahoo Finance · volume reale delle quote ETF/ETP · possibile ritardo</small></div>';
+}
 function cryptoEtfChart(product){
  const period=etfPeriods[product.quoteId]||'1M';
  const rows=etfHistory.funds[product.quoteId]?.periods?.[period];
- const samples=Array.isArray(rows)?rows.filter(p=>Array.isArray(p)&&p.length===2&&Number(p[0])>946684800&&Number.isFinite(Number(p[1]))&&Number(p[1])>0):[];
+ const samples=Array.isArray(rows)?rows.filter(p=>Array.isArray(p)&&p.length>=2&&Number(p[0])>946684800&&Number.isFinite(Number(p[1]))&&Number(p[1])>0):[];
  const header='<div class="crypto-etf-chart-head"><strong>Grafico quota '+esc(product.ticker)+'</strong>'+
   '<div class="crypto-etf-periods" role="group" aria-label="Periodo del grafico">'+ETF_CHART_PERIODS.map(p=>
    '<button type="button" data-etf-chart-period="'+p+'" data-etf-id="'+esc(product.quoteId)+
@@ -3970,7 +4024,7 @@ function cryptoEtfChart(product){
   '<text x="25" y="13">'+esc(cryptoEtfNumberFormat.format(hi))+'</text>'+
   '<text x="25" y="158">'+esc(cryptoEtfNumberFormat.format(lo))+'</text>'+
   '<text x="25" y="177">'+esc(dt(samples[0][0]))+'</text>'+
-  '<text x="495" y="177" text-anchor="end">'+esc(dt(samples[samples.length-1][0]))+'</text></svg>'+
+  '<text x="495" y="177" text-anchor="end">'+esc(dt(samples[samples.length-1][0]))+'</text></svg>'+cryptoEtfVolumeChart(product,period,samples)+
   '<small>Yahoo Finance · grafico quota ETF/ETP · possibile ritardo</small></div>';
 }
 function paintCryptoEtfCharts(){
