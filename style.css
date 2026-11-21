@@ -4844,3 +4844,37 @@ body.page-global :is(.photo-cover,.map-svg,.spark){
 @media(max-width:650px){
  .crypto-etf-chart-head .crypto-etf-chart-refresh{flex-basis:100%;text-align:left}
 }
+
+/* Vertex sidebar: warm-gold navigation icons on web and installed PWA.
+   SVG icons inherit currentColor so the same code covers desktop, mobile,
+   installed websites and browsers across the major operating systems. */
+body .sidebar { --vertex-nav-gold: #f6d268; }
+body.theme-light .sidebar { --vertex-nav-gold: #986400; }
+body .sidebar .side-link .icon,
+body .sidebar .side-link.active .icon,
+body .sidebar .side-link:hover .icon,
+body .sidebar .side-link:focus-visible .icon {
+  color: var(--vertex-nav-gold) !important;
+  stroke: currentColor;
+}
+body .sidebar .side-link.active {
+  border-left-color: var(--vertex-nav-gold) !important;
+  box-shadow: inset 3px 0 0 var(--vertex-nav-gold) !important;
+}
+body .sidebar .sidebar-theme-button[data-fixed-theme="light"] .icon {
+  color: var(--vertex-nav-gold) !important;
+  filter: drop-shadow(0 0 2px rgba(246,210,104,.28));
+}
+@media (forced-colors: active) {
+  body .sidebar .side-link .icon,
+  body .sidebar .side-link.active .icon,
+  body .sidebar .side-link:hover .icon,
+  body .sidebar .side-link:focus-visible .icon,
+  body .sidebar .sidebar-theme-button[data-fixed-theme="light"] .icon {
+    color: CanvasText !important;
+  }
+  body .sidebar .side-link.active {
+    border-left-color: Highlight !important;
+    box-shadow: inset 3px 0 0 Highlight !important;
+  }
+}
