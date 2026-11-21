@@ -158,6 +158,24 @@ def discover_one(cid, symbol, coin_id, ts):
             "/tickers?order=trust_score_desc&depth=false&page=1"
         )
         candidates = candidate_tickers(tickers.get("tickers"), symbol)
+        # CoinGecko's unfiltered first page can omit Gate/MEXC even for
+        # widely traded assets. A small priority subset uses venue-specific
+        # ticker evidence; every pair still needs verified exchange metadata.
+        if cid in ("btc", "eth", "sol", "hype"):
+            for venue, exchange_id in (("Gate Spot", "gate"), ("MEXC Spot", "mxc")):
+                if venue in candidates:
+                    continue
+                try:
+                    venue_tickers = base.fetch(
+                        "https://api.coingecko.com/api/v3/coins/" +
+                        quote(coin_id, safe="") +
+                        "/tickers?exchange_ids=" + exchange_id +
+                        "&order=trust_score_desc&depth=false&page=1"
+                    )
+                    candidates.update(candidate_tickers(
+                        venue_tickers.get("tickers"), symbol))
+                except (OSError, ValueError, TypeError, KeyError):
+                    pass
         sources = []
         for venue in VENUE_ORDER:
             if venue not in candidates:
@@ -268,7 +286,7 @@ def run():
     previous_source = previous_source if isinstance(previous_source, dict) else {}
     previous_books = previous_books if isinstance(previous_books, dict) else {}
     checked = checked if isinstance(checked, dict) else {}
-    if data.get('multiDiscoveryVersion') != 2:
+    if data.get('multiDiscoveryVersion') != 3:
         checked = {}  # New all-exchange CoinGecko scan replaces a filtered query.
 
     sources = {}
@@ -385,7 +403,7 @@ def run():
     data["available"] = len(default_books)
     data["venueBooks"] = venue_books
     data["marketSources"] = sources
-    data["multiDiscoveryVersion"] = 2
+    data["multiDiscoveryVersion"] = 3
     data["multiDiscoveryCheckedAt"] = {cid: checked[cid] for cid in registry
                                         if cid in checked}
     data["unavailable"] = {cid: "Nessun book pubblico verificato"
