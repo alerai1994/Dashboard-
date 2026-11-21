@@ -50,8 +50,9 @@ def chart(symbol, span, interval):
             candles = (record.get("indicators", {}).get("quote") or [{}])[0]
             timestamps = record.get("timestamp") or []
             closes = candles.get("close") or []
+            volumes = candles.get("volume") or []
             rows = []
-            for timestamp, close in zip(timestamps, closes):
+            for index, (timestamp, close) in enumerate(zip(timestamps, closes)):
                 price = positive(close)
                 if price is None:
                     continue
@@ -60,7 +61,17 @@ def chart(symbol, span, interval):
                 except (ValueError, TypeError, OverflowError):
                     continue
                 if stamp > 946684800:
-                    rows.append([stamp, round(price, 8)])
+                    # Shares traded in the actual ETF/ETP session or interval.
+                    # Null means unavailable: never infer volume from prices.
+                    traded = None
+                    if index < len(volumes):
+                        try:
+                            candidate = float(volumes[index])
+                            if math.isfinite(candidate) and candidate >= 0:
+                                traded = int(candidate)
+                        except (ValueError, TypeError, OverflowError):
+                            pass
+                    rows.append([stamp, round(price, 8), traded])
             rows.sort(key=lambda item: item[0])
             # A missing instrument may return a valid but empty chart.
             if len(rows) < 2:
@@ -137,7 +148,7 @@ def collect(identity, symbol, previous):
         "symbol": used_symbol if currency else existing.get("symbol") or used_symbol,
         "currency": currency or existing.get("currency"),
         "asOf": last_time,
-        "source": "Yahoo Finance · close storico di borsa",
+        "source": "Yahoo Finance · quote ETF/ETP e volumi reali, se disponibili",
         "periods": period_rows,
     }
     return identity, result
@@ -158,7 +169,7 @@ def main():
         return
     payload = {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
-        "source": "Yahoo Finance · actual ETF/ETP share prices; may be delayed",
+        "source": "Yahoo Finance · ETF/ETP close and traded share volumes; may be delayed",
         "funds": funds,
     }
     OUTPUT.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")) +
