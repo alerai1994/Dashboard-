@@ -4040,39 +4040,11 @@ function orderBookAssetList(){
  if(!assets.length)return '<div class="ob-empty-list">'+(orderBookState.missingOnly?'Nessuna crypto mancante per questa ricerca.':'Nessuna crypto trovata.')+'</div>';
  return assets.map(a=>{
   const src=orderBookSource(a.id),book=cryptoBookEntry(a.id),selected=orderBookState.id===a.id;
-  const sources=orderBookAvailableVenues(a.id);
-  const snapshots=cryptoBookBundle()?.venueBooks?.[a.id]||{};
-  const verifiedSnapshots=sources.filter(source=>{
-   const item=snapshots[source.venue];
-   return item&&item.pair===source.pair&&
-    Number.isFinite(Date.parse(item.capturedAt||''))&&
-    Date.now()-Date.parse(item.capturedAt)<3*3600000;
-  });
   const age=book?Math.floor((Date.now()-book.time)/60000):null;
   const price=book?'<span class="ob-coin-prices"><span class="color-up" title="Miglior prezzo BID">BID '+orderBookNumber(book.bids[0][0],true)+'</span><span class="color-down" title="Miglior prezzo ASK">ASK '+orderBookNumber(book.asks[0][0],true)+'</span></span>':
     '<span class="ob-coin-unavailable">'+(src?'Book in attesa':a.extended?'Mercato Spot non verificato':'Book non disponibile')+'</span>';
-  const venueRows=sources.map(source=>{
-   const snap=snapshots[source.venue]||(book?.venue===source.venue?cryptoBookBundle()?.books?.[a.id]:null);
-   const captured=Date.parse(snap?.capturedAt||'');
-   const bid=Number(snap?.bids?.[0]?.[0]),ask=Number(snap?.asks?.[0]?.[0]);
-   const valid=snap?.id===a.id&&snap?.unit===source.pair.split('/')[0]&&
-    snap?.pair===source.pair&&snap?.venue===source.venue&&
-    Number.isFinite(captured)&&captured<=Date.now()+60000&&Date.now()-captured<3*3600000&&
-    Number.isFinite(bid)&&Number.isFinite(ask)&&bid>0&&ask>bid;
-   const label=esc(source.venue.replace(' Spot',''))+' '+esc(source.pair);
-   return '<span class="ob-venue-line" title="'+esc(source.venue+' · '+source.pair)+
-    (valid?' · '+esc(new Date(captured).toLocaleString('it-IT')):'')+'">'+label+
-    (valid?' · BID '+orderBookNumber(bid,true)+' / ASK '+orderBookNumber(ask,true)+
-      ' · '+Math.max(0,Math.floor((Date.now()-captured)/60000))+' min':
-      ' · dati non disponibili')+'</span>';
-  }).join('');
-  const venueInfo=sources.length?
-   '<span class="ob-coin-sources">'+sources.length+' font'+(sources.length===1?'e':'i')+
-   ' Spot · '+verifiedSnapshots.length+' snapshot recenti</span>'+
-   '<span class="ob-venue-lines">'+venueRows+'</span>':
-   '<span class="ob-coin-sources">Nessuna fonte Spot verificata</span>';
   return '<button class="ob-coin'+(selected?' is-selected':'')+'" data-order-book-asset="'+esc(a.id)+'" type="button" aria-pressed="'+selected+'">'+
-   '<span class="ob-coin-logo">'+assetLogo(a)+'</span><span class="ob-coin-label"><strong>'+esc(a.short||a.name)+'</strong><small>'+esc(a.id==='ton'?'TON → GRAM':a.symbol.replace('-USD',''))+(book?' · '+esc(book.venue)+(age>30?' · '+age+' min':''):'')+'</small>'+price+venueInfo+'</span>'+
+   '<span class="ob-coin-logo">'+assetLogo(a)+'</span><span class="ob-coin-label"><strong>'+esc(a.short||a.name)+'</strong><small>'+esc(a.id==='ton'?'TON → GRAM':a.symbol.replace('-USD',''))+(book?' · '+esc(book.venue)+(age>30?' · '+age+' min':''):'')+'</small>'+price+'</span>'+
    '<span class="ob-coin-venue" title="'+esc(book?book.venue:(src?src.venue+' · in attesa':'Coppia non verificata'))+'">'+(book?'●':'—')+'</span></button>';
  }).join('');
 }
