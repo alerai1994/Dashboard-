@@ -5459,14 +5459,17 @@ function updateNav(){
 }
 function render(){
  applyFontStyle(); // Preserve the selected font after every page redraw.
- // Keep the Rome clock as the rightmost header item on every page.
- const bell=$('#notificationsButton'),profile=$('#profileButton'),actions=$('.top-actions');
+ // The Rome clock precedes the two fixed rightmost controls on every page.
+ // Re-append the pair together after any responsive/page-specific redraw.
+ const bell=$('#notificationsButton'),profile=$('#profileButton');
+ const actions=$('.top-actions'),quickActions=$('#headerQuickActions');
  const clock=actions?.querySelector('.live-clock');
  document.body.classList.toggle('page-global',state.page==='global');
- if(actions&&bell&&profile){
-  actions.appendChild(bell);
-  actions.appendChild(profile);
+ if(actions&&bell&&profile&&quickActions){
   if(clock)actions.appendChild(clock);
+  quickActions.appendChild(bell);
+  quickActions.appendChild(profile);
+  actions.appendChild(quickActions);
  }
  const page=SECTIONS[state.page]||SECTIONS.global;
  $('#pageTitle').textContent=page[0];$('#pageSubtitle').textContent=page[1];

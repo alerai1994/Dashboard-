@@ -4900,3 +4900,49 @@ body .sidebar .side-link.active {
 .crypto-etf-chart .etf-dot.etf-trend-up{fill:#17d49c}
 .crypto-etf-chart .etf-dot.etf-trend-down{fill:#f06c80}
 .crypto-etf-chart .etf-dot.etf-trend-flat{fill:#9daebb}
+
+/* Vertex shared header: notification and AR always adjacent at the far right.
+   A single flex group ensures the two buttons never separate across
+   sections, viewport widths, web browsers, or installed PWAs. */
+body .topbar > .top-actions{
+ display:flex;
+ align-items:center;
+ justify-content:flex-end;
+ min-width:0;
+ margin-left:auto;
+}
+body .topbar .header-quick-actions{
+ display:flex;
+ flex:0 0 auto;
+ align-items:center;
+ justify-content:flex-end;
+ flex-wrap:nowrap;
+ gap:7px;
+ margin-left:auto;
+ white-space:nowrap;
+}
+body .topbar .header-quick-actions > :is(#notificationsButton,#profileButton){
+ flex:0 0 auto;
+ position:relative;
+}
+body .topbar .top-actions .search-wrap[hidden]{display:none!important}
+@media(max-width:850px){
+ body .topbar .header-quick-actions{gap:5px}
+}
+@media(max-width:600px){
+ body .topbar > .top-actions{
+  width:100%;
+  min-width:0;
+  justify-content:flex-end;
+  column-gap:8px;
+ }
+ body .topbar .header-quick-actions{margin-left:auto;gap:7px}
+ body .topbar .header-quick-actions #notificationsButton{
+  min-width:34px;
+  min-height:36px;
+ }
+ body .topbar .header-quick-actions #profileButton{
+  min-width:36px;
+  min-height:36px;
+ }
+}
