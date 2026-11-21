@@ -273,6 +273,50 @@ def discover_one(cid, symbol, coin_id, ts):
         return cid, []
 
 
+def bulk_exchange_candidates(tickers, registry):
+    """Match CoinGecko's EXACT coin_id and base symbol; ticker alone is unsafe.
+    Exchange metadata must separately verify the live Spot pair.
+    """
+    catalog_by_id = {}
+    for cid, (symbol, coin_id, _) in registry.items():
+        if coin_id:
+            catalog_by_id.setdefault(coin_id, []).append((cid, symbol))
+    matches = []
+    if not isinstance(tickers, list):
+        return matches
+    for row in tickers:
+        if not isinstance(row, dict):
+            continue
+        coin_id = str(row.get("coin_id") or "")
+        quoted = str(row.get("target") or "").upper()
+        base_symbol = str(row.get("base") or "").upper()
+        if (quoted not in QUOTE_PRIORITY or row.get("is_stale") is True or
+            row.get("is_anomaly") is True or row.get("trust_score") == "red"):
+            continue
+        try:
+            if float(row.get("last") or 0) <= 0:
+                continue
+        except (ValueError, TypeError):
+            continue
+        for cid, symbol in catalog_by_id.get(coin_id, []):
+            if symbol == base_symbol:
+                matches.append((cid, symbol, coin_id, quoted))
+    return matches
+
+
+def verify_bulk_pair(cid, symbol, coin_id, quoted, venue, ts):
+    try:
+        meta = base.fetch(exchange_info_url(venue, symbol, quoted))
+        if exchange_market_valid(venue, meta, symbol, quoted):
+            return cid, {
+                "venue": venue, "pair": symbol + "/" + quoted,
+                "symbol": symbol, "coingeckoId": coin_id, "verifiedAt": ts
+            }
+    except (OSError, ValueError, TypeError, KeyError):
+        pass
+    return cid, None
+
+
 def depth_url(venue, symbol, quote='USDT'):
     pair = symbol + quote
     if venue == "Binance Spot":
@@ -444,6 +488,14 @@ def check_fixture():
         "status": "online", "trading_disabled": False}, "BTC", "USD")
     assert normalize_exchange_depth("Coinbase Exchange Spot", {
         "bids": [["10", "1", 1]], "asks": [["11", "2", 1]]})["bids"]
+    assert bulk_exchange_candidates([
+        {"coin_id": "hyperliquid", "base": "HYPE", "target": "USDC",
+         "last": 2.0, "is_stale": False},
+        {"coin_id": "other", "base": "HYPE", "target": "USDT", "last": 2.0},
+        {"coin_id": "hyperliquid", "base": "WRONG", "target": "USDT", "last": 2.0},
+    ], {"hype": ("HYPE", "hyperliquid", True)}) == [
+        ("hype", "HYPE", "hyperliquid", "USDC")
+    ]
     assert source_valid({"coingeckoId": "tether", "symbol": "USDT",
         "venue": "OKX Spot", "pair": "USDT/USDC",
         "verifiedAt": 1000}, "USDT", "tether", 1100)
@@ -533,6 +585,58 @@ def run():
                         sources[cid] = list(mapping.values())
                 except (OSError, ValueError, TypeError):
                     continue
+
+    # Each run scans two public ticker pages of one exchange, rotating venues.
+    # The CoinGecko ticker's coin_id AND base symbol must agree with the Vertex
+    # catalog; the exchange then independently confirms Spot trading status.
+    # Missing IDs, DEX pool quotes and same-symbol impostors are rejected.
+    bulk_venues = [(venue, sorted(data["keys"])[0]) for venue, data in KNOWN.items()]
+    bulk_venue, bulk_id = bulk_venues[int(ts // 300) % len(bulk_venues)]
+    all_tickers = []
+    for page in (1, 2):
+        try:
+            result = base.fetch(
+                "https://api.coingecko.com/api/v3/exchanges/" +
+                quote(bulk_id, safe="") +
+                "/tickers?page=" + str(page) + "&order=volume_desc"
+            )
+            if isinstance(result, dict) and isinstance(result.get("tickers"), list):
+                all_tickers.extend(result["tickers"])
+        except (OSError, ValueError, TypeError, KeyError):
+            break
+    verified_by_id = {cid: {m["venue"] for m in markets}
+                      for cid, markets in sources.items()}
+    bulk_missing = []
+    for cid, symbol, coin_id, quoted in bulk_exchange_candidates(all_tickers, registry):
+        if bulk_venue in verified_by_id.get(cid, set()):
+            continue
+        bulk_missing.append((cid, symbol, coin_id, quoted))
+    # Prefer USDT first for each coin and cap public metadata requests.
+    bulk_missing.sort(key=lambda row: (QUOTE_PRIORITY.index(row[3]), row[0]))
+    chosen_bulk = []
+    used_ids = set()
+    for item in bulk_missing:
+        if item[0] in used_ids:
+            continue
+        used_ids.add(item[0])
+        chosen_bulk.append(item)
+        if len(chosen_bulk) >= 40:
+            break
+    if chosen_bulk:
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            jobs = {pool.submit(verify_bulk_pair, cid, symbol, coin_id,
+                                quoted, bulk_venue, ts): cid
+                    for cid, symbol, coin_id, quoted in chosen_bulk}
+            for task in as_completed(jobs):
+                try:
+                    cid, mapping = task.result()
+                    if mapping and mapping["venue"] not in verified_by_id.get(cid, set()):
+                        sources.setdefault(cid, []).append(mapping)
+                        verified_by_id.setdefault(cid, set()).add(mapping["venue"])
+                except (OSError, ValueError, TypeError):
+                    pass
+    print("Exchange-wide discovery:", bulk_venue, "ticker pages",
+          len(all_tickers), "identity-matched checks", len(chosen_bulk))
 
     tasks = []
     for cid, venue_sources in sources.items():
