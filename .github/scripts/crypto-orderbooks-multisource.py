@@ -40,6 +40,7 @@ KNOWN = {
     "KuCoin Spot": {"keys": {"kucoin"}},
 }
 VENUE_ORDER = ("Binance Spot", "Gate Spot", "MEXC Spot", "Bybit Spot", "OKX Spot", "KuCoin Spot", "LBank Spot")
+QUOTE_PRIORITY = ("USDT", "USDC", "USD")
 
 
 def stamp(value):
@@ -73,7 +74,7 @@ def source_valid(row, symbol, coin_id, ts):
     if (row.get("coingeckoId") != coin_id or
         row.get("symbol") != symbol or
         row.get("venue") not in KNOWN or
-        row.get("pair") != symbol + "/USDT"):
+        row.get("pair") not in {symbol + "/" + q for q in QUOTE_PRIORITY}):
         return False
     try:
         age = ts - float(row["verifiedAt"])
@@ -106,31 +107,58 @@ def candidate_tickers(rows, symbol):
     return result
 
 
-def exchange_market_valid(venue, payload, symbol):
+def candidate_quoted_markets(rows, symbol):
+    """Require CoinGecko ID plus exact ticker and an exchange-verified pair."""
+    found = {}
+    if not isinstance(rows, list):
+        return found
+    for item in rows:
+        if not isinstance(item, dict) or not isinstance(item.get("market"), dict):
+            continue
+        venue_id = str(item["market"].get("identifier", "")).lower()
+        quoted = str(item.get("target", "")).upper()
+        if (str(item.get("base", "")).upper() != symbol or
+            quoted not in QUOTE_PRIORITY or
+            item.get("is_stale") is True or item.get("is_anomaly") is True or
+            item.get("trust_score") == "red"):
+            continue
+        try:
+            if float(item.get("last") or 0) <= 0:
+                continue
+        except (ValueError, TypeError):
+            continue
+        for venue, desc in KNOWN.items():
+            if venue_id in desc["keys"]:
+                found.setdefault(venue, set()).add(quoted)
+    return {venue: [q for q in QUOTE_PRIORITY if q in quotes]
+            for venue, quotes in found.items()}
+
+
+def exchange_market_valid(venue, payload, symbol, quote='USDT'):
     if venue == "Binance Spot":
         return isinstance(payload, dict) and any(
             isinstance(row, dict) and
-            row.get("symbol") == symbol + "USDT" and
+            row.get("symbol") == symbol + quote and
             row.get("baseAsset") == symbol and
-            row.get("quoteAsset") == "USDT" and
+            row.get("quoteAsset") == quote and
             row.get("status") == "TRADING" and
             row.get("isSpotTradingAllowed") is not False
             for row in payload.get("symbols", [])
         )
     if venue == "Gate Spot":
         return (isinstance(payload, dict) and
-                payload.get("id") == symbol + "_USDT" and
+                payload.get("id") == symbol + "_" + quote and
                 payload.get("base") == symbol and
-                payload.get("quote") == "USDT" and
+                payload.get("quote") == quote and
                 payload.get("trade_status") == "tradable")
     if venue == "MEXC Spot":
         if not isinstance(payload, dict):
             return False
         return any(
             isinstance(row, dict) and
-            row.get("symbol") == symbol + "USDT" and
+            row.get("symbol") == symbol + quote and
             row.get("baseAsset") == symbol and
-            row.get("quoteAsset") == "USDT" and
+            row.get("quoteAsset") == quote and
             str(row.get("status", "")).upper() in ("1", "TRADING", "ENABLED") and
             row.get("isSpotTradingAllowed") is not False
             for row in payload.get("symbols", [])
@@ -138,45 +166,45 @@ def exchange_market_valid(venue, payload, symbol):
     if venue == "Bybit Spot":
         return (isinstance(payload, dict) and payload.get("retCode") == 0 and
                 any(isinstance(m, dict) and
-                    m.get("symbol") == symbol + "USDT" and
-                    m.get("baseCoin") == symbol and m.get("quoteCoin") == "USDT" and
+                    m.get("symbol") == symbol + quote and
+                    m.get("baseCoin") == symbol and m.get("quoteCoin") == quote and
                     m.get("status") == "Trading"
                     for m in (payload.get("result") or {}).get("list", [])))
     if venue == "OKX Spot":
         return (isinstance(payload, dict) and str(payload.get("code")) == "0" and
                 any(isinstance(m, dict) and
-                    m.get("instId") == symbol + "-USDT" and
+                    m.get("instId") == symbol + "-" + quote and
                     m.get("instType") == "SPOT" and
-                    m.get("baseCcy") == symbol and m.get("quoteCcy") == "USDT" and
+                    m.get("baseCcy") == symbol and m.get("quoteCcy") == quote and
                     m.get("state") == "live"
                     for m in payload.get("data", [])))
     if venue == "KuCoin Spot":
         m = payload.get("data") if isinstance(payload, dict) else None
         return (isinstance(m, dict) and str(payload.get("code")) == "200000" and
-                m.get("symbol") == symbol + "-USDT" and
+                m.get("symbol") == symbol + "-" + quote and
                 m.get("baseCurrency") == symbol and
-                m.get("quoteCurrency") == "USDT" and
+                m.get("quoteCurrency") == quote and
                 m.get("enableTrading") is True)
     return False
 
 
-def exchange_info_url(venue, symbol):
+def exchange_info_url(venue, symbol, quote='USDT'):
     if venue == "Binance Spot":
         return ("https://data-api.binance.vision/api/v3/exchangeInfo?symbol="
-                + symbol + "USDT")
+                + symbol + quote)
     if venue == "Gate Spot":
         return ("https://api.gateio.ws/api/v4/spot/currency_pairs/"
-                + symbol + "_USDT")
+                + symbol + "_" + quote)
     if venue == "MEXC Spot":
-        return "https://api.mexc.com/api/v3/exchangeInfo?symbol=" + symbol + "USDT"
+        return "https://api.mexc.com/api/v3/exchangeInfo?symbol=" + symbol + quote
     if venue == "Bybit Spot":
         return ("https://api.bybit.com/v5/market/instruments-info?category=spot&symbol=" +
-                symbol + "USDT")
+                symbol + quote)
     if venue == "OKX Spot":
         return ("https://www.okx.com/api/v5/public/instruments?instType=SPOT&instId=" +
-                symbol + "-USDT")
+                symbol + "-" + quote)
     if venue == "KuCoin Spot":
-        return ("https://api.kucoin.com/api/v2/symbols/" + symbol + "-USDT")
+        return ("https://api.kucoin.com/api/v2/symbols/" + symbol + "-" + quote)
     raise ValueError("Unsupported venue")
 
 
@@ -184,56 +212,57 @@ def discover_one(cid, symbol, coin_id, ts):
     if not coin_id or not re.fullmatch(r"[A-Z0-9]{2,20}", symbol):
         return cid, []
     try:
-        # One CoinGecko request checks identity across the three exchanges.
         tickers = base.fetch(
             "https://api.coingecko.com/api/v3/coins/" +
             quote(coin_id, safe="") +
             "/tickers?order=trust_score_desc&depth=false&page=1"
         )
-        candidates = candidate_tickers(tickers.get("tickers"), symbol)
-        # CoinGecko's unfiltered first page can omit Gate/MEXC even for
-        # widely traded assets. A small priority subset uses venue-specific
-        # ticker evidence; every pair still needs verified exchange metadata.
-        if cid in ("btc", "eth", "sol", "hype"):
+        candidates = candidate_quoted_markets(tickers.get("tickers"), symbol)
+        # Popular assets have additional exchange-specific ticker pages.
+        # Both the ID and an actual live Spot exchangeInfo listing are required.
+        if cid in ("btc", "eth", "sol", "hype", "usdt", "usdc"):
             for venue, exchange_id in (
-                ("Gate Spot", "gate"), ("MEXC Spot", "mxc"),
-                ("Bybit Spot", "bybit_spot"), ("OKX Spot", "okex"),
-                ("KuCoin Spot", "kucoin")
+                ("Binance Spot", "binance"), ("Gate Spot", "gate"),
+                ("MEXC Spot", "mxc"), ("Bybit Spot", "bybit_spot"),
+                ("OKX Spot", "okex"), ("KuCoin Spot", "kucoin")
             ):
-                if venue in candidates:
+                if "USDT" in candidates.get(venue, []):
                     continue
                 try:
-                    venue_tickers = base.fetch(
+                    rows = base.fetch(
                         "https://api.coingecko.com/api/v3/coins/" +
                         quote(coin_id, safe="") +
                         "/tickers?exchange_ids=" + exchange_id +
                         "&order=trust_score_desc&depth=false&page=1"
                     )
-                    candidates.update(candidate_tickers(
-                        venue_tickers.get("tickers"), symbol))
+                    matched = candidate_quoted_markets(rows.get("tickers"), symbol)
+                    for exchange, quotes in matched.items():
+                        prior = set(candidates.get(exchange, []))
+                        candidates[exchange] = [q for q in QUOTE_PRIORITY
+                                                if q in prior or q in quotes]
                 except (OSError, ValueError, TypeError, KeyError):
                     pass
         sources = []
         for venue in VENUE_ORDER:
-            if venue not in candidates:
-                continue
-            try:
-                market = base.fetch(exchange_info_url(venue, symbol))
-                if exchange_market_valid(venue, market, symbol):
-                    sources.append({
-                        "venue": venue, "pair": symbol + "/USDT",
-                        "symbol": symbol, "coingeckoId": coin_id,
-                        "verifiedAt": ts,
-                    })
-            except (OSError, ValueError, TypeError, KeyError):
-                continue
+            for quoted in candidates.get(venue, []):
+                try:
+                    market = base.fetch(exchange_info_url(venue, symbol, quoted))
+                    if exchange_market_valid(venue, market, symbol, quoted):
+                        sources.append({
+                            "venue": venue, "pair": symbol + "/" + quoted,
+                            "symbol": symbol, "coingeckoId": coin_id,
+                            "verifiedAt": ts,
+                        })
+                        break  # Prefer USDT > USDC > USD within this venue.
+                except (OSError, ValueError, TypeError, KeyError):
+                    continue
         return cid, sources
     except (OSError, ValueError, TypeError, KeyError):
         return cid, []
 
 
-def depth_url(venue, symbol):
-    pair = symbol + "USDT"
+def depth_url(venue, symbol, quote='USDT'):
+    pair = symbol + quote
     if venue == "Binance Spot":
         return "https://data-api.binance.vision/api/v3/depth?symbol=" + pair + "&limit=20"
     if venue == "Gate Spot":
@@ -248,7 +277,7 @@ def depth_url(venue, symbol):
         return "https://www.okx.com/api/v5/market/books?instId=" + symbol + "-USDT&sz=20"
     if venue == "KuCoin Spot":
         return ("https://api.kucoin.com/api/v1/market/orderbook/level2_20?symbol=" +
-                symbol + "-USDT")
+                symbol + "-" + quote)
     raise ValueError("Unsupported venue")
 
 
@@ -293,7 +322,8 @@ def preserve_recent(row, cid, source, ts):
 def load_depth(cid, source, previous):
     venue, symbol = source["venue"], source["symbol"]
     try:
-        raw = base.fetch(depth_url(venue, symbol))
+        quote_currency = source["pair"].split("/")[1]
+        raw = base.fetch(depth_url(venue, symbol, quote_currency))
         bids, asks = base.checked(normalize_exchange_depth(venue, raw), "Binance")
         data = {
             "id": cid, "venue": venue, "pair": source["pair"],
@@ -372,7 +402,30 @@ def check_fixture():
     assert normalize_exchange_depth("KuCoin Spot", {
         "code": "200000", "data": {"bids": [["1", "2"]],
                                     "asks": [["2", "2"]]}})["asks"]
-    print("PASS: 288 assets, 6 exchange candidates, valid spot identities and native depth formats")
+    assert candidate_quoted_markets([
+        {"base": "USDT", "target": "USDC", "market": {"identifier": "okex"},
+         "last": 1.0},
+        {"base": "USDT", "target": "USD", "market": {"identifier": "kraken"},
+         "last": 1.0},
+        {"base": "OTHER", "target": "USDC", "market": {"identifier": "okex"},
+         "last": 1.0}
+    ], "USDT") == {"OKX Spot": ["USDC"]}
+    assert exchange_market_valid("OKX Spot", {
+        "code": "0", "data": [{"instId": "USDT-USDC", "instType": "SPOT",
+        "baseCcy": "USDT", "quoteCcy": "USDC", "state": "live"}]},
+        "USDT", "USDC")
+    assert not exchange_market_valid("OKX Spot", {
+        "code": "0", "data": [{"instId": "USDT-USDC", "instType": "SPOT",
+        "baseCcy": "OTHER", "quoteCcy": "USDC", "state": "live"}]},
+        "USDT", "USDC")
+    assert source_valid({"coingeckoId": "tether", "symbol": "USDT",
+        "venue": "OKX Spot", "pair": "USDT/USDC",
+        "verifiedAt": 1000}, "USDT", "tether", 1100)
+    assert not source_valid({"coingeckoId": "other", "symbol": "USDT",
+        "venue": "OKX Spot", "pair": "USDT/USDC",
+        "verifiedAt": 1000}, "USDT", "tether", 1100)
+    print("PASS: 288 assets, identity-verified real USDT/USDC/USD Spot pair support")
+
 
 
 def run():
@@ -391,7 +444,7 @@ def run():
     previous_source = previous_source if isinstance(previous_source, dict) else {}
     previous_books = previous_books if isinstance(previous_books, dict) else {}
     checked = checked if isinstance(checked, dict) else {}
-    if data.get('multiDiscoveryVersion') != 3:
+    if data.get('multiDiscoveryVersion') != 4:
         checked = {}  # New all-exchange CoinGecko scan replaces a filtered query.
 
     sources = {}
@@ -535,7 +588,7 @@ def run():
     data["available"] = len(default_books)
     data["venueBooks"] = venue_books
     data["marketSources"] = sources
-    data["multiDiscoveryVersion"] = 3
+    data["multiDiscoveryVersion"] = 4
     data["multiDiscoveryCheckedAt"] = {cid: checked[cid] for cid in registry
                                         if cid in checked}
     data["unavailable"] = {cid: "Nessun book pubblico verificato"
