@@ -590,7 +590,10 @@ def run():
     # The CoinGecko ticker's coin_id AND base symbol must agree with the Vertex
     # catalog; the exchange then independently confirms Spot trading status.
     # Missing IDs, DEX pool quotes and same-symbol impostors are rejected.
-    bulk_venues = [(venue, sorted(data["keys"])[0]) for venue, data in KNOWN.items()]
+    # CoinGecko identifies MEXC as 'mxc', not its current display spelling.
+    bulk_venues = [(venue, "mxc" if venue == "MEXC Spot"
+                    else sorted(data["keys"])[0])
+                   for venue, data in KNOWN.items()]
     bulk_venue, bulk_id = bulk_venues[int(ts // 300) % len(bulk_venues)]
     all_tickers = []
     for page in (1, 2):
