@@ -4951,3 +4951,20 @@ body .topbar .top-actions .search-wrap[hidden]{display:none!important}
 .ob-coin-list,.ws-book-choice-list{overscroll-behavior:contain}
 .ob-search,.ws-book-search{font-size:16px}
 .ob-coin-unavailable{overflow-wrap:anywhere}
+
+/* One verified Spot exchange at a time: responsive menu shared by Order Book
+   and Workspace on mobile browsers, desktop browsers and installed PWAs. */
+.ob-source-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:7px 12px;
+ margin:12px 0;padding:10px 13px;border:1px solid var(--line-soft);
+ background:var(--surface);border-radius:12px;min-width:0}
+.ob-venues-label{font-size:12px;font-weight:750;color:var(--text)}
+.ob-venues-select{background:var(--panel);color:var(--text);border:1px solid var(--line);
+ border-radius:9px;padding:10px 12px;max-width:100%;font:inherit;font-size:16px;
+ min-height:43px;flex:1 1 180px}
+.ob-venues-select:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.ob-venues-note{font-size:11px;color:var(--muted);margin:0;flex-basis:100%;line-height:1.55}
+@media(max-width:600px){
+ .ob-source-toolbar{padding:9px;gap:6px}
+ .ob-venues-label{width:100%}
+ .ob-venues-select{width:100%;flex:1 1 100%;min-width:0}
+}
