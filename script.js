@@ -3930,15 +3930,22 @@ function cryptoEtfQuoteMarkup(product){
   '<small class="crypto-etf-quote-meta">'+esc('Rilevata '+date+' · '+source+venue+delayed)+'</small>';
 }
 function ingestCryptoEtfQuotes(rows){
- if(!Array.isArray(rows))return;
+ if(!Array.isArray(rows))return false;
  const ids=new Set(ALL_CRYPTO_ETF_QUOTES.map(p=>p.quoteId));
+ let changed=false;
  for(const row of rows){
   if(!row||!ids.has(row.id)||!Number.isFinite(Number(row.value))||Number(row.value)<=0)continue;
   const prior=cryptoEtfQuoteState[row.id];
   const priorTime=Date.parse(prior?.time||''),nextTime=Date.parse(row.time||'');
-  if(prior&&Number.isFinite(priorTime)&&(!Number.isFinite(nextTime)||nextTime<priorTime))continue;
+  // Preserve the last verified trade when feeds arrive out of order.
+  if(!Number.isFinite(nextTime)||nextTime>Date.now()+60000||
+     (prior&&Number.isFinite(priorTime)&&nextTime<priorTime))continue;
+  if(!prior||nextTime!==priorTime||Number(row.value)!==Number(prior.value)||
+     row.change!==prior.change||row.currency!==prior.currency||
+     row.symbol!==prior.symbol)changed=true;
   cryptoEtfQuoteState[row.id]=row;
  }
+ return changed;
 }
 function updateCryptoEtfQuoteDom(){
  for(const product of ALL_CRYPTO_ETF_QUOTES){
@@ -4000,11 +4007,40 @@ function cryptoEtfVolumeChart(product,period,samples){
    '<text x="495" y="115" text-anchor="end">'+esc(day(valid[valid.length-1][0]))+'</text>'+
   '</svg><small>Yahoo Finance · volume reale delle quote ETF/ETP · possibile ritardo</small></div>';
 }
+/* Extend the verified historical series with the newest independently
+   sourced ETF share quote as soon as a new feed arrives. This is a snapshot
+   endpoint, NOT a synthetic candle or a real-time exchange trade stream.
+   Quote volume is unknown until actual traded-volume history is published. */
+function cryptoEtfSyncedSamples(product,period,rows){
+ const samples=Array.isArray(rows)?rows.filter(p=>Array.isArray(p)&&p.length>=2&&
+  Number(p[0])>946684800&&Number.isFinite(Number(p[1]))&&Number(p[1])>0):[];
+ if(!samples.length)return samples;
+ const fund=etfHistory.funds[product.quoteId],latest=cryptoEtfQuote(product);
+ if(!fund||!latest||!latest.symbol)return samples;
+ if(String(latest.symbol).toUpperCase()!==String(fund.symbol||'').toUpperCase())return samples;
+ if(fund.currency&&String(latest.currency||'').toUpperCase()!==String(fund.currency).toUpperCase())
+  return samples;
+ const ms=Date.parse(latest.time||''),price=Number(latest.value);
+ if(!Number.isFinite(ms)||ms>Date.now()+60000||!Number.isFinite(price)||price<=0)return samples;
+ const last=Number(samples[samples.length-1][0]);
+ if(ms/1000<=last)return samples;
+ // 1D must show the SAME trading session, not attach the next day's open to
+ // a prior day's chart when the history provider has not refreshed.
+ if(period==='1D'){
+  const zone=product.crypto==='inj'?'Europe/Amsterdam':'America/New_York';
+  const session=new Intl.DateTimeFormat('en-CA',{year:'numeric',month:'2-digit',
+   day:'2-digit',timeZone:zone});
+  if(session.format(new Date(ms))!==session.format(new Date(last*1000)))return samples;
+ }
+ return [...samples,[Math.floor(ms/1000),price,null]];
+}
+
 function cryptoEtfChart(product){
  const period=etfPeriods[product.quoteId]||'1M';
  const rows=etfHistory.funds[product.quoteId]?.periods?.[period];
- const samples=Array.isArray(rows)?rows.filter(p=>Array.isArray(p)&&p.length>=2&&Number(p[0])>946684800&&Number.isFinite(Number(p[1]))&&Number(p[1])>0):[];
- const latestTime=Date.parse(etfHistory.funds[product.quoteId]?.asOf||'');
+ const samples=cryptoEtfSyncedSamples(product,period,rows);
+ const latestTime=samples.length?Number(samples[samples.length-1][0])*1000:
+  Date.parse(etfHistory.funds[product.quoteId]?.asOf||'');
  const latestText=Number.isFinite(latestTime)?
   cryptoEtfDateFormat.format(new Date(latestTime)):'non disponibile';
  const header='<div class="crypto-etf-chart-head"><strong>Grafico quota '+esc(product.ticker)+'</strong>'+
@@ -5818,7 +5854,7 @@ async function fetchQuotes(isManual=false,forceFull=false){
   }
   snapshotFetch.fastRetryAfter=0;
   const {payload:data,response}=answer;
-  ingestCryptoEtfQuotes(data.etfs);
+  const etfQuotesChanged=ingestCryptoEtfQuotes(data.etfs);
   const catalog=await catalogPromise;
   const all=[...(data.markets||[]),...(data.bigtech||[]),...(data.commodities||[]),
    ...(data.forex||[]),...(data.crypto||[])];
@@ -5901,6 +5937,9 @@ async function fetchQuotes(isManual=false,forceFull=false){
    updateMarketsSnapshotCharts();
   }
   updateCryptoEtfQuoteDom();
+  // Prices and curves advance together on fresh, source-timestamped ETF quotes.
+  // Real traded volumes remain attached only to verified historical bars.
+  if(etfQuotesChanged&&state.page==='etf')paintCryptoEtfCharts();
   if(isManual)toast(changed.length?'Ultime quotazioni verificate caricate. LIVE solo dai feed streaming attivi.':'Feed verificato: la fonte non ha ancora pubblicato nuovi prezzi.');
  }catch(e){
   state.feedError=true;state.loading=false;
