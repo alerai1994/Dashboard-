@@ -5,14 +5,20 @@ const assert=require('node:assert/strict');
 const read=path=>fs.readFileSync(path,'utf8');
 const source=read('script.js'),html=read('index.html'),css=read('style.css');
 assert(source.includes('function cryptoEtfVolumeChart(product,period,samples)'), 'ETF chart must expose share-volume bars');
+assert(source.includes('<rect class="etf-volume-rect"'), 'ETF volume bars must use flat 2D rectangles');
+assert(!source.includes('etf-volume-side')&&!source.includes('etf-volume-top'), 'ETF chart must never render 3D faces');
+assert(css.includes('.etf-volume-bar .etf-volume-rect'), 'Flat ETF bar style must be defined');
+assert(!css.includes('.etf-volume-bar .etf-volume-side'), 'Obsolete 3D ETF side styles must be removed');
+assert(html.includes('script.js?v=20261121-etf-flat-2d-volumes-v2')&&html.includes('style.css?v=20261121-etf-flat-2d-volumes-v2'),
+ 'All platforms must receive the new flat ETF volumes chart assets');
 assert(source.includes("p.length>=2"), 'ETF chart must keep backward compatibility with price-only data');
 assert(source.includes("p.length>=3"), 'ETF volumes require verified volume rows, not synthetic values');
 assert(source.includes('Nessun volume simulato'), 'ETF chart must explicitly report unavailable volume');
 assert(source.includes('cryptoEtfVolumeChart(product,period,samples)'), 'ETF volume bars must render with the selected period');
 assert(css.includes('.crypto-etf-chart svg.etf-volume-svg'), 'ETF volume chart must resize on mobile');
 assert(css.includes('.etf-volume-bar.down'), 'ETF volume bars need red and green trend styling');
-assert(html.includes('style.css?v=20261121-etf-traded-volume-v1')&&
- html.includes('script.js?v=20261121-etf-traded-volume-v1'),
+assert(html.includes('style.css?v=20261121-etf-flat-2d-volumes-v2')&&
+ html.includes('script.js?v=20261121-etf-flat-2d-volumes-v2'),
  'ETF volume resources must be refreshed across operating systems');
 
 assert(source.includes('async function pollCatalogPrices()'), 'Crypto catalog needs direct periodic quotes');
