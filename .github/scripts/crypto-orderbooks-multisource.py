@@ -267,14 +267,14 @@ def depth_url(venue, symbol, quote='USDT'):
         return "https://data-api.binance.vision/api/v3/depth?symbol=" + pair + "&limit=20"
     if venue == "Gate Spot":
         return ("https://api.gateio.ws/api/v4/spot/order_book?currency_pair=" +
-                symbol + "_USDT&limit=20")
+                symbol + "_" + quote + "&limit=20")
     if venue == "MEXC Spot":
         return "https://api.mexc.com/api/v3/depth?symbol=" + pair + "&limit=20"
     if venue == "Bybit Spot":
         return ("https://api.bybit.com/v5/market/orderbook?category=spot&symbol=" +
                 pair + "&limit=20")
     if venue == "OKX Spot":
-        return "https://www.okx.com/api/v5/market/books?instId=" + symbol + "-USDT&sz=20"
+        return "https://www.okx.com/api/v5/market/books?instId=" + symbol + "-" + quote + "&sz=20"
     if venue == "KuCoin Spot":
         return ("https://api.kucoin.com/api/v1/market/orderbook/level2_20?symbol=" +
                 symbol + "-" + quote)

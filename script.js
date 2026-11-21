@@ -4518,7 +4518,7 @@ function orderBookNumber(v,price=false){
  const decimals=price?(n>0?Math.min(12,Math.max(2,Math.ceil(-Math.log10(n))+5)):2):Math.min(8,n<.001?8:n<1?6:4);
  return n.toLocaleString('it-IT',{minimumFractionDigits:price&&n>=1?2:0,maximumFractionDigits:decimals});
 }
-function orderBookSide(orders,side,unit,quoteCurrency=''+quoteUnit+''){
+function orderBookSide(orders,side,unit,quoteCurrency='USDT'){
  const quoteUnit=esc(quoteCurrency);
  const isBid=side==='bid',sideName=isBid?'BID · Acquisti':'ASK · Vendite';
  const maxCumulative=orders.reduce((sum,[price,qty])=>sum+price*qty,0);
@@ -4554,7 +4554,7 @@ function orderBookSide(orders,side,unit,quoteCurrency=''+quoteUnit+''){
  '<div class="ob-side-footer"><span>Totale '+orders.length+' livelli '+(isBid?'BID':'ASK')+'</span><strong>'+orderBookNumber(cumulative)+' '+quoteUnit+'</strong></div></section>';
 }
 // Balance is measured from genuine resting BID/ASK levels of the SAME Spot book.
-// Compare quote notional (price * amount in '+quoteUnit+'); never synthesize missing depth.
+// Compare quote notional (price * quantity); never synthesize missing depth.
 function orderBookPressureStats(bids,asks){
  const value=levels=>Array.isArray(levels)?levels.reduce((sum,entry)=>{
   const price=Number(entry?.[0]),qty=Number(entry?.[1]),amount=price*qty;
