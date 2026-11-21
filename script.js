@@ -6661,9 +6661,12 @@ function updateChartLiveQuoteStatus(){
  const line=chartLiveObservedPricePoints(id,chartSeries.pricePoints);
  const updatedLine=Array.isArray(line)&&line.length>=2&&line.at(-1).observed===true;
  const brokerBar=venue==='mt5'?forexBrokerObservedCandle(id):null;
+ const bars=visible.length,spotMarker=bars>=2?
+  detailChartPriceMarker(id,visible,bars,brokerBar):null;
  el.textContent=label+(brokerBar?' · candela MT5 MID indicativa a destra, separata dallo storico Yahoo':
-  updated?' · candela recente parziale aggiornata da prezzi osservati':
-  updatedLine?' · linea aggiornata con prezzi CoinGecko osservati':'');
+  updated?' · candela parziale aggiornata con tick dello stesso mercato':
+  updatedLine?' · linea aggiornata con prezzi osservati (non OHLC)':
+  spotMarker?.separate?' · prezzo rilevato separatamente dallo storico OHLC':'');
  el.classList.toggle('live-online',label.startsWith('● LIVE'));
 }
 function scheduleMarketMiniPaint(){
@@ -6735,7 +6738,7 @@ function connectFocusedCryptoStream(){
  catch(_error){focusedChartStream.retryAt=Date.now()+15000;return}
  focusedChartStream.socket=ws;focusedChartStream.id=id;focusedChartStream.pair=pair;
  ws.onopen=()=>{if(focusedChartStream.socket===ws){
-  focusedChartStream.connected=true;focusedChartStream.last=Date.now();
+  focusedChartStream.connected=true;focusedChartStream.last=0;
   focusedChartStream.retryAt=0;updateLiveBadges();
  }};
  ws.onmessage=event=>{
@@ -7988,21 +7991,31 @@ function toggleWatch(id){
 /* Directly extend an observed CoinGecko price LINE, not OHLC bars. The
    exact crypto ID, USD denomination and timestamp are checked elsewhere. */
 function chartLiveObservedPricePoints(id,base){
- if(!Array.isArray(base)||base.length<2||chartSeries.id!==id||
-    chartSeries.range!==chartRange||chartSeries.kind!=='price-line'||
-    !String(chartSeries.source||'').toLowerCase().includes('coingecko'))
+ const asset=ASSET_BY_ID[id],q=quote(id),venue=chartQuoteVenue(q),now=Date.now();
+ if(asset?.group!=='crypto'||chartSeries.id!==id||
+    chartSeries.range!==chartRange)return base;
+ // Accept verified source-specific observations for the same crypto only.
+ if(!['coingecko','binance','lbank'].includes(venue))return base;
+ const currency=String(q?.currency||'').toUpperCase();
+ if(venue==='coingecko'&&currency!=='USD')return base;
+ if((venue==='binance'||venue==='lbank')&&currency!=='USDT')return base;
+ const source=String(chartSeries.source||'').toLowerCase();
+ const hasHistory=Array.isArray(base)&&base.length>=2;
+ // Never append CoinGecko to unrelated DefiLlama or exchange price lines.
+ if(hasHistory&&(!source.includes(venue)||chartSeries.kind!=='price-line'))
   return base;
- const q=quote(id),observations=chartObservedQuotes.get(id)||[];
- if(String(q?.currency||'').toUpperCase()!=='USD')return base;
- const out=base.slice(),now=Date.now();
- let last=Number(out[out.length-1].t)*1000;
- for(const tick of observations){
-  if(tick.venue!=='coingecko'||!Number.isFinite(tick.price)||tick.price<=0||
+ // When no OHLC/price history exists, two genuine observed quotes provide
+ // a live-updating PRICE LINE, never fabricated historical candles.
+ if(!hasHistory&&chartSeries.candles?.length>=2)return base;
+ const out=hasHistory?base.slice():[],ticks=chartObservedQuotes.get(id)||[];
+ let last=out.length?Number(out[out.length-1].t)*1000:0;
+ for(const tick of ticks){
+  if(tick.venue!==venue||!Number.isFinite(tick.price)||tick.price<=0||
      tick.ts<=last||tick.ts>now+60000||now-tick.ts>15*60000)continue;
   out.push({t:Math.floor(tick.ts/1000),p:tick.price,observed:true});
   last=tick.ts;
  }
- return out;
+ return out.length>=2?out:base;
 }
 function getCandles(id){
  if(chartSupportsRanges(ASSET_BY_ID[id])){
@@ -8176,7 +8189,13 @@ function detailChartPriceMarker(id,candles,end,broker){
  const q=quote(id),time=Date.parse(q?.time||''),incoming=Number(q?.value);
  const compatible=!broker&&end===candles.length&&
   chartQuoteCompatible(id,chartQuoteVenue(q),chartSeries.source);
- const fresh=compatible&&Number.isFinite(incoming)&&incoming>0&&
+ // The real quote can be plotted separately from the older OHLC market.
+ // It is never appended as a fake exchange candle.
+ const separateSpot=!broker&&end===candles.length&&asset.group==='crypto'&&
+  ['coingecko','binance','lbank'].includes(chartQuoteVenue(q))&&
+  ['USD','USDT'].includes(String(q?.currency||'').toUpperCase())&&
+  !compatible;
+ const fresh=(compatible||separateSpot)&&Number.isFinite(incoming)&&incoming>0&&
   Number.isFinite(time)&&time>=Number(last.t)*1000&&
   time<=Date.now()+60000&&Date.now()-time<=(asset.group==='crypto'?15*60000:36*3600000);
  if(fresh){
@@ -8192,7 +8211,7 @@ function detailChartPriceMarker(id,candles,end,broker){
  if(!Number.isFinite(price)||price<=0)return null;
  if(!Number.isFinite(baseline)||baseline<=0)baseline=Number(previous?.c)||price;
  return {price,direction:price>baseline?1:price<baseline?-1:0,
-  label:formatValue(price,asset),fresh};
+  label:formatValue(price,asset),fresh,separate:!!(fresh&&separateSpot)};
 }
 
 /* Real OHLC scale beside the Fibonacci plot. Values come exclusively from
