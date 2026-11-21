@@ -4885,3 +4885,18 @@ body .sidebar .side-link.active {
   border-left: 0 !important;
   box-shadow: none !important;
 }
+
+/* ETF/ETP real-price trend gradient: green for every rise and red for every
+   decline. Vertical opacity fading is provided by SVG gradients per segment
+   and scales in modern mobile/desktop browsers without raster assets. */
+.crypto-etf-chart .etf-trend-path{
+ fill:none;stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round;
+ vector-effect:non-scaling-stroke;
+}
+.crypto-etf-chart .etf-trend-path.etf-trend-up{stroke:#17d49c}
+.crypto-etf-chart .etf-trend-path.etf-trend-down{stroke:#f06c80}
+.crypto-etf-chart .etf-trend-path.etf-trend-flat{stroke:#9daebb}
+.crypto-etf-chart .etf-trend-area{stroke:none;pointer-events:none}
+.crypto-etf-chart .etf-dot.etf-trend-up{fill:#17d49c}
+.crypto-etf-chart .etf-dot.etf-trend-down{fill:#f06c80}
+.crypto-etf-chart .etf-dot.etf-trend-flat{fill:#9daebb}
