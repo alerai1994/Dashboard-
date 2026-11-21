@@ -11,6 +11,8 @@ assert(source.includes('Date.now()-etfHistory.lastFetch<60000'),
 assert(source.includes('crypto-etf-refresh-state')&&source.includes('Mercato chiuso · ultimo scambio'),
  'ETF quote status must distinguish weekend closure from live market quotes');
 assert(source.includes('crypto-etf-chart-refresh'),'ETF charts must expose latest exchange trade time');
+assert(css.includes('.crypto-etf-market-note .crypto-etf-refresh-state'), 'ETF auto status must render on desktop and mobile');
+assert(html.includes('style.css?v=20261121-etf-auto-status-v4'), 'ETF status style must bypass device caches');
 assert(html.includes('script.js?v=20261121-etf-auto-refresh-v4'),'ETF refresh code must bypass mobile/desktop browser caches');
 assert(source.includes('function cryptoEtfVolumeChart(product,period,samples)'), 'ETF chart must expose share-volume bars');
 assert(source.includes('<rect class="etf-volume-rect"'), 'ETF volume bars must use flat 2D rectangles');
