@@ -4878,3 +4878,10 @@ body .sidebar .sidebar-theme-button[data-fixed-theme="light"] .icon {
     box-shadow: inset 3px 0 0 Highlight !important;
   }
 }
+
+/* No left accent stripe on selected sidebar item, in any theme or device.
+   Preserve the existing dark rounded active-row background and gold icons. */
+body .sidebar .side-link.active {
+  border-left: 0 !important;
+  box-shadow: none !important;
+}
