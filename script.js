@@ -3951,6 +3951,7 @@ const etfHistory={funds:{},lastFetch:0,loading:false,error:false};
    No volume is estimated from prices or from the underlying crypto token. */
 function cryptoEtfVolumeChart(product,period,samples){
  const valid=samples.filter(p=>Array.isArray(p)&&p.length>=3&&
+  p[2]!==null&&p[2]!==undefined&&p[2]!==''&&
   Number.isFinite(Number(p[2]))&&Number(p[2])>=0);
  if(!valid.length)return '<div class="crypto-etf-volumes">'+
   '<div class="crypto-etf-volume-head"><strong>Volumi scambiati · '+esc(product.ticker)+'</strong></div>'+
