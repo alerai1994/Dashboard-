@@ -53,8 +53,39 @@ jobs:
           git commit -m "data: refresh ORE LBank spot depth [skip ci]"
           for attempt in 1 2 3 4; do
             git fetch origin main
-            git rebase origin/main
-            if git push origin HEAD:main; then exit 0; fi
+            # Never replace a newer verified snapshot with an older run.
+            if git cat-file -e origin/main:crypto-orderbooks.json 2>/dev/null; then
+              python3 - <<'PY'
+import json, subprocess
+from datetime import datetime
+def timestamp(data):
+    try:
+        return datetime.fromisoformat(data['generatedAt'].replace('Z', '+00:00')).timestamp()
+    except (KeyError, TypeError, ValueError):
+        return 0
+with open('crypto-orderbooks.json', encoding='utf-8') as f:
+    ours = timestamp(json.load(f))
+remote = subprocess.run(['git','show','origin/main:crypto-orderbooks.json'],
+                        text=True, capture_output=True)
+theirs = timestamp(json.loads(remote.stdout)) if remote.returncode == 0 else 0
+if theirs > ours:
+    with open('/tmp/vertex-snapshot-skip','w') as out:
+        out.write('remote newer')
+PY
+              if [ -f /tmp/vertex-snapshot-skip ]; then
+                echo "A newer validated book snapshot is already published."
+                exit 0
+              fi
+            fi
+            # In a rebase, 'theirs' refers to this run's generated data files.
+            # Preserve unrelated upstream commits; resolve only data conflicts.
+            if git rebase -X theirs origin/main; then
+              if git push origin HEAD:main; then exit 0; fi
+            else
+              git rebase --abort || true
+              echo "Book snapshot rebase failed; keeping upstream data unchanged."
+              exit 1
+            fi
             sleep 2
           done
           exit 1
