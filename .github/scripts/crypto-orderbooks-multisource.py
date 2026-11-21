@@ -155,7 +155,7 @@ def discover_one(cid, symbol, coin_id, ts):
         tickers = base.fetch(
             "https://api.coingecko.com/api/v3/coins/" +
             quote(coin_id, safe="") +
-            "/tickers?exchange_ids=binance,gate,mxc&order=trust_score_desc&depth=false&page=1"
+            "/tickers?order=trust_score_desc&depth=false&page=1"
         )
         candidates = candidate_tickers(tickers.get("tickers"), symbol)
         sources = []
@@ -268,6 +268,8 @@ def run():
     previous_source = previous_source if isinstance(previous_source, dict) else {}
     previous_books = previous_books if isinstance(previous_books, dict) else {}
     checked = checked if isinstance(checked, dict) else {}
+    if data.get('multiDiscoveryVersion') != 2:
+        checked = {}  # New all-exchange CoinGecko scan replaces a filtered query.
 
     sources = {}
     for cid, (symbol, coin_id, _) in registry.items():
@@ -383,6 +385,7 @@ def run():
     data["available"] = len(default_books)
     data["venueBooks"] = venue_books
     data["marketSources"] = sources
+    data["multiDiscoveryVersion"] = 2
     data["multiDiscoveryCheckedAt"] = {cid: checked[cid] for cid in registry
                                         if cid in checked}
     data["unavailable"] = {cid: "Nessun book pubblico verificato"
