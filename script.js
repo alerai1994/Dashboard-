@@ -3757,7 +3757,7 @@ async function discoverOrderBookSource(id,serial){
 const orderBookVenueChoices=load('orderBookVenueChoices',{})||{};
 function orderBookVenueDescriptor(row){
  const venue=row?.venue,pair=String(row?.pair||''),symbol=pair.split('/')[0];
- if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot'].includes(venue)||
+ if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot'].includes(venue)||
   !/^[A-Z0-9]{2,20}\/USDT$/.test(pair))return null;
  const coded=symbol+'USDT';
  if(venue==='Binance Spot')return {venue,pair,urls:[
@@ -3767,6 +3767,12 @@ function orderBookVenueDescriptor(row){
   'https://api.gateio.ws/api/v4/spot/order_book?currency_pair='+symbol+'_USDT&limit=20']};
  if(venue==='MEXC Spot')return {venue,pair,urls:[
   'https://api.mexc.com/api/v3/depth?symbol='+coded+'&limit=20']};
+ if(venue==='Bybit Spot')return {venue,pair,format:'bybit',urls:[
+  'https://api.bybit.com/v5/market/orderbook?category=spot&symbol='+coded+'&limit=20']};
+ if(venue==='OKX Spot')return {venue,pair,format:'okx',urls:[
+  'https://www.okx.com/api/v5/market/books?instId='+symbol+'-USDT&sz=20']};
+ if(venue==='KuCoin Spot')return {venue,pair,format:'kucoin',urls:[
+  'https://api.kucoin.com/api/v1/market/orderbook/level2_20?symbol='+symbol+'-USDT']};
  return {venue,pair,format:'lbank',urls:[
   'https://api.lbank.info/v2/depth.do?symbol='+symbol.toLowerCase()+'_usdt&size=20']};
 }
@@ -3788,7 +3794,7 @@ function orderBookAvailableVenues(id){
  }
  if(!asset.extended&&bundle?.books?.[id])add(bundle.books[id]);
  if(!found.size){const fallback=orderBookSource(id);if(fallback)found.set(fallback.venue,fallback);}
- const priority=['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Gate.io Spot'];
+ const priority=['Binance Spot','Gate Spot','MEXC Spot','Bybit Spot','OKX Spot','KuCoin Spot','LBank Spot','Gate.io Spot'];
  return Array.from(found.values()).sort((a,b)=>priority.indexOf(a.venue)-priority.indexOf(b.venue));
 }
 function orderBookVenueMarkup(id){
@@ -3926,7 +3932,7 @@ function cryptoBookEntry(id){
  if(id==='ore'&&b.mint!=='oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp')return null;
  const t=Date.parse(b.capturedAt||'');
  if(!Number.isFinite(t)||t>Date.now()+60000||Date.now()-t>3*60*60*1000)return null;
- if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot'].includes(b.venue))return null;
+ if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot'].includes(b.venue))return null;
  const bids=b.bids.map(r=>[Number(r[0]),Number(r[1])])
   .filter(r=>r.length===2&&r.every(x=>Number.isFinite(x)&&x>0)).sort((a,b)=>b[0]-a[0]).slice(0,20);
  const asks=b.asks.map(r=>[Number(r[0]),Number(r[1])])
@@ -4667,7 +4673,41 @@ function liveBookConfig(id){
  if(venue==='MEXC Spot')return {venue,pair,symbol,kind:'poll',
   url:'https://api.mexc.com/api/v3/depth?symbol='+symbol+'&limit=20',
   priceUrl:'https://api.mexc.com/api/v3/ticker/price?symbol='+symbol};
+ if(['Bybit Spot','OKX Spot','KuCoin Spot'].includes(venue)){
+  const source=orderBookVenueDescriptor({venue,pair});
+  if(source)return {venue,pair,symbol,kind:'poll',
+   format:source.format,url:source.urls[0]};
+ }
  return null;
+}
+/* Decode only documented public Spot depth fields. Venue identity was
+   verified by the backend before these feeds became selectable. */
+function decodeOrderBookDepth(payload,format){
+ if(!payload||typeof payload!=='object')throw Error('Risposta book non valida');
+ if(format==='bybit'){
+  if(payload.retCode!==0||!payload.result)throw Error('Bybit Spot non disponibile');
+  return {bids:payload.result.b,asks:payload.result.a,
+   sequence:payload.result.u};
+ }
+ if(format==='okx'){
+  if(String(payload.code)!=='0'||!Array.isArray(payload.data)||!payload.data[0])
+   throw Error('OKX Spot non disponibile');
+  return {bids:payload.data[0].bids,asks:payload.data[0].asks,
+   sequence:payload.data[0].seqId};
+ }
+ if(format==='kucoin'){
+  if(String(payload.code)!=='200000'||!payload.data)
+   throw Error('KuCoin Spot non disponibile');
+  return {bids:payload.data.bids,asks:payload.data.asks,
+   sequence:payload.data.sequence};
+ }
+ if(format==='lbank'){
+  if((payload.error_code!=null&&Number(payload.error_code)!==0)||
+    (payload.result!=null&&payload.result!==true&&payload.result!=='true'))
+   throw Error('LBank Spot non disponibile');
+  return payload.data||payload;
+ }
+ return payload;
 }
 function normalizeLiveLevels(rawBids,rawAsks){
  const side=(rows,desc)=>Array.isArray(rows)?rows.map(row=>
@@ -4739,11 +4779,13 @@ async function pollOrderBookOnce(coin,config,session){
   if(!response.ok)throw Error('HTTP '+response.status);
   const payload=await response.json();
   if(orderBookLive.session!==session)return;
-  if(!payload||!Array.isArray(payload.bids)||!Array.isArray(payload.asks))
+  const depth=decodeOrderBookDepth(payload,config.format);
+  if(!Array.isArray(depth.bids)||!Array.isArray(depth.asks))
    throw Error('Book non valido');
-  if(receiveLiveBook(coin,config,payload.bids,payload.asks,payload.lastUpdateId)){
-   // Last trade is queried less frequently than depth; it is not synthesized.
-   if(Date.now()-(orderBookLive.lastTradeRequestAt||0)>10000){
+  if(receiveLiveBook(coin,config,depth.bids,depth.asks,
+    depth.sequence||depth.lastUpdateId)){
+   // A trade price is optional: never estimate it from bid/ask midpoint.
+   if(config.priceUrl&&Date.now()-(orderBookLive.lastTradeRequestAt||0)>10000){
     orderBookLive.lastTradeRequestAt=Date.now();
     fetch(config.priceUrl,{cache:'no-store',signal:controller.signal})
      .then(res=>res.ok?res.json():null)
@@ -5028,12 +5070,8 @@ async function refreshOrderBook(force=false){
    const response=await fetch(url,{cache:'no-store',signal:controller.signal,headers:{Accept:'application/json'}});
    if(!response.ok)throw Error('HTTP '+response.status);
    const data=await response.json();
-   // LBank REST wraps authentic levels under data, unlike Binance and MEXC.
-   // Reject API errors rather than showing stale or invented BID/ASK levels.
-   if(src.format==='lbank'&&(!data||(data.error_code!=null&&Number(data.error_code)!==0)||
-      (data.result!=null&&data.result!==true&&data.result!=='true')))
-     throw Error('LBank: coppia non disponibile o errore API');
-   const depth=src.format==='lbank'?((data&&data.data)||data):data;
+   // Verified market formats are normalized without inventing price levels.
+   const depth=decodeOrderBookDepth(data,src.format);
    if(!depth||!Array.isArray(depth.bids)||!Array.isArray(depth.asks))throw Error('Risposta book non valida');
    if(src.format==='lbank'){
     const marketTimestamp=Number(depth.timestamp||data.ts);
