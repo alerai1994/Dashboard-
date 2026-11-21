@@ -38,8 +38,9 @@ KNOWN = {
     "Bybit Spot": {"keys": {"bybit_spot"}},
     "OKX Spot": {"keys": {"okex", "okx"}},
     "KuCoin Spot": {"keys": {"kucoin"}},
+    "Coinbase Exchange Spot": {"keys": {"gdax"}},
 }
-VENUE_ORDER = ("Binance Spot", "Gate Spot", "MEXC Spot", "Bybit Spot", "OKX Spot", "KuCoin Spot", "LBank Spot")
+VENUE_ORDER = ("Binance Spot", "Gate Spot", "MEXC Spot", "Bybit Spot", "OKX Spot", "KuCoin Spot", "Coinbase Exchange Spot", "LBank Spot")
 QUOTE_PRIORITY = ("USDT", "USDC", "USD")
 
 
@@ -185,6 +186,13 @@ def exchange_market_valid(venue, payload, symbol, quote='USDT'):
                 m.get("baseCurrency") == symbol and
                 m.get("quoteCurrency") == quote and
                 m.get("enableTrading") is True)
+    if venue == "Coinbase Exchange Spot":
+        return (isinstance(payload, dict) and
+                payload.get("id") == symbol + "-" + quote and
+                payload.get("base_currency") == symbol and
+                payload.get("quote_currency") == quote and
+                payload.get("status") == "online" and
+                payload.get("trading_disabled") is not True)
     return False
 
 
@@ -205,6 +213,9 @@ def exchange_info_url(venue, symbol, quote='USDT'):
                 symbol + "-" + quote)
     if venue == "KuCoin Spot":
         return ("https://api.kucoin.com/api/v2/symbols/" + symbol + "-" + quote)
+    if venue == "Coinbase Exchange Spot":
+        return ("https://api.exchange.coinbase.com/products/" +
+                symbol + "-" + quote)
     raise ValueError("Unsupported venue")
 
 
@@ -224,7 +235,8 @@ def discover_one(cid, symbol, coin_id, ts):
             for venue, exchange_id in (
                 ("Binance Spot", "binance"), ("Gate Spot", "gate"),
                 ("MEXC Spot", "mxc"), ("Bybit Spot", "bybit_spot"),
-                ("OKX Spot", "okex"), ("KuCoin Spot", "kucoin")
+                ("OKX Spot", "okex"), ("KuCoin Spot", "kucoin"),
+                ("Coinbase Exchange Spot", "gdax")
             ):
                 if "USDT" in candidates.get(venue, []):
                     continue
@@ -278,6 +290,9 @@ def depth_url(venue, symbol, quote='USDT'):
     if venue == "KuCoin Spot":
         return ("https://api.kucoin.com/api/v1/market/orderbook/level2_20?symbol=" +
                 symbol + "-" + quote)
+    if venue == "Coinbase Exchange Spot":
+        return ("https://api.exchange.coinbase.com/products/" +
+                symbol + "-" + quote + "/book?level=2")
     raise ValueError("Unsupported venue")
 
 
@@ -299,6 +314,9 @@ def normalize_exchange_depth(venue, raw):
             raise ValueError("KuCoin API rejected spot orderbook")
         book = raw["data"]
         return {"bids": book.get("bids"), "asks": book.get("asks")}
+    if venue == "Coinbase Exchange Spot":
+        if not isinstance(raw.get("bids"), list) or not isinstance(raw.get("asks"), list):
+            raise ValueError("Coinbase Exchange API rejected spot orderbook")
     return raw
 
 
@@ -418,6 +436,14 @@ def check_fixture():
         "code": "0", "data": [{"instId": "USDT-USDC", "instType": "SPOT",
         "baseCcy": "OTHER", "quoteCcy": "USDC", "state": "live"}]},
         "USDT", "USDC")
+    assert exchange_market_valid("Coinbase Exchange Spot", {
+        "id": "BTC-USD", "base_currency": "BTC", "quote_currency": "USD",
+        "status": "online", "trading_disabled": False}, "BTC", "USD")
+    assert not exchange_market_valid("Coinbase Exchange Spot", {
+        "id": "BTC-USD", "base_currency": "OTHER", "quote_currency": "USD",
+        "status": "online", "trading_disabled": False}, "BTC", "USD")
+    assert normalize_exchange_depth("Coinbase Exchange Spot", {
+        "bids": [["10", "1", 1]], "asks": [["11", "2", 1]]})["bids"]
     assert source_valid({"coingeckoId": "tether", "symbol": "USDT",
         "venue": "OKX Spot", "pair": "USDT/USDC",
         "verifiedAt": 1000}, "USDT", "tether", 1100)
