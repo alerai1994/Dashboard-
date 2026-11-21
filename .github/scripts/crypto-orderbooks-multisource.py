@@ -487,8 +487,19 @@ def run():
             source = next((s for s in sources.get(cid, [])
                            if s["venue"] == venue), None)
             primary = default_books.get(cid)
-            if (primary is book and cid in base.ALL):
-                continue
+            if primary is book:
+                if cid in base.ALL:
+                    # The original 42 were already curated by the original fetcher.
+                    continue
+                # Expanded primary Binance books were verified by their
+                # CoinGecko coin ID. Keep them as venue-specific snapshots only
+                # while that proof and the actual levels are both fresh.
+                mapped = (data.get("verifiedMarkets") or {}).get(cid)
+                meta = registry.get(cid)
+                if (meta and source_valid(mapped, meta[0], meta[1], ts) and
+                    mapped.get("venue") == venue and
+                    preserve_recent(book, cid, mapped, ts)):
+                    continue
             if (not source or not preserve_recent(book, cid, source, ts)):
                 del venues[venue]
         if not venues:
