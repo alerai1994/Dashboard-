@@ -3753,11 +3753,77 @@ async function discoverOrderBookSource(id,serial){
  orderBookDiscoveredSources.set(id,{source,checkedAt:Date.now()});
  return source;
 }
+/* Each displayed BID/ASK set must belong to one actual exchange venue. */
+const orderBookVenueChoices=load('orderBookVenueChoices',{})||{};
+function orderBookVenueDescriptor(row){
+ const venue=row?.venue,pair=String(row?.pair||''),symbol=pair.split('/')[0];
+ if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot'].includes(venue)||
+  !/^[A-Z0-9]{2,20}\/USDT$/.test(pair))return null;
+ const coded=symbol+'USDT';
+ if(venue==='Binance Spot')return {venue,pair,urls:[
+  'https://data-api.binance.vision/api/v3/depth?symbol='+coded+'&limit=20',
+  'https://api.binance.com/api/v3/depth?symbol='+coded+'&limit=20']};
+ if(venue==='Gate Spot')return {venue,pair,urls:[
+  'https://api.gateio.ws/api/v4/spot/order_book?currency_pair='+symbol+'_USDT&limit=20']};
+ if(venue==='MEXC Spot')return {venue,pair,urls:[
+  'https://api.mexc.com/api/v3/depth?symbol='+coded+'&limit=20']};
+ return {venue,pair,format:'lbank',urls:[
+  'https://api.lbank.info/v2/depth.do?symbol='+symbol.toLowerCase()+'_usdt&size=20']};
+}
+function orderBookAvailableVenues(id){
+ const asset=ASSET_BY_ID[id],bundle=cryptoBookBundle();
+ if(!asset||asset.group!=='crypto')return [];
+ const symbol=id==='ton'?'GRAM':asset.symbol.replace('-USD','');
+ const found=new Map(),list=bundle?.marketSources?.[id];
+ const add=row=>{const source=orderBookVenueDescriptor(row);
+  if(source&&source.pair===symbol+'/USDT')found.set(source.venue,source);};
+ if(Array.isArray(list))for(const row of list){
+  const age=Date.now()/1000-Number(row?.verifiedAt);
+  if(age>=0&&age<7*86400&&(!asset.extended||row.coingeckoId===asset.coingeckoId))add(row);
+ }
+ const byVenue=bundle?.venueBooks?.[id];
+ if(byVenue)for(const row of Object.values(byVenue)){
+  if(!asset.extended||(Array.isArray(list)&&list.some(m=>
+   m.venue===row?.venue&&m.pair===row?.pair&&m.coingeckoId===asset.coingeckoId)))add(row);
+ }
+ if(!asset.extended&&bundle?.books?.[id])add(bundle.books[id]);
+ if(!found.size){const fallback=orderBookSource(id);if(fallback)found.set(fallback.venue,fallback);}
+ const priority=['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Gate.io Spot'];
+ return Array.from(found.values()).sort((a,b)=>priority.indexOf(a.venue)-priority.indexOf(b.venue));
+}
+function orderBookVenueMarkup(id){
+ const options=orderBookAvailableVenues(id);
+ if(!options.length)return '<p class="ob-venues-note">Fonte Spot non verificata; nessun livello inventato</p>';
+ const wanted=id===orderBookState.id?orderBookState.venueChoice:orderBookVenueChoices[id];
+ const baseline=cryptoBookEntry(id)?.venue||orderBookSource(id)?.venue||options[0].venue;
+ const chosen=options.some(x=>x.venue===wanted)?wanted:baseline;
+ return '<label for="orderBookVenueSelect" class="ob-venues-label">Fonte Spot</label>'+
+ '<select id="orderBookVenueSelect" class="ob-venues-select" aria-label="Seleziona exchange order book">'+
+ options.map(x=>'<option value="'+esc(x.venue)+'"'+(x.venue===chosen?' selected':'')+'>'+esc(x.venue+' · '+x.pair)+'</option>').join('')+
+ '</select><p class="ob-venues-note">'+options.length+' exchange verificati · BID e ASK non vengono uniti fra fonti</p>';
+}
+function selectOrderBookVenue(venue){
+ if(!orderBookAvailableVenues(orderBookState.id).some(x=>x.venue===venue))return;
+ stopOrderBookLive();cancelOrderBookFetch();
+ orderBookState.venueChoice=venue;orderBookVenueChoices[orderBookState.id]=venue;
+ save('orderBookVenueChoices',orderBookVenueChoices);
+ orderBookState.data=null;orderBookState.error=null;orderBookState.updatedAt=0;
+ orderBookState.venue='';orderBookState.pair='';orderBookState.mode='';
+ orderBookState.lastTry=0;orderBookState.lastTrade=null;orderBookState.previousTrade=null;
+ orderBookLive.retryAt=0;orderBookLive.attempt=0;
+ if(state.page==='orderbook')render();
+ if(state.page==='workspace'&&workspaceShown('orderbook')){
+  const slot=$('#workspaceBookDetail');if(slot)slot.innerHTML=workspaceOrderBookLevels();
+ }
+ refreshOrderBook(true);startOrderBookLive(true);
+}
 const orderBookState={
  id:load('orderBookCoin','btc'),search:'',data:null,error:null,busy:false,
+ venueChoice:'',
  lastTry:0,updatedAt:0,venue:'',pair:'',mode:'',serial:0,abort:null,lastTrade:null,lastTradeAt:0,previousTrade:null
 };
 if(!ORDER_BOOK_COINS.some(a=>a.id===orderBookState.id))orderBookState.id='btc';
+orderBookState.venueChoice=typeof orderBookVenueChoices[orderBookState.id]==='string'?orderBookVenueChoices[orderBookState.id]:'';
 const orderBookLive={
  socket:null,coin:null,transport:'',connected:false,startedAt:0,lastDepthAt:0,
  retryAt:0,attempt:0,session:0,paintTimer:null,pollTimer:null,pollAbort:null,
@@ -3772,6 +3838,17 @@ function orderBookIsFastPolling(){
   Date.now()-orderBookLive.lastDepthAt<12000;
 }
 function orderBookSource(id){
+ const raw=cryptoBookBundle();
+ const chosen=id===orderBookState.id?orderBookState.venueChoice:'';
+ const listings=raw?.marketSources?.[id];
+ if(chosen){
+  const row=Array.isArray(listings)?listings.find(m=>m?.venue===chosen&&
+   Number(m.verifiedAt)>0&&Date.now()/1000-Number(m.verifiedAt)<7*86400):null;
+  const snap=raw?.venueBooks?.[id]?.[chosen];
+  const source=orderBookVenueDescriptor(row||snap);
+  if(source&&(!ASSET_BY_ID[id]?.extended||row?.coingeckoId===ASSET_BY_ID[id].coingeckoId))
+   return source;
+ }
  if(id==='ton')return {
   venue:'Binance Spot',pair:'GRAM/USDT',urls:[
    'https://data-api.binance.vision/api/v3/depth?symbol=GRAMUSDT&limit=20',
@@ -3815,6 +3892,12 @@ function orderBookSource(id){
    'https://api.binance.com/api/v3/depth?symbol='+symbol+'&limit=20'
   ]};
  }
+ if(Array.isArray(listings)){
+  const extra=listings.find(row=>row?.coingeckoId===asset?.coingeckoId&&
+   Number(row.verifiedAt)>0&&Date.now()/1000-Number(row.verifiedAt)<7*86400);
+  const source=orderBookVenueDescriptor(extra);
+  if(source)return source;
+ }
  const mapped=orderBookDiscoveredSources.get(id);
  return mapped?.source&&Date.now()-mapped.checkedAt<2*60*60*1000?mapped.source:null;
 }
@@ -3825,15 +3908,20 @@ function cryptoBookBundle(){
  return p&&p.books&&typeof p.books==='object'?p:null;
 }
 function cryptoBookEntry(id){
- const p=cryptoBookBundle(),a=ASSET_BY_ID[id],b=p&&p.books[id];
+ const p=cryptoBookBundle(),a=ASSET_BY_ID[id];
+ const wanted=id===orderBookState.id?orderBookState.venueChoice:'';
+ const pick=wanted&&p?.venueBooks?.[id]?.[wanted],primary=p?.books?.[id];
+ const b=wanted?(pick||(primary?.venue===wanted?primary:null)):primary;
  if(!a||a.group!=='crypto'||!b||b.id!==id)return null;
  const symbol=id==='ton'?'GRAM':a.symbol.replace('-USD','');
  if(b.unit!==symbol||b.pair!==symbol+'/USDT'||!Array.isArray(b.bids)||!Array.isArray(b.asks))return null;
  if(a.extended){
-  const verified=p?.verifiedMarkets?.[id];
-  if(!verified||verified.coingeckoId!==a.coingeckoId||verified.symbol!==symbol||
-     verified.venue!==b.venue||verified.pair!==b.pair||
-     Date.now()/1000-Number(verified.verifiedAt)>7*24*60*60)return null;
+  const listings=p?.marketSources?.[id]||[];
+  const verified=listings.find(m=>m?.venue===b.venue&&m.pair===b.pair&&
+   m.coingeckoId===a.coingeckoId&&Date.now()/1000-Number(m.verifiedAt)<7*86400)||
+   (p?.verifiedMarkets?.[id]?.venue===b.venue?p.verifiedMarkets[id]:null);
+  if(!verified||verified.coingeckoId!==a.coingeckoId||
+    verified.symbol!==symbol||verified.pair!==b.pair)return null;
  }
  if(id==='ore'&&b.mint!=='oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp')return null;
  const t=Date.parse(b.capturedAt||'');
@@ -3857,7 +3945,7 @@ function useCryptoBookEntry(id,serial){
  const book=cryptoBookEntry(id);
  if(!book||serial!==orderBookState.serial||id!==orderBookState.id)return false;
  if(orderBookIsStreaming()||orderBookIsFastPolling())return true;
- if(orderBookState.data&&orderBookState.mode==='snapshot'&&orderBookState.updatedAt>=book.time)
+ if(orderBookState.data&&orderBookState.mode==='snapshot'&&orderBookState.venue===book.venue&&orderBookState.updatedAt>=book.time)
   return true;
  orderBookState.data={bids:book.bids,asks:book.asks,unit:book.unit};
  orderBookState.venue=book.venue;
@@ -3888,6 +3976,7 @@ function updateOrderBookAssetList(){
  if(coverage)coverage.textContent=ORDER_BOOK_COINS.filter(a=>!!cryptoBookEntry(a.id)).length+'/'+ORDER_BOOK_COINS.length+' book verificati';
  const label=$('#orderBookSourceLabel'),src=orderBookSource(orderBookState.id);
  if(label)label.textContent=src?src.venue+' · '+src.pair:'Coppia Spot non verificata';
+ const tb=$('#orderBookVenueToolbar');if(tb)tb.innerHTML=orderBookVenueMarkup(orderBookState.id);
 }
 // Local JS backup works for file:// and every OS. HTTP JSON refreshes the cache.
 async function loadAllCryptoBooks(serial,coin){
@@ -4796,7 +4885,9 @@ function selectOrderBookAsset(id){
  if(id!==orderBookState.id){
   stopOrderBookLive();
   cancelOrderBookFetch();
-  orderBookState.id=id;orderBookState.data=null;orderBookState.error=null;
+  orderBookState.id=id;
+  orderBookState.venueChoice=typeof orderBookVenueChoices[id]==='string'?orderBookVenueChoices[id]:'';
+  orderBookState.data=null;orderBookState.error=null;
   orderBookState.lastTry=0;orderBookState.updatedAt=0;orderBookState.venue='';orderBookState.mode='';
    orderBookLive.wsRetryAt=0;orderBookLive.attempt=0;
   orderBookState.lastTrade=null;orderBookState.lastTradeAt=0;orderBookState.previousTrade=null;
