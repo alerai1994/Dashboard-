@@ -35,8 +35,11 @@ KNOWN = {
     "Binance Spot": {"keys": {"binance"}},
     "Gate Spot": {"keys": {"gate", "gate-io"}},
     "MEXC Spot": {"keys": {"mxc", "mexc"}},
+    "Bybit Spot": {"keys": {"bybit_spot"}},
+    "OKX Spot": {"keys": {"okex", "okx"}},
+    "KuCoin Spot": {"keys": {"kucoin"}},
 }
-VENUE_ORDER = ("Binance Spot", "Gate Spot", "MEXC Spot", "LBank Spot")
+VENUE_ORDER = ("Binance Spot", "Gate Spot", "MEXC Spot", "Bybit Spot", "OKX Spot", "KuCoin Spot", "LBank Spot")
 
 
 def stamp(value):
@@ -132,6 +135,28 @@ def exchange_market_valid(venue, payload, symbol):
             row.get("isSpotTradingAllowed") is not False
             for row in payload.get("symbols", [])
         )
+    if venue == "Bybit Spot":
+        return (isinstance(payload, dict) and payload.get("retCode") == 0 and
+                any(isinstance(m, dict) and
+                    m.get("symbol") == symbol + "USDT" and
+                    m.get("baseCoin") == symbol and m.get("quoteCoin") == "USDT" and
+                    m.get("status") == "Trading"
+                    for m in (payload.get("result") or {}).get("list", [])))
+    if venue == "OKX Spot":
+        return (isinstance(payload, dict) and str(payload.get("code")) == "0" and
+                any(isinstance(m, dict) and
+                    m.get("instId") == symbol + "-USDT" and
+                    m.get("instType") == "SPOT" and
+                    m.get("baseCcy") == symbol and m.get("quoteCcy") == "USDT" and
+                    m.get("state") == "live"
+                    for m in payload.get("data", [])))
+    if venue == "KuCoin Spot":
+        m = payload.get("data") if isinstance(payload, dict) else None
+        return (isinstance(m, dict) and str(payload.get("code")) == "200000" and
+                m.get("symbol") == symbol + "-USDT" and
+                m.get("baseCurrency") == symbol and
+                m.get("quoteCurrency") == "USDT" and
+                m.get("enableTrading") is True)
     return False
 
 
@@ -144,6 +169,14 @@ def exchange_info_url(venue, symbol):
                 + symbol + "_USDT")
     if venue == "MEXC Spot":
         return "https://api.mexc.com/api/v3/exchangeInfo?symbol=" + symbol + "USDT"
+    if venue == "Bybit Spot":
+        return ("https://api.bybit.com/v5/market/instruments-info?category=spot&symbol=" +
+                symbol + "USDT")
+    if venue == "OKX Spot":
+        return ("https://www.okx.com/api/v5/public/instruments?instType=SPOT&instId=" +
+                symbol + "-USDT")
+    if venue == "KuCoin Spot":
+        return ("https://api.kucoin.com/api/v2/symbols/" + symbol + "-USDT")
     raise ValueError("Unsupported venue")
 
 
@@ -162,7 +195,11 @@ def discover_one(cid, symbol, coin_id, ts):
         # widely traded assets. A small priority subset uses venue-specific
         # ticker evidence; every pair still needs verified exchange metadata.
         if cid in ("btc", "eth", "sol", "hype"):
-            for venue, exchange_id in (("Gate Spot", "gate"), ("MEXC Spot", "mxc")):
+            for venue, exchange_id in (
+                ("Gate Spot", "gate"), ("MEXC Spot", "mxc"),
+                ("Bybit Spot", "bybit_spot"), ("OKX Spot", "okex"),
+                ("KuCoin Spot", "kucoin")
+            ):
                 if venue in candidates:
                     continue
                 try:
@@ -204,7 +241,36 @@ def depth_url(venue, symbol):
                 symbol + "_USDT&limit=20")
     if venue == "MEXC Spot":
         return "https://api.mexc.com/api/v3/depth?symbol=" + pair + "&limit=20"
+    if venue == "Bybit Spot":
+        return ("https://api.bybit.com/v5/market/orderbook?category=spot&symbol=" +
+                pair + "&limit=20")
+    if venue == "OKX Spot":
+        return "https://www.okx.com/api/v5/market/books?instId=" + symbol + "-USDT&sz=20"
+    if venue == "KuCoin Spot":
+        return ("https://api.kucoin.com/api/v1/market/orderbook/level2_20?symbol=" +
+                symbol + "-USDT")
     raise ValueError("Unsupported venue")
+
+
+def normalize_exchange_depth(venue, raw):
+    if not isinstance(raw, dict):
+        raise ValueError("Not an exchange depth response")
+    if venue == "Bybit Spot":
+        if raw.get("retCode") != 0:
+            raise ValueError("Bybit API rejected spot orderbook")
+        book = (raw.get("result") or {})
+        return {"bids": book.get("b"), "asks": book.get("a")}
+    if venue == "OKX Spot":
+        if str(raw.get("code")) != "0" or not raw.get("data"):
+            raise ValueError("OKX API rejected spot orderbook")
+        book = raw["data"][0]
+        return {"bids": book.get("bids"), "asks": book.get("asks")}
+    if venue == "KuCoin Spot":
+        if str(raw.get("code")) != "200000" or not isinstance(raw.get("data"), dict):
+            raise ValueError("KuCoin API rejected spot orderbook")
+        book = raw["data"]
+        return {"bids": book.get("bids"), "asks": book.get("asks")}
+    return raw
 
 
 def preserve_recent(row, cid, source, ts):
@@ -228,7 +294,7 @@ def load_depth(cid, source, previous):
     venue, symbol = source["venue"], source["symbol"]
     try:
         raw = base.fetch(depth_url(venue, symbol))
-        bids, asks = base.checked(raw, "Binance")
+        bids, asks = base.checked(normalize_exchange_depth(venue, raw), "Binance")
         data = {
             "id": cid, "venue": venue, "pair": source["pair"],
             "unit": symbol, "bids": bids, "asks": asks,
@@ -267,7 +333,46 @@ def check_fixture():
         {"base": "HYPE", "target": "USDT", "market": {"identifier": "gate"},
          "last": 35, "is_stale": True},
     ], "HYPE")
-    print("PASS: 288 registry, multi-venue identification, inactive/wrong-asset rejection")
+    assert candidate_tickers([
+        {"base": "HYPE", "target": "USDT", "market": {"identifier": "bybit_spot"},
+         "last": 34}, {"base": "HYPE", "target": "USDT",
+         "market": {"identifier": "okex"}, "last": 34},
+        {"base": "HYPE", "target": "USDT",
+         "market": {"identifier": "kucoin"}, "last": 34}
+    ], "HYPE") == {"Bybit Spot": True, "OKX Spot": True, "KuCoin Spot": True}
+    assert exchange_market_valid("Bybit Spot", {
+        "retCode": 0, "result": {"list": [
+            {"symbol": "HYPEUSDT", "baseCoin": "HYPE",
+             "quoteCoin": "USDT", "status": "Trading"}]}}, "HYPE")
+    assert not exchange_market_valid("Bybit Spot", {
+        "retCode": 0, "result": {"list": [
+            {"symbol": "HYPEUSDT", "baseCoin": "OTHER",
+             "quoteCoin": "USDT", "status": "Trading"}]}}, "HYPE")
+    assert exchange_market_valid("OKX Spot", {
+        "code": "0", "data": [{
+            "instId": "HYPE-USDT", "instType": "SPOT", "baseCcy": "HYPE",
+            "quoteCcy": "USDT", "state": "live"}]}, "HYPE")
+    assert not exchange_market_valid("OKX Spot", {
+        "code": "0", "data": [{
+            "instId": "HYPE-USDT", "instType": "SPOT", "baseCcy": "HYPE",
+            "quoteCcy": "USDT", "state": "suspend"}]}, "HYPE")
+    assert exchange_market_valid("KuCoin Spot", {
+        "code": "200000", "data": {
+            "symbol": "HYPE-USDT", "baseCurrency": "HYPE",
+            "quoteCurrency": "USDT", "enableTrading": True}}, "HYPE")
+    assert not exchange_market_valid("KuCoin Spot", {
+        "code": "200000", "data": {
+            "symbol": "HYPE-USDT", "baseCurrency": "HYPE",
+            "quoteCurrency": "USDT", "enableTrading": False}}, "HYPE")
+    assert normalize_exchange_depth("Bybit Spot", {
+        "retCode": 0, "result": {"b": [["1", "2"]], "a": [["2", "2"]]}})["bids"]
+    assert normalize_exchange_depth("OKX Spot", {
+        "code": "0", "data": [{"bids": [["1", "2", "0", "1"]],
+                               "asks": [["2", "2", "0", "1"]]}]})["asks"]
+    assert normalize_exchange_depth("KuCoin Spot", {
+        "code": "200000", "data": {"bids": [["1", "2"]],
+                                    "asks": [["2", "2"]]}})["asks"]
+    print("PASS: 288 assets, 6 exchange candidates, valid spot identities and native depth formats")
 
 
 def run():
