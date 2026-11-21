@@ -4974,3 +4974,8 @@ body .topbar .top-actions .search-wrap[hidden]{display:none!important}
 .ob-coin-label .ob-venue-line{display:block;max-width:100%;font-size:10px;line-height:1.35;opacity:.8;overflow-wrap:anywhere;text-align:left}
 .ob-coin-label .ob-coin-sources{display:block;font-size:10px;opacity:.75;margin-top:3px}
 @media(max-width:640px){.ob-coin-label .ob-venue-line{font-size:9px;line-height:1.4}.ob-coin-label .ob-venue-lines{gap:3px}}
+
+/* All 288 orderbook assets remain available; missing-only filter is responsive. */
+.ob-missing-toggle{display:flex;align-items:center;gap:8px;padding:8px 10px;font-size:12px;line-height:1.4;cursor:pointer;white-space:normal}
+.ob-missing-toggle input{flex:0 0 auto;accent-color:#16a34a;width:16px;height:16px}
+@media(max-width:640px){.ob-missing-toggle{padding:10px 8px;font-size:12px}}
