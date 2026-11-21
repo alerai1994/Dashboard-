@@ -4799,11 +4799,11 @@ body.page-global :is(.photo-cover,.map-svg,.spark){
  stroke-width:1.1;vector-effect:non-scaling-stroke}
 .crypto-etf-volumes .etf-volume-svg text{fill:var(--muted);font-size:10px;
  font-weight:550}
-.etf-volume-bar{--etf-bar:#24bb8e}
-.etf-volume-bar.down{--etf-bar:#ee7180}
-.etf-volume-bar .etf-volume-rect{
- fill:var(--etf-bar);
- stroke:none;
+/* Flat, solid white ETF traded-volume bars in every theme and viewport. */
+.crypto-etf-chart .etf-volume-bar .etf-volume-rect{
+ fill:#ffffff!important;
+ fill-opacity:1!important;
+ stroke:none!important;
  shape-rendering:geometricPrecision;
 }
 .crypto-etf-volumes>small,.crypto-etf-volume-empty{color:var(--muted);
