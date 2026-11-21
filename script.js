@@ -3961,9 +3961,7 @@ function cryptoEtfVolumeChart(product,period,samples){
   const first=Math.floor(i*valid.length/count),last=Math.floor((i+1)*valid.length/count);
   const chunk=valid.slice(first,Math.max(first+1,last));
   const volume=chunk.reduce((total,p)=>total+Number(p[2]),0);
-  const firstPrice=Number(chunk[0][1]),lastPrice=Number(chunk[chunk.length-1][1]);
-  buckets.push({volume,from:chunk[0][0],to:chunk[chunk.length-1][0],
-   direction:lastPrice>=firstPrice?'up':'down'});
+  buckets.push({volume,from:chunk[0][0],to:chunk[chunk.length-1][0]});
  }
  const maxVolume=Math.max(1,...buckets.map(b=>b.volume));
  const compact=new Intl.NumberFormat('it-IT',{notation:'compact',maximumFractionDigits:1});
@@ -3977,7 +3975,7 @@ function cryptoEtfVolumeChart(product,period,samples){
   const n=value=>Number(value).toFixed(2);
   const tooltip=full.format(b.volume)+' quote scambiate · '+day(b.from)+
    (b.to!==b.from?' – '+day(b.to):'');
-  return '<g class="etf-volume-bar '+b.direction+'">'+
+  return '<g class="etf-volume-bar">'+
    '<title>'+esc(tooltip)+'</title>'+
    '<rect class="etf-volume-rect" x="'+n(x)+'" y="'+n(y)+
    '" width="'+n(width)+'" height="'+n(height)+'" rx="1" ry="1"/></g>';
