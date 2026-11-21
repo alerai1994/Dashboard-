@@ -3756,10 +3756,10 @@ async function discoverOrderBookSource(id,serial){
 /* Each displayed BID/ASK set must belong to one actual exchange venue. */
 const orderBookVenueChoices=load('orderBookVenueChoices',{})||{};
 function orderBookVenueDescriptor(row){
- const venue=row?.venue,pair=String(row?.pair||''),symbol=pair.split('/')[0];
+ const venue=row?.venue,pair=String(row?.pair||''),symbol=pair.split('/')[0],quoted=pair.split('/')[1];
  if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot'].includes(venue)||
-  !/^[A-Z0-9]{2,20}\/USDT$/.test(pair))return null;
- const coded=symbol+'USDT';
+  !/^[A-Z0-9]{2,20}\/(USDT|USDC|USD)$/.test(pair))return null;
+ const coded=symbol+quoted;
  if(venue==='Binance Spot')return {venue,pair,urls:[
   'https://data-api.binance.vision/api/v3/depth?symbol='+coded+'&limit=20',
   'https://api.binance.com/api/v3/depth?symbol='+coded+'&limit=20']};
@@ -3772,7 +3772,7 @@ function orderBookVenueDescriptor(row){
  if(venue==='OKX Spot')return {venue,pair,format:'okx',urls:[
   'https://www.okx.com/api/v5/market/books?instId='+symbol+'-USDT&sz=20']};
  if(venue==='KuCoin Spot')return {venue,pair,format:'kucoin',urls:[
-  'https://api.kucoin.com/api/v1/market/orderbook/level2_20?symbol='+symbol+'-USDT']};
+  'https://api.kucoin.com/api/v1/market/orderbook/level2_20?symbol='+symbol+'-'+quoted]};
  return {venue,pair,format:'lbank',urls:[
   'https://api.lbank.info/v2/depth.do?symbol='+symbol.toLowerCase()+'_usdt&size=20']};
 }
@@ -3782,7 +3782,7 @@ function orderBookAvailableVenues(id){
  const symbol=id==='ton'?'GRAM':asset.symbol.replace('-USD','');
  const found=new Map(),list=bundle?.marketSources?.[id];
  const add=row=>{const source=orderBookVenueDescriptor(row);
-  if(source&&source.pair===symbol+'/USDT')found.set(source.venue,source);};
+  if(source&&source.pair.split('/')[0]===symbol)found.set(source.venue,source);};
  if(Array.isArray(list))for(const row of list){
   const age=Date.now()/1000-Number(row?.verifiedAt);
   if(age>=0&&age<7*86400&&(!asset.extended||row.coingeckoId===asset.coingeckoId))add(row);
@@ -3920,7 +3920,8 @@ function cryptoBookEntry(id){
  const b=wanted?(pick||(primary?.venue===wanted?primary:null)):primary;
  if(!a||a.group!=='crypto'||!b||b.id!==id)return null;
  const symbol=id==='ton'?'GRAM':a.symbol.replace('-USD','');
- if(b.unit!==symbol||b.pair!==symbol+'/USDT'||!Array.isArray(b.bids)||!Array.isArray(b.asks))return null;
+ if(b.unit!==symbol||!/^[A-Z0-9]{2,20}\/(USDT|USDC|USD)$/.test(String(b.pair||''))||
+   b.pair.split('/')[0]!==symbol||!Array.isArray(b.bids)||!Array.isArray(b.asks))return null;
  if(a.extended){
   const listings=p?.marketSources?.[id]||[];
   const verified=listings.find(m=>m?.venue===b.venue&&m.pair===b.pair&&
@@ -3983,7 +3984,6 @@ function updateOrderBookAssetList(){
  const label=$('#orderBookSourceLabel'),src=orderBookSource(orderBookState.id);
  if(label)label.textContent=src?src.venue+' · '+src.pair:'Coppia Spot non verificata';
  const toolbar=$('#orderBookVenueToolbar');if(toolbar)toolbar.innerHTML=orderBookVenueMarkup(orderBookState.id);
- const tb=$('#orderBookVenueToolbar');if(tb)tb.innerHTML=orderBookVenueMarkup(orderBookState.id);
 }
 // Local JS backup works for file:// and every OS. HTTP JSON refreshes the cache.
 async function loadAllCryptoBooks(serial,coin){
@@ -4498,7 +4498,7 @@ function etfPage(){
 }
 function orderBookPage(){
  const coin=ASSET_BY_ID[orderBookState.id]||ORDER_BOOK_COINS[0],snap=cryptoBookEntry(coin.id),source=snap?{venue:snap.venue,pair:snap.pair}:orderBookSource(coin.id);
- return secHeader('Order Book Crypto','Profondità Spot reale, per exchange e coppia USDT. Nessun ordine simulato.')+
+ return secHeader('Order Book Crypto','Profondità Spot reale per exchange e coppia USDT, USDC oppure USD, senza ordini simulati.')+
  '<div class="ob-layout"><aside class="ob-picker panel" aria-label="Seleziona una criptovaluta">'+
  '<div class="ob-picker-header"><strong>Tutte le criptovalute</strong><span id="orderBookCoverage">'+ORDER_BOOK_COINS.filter(a=>!!cryptoBookEntry(a.id)).length+'/'+ORDER_BOOK_COINS.length+' book verificati</span></div>'+
  '<label class="ob-search-label" for="orderBookSearch">Cerca crypto</label>'+
@@ -4518,7 +4518,8 @@ function orderBookNumber(v,price=false){
  const decimals=price?(n>0?Math.min(12,Math.max(2,Math.ceil(-Math.log10(n))+5)):2):Math.min(8,n<.001?8:n<1?6:4);
  return n.toLocaleString('it-IT',{minimumFractionDigits:price&&n>=1?2:0,maximumFractionDigits:decimals});
 }
-function orderBookSide(orders,side,unit){
+function orderBookSide(orders,side,unit,quoteCurrency=''+quoteUnit+''){
+ const quoteUnit=esc(quoteCurrency);
  const isBid=side==='bid',sideName=isBid?'BID · Acquisti':'ASK · Vendite';
  const maxCumulative=orders.reduce((sum,[price,qty])=>sum+price*qty,0);
  const quantityUnit=esc(unit);
@@ -4535,25 +4536,25 @@ function orderBookSide(orders,side,unit){
  '<small>'+orders.length+' livelli · '+(isBid?'Miglior BID in alto':'Miglior ASK in basso, vicino al prezzo centrale')+'</small></div>'+
  '<div class="ob-table-scroll" role="region" tabindex="0" aria-label="'+sideName+': prezzi, quantità e totali">'+
  '<table class="ob-book-table"><thead><tr>'+
- '<th scope="col">Prezzo <small>USDT</small></th>'+
+ '<th scope="col">Prezzo <small>'+quoteUnit+'</small></th>'+
  '<th scope="col">Quantità <small>'+quantityUnit+'</small></th>'+
- '<th scope="col">Totale <small>USDT</small></th>'+
+ '<th scope="col">Totale <small>'+quoteUnit+'</small></th>'+
  '<th scope="col" class="ob-depth-th">Profondità</th>'+
  '</tr></thead><tbody>'+
  displayRows.map(({price,qty,total,cumulative})=>{
   // Real cumulative quote depth measured from the best offer on this same side.
   const depth=maxCumulative>0?Math.min(100,Math.max(0,cumulative/maxCumulative*100)):0;
-  return '<tr class="ob-level" style="--depth:'+depth.toFixed(2)+'%" title="Livello '+(isBid?'BID':'ASK')+' · Totale cumulato dalla migliore offerta: '+orderBookNumber(cumulative)+' USDT">'+
+  return '<tr class="ob-level" style="--depth:'+depth.toFixed(2)+'%" title="Livello '+(isBid?'BID':'ASK')+' · Totale cumulato dalla migliore offerta: '+orderBookNumber(cumulative)+' '+quoteUnit+'">'+
    '<td class="ob-level-price">'+orderBookNumber(price,true)+'</td>'+
    '<td class="ob-level-quantity">'+orderBookNumber(qty)+'</td>'+
    '<td class="ob-level-total">'+orderBookNumber(total)+'</td>'+
-   '<td class="ob-level-depth" title="Profondità cumulata: '+orderBookNumber(cumulative)+' USDT ('+depth.toFixed(1)+'%)">'+
+   '<td class="ob-level-depth" title="Profondità cumulata: '+orderBookNumber(cumulative)+' '+quoteUnit+' ('+depth.toFixed(1)+'%)">'+
     '<span class="ob-cumulative-track" aria-hidden="true"><span class="ob-cumulative-fill" style="width:'+depth.toFixed(2)+'%"></span></span></td></tr>';
  }).join('')+'</tbody></table></div>'+
- '<div class="ob-side-footer"><span>Totale '+orders.length+' livelli '+(isBid?'BID':'ASK')+'</span><strong>'+orderBookNumber(cumulative)+' USDT</strong></div></section>';
+ '<div class="ob-side-footer"><span>Totale '+orders.length+' livelli '+(isBid?'BID':'ASK')+'</span><strong>'+orderBookNumber(cumulative)+' '+quoteUnit+'</strong></div></section>';
 }
 // Balance is measured from genuine resting BID/ASK levels of the SAME Spot book.
-// Compare quote notional (price * amount in USDT); never synthesize missing depth.
+// Compare quote notional (price * amount in '+quoteUnit+'); never synthesize missing depth.
 function orderBookPressureStats(bids,asks){
  const value=levels=>Array.isArray(levels)?levels.reduce((sum,entry)=>{
   const price=Number(entry?.[0]),qty=Number(entry?.[1]),amount=price*qty;
@@ -4564,12 +4565,13 @@ function orderBookPressureStats(bids,asks){
  const bidShare=Math.round(bidTotal/total*1000)/10;
  return {bidShare,askShare:Math.round((100-bidShare)*10)/10,bidTotal,askTotal};
 }
-function orderBookPressureBar(bids,asks){
+function orderBookPressureBar(bids,asks,quoteCurrency='USDT'){
+ const quoteUnit=esc(quoteCurrency);
  const share=orderBookPressureStats(bids,asks);
  if(!share)return '<p class="ob-pressure-unavailable">Percentuali BID/ASK non disponibili.</p>';
  const percent=v=>v.toLocaleString('it-IT',{minimumFractionDigits:1,maximumFractionDigits:1})+'%';
  const buy=percent(share.bidShare),sell=percent(share.askShare);
- const description='Profondità dei livelli visibili in USDT · BID '+buy+' · ASK '+sell;
+ const description='Profondità dei livelli visibili in '+quoteUnit+' · BID '+buy+' · ASK '+sell;
  return '<div class="ob-pressure-meter" title="'+esc(description)+'" aria-label="'+esc(description)+'">'+
   '<span class="ob-pressure-label ob-pressure-bid">BID <strong>'+buy+'</strong></span>'+
   '<div class="ob-pressure-track" role="meter" aria-label="Quota BID della profondità visibile" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+share.bidShare+'" aria-valuetext="'+esc(description)+'">'+
@@ -4585,6 +4587,7 @@ function orderBookDisplay(){
  if(!book)return '<div class="ob-status"><strong>'+(orderBookState.busy?'Caricamento degli ordini reali…':'Dati non disponibili')+'</strong>'+
  '<p>'+esc(orderBookState.error||'Lettura del book Spot da '+src.venue+' in corso. Se la fonte non risponde, comparirà un avviso.')+'</p></div>';
  const bids=book.bids,asks=book.asks,bid=bids[0][0],ask=asks[0][0],mid=(ask+bid)/2;
+ const quoteCurrency=(orderBookState.pair||src.pair).split('/')[1]||'USDT';
  const stamp=orderBookState.updatedAt?new Intl.DateTimeFormat('it-IT',{hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date(orderBookState.updatedAt)):'—';
  const changed=orderBookState.error?'<div class="ob-inline-warning">'+esc(orderBookState.error)+'</div>':'';
  const snapshotAge=Math.max(0,Date.now()-orderBookState.updatedAt);
@@ -4611,15 +4614,15 @@ function orderBookDisplay(){
  return '<div class="ob-market-status ob-market-'+bookMode+'" data-orderbook-connection="'+bookMode+'">'+sourceLabel+
  ' · '+esc(orderBookState.venue||src.venue)+' · '+stamp+'</div>'+changed+
  '<div class="ob-book-stack" aria-label="Order Book verticale: vendite, prezzo di scambio e acquisti">'+
- orderBookSide(asks,'ask',book.unit)+
+ orderBookSide(asks,'ask',book.unit,quoteCurrency)+
  '<section class="ob-trade-price" aria-label="'+esc(priceTitle)+'">'+
  '<div class="ob-trade-value"><small>'+priceTitle+'</small>'+
  '<strong class="ob-trade-number">'+orderBookNumber(referencePrice,true)+
  ' <span class="ob-price-arrow ob-price-arrow-'+priceTrend+'" title="'+esc(arrowHint)+'" aria-label="'+esc(arrowHint)+'">'+priceArrow+'</span>'+
- ' <span class="ob-trade-currency">USDT</span></strong></div>'+
- orderBookPressureBar(bids,asks)+
+ ' <span class="ob-trade-currency">'+esc(quoteCurrency)+'</span></strong></div>'+
+ orderBookPressureBar(bids,asks,quoteCurrency)+
  '</section>'+
- orderBookSide(bids,'bid',book.unit)+
+ orderBookSide(bids,'bid',book.unit,quoteCurrency)+
  '</div>';
 }
 function paintOrderBook(){
@@ -4659,7 +4662,7 @@ function liveBookConfig(id){
  if(!source&&!snapshot)return null;
  const venue=snapshot?snapshot.venue:source.venue;
  const pair=snapshot?snapshot.pair:source.pair;
- if(!pair||!pair.endsWith('/USDT'))return null;
+ if(!pair||!/^[A-Z0-9]{2,20}\/(USDT|USDC|USD)$/.test(pair))return null;
  const symbol=pair.replace('/','');
  if(venue==='Binance Spot')return {venue,pair,symbol,kind:'binance',
   url:'wss://data-stream.binance.vision/stream?streams='+symbol.toLowerCase()+
