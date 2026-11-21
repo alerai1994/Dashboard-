@@ -3828,7 +3828,7 @@ function selectOrderBookVenue(venue){
  refreshOrderBook(true);startOrderBookLive(true);
 }
 const orderBookState={
- id:load('orderBookCoin','btc'),search:'',missingOnly:false,data:null,error:null,busy:false,
+ id:load('orderBookCoin','btc'),search:'',data:null,error:null,busy:false,
  venueChoice:'',
  lastTry:0,updatedAt:0,venue:'',pair:'',mode:'',serial:0,abort:null,lastTrade:null,lastTradeAt:0,previousTrade:null
 };
@@ -4036,8 +4036,8 @@ async function loadAllCryptoBooks(serial,coin){
 
 function orderBookAssetList(){
  const needle=orderBookState.search.trim().toLowerCase();
- const assets=ORDER_BOOK_COINS.filter(a=>(a.name+' '+a.short+' '+a.symbol).toLowerCase().includes(needle)&&(!orderBookState.missingOnly||!cryptoBookEntry(a.id)));
- if(!assets.length)return '<div class="ob-empty-list">'+(orderBookState.missingOnly?'Nessuna crypto mancante per questa ricerca.':'Nessuna crypto trovata.')+'</div>';
+ const assets=ORDER_BOOK_COINS.filter(a=>(a.name+' '+a.short+' '+a.symbol).toLowerCase().includes(needle));
+ if(!assets.length)return '<div class="ob-empty-list">Nessuna crypto trovata.</div>';
  return assets.map(a=>{
   const src=orderBookSource(a.id),book=cryptoBookEntry(a.id),selected=orderBookState.id===a.id;
   const age=book?Math.floor((Date.now()-book.time)/60000):null;
@@ -4517,7 +4517,6 @@ function orderBookPage(){
  '<div class="ob-picker-header"><strong>Tutte le criptovalute</strong><span id="orderBookCoverage">'+ORDER_BOOK_COINS.filter(a=>!!cryptoBookEntry(a.id)).length+'/'+ORDER_BOOK_COINS.length+' book verificati</span></div>'+
  '<label class="ob-search-label" for="orderBookSearch">Cerca crypto</label>'+
  '<input type="search" class="ob-search" id="orderBookSearch" placeholder="Nome o simbolo..." value="'+esc(orderBookState.search)+'" autocomplete="off">'+
- '<label class="ob-missing-toggle"><input type="checkbox" id="orderBookMissingOnly"'+(orderBookState.missingOnly?' checked':'')+'> Mostra solo crypto senza Orderbook verificato</label>'+ 
  '<div class="ob-coin-list" id="orderBookAssetList">'+orderBookAssetList()+'</div></aside>'+ 
  '<section class="ob-detail panel" aria-label="Order book della crypto selezionata">'+
  '<div class="ob-detail-heading"><div class="ob-heading-name">'+assetLogo(coin)+'<div><h2>'+esc(coin.name)+'</h2>'+
@@ -9393,11 +9392,6 @@ function setupEvents(){
    if(message){message.hidden=true;message.textContent='';message.classList.remove('is-error')}
    if(['holdingQty','holdingAverageBuyPrice','holdingInvestedUsd'].includes(e.target.id))
     syncPortfolioCostFields(e.target.id);
-  }
-  if(e.target.id==='orderBookMissingOnly'){
-   orderBookState.missingOnly=!!e.target.checked;
-   const list=$('#orderBookAssetList');if(list){list.innerHTML=orderBookAssetList();list.scrollTop=0;}
-   return;
   }
   if(e.target.id==='orderBookSearch'){
    orderBookState.search=e.target.value;
