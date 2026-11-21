@@ -6,10 +6,14 @@ const read=path=>fs.readFileSync(path,'utf8');
 const source=read('script.js'),html=read('index.html'),css=read('style.css');
 assert(source.includes('function cryptoEtfVolumeChart(product,period,samples)'), 'ETF chart must expose share-volume bars');
 assert(source.includes('<rect class="etf-volume-rect"'), 'ETF volume bars must use flat 2D rectangles');
+assert(source.includes("return '<g class=\"etf-volume-bar\">'"), 'ETF bar groups must have one neutral class');
+assert(!source.includes("class=\"etf-volume-bar '+b.direction"), 'ETF volumes must never be colored by price trend');
+assert(css.includes('fill:#ffffff!important;')&&css.includes('fill-opacity:1!important;'),
+ 'ETF bars must be opaque, solid white in all themes');
 assert(!source.includes('etf-volume-side')&&!source.includes('etf-volume-top'), 'ETF chart must never render 3D faces');
 assert(css.includes('.etf-volume-bar .etf-volume-rect'), 'Flat ETF bar style must be defined');
 assert(!css.includes('.etf-volume-bar .etf-volume-side'), 'Obsolete 3D ETF side styles must be removed');
-assert(html.includes('script.js?v=20261121-etf-flat-2d-volumes-v2')&&html.includes('style.css?v=20261121-etf-flat-2d-volumes-v2'),
+assert(html.includes('script.js?v=20261121-etf-white-solid-volumes-v3')&&html.includes('style.css?v=20261121-etf-white-solid-volumes-v3'),
  'All platforms must receive the new flat ETF volumes chart assets');
 assert(source.includes("p.length>=2"), 'ETF chart must keep backward compatibility with price-only data');
 assert(source.includes("p.length>=3"), 'ETF volumes require verified volume rows, not synthetic values');
@@ -17,8 +21,8 @@ assert(source.includes('Nessun volume simulato'), 'ETF chart must explicitly rep
 assert(source.includes('cryptoEtfVolumeChart(product,period,samples)'), 'ETF volume bars must render with the selected period');
 assert(css.includes('.crypto-etf-chart svg.etf-volume-svg'), 'ETF volume chart must resize on mobile');
 assert(css.includes('.etf-volume-bar.down'), 'ETF volume bars need red and green trend styling');
-assert(html.includes('style.css?v=20261121-etf-flat-2d-volumes-v2')&&
- html.includes('script.js?v=20261121-etf-flat-2d-volumes-v2'),
+assert(html.includes('style.css?v=20261121-etf-white-solid-volumes-v3')&&
+ html.includes('script.js?v=20261121-etf-white-solid-volumes-v3'),
  'ETF volume resources must be refreshed across operating systems');
 
 assert(source.includes('async function pollCatalogPrices()'), 'Crypto catalog needs direct periodic quotes');
