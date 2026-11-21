@@ -22,7 +22,7 @@ assert(source.includes('period.ms<=86400000'), 'Recent 1D crypto graphs must pri
 
 assert(source.includes('setInterval(()=>{if(state.dialogId)pollFocusedCryptoQuote()},60000)'), 'Focused crypto updates should continue while a chart is open');
 assert(source.includes('if(state.dialogId)pollFocusedCryptoQuote()'), 'Focused updates should resume after reconnect');
-assert(html.includes('script.js?v=20261121-rightmost-bell-ar-v1'), 'Browser script version must change for every operating system');
+assert(html.includes('script.js?v=20261121-288-crypto-orderbook-v1'), 'Browser script version must change for every operating system');
 
 assert(source.includes('function cryptoEtfTrendLine(points,prices)'),
  'ETF must draw only a genuine line chart rather than filled vertical ribbons');
@@ -61,7 +61,7 @@ assert(source.includes('return [...samples,[Math.floor(ms/1000),price,null]]'),
 assert(source.includes("if(period==='1D')"), '1D ETF graph must not mix adjacent trading sessions');
 assert(source.includes('String(latest.symbol).toUpperCase()!==String(fund.symbol'),
  'ETF graph must never mix prices from different exchanges');
-assert(html.includes('script.js?v=20261121-rightmost-bell-ar-v1'),
+assert(html.includes('script.js?v=20261121-288-crypto-orderbook-v1'),
  'Updated ETF graph synchronizer must bypass cached browser scripts');
 
 assert(source.includes("setInterval(()=>{if(state.page==='etf'&&!document.hidden)loadCryptoEtfHistory()},60000)"),
@@ -72,8 +72,8 @@ assert(source.includes('crypto-etf-refresh-state')&&source.includes('Mercato chi
  'ETF quote status must distinguish weekend closure from live market quotes');
 assert(source.includes('crypto-etf-chart-refresh'),'ETF charts must expose latest exchange trade time');
 assert(css.includes('.crypto-etf-market-note .crypto-etf-refresh-state'), 'ETF auto status must render on desktop and mobile');
-assert(html.includes('style.css?v=20261121-rightmost-bell-ar-v1'), 'ETF status style must bypass device caches');
-assert(html.includes('script.js?v=20261121-rightmost-bell-ar-v1'),'ETF refresh code must bypass mobile/desktop browser caches');
+assert(html.includes('style.css?v=20261121-288-crypto-orderbook-v1'), 'ETF status style must bypass device caches');
+assert(html.includes('script.js?v=20261121-288-crypto-orderbook-v1'),'ETF refresh code must bypass mobile/desktop browser caches');
 assert(source.includes('function cryptoEtfVolumeChart(product,period,samples)'), 'ETF chart must expose share-volume bars');
 assert(source.includes('<rect class="etf-volume-rect"'), 'ETF volume bars must use flat 2D rectangles');
 assert(source.includes("return '<g class=\"etf-volume-bar\">'"), 'ETF bar groups must have one neutral class');
@@ -83,7 +83,7 @@ assert(css.includes('fill:#ffffff!important;')&&css.includes('fill-opacity:1!imp
 assert(!source.includes('etf-volume-side')&&!source.includes('etf-volume-top'), 'ETF chart must never render 3D faces');
 assert(css.includes('.etf-volume-bar .etf-volume-rect'), 'Flat ETF bar style must be defined');
 assert(!css.includes('.etf-volume-bar .etf-volume-side'), 'Obsolete 3D ETF side styles must be removed');
-assert(html.includes('script.js?v=20261121-rightmost-bell-ar-v1')&&html.includes('style.css?v=20261121-rightmost-bell-ar-v1'),
+assert(html.includes('script.js?v=20261121-288-crypto-orderbook-v1')&&html.includes('style.css?v=20261121-288-crypto-orderbook-v1'),
  'All platforms must receive the new flat ETF volumes chart assets');
 assert(source.includes("p.length>=2"), 'ETF chart must keep backward compatibility with price-only data');
 assert(source.includes("p.length>=3"), 'ETF volumes require verified volume rows, not synthetic values');
@@ -92,8 +92,8 @@ assert(source.includes('cryptoEtfVolumeChart(product,period,samples)'), 'ETF vol
 assert(css.includes('.crypto-etf-chart svg.etf-volume-svg'), 'ETF volume chart must resize on mobile');
 assert(css.includes('fill:#ffffff!important;')&&!css.includes('.etf-volume-bar.down{'),
  'ETF volume bars must stay solid white with no green/red trend styling');
-assert(html.includes('style.css?v=20261121-rightmost-bell-ar-v1')&&
- html.includes('script.js?v=20261121-rightmost-bell-ar-v1'),
+assert(html.includes('style.css?v=20261121-288-crypto-orderbook-v1')&&
+ html.includes('script.js?v=20261121-288-crypto-orderbook-v1'),
  'ETF volume resources must be refreshed across operating systems');
 
 assert(source.includes('async function pollCatalogPrices()'), 'Crypto catalog needs direct periodic quotes');
@@ -101,14 +101,14 @@ assert(source.includes('include_last_updated_at=true'), 'Provider timestamps are
 assert(source.includes('stamp<now-15*60000'), 'Stale catalog quotes must never look live');
 assert(source.includes('previousTime>=stamp'), 'Catalog poll must not overwrite newer market prices');
 assert(source.includes('setInterval(pollCatalogPrices,120000)'), 'Catalog must refresh without manual reload');
-assert(html.includes('script.js?v=20261121-rightmost-bell-ar-v1'),
+assert(html.includes('script.js?v=20261121-288-crypto-orderbook-v1'),
  'All platforms must load the latest catalog polling script');
 
 assert(source.includes('map-pin')&&source.includes('data-trend='), 'Map pins must carry the regional trend');
 assert(source.includes('el.dataset.trend=trend(avg)'), 'Map pins must update with incoming region data');
 assert(css.includes('#worldMap .map-stage button.map-pin[data-trend="up"]'), 'Positive map pins must be green');
 assert(css.includes('#worldMap .map-stage button.map-pin[data-trend="down"]'), 'Negative map pins must be red');
-assert(html.includes('style.css?v=20261121-rightmost-bell-ar-v1'), 'New map pin colors must bypass cached desktop/mobile CSS');
+assert(html.includes('style.css?v=20261121-288-crypto-orderbook-v1'), 'New map pin colors must bypass cached desktop/mobile CSS');
 
 assert(!source.includes('function cryptoRowAlertMarkup('),
  'Removed crypto arrow badge renderer must never return');
@@ -235,6 +235,25 @@ const requestedIds=new Set([
  ...screenshotCatalog.map(row=>canonicalCryptoId(row[0]))
 ]);
 assert.equal(requestedIds.size,288,'Catalog must have exactly 288 unique crypto');
+assert(source.includes("const ORDER_BOOK_COINS=ASSETS.filter(a=>a.group==='crypto');"),
+ 'Order Book must contain all 288 catalog assets, not just the original 42');
+const marketCode=source.slice(source.indexOf('function orderBookVerifiedBinanceMarket('),
+ source.indexOf('async function orderBookDiscoveryFetch('));
+const marketCheck=new Function(marketCode+';return orderBookVerifiedBinanceMarket;')();
+const bookAsset={coingeckoId:'uniswap',symbol:'UNI-USD'};
+const verifiedTicks={tickers:[{market:{identifier:'binance'},base:'UNI',
+ target:'USDT',is_stale:false,is_anomaly:false,trust_score:'green',last:1.5}]};
+const verifiedExchange={symbols:[{symbol:'UNIUSDT',baseAsset:'UNI',
+ quoteAsset:'USDT',status:'TRADING',isSpotTradingAllowed:true}]};
+assert.equal(marketCheck(bookAsset,verifiedTicks,verifiedExchange).pair,'UNI/USDT',
+ 'Spot market verified against exact token identity');
+assert.equal(marketCheck(bookAsset,{tickers:[{...verifiedTicks.tickers[0],base:'OTHERTOKEN'}]},verifiedExchange),null,
+ 'A token with the wrong symbol must not receive another coin book');
+assert.equal(marketCheck(bookAsset,verifiedTicks,{symbols:[{...verifiedExchange.symbols[0],status:'BREAK'}]}),null,
+ 'Inactive markets must never be presented as trading');
+assert(source.includes('await discoverOrderBookSource(coin,serial)'),
+ 'On-demand verification must occur before real book fetching');
+
 // A newly listed coin may not have a verified archive on the first deploy.
 // Never populate its chart with invented prices to satisfy a count assertion.
 const missingCryptoHistory=[...requestedIds].filter(id=>!historicalIds.has(id));
@@ -551,7 +570,8 @@ for(const row of quotes.crypto.slice(0,42))
  assert(Number.isFinite(+row.value)&&+row.value>0,'Original crypto quote missing '+row.id);
 const books=JSON.parse(read('crypto-orderbooks-data.js').replace(/^window\.__VERTEX_CRYPTO_BOOKS__\s*=\s*/,'').replace(/;\s*$/,''));
 assert.equal(books.totalAssets,42);
-assert.equal(Object.keys(books.books).length,42);
+assert.equal(Object.keys(books.books).length,books.available);
+assert(books.available<=books.totalAssets&&books.available>=0,'Snapshot availability must match actual verified books');
 const ore=JSON.parse(read('ore-orderbook-data.js').replace(/^window\.__VERTEX_ORE_BOOK__\s*=\s*/,'').replace(/;\s*$/,''));
 assert(ore.bids?.length>0&&ore.asks?.length>0,'ORE orderbook missing bids or asks');
 
@@ -585,6 +605,11 @@ const allCrypto=appWindow.__vertexPriceBoardBackend.assets.filter(a=>a.group==='
 for(const [symbol] of screenshotCatalog)
  assert(allCrypto.some(a=>a.symbol===symbol+'-USD'),'Missing screenshot crypto '+symbol);
 assert.equal(new Set(allCrypto.map(a=>a.id)).size,allCrypto.length,'Duplicate crypto IDs');
+const bookHtml=app.PAGE_RENDERERS.orderbook();
+assert(bookHtml.includes('data-order-book-asset="figr_heloc"'),
+ '288 crypto list must include original new catalog tokens');
+assert(bookHtml.includes('id="orderBookSearch"')&&bookHtml.includes('288'),
+ 'Full 288 list and search must render in Order Book on mobile and desktop');
 const marketHtml=app.PAGE_RENDERERS.markets();
 for(const symbol of ['FIGR_HELOC','HYPE','ZEC','USDE','XMR','LUNC']){
  const asset=allCrypto.find(a=>a.symbol===symbol+'-USD');

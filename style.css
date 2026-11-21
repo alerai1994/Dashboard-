@@ -4946,3 +4946,8 @@ body .topbar .top-actions .search-wrap[hidden]{display:none!important}
   min-height:36px;
  }
 }
+
+/* Full 288-crypto book selector remains responsive and scrollable on all PWAs. */
+.ob-coin-list,.ws-book-choice-list{overscroll-behavior:contain}
+.ob-search,.ws-book-search{font-size:16px}
+.ob-coin-unavailable{overflow-wrap:anywhere}

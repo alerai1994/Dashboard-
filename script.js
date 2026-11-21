@@ -3694,7 +3694,65 @@ function analyticsPage(){
    oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp) uses LBank Spot ORE/USDT.
    Oraichain uses Gate.io and TARS AI uses MEXC. Only the selected coin
    is polled, with an unavailable state when no verified book is accessible. */
-const ORDER_BOOK_COINS=ASSETS.filter(a=>a.group==='crypto'&&!a.extended);
+const ORDER_BOOK_COINS=ASSETS.filter(a=>a.group==='crypto');
+/* Verify an extended coin by its exact CoinGecko identity AND the live
+   Binance Spot exchangeInfo pair before requesting any real BID/ASK levels.
+   Discovery is on-demand for the selected coin, never all 288 at once. */
+const orderBookDiscoveredSources=new Map();
+function orderBookVerifiedBinanceMarket(asset,coinTickers,exchangeInfo){
+ const symbol=String(asset?.symbol||'').replace(/-USD$/i,'').toUpperCase();
+ if(!asset?.coingeckoId||!/^[A-Z0-9]{2,20}$/.test(symbol)||
+  !Array.isArray(coinTickers?.tickers)||!Array.isArray(exchangeInfo?.symbols))return null;
+ const pair=symbol+'USDT';
+ const listed=coinTickers.tickers.some(t=>t&&
+  String(t.market?.identifier||'').toLowerCase()==='binance'&&
+  String(t.base||'').toUpperCase()===symbol&&
+  String(t.target||'').toUpperCase()==='USDT'&&
+  t.is_stale!==true&&t.is_anomaly!==true&&t.trust_score!=='red'&&Number(t.last)>0);
+ const market=exchangeInfo.symbols.some(s=>s&&s.symbol===pair&&
+  s.baseAsset===symbol&&s.quoteAsset==='USDT'&&s.status==='TRADING'&&
+  s.isSpotTradingAllowed!==false);
+ return listed&&market?{venue:'Binance Spot',pair:symbol+'/USDT',urls:[
+  'https://data-api.binance.vision/api/v3/depth?symbol='+pair+'&limit=20',
+  'https://api.binance.com/api/v3/depth?symbol='+pair+'&limit=20'
+ ]}:null;
+}
+async function orderBookDiscoveryFetch(url){
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),6500);
+ try{
+  const res=await fetch(url,{cache:'no-store',signal:controller.signal,
+   headers:{Accept:'application/json'}});
+  if(!res.ok)throw Error('HTTP '+res.status);
+  return await res.json();
+ }finally{clearTimeout(timer);}
+}
+async function discoverOrderBookSource(id,serial){
+ const asset=ASSET_BY_ID[id],prior=orderBookDiscoveredSources.get(id);
+ if(!asset||!asset.extended||!asset.coingeckoId)return null;
+ const ttl=prior?.source?2*60*60*1000:5*60*1000;
+ if(prior&&Date.now()-prior.checkedAt<ttl)return prior.source;
+ const symbol=String(asset.symbol||'').replace(/-USD$/i,'').toUpperCase();
+ if(!/^[A-Z0-9]{2,20}$/.test(symbol))return null;
+ let source=null;
+ try{
+  const tickers=await orderBookDiscoveryFetch('https://api.coingecko.com/api/v3/coins/'+
+   encodeURIComponent(asset.coingeckoId)+
+   '/tickers?exchange_ids=binance&order=trust_score_desc&depth=false&page=1');
+  if(serial!==orderBookState.serial||id!==orderBookState.id)return null;
+  if(tickers?.tickers?.some(t=>t&&String(t.market?.identifier||'').toLowerCase()==='binance'&&
+   String(t.base||'').toUpperCase()===symbol&&
+   String(t.target||'').toUpperCase()==='USDT'&&t.is_stale!==true&&
+   t.is_anomaly!==true&&t.trust_score!=='red'&&Number(t.last)>0)){
+   const exchange=await orderBookDiscoveryFetch(
+    'https://data-api.binance.vision/api/v3/exchangeInfo?symbol='+symbol+'USDT');
+   if(serial!==orderBookState.serial||id!==orderBookState.id)return null;
+   source=orderBookVerifiedBinanceMarket(asset,tickers,exchange);
+  }
+ }catch(_e){/* Rate limit, CORS or missing market: no simulated depth. */}
+ if(serial!==orderBookState.serial||id!==orderBookState.id)return null;
+ orderBookDiscoveredSources.set(id,{source,checkedAt:Date.now()});
+ return source;
+}
 const orderBookState={
  id:load('orderBookCoin','btc'),search:'',data:null,error:null,busy:false,
  lastTry:0,updatedAt:0,venue:'',pair:'',mode:'',serial:0,abort:null,lastTrade:null,lastTradeAt:0,previousTrade:null
@@ -3744,7 +3802,8 @@ function orderBookSource(id){
  if(id==='tai')return {venue:'MEXC Spot',pair:'TAI/USDT',urls:[
   'https://api.mexc.com/api/v3/depth?symbol=TAIUSDT&limit=20'
  ]};
- return null;
+ const mapped=orderBookDiscoveredSources.get(id);
+ return mapped?.source&&Date.now()-mapped.checkedAt<2*60*60*1000?mapped.source:null;
 }
 // Every item is a verified snapshot from one named Spot venue and one USDT pair.
 // Never combine bids from one exchange with asks from another exchange.
@@ -3807,7 +3866,9 @@ function updateOrderBookAssetList(){
   list.scrollTop=top;
  }
  const coverage=$('#orderBookCoverage');
- if(coverage)coverage.textContent=ORDER_BOOK_COINS.filter(a=>!!cryptoBookEntry(a.id)).length+'/'+ORDER_BOOK_COINS.length+' book';
+ if(coverage)coverage.textContent=ORDER_BOOK_COINS.filter(a=>!!cryptoBookEntry(a.id)).length+'/'+ORDER_BOOK_COINS.length+' book verificati';
+ const label=$('#orderBookSourceLabel'),src=orderBookSource(orderBookState.id);
+ if(label)label.textContent=src?src.venue+' · '+src.pair:'Coppia Spot non verificata';
 }
 // Local JS backup works for file:// and every OS. HTTP JSON refreshes the cache.
 async function loadAllCryptoBooks(serial,coin){
@@ -3851,7 +3912,8 @@ function orderBookAssetList(){
  return assets.map(a=>{
   const src=orderBookSource(a.id),book=cryptoBookEntry(a.id),selected=orderBookState.id===a.id;
   const age=book?Math.floor((Date.now()-book.time)/60000):null;
-  const price=book?'<span class="ob-coin-prices"><span class="color-up" title="Miglior prezzo BID">BID '+orderBookNumber(book.bids[0][0],true)+'</span><span class="color-down" title="Miglior prezzo ASK">ASK '+orderBookNumber(book.asks[0][0],true)+'</span></span>':'<span class="ob-coin-unavailable">Book in attesa</span>';
+  const price=book?'<span class="ob-coin-prices"><span class="color-up" title="Miglior prezzo BID">BID '+orderBookNumber(book.bids[0][0],true)+'</span><span class="color-down" title="Miglior prezzo ASK">ASK '+orderBookNumber(book.asks[0][0],true)+'</span></span>':
+    '<span class="ob-coin-unavailable">'+(src?'Book in attesa':a.extended?'Verifica Spot alla selezione':'Book non disponibile')+'</span>';
   return '<button class="ob-coin'+(selected?' is-selected':'')+'" data-order-book-asset="'+esc(a.id)+'" type="button" aria-pressed="'+selected+'">'+
    '<span class="ob-coin-logo">'+assetLogo(a)+'</span><span class="ob-coin-label"><strong>'+esc(a.short||a.name)+'</strong><small>'+esc(a.id==='ton'?'TON → GRAM':a.symbol.replace('-USD',''))+(book?' · '+esc(book.venue)+(age>30?' · '+age+' min':''):'')+'</small>'+price+'</span>'+
    '<span class="ob-coin-venue" title="'+esc(book?book.venue:(src?src.venue+' · in attesa':'Coppia non verificata'))+'">'+(book?'●':'—')+'</span></button>';
@@ -4323,16 +4385,16 @@ function orderBookPage(){
  const coin=ASSET_BY_ID[orderBookState.id]||ORDER_BOOK_COINS[0],snap=cryptoBookEntry(coin.id),source=snap?{venue:snap.venue,pair:snap.pair}:orderBookSource(coin.id);
  return secHeader('Order Book Crypto','Profondità Spot reale, per exchange e coppia USDT. Nessun ordine simulato.')+
  '<div class="ob-layout"><aside class="ob-picker panel" aria-label="Seleziona una criptovaluta">'+
- '<div class="ob-picker-header"><strong>Tutte le criptovalute</strong><span id="orderBookCoverage">'+ORDER_BOOK_COINS.filter(a=>!!cryptoBookEntry(a.id)).length+'/'+ORDER_BOOK_COINS.length+' book</span></div>'+
+ '<div class="ob-picker-header"><strong>Tutte le criptovalute</strong><span id="orderBookCoverage">'+ORDER_BOOK_COINS.filter(a=>!!cryptoBookEntry(a.id)).length+'/'+ORDER_BOOK_COINS.length+' book verificati</span></div>'+
  '<label class="ob-search-label" for="orderBookSearch">Cerca crypto</label>'+
  '<input type="search" class="ob-search" id="orderBookSearch" placeholder="Nome o simbolo..." value="'+esc(orderBookState.search)+'" autocomplete="off">'+
  '<div class="ob-coin-list" id="orderBookAssetList">'+orderBookAssetList()+'</div></aside>'+
  '<section class="ob-detail panel" aria-label="Order book della crypto selezionata">'+
  '<div class="ob-detail-heading"><div class="ob-heading-name">'+assetLogo(coin)+'<div><h2>'+esc(coin.name)+'</h2>'+
- '<small>'+esc(source?source.venue+' · '+source.pair:'Coppia Spot non verificata')+'</small>'+(coin.id==='ton'?'<small>Toncoin rinominato GRAM (1:1)</small>':'')+'</div></div>'+
+ '<small id="orderBookSourceLabel">'+esc(source?source.venue+' · '+source.pair:'Coppia Spot non verificata')+'</small>'+(coin.id==='ton'?'<small>Toncoin rinominato GRAM (1:1)</small>':'')+'</div></div>'+
  '<button class="btn btn-small" type="button" data-order-book-refresh="1" aria-label="Aggiorna order book">'+sym('refresh')+' Aggiorna</button></div>'+
  '<div class="ob-content" id="orderBookContent" aria-live="off">'+orderBookDisplay()+'</div>'+
- '<p class="ob-footnote">Order Book Spot della criptovaluta selezionata: Binance, Gate e LBank ricevono aggiornamenti WebSocket in streaming (fino a 100 ms, secondo la fonte); MEXC utilizza richieste REST ogni circa 3 secondi, non uno stream live. Il badge indica se i dati sono LIVE, aggiornati con polling o uno snapshot di riserva. Solo livelli reali della coppia indicata, mai simulati. Se la rete o la fonte si interrompe, sono segnalati come non aggiornati. La pagina deve rimanere aperta.</p>'+
+ '<p class="ob-footnote">Le '+ORDER_BOOK_COINS.length+' crypto sono selezionabili; i BID/ASK sono mostrati solo per coppie Spot verificate. I nuovi token vengono identificati usando CoinGecko e Binance alla selezione, mai tramite il solo ticker. Order Book Spot della criptovaluta selezionata: Binance, Gate e LBank ricevono aggiornamenti WebSocket in streaming (fino a 100 ms, secondo la fonte); MEXC utilizza richieste REST ogni circa 3 secondi, non uno stream live. Il badge indica se i dati sono LIVE, aggiornati con polling o uno snapshot di riserva. Solo livelli reali della coppia indicata, mai simulati. Se la rete o la fonte si interrompe, sono segnalati come non aggiornati. La pagina deve rimanere aperta.</p>'+
  '</section></div>';
 }
 function orderBookNumber(v,price=false){
@@ -4402,7 +4464,7 @@ function orderBookPressureBar(bids,asks){
 }
 function orderBookDisplay(){
  const src=orderBookSource(orderBookState.id);
- if(!src)return '<div class="ob-status"><strong>Order book Spot non disponibile</strong><p>Per questa crypto non è stata verificata una coppia di order book corrispondente. Non vengono mostrati ordini di un token omonimo o dati stimati.</p></div>';
+ if(!src)return '<div class="ob-status"><strong>'+(orderBookState.busy?'Verifica coppia Spot in corso…':'Order book Spot non disponibile')+'</strong><p>'+esc(orderBookState.error||'Nessuna coppia Spot verificata per questa crypto. Non vengono mostrati ordini di un token omonimo o dati stimati.')+'</p></div>';
  const book=orderBookState.data,stale=book&&Date.now()-orderBookState.updatedAt>30000;
  if(!book)return '<div class="ob-status"><strong>'+(orderBookState.busy?'Caricamento degli ordini reali…':'Dati non disponibili')+'</strong>'+
  '<p>'+esc(orderBookState.error||'Lettura del book Spot da '+src.venue+' in corso. Se la fonte non risponde, comparirà un avviso.')+'</p></div>';
@@ -4793,22 +4855,33 @@ async function refreshOrderBook(force=false){
  if(!force&&(orderBookIsStreaming()||orderBookIsFastPolling()))return;
  if(orderBookState.busy&&!force)return;
  if(!force&&Date.now()-orderBookState.lastTry<14000)return;
- const src=orderBookSource(orderBookState.id);
- if(!src){orderBookState.error=null;orderBookState.data=null;orderBookState.lastTry=Date.now();paintOrderBook();return;}
+ let src=orderBookSource(orderBookState.id);
  if(orderBookState.busy)cancelOrderBookFetch();
  const serial=++orderBookState.serial,coin=orderBookState.id;
  orderBookState.busy=true;orderBookState.lastTry=Date.now();orderBookState.error=null;
  paintOrderBook();
- // Verified snapshot covers every listed crypto, including local Windows/Mac/Linux.
+ if(!src&&ASSET_BY_ID[coin]?.extended){
+  src=await discoverOrderBookSource(coin,serial);
+  if(serial!==orderBookState.serial||coin!==orderBookState.id)return;
+  updateOrderBookAssetList();
+  if(src)startOrderBookLive(true);
+ }
+ if(!src){
+  orderBookState.error='Nessuna coppia Spot verificata, oppure la verifica con la fonte è temporaneamente non raggiungibile.';
+  orderBookState.data=null;orderBookState.busy=false;paintOrderBook();return;
+ }
+ // The published all-crypto backup currently contains the original 42 only.
  let backupFailure='';
- try{
-  if(await loadAllCryptoBooks(serial,coin)){
-   if(serial===orderBookState.serial){
-    orderBookState.lastTry=Date.now();orderBookState.busy=false;paintOrderBook();
+ if(!ASSET_BY_ID[coin]?.extended){
+  try{
+   if(await loadAllCryptoBooks(serial,coin)){
+    if(serial===orderBookState.serial){
+     orderBookState.lastTry=Date.now();orderBookState.busy=false;paintOrderBook();
+    }
+    return;
    }
-   return;
-  }
- }catch(err){backupFailure=err&&err.message?err.message:'Snapshot non raggiungibile';}
+  }catch(err){backupFailure=err&&err.message?err.message:'Snapshot non raggiungibile';}
+ }
  if(serial!==orderBookState.serial)return;
  // Preserve existing dedicated ORE backup while the new 42-book feed starts.
  if(coin==='ore'){
