@@ -581,7 +581,7 @@ const books=JSON.parse(read('crypto-orderbooks-data.js').replace(/^window\.__VER
 assert([42,288].includes(books.totalAssets),'Initial seed or full 288 book snapshot expected');
 assert(source.includes('verifiedMarkets')&&source.includes('loadAllCryptoBooks(serial,coin)'),
  'Extended orderbook must use verified server snapshots before browser discovery');
-assert(html.includes('crypto-orderbooks-data.js?v=20261121-288-spot-feeds-v2'),
+assert(html.includes('crypto-orderbooks-data.js?v=20261121-288-multi-source-v5'),
  'Browsers and installed PWAs need a fresh snapshot URL');
 assert.equal(Object.keys(books.books).length,books.available);
 assert(books.available<=books.totalAssets&&books.available>=0,'Snapshot availability must match actual verified books');
