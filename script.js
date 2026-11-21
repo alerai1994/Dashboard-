@@ -5813,6 +5813,48 @@ async function pollCatalogPrices(){
  }finally{clearTimeout(timeout);catalogLivePoll.busy=false}
 }
 
+/* Focused refresh for the cryptocurrency currently opened in the chart.
+   CoinGecko public responses are provider-cached snapshots, never trade-stream
+   data; requests are throttled and stale values cannot overwrite newer ticks. */
+const focusedCryptoPoll={busy:false,retryAt:0,lastById:new Map()};
+async function pollFocusedCryptoQuote(){
+ const id=state.dialogId,asset=ASSET_BY_ID[id];
+ if(!asset||asset.group!=='crypto'||id==='ore'||STREAM_PAIRS[id]||
+    document.hidden||!navigator.onLine||focusedCryptoPoll.busy||
+    Date.now()<focusedCryptoPoll.retryAt||!asset.coingeckoId)return;
+ const last=focusedCryptoPoll.lastById.get(id)||0;
+ if(Date.now()-last<60000)return;
+ if(!/^[a-z0-9-]{1,100}$/.test(asset.coingeckoId))return;
+ focusedCryptoPoll.busy=true;focusedCryptoPoll.lastById.set(id,Date.now());
+ const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),9000);
+ try{
+  const url='https://api.coingecko.com/api/v3/simple/price?ids='+
+   encodeURIComponent(asset.coingeckoId)+
+   '&vs_currencies=usd&include_24hr_change=true&include_last_updated_at=true';
+  const response=await fetch(url,{signal:controller.signal,cache:'no-store'});
+  if(!response.ok)throw Error('CoinGecko HTTP '+response.status);
+  const body=await response.json(),data=body?.[asset.coingeckoId];
+  const value=Number(data?.usd),stamp=Number(data?.last_updated_at)*1000,now=Date.now();
+  if(state.dialogId!==id||!Number.isFinite(value)||value<=0||
+     !Number.isFinite(stamp)||stamp>now+60000||stamp<now-15*60000)return;
+  const old=quote(id),oldStamp=Date.parse(old?.time||'');
+  if(Number.isFinite(oldStamp)&&oldStamp>=stamp)return;
+  const daily=Number(data?.usd_24h_change);
+  const next={...(old||{id}),id,value,
+   change:Number.isFinite(daily)?daily:null,
+   time:new Date(stamp).toISOString(),currency:'USD',
+   source:'CoinGecko · aggiornamento periodico (non streaming)',
+   live:false,polled:false,delayed:false,received:now};
+  recordQuotePriceDirection(id,old,next);
+  state.quotes[id]=next;
+  observeChartQuote(id,next);streamStatus.dirty.add(id);scheduleLivePaint();
+  syncDetailVerifiedPrice();updateChartLiveQuoteStatus();scheduleDetailChartDraw();
+  focusedCryptoPoll.retryAt=0;
+ }catch(_error){
+  focusedCryptoPoll.retryAt=Date.now()+120000;
+ }finally{clearTimeout(timeout);focusedCryptoPoll.busy=false}
+}
+
 async function fetchQuotes(isManual=false,forceFull=false){
  if(snapshotFetch.busy)return;
  snapshotFetch.busy=true;
@@ -6443,6 +6485,7 @@ function chartQuoteVenue(q){
  const source=String(q&&q.source||'').toLowerCase();
  if(source.includes('binance'))return 'binance';
  if(source.includes('lbank'))return 'lbank';
+ if(source.includes('coingecko'))return 'coingecko';
  if(source.includes('yahoo'))return 'yahoo';
  if(source.includes('biquote')||source.includes('mt5'))return 'mt5';
  return '';
@@ -6453,6 +6496,10 @@ function chartQuoteCompatible(id,venue,source){
  if(venue==='yahoo')return asset.group!=='crypto'&&history.includes('yahoo');
  if(venue==='binance')return asset.group==='crypto'&&history.includes('binance');
  if(venue==='lbank')return asset.group==='crypto'&&history.includes('lbank');
+ // CoinGecko observations may extend only an explicitly sampled CoinGecko
+ // price-series. They never become exchange OHLC candles.
+ if(venue==='coingecko')return asset.group==='crypto'&&
+  chartSeries.sampled===true&&history.includes('coingecko');
  // Do not merge broker MT5 indicative prices with Yahoo historical candles.
  return false;
 }
@@ -6513,12 +6560,14 @@ function chartWithObservedQuotes(id,base){
   if(bucket<latestBucket||tick.ts<lastTime)continue;
   if(bucket>latestBucket){
    out.push({t:bucket/1000,o:tick.price,h:tick.price,
-    l:tick.price,c:tick.price,observed:true});
+    l:tick.price,c:tick.price,observed:true,
+    ...(tick.venue==='coingecko'?{sampled:true}:{})});
    latestBucket=bucket;changed=true;
   }else{
    const index=out.length-1,prev=out[index];
    out[index]={...prev,h:Math.max(prev.h,tick.price),
-    l:Math.min(prev.l,tick.price),c:tick.price,observed:true};
+    l:Math.min(prev.l,tick.price),c:tick.price,observed:true,
+    ...(tick.venue==='coingecko'?{sampled:true}:{})};
    changed=true;
   }
   lastTime=tick.ts;
@@ -6607,9 +6656,12 @@ function updateChartLiveQuoteStatus(){
  const id=state.dialogId,q=quote(id),label=detailVerifiedPriceStatus(id);
  const venue=chartQuoteVenue(q),compatible=chartQuoteCompatible(id,venue,chartSeries.source);
  const visible=getCandles(id),updated=compatible&&visible.length>=2&&visible[visible.length-1].observed===true;
+ const line=chartLiveObservedPricePoints(id,chartSeries.pricePoints);
+ const updatedLine=Array.isArray(line)&&line.length>=2&&line.at(-1).observed===true;
  const brokerBar=venue==='mt5'?forexBrokerObservedCandle(id):null;
  el.textContent=label+(brokerBar?' · candela MT5 MID indicativa a destra, separata dallo storico Yahoo':
-  updated?' · candela recente parziale aggiornata da prezzi osservati':'');
+  updated?' · candela recente parziale aggiornata da prezzi osservati':
+  updatedLine?' · linea aggiornata con prezzi CoinGecko osservati':'');
  el.classList.toggle('live-online',label.startsWith('● LIVE'));
 }
 function scheduleMarketMiniPaint(){
@@ -7757,7 +7809,9 @@ function scheduleChartLiveRefresh(){
  if(!state.dialogId)return;
  const seconds=!!CHART_PERIOD_BY_ID[chartRange]?.seconds;
  const asset=ASSET_BY_ID[state.dialogId];
- const delay=seconds?5000:asset?.group==='crypto'?15000:60000;
+ // Streaming quotes already redraw the chart without refetching history;
+ // refresh OHLC sources periodically rather than every 15 seconds.
+ const delay=seconds?5000:60000;
  chartLiveTimer=setTimeout(()=>{
   chartLiveTimer=null;
   if(!state.dialogId)return;
@@ -7775,8 +7829,9 @@ function openAsset(id){
  const a=ASSET_BY_ID[id];if(!a)return;
  chartFetchState.sequence++;
  if(chartFetchState.abort)chartFetchState.abort.abort();
- // Newly added crypto open on the available historical view first.
- chartRange=a.group==='crypto'?'MAX':'1D';chartHoverForex=false;
+ // Open ALL cryptocurrencies on their recent 1D chart so fresh market
+ // observations are visible immediately; MAX remains selectable manually.
+ chartRange='1D';chartHoverForex=false;
  chartSeries={id:null,range:null,candles:[],source:'',loading:false,error:'',partial:false};
  state.dialogId=id;state.chartShift=0;state.chartHover=null;
  chartFib.mode='idle';chartFib.draft=null;chartFib.view=null;chartFib.manualView=null;
@@ -7786,8 +7841,11 @@ function openAsset(id){
  refreshDialog();
  if(!dlg.open)dlg.showModal();
  if(chartSupportsRanges(a)){
+  // Seed the graph from an already verified market quote immediately.
+  if(a.group==='crypto')observeChartQuote(id,quote(id));
   loadChartHistory();
   scheduleChartLiveRefresh();
+  if(a.group==='crypto')pollFocusedCryptoQuote();
   // Native fullscreen when permitted by the browser; viewport-filling CSS
   // remains the reliable fallback on mobile and restricted browsers.
   if(typeof dlg.requestFullscreen==='function'){
@@ -7855,6 +7913,25 @@ function toggleWatch(id){
  save('watch',state.watch);
  if(state.dialogId)refreshDialog();
  if(state.page==='watchlist'||state.page==='home')render();
+}
+/* Directly extend an observed CoinGecko price LINE, not OHLC bars. The
+   exact crypto ID, USD denomination and timestamp are checked elsewhere. */
+function chartLiveObservedPricePoints(id,base){
+ if(!Array.isArray(base)||base.length<2||chartSeries.id!==id||
+    chartSeries.range!==chartRange||chartSeries.kind!=='price-line'||
+    !String(chartSeries.source||'').toLowerCase().includes('coingecko'))
+  return base;
+ const q=quote(id),observations=chartObservedQuotes.get(id)||[];
+ if(String(q?.currency||'').toUpperCase()!=='USD')return base;
+ const out=base.slice(),now=Date.now();
+ let last=Number(out[out.length-1].t)*1000;
+ for(const tick of observations){
+  if(tick.venue!=='coingecko'||!Number.isFinite(tick.price)||tick.price<=0||
+     tick.ts<=last||tick.ts>now+60000||now-tick.ts>15*60000)continue;
+  out.push({t:Math.floor(tick.ts/1000),p:tick.price,observed:true});
+  last=tick.ts;
+ }
+ return out;
 }
 function getCandles(id){
  if(chartSupportsRanges(ASSET_BY_ID[id])){
@@ -8207,8 +8284,9 @@ function drawChart(){
  }
  if(!sample.length){
   chartFib.view=null;
-  const observations=chartSeries.id===state.dialogId&&chartSeries.range===chartRange?
+  const basePoints=chartSeries.id===state.dialogId&&chartSeries.range===chartRange?
    chartSeries.pricePoints:null;
+  const observations=chartLiveObservedPricePoints(state.dialogId,basePoints);
   if(Array.isArray(observations)&&observations.length>=2){
    drawObservedHistoricalPrices(ctx,observations,width,right,left,chartW,regions[0],color);
    for(const pane of regions.slice(1))
@@ -9129,6 +9207,7 @@ function startVertexApp(){
  setInterval(()=>{if(!document.hidden&&state.page==='global')refreshGlobalCryptoCaps()},GLOBAL_CRYPTO_CAP_POLL_MS);
  setInterval(pollCryptoPrices,15000);
  setInterval(pollCatalogPrices,120000);
+ setInterval(()=>{if(state.dialogId)pollFocusedCryptoQuote()},60000);
  // Source-verified ETF share prices and volume charts, never fictitious live ticks.
  setInterval(()=>{if(state.page==='etf'&&!document.hidden)loadCryptoEtfHistory()},60000);
  // Retry charts which were previously unavailable when their real data
@@ -9147,6 +9226,7 @@ function startVertexApp(){
    checkVertexRomeMidnight();
    connectCryptoStream();connectForexStream();fetchQuotes().then(()=>pollCatalogPrices());pollCryptoPrices();refreshVisibleQuoteFreshness();updateWorldSunlight(true);applyBrightness();
    if(state.page==='etf')loadCryptoEtfHistory();
+   if(state.dialogId)pollFocusedCryptoQuote();
    if(orderBookViewActive()){startOrderBookLive();refreshOrderBook()}
     if(state.dialogId){scheduleDetailChartDraw();scheduleChartLiveRefresh()}
   }
@@ -9154,6 +9234,7 @@ function startVertexApp(){
  window.addEventListener('online',()=>{
   checkVertexRomeMidnight();connectCryptoStream();connectForexStream();fetchQuotes().then(()=>pollCatalogPrices());pollCryptoPrices();
   if(state.page==='etf')loadCryptoEtfHistory();
+  if(state.dialogId)pollFocusedCryptoQuote();
   if(orderBookViewActive()){startOrderBookLive(true);refreshOrderBook(true)}
  });
  window.addEventListener('offline',()=>{
