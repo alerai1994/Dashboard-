@@ -7,6 +7,8 @@ on:
       - index.html
       - .github/scripts/ore-orderbook.py
       - .github/scripts/crypto-orderbooks.py
+      - .github/scripts/crypto-orderbooks-expanded.py
+      - crypto-extended.js
       - .github/workflows/ore-orderbook.yml
   schedule:
     - cron: '*/5 * * * *'
@@ -19,7 +21,7 @@ concurrency:
 jobs:
   snapshot:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
       - name: Validate order book fetcher
@@ -28,8 +30,12 @@ jobs:
         run: python3 .github/scripts/ore-orderbook.py
       - name: Validate all crypto collectors
         run: python3 -m py_compile .github/scripts/crypto-orderbooks.py
-      - name: Read verified Spot depth for all 42 cryptocurrencies
-        run: python3 .github/scripts/crypto-orderbooks.py
+      - name: Validate expanded 288-crypto collector
+        run: |
+          python3 -m py_compile .github/scripts/crypto-orderbooks-expanded.py
+          python3 .github/scripts/crypto-orderbooks-expanded.py --selftest
+      - name: Refresh source-verified Spot depth for all 288 catalog assets
+        run: python3 .github/scripts/crypto-orderbooks-expanded.py
       - name: Publish verified depth snapshot
         shell: bash
         run: |

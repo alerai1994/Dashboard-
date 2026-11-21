@@ -3802,6 +3802,19 @@ function orderBookSource(id){
  if(id==='tai')return {venue:'MEXC Spot',pair:'TAI/USDT',urls:[
   'https://api.mexc.com/api/v3/depth?symbol=TAIUSDT&limit=20'
  ]};
+ const asset=ASSET_BY_ID[id],published=cryptoBookBundle()?.verifiedMarkets?.[id];
+ if(asset?.extended&&published?.coingeckoId===asset.coingeckoId&&
+    published?.symbol===asset.symbol.replace('-USD','')&&
+    published?.pair===published.symbol+'/USDT'&&
+    published?.venue==='Binance Spot'&&
+    Number(published.verifiedAt)>0&&
+    Date.now()/1000-Number(published.verifiedAt)<7*24*60*60){
+  const symbol=published.symbol+'USDT';
+  return {venue:'Binance Spot',pair:published.pair,urls:[
+   'https://data-api.binance.vision/api/v3/depth?symbol='+symbol+'&limit=20',
+   'https://api.binance.com/api/v3/depth?symbol='+symbol+'&limit=20'
+  ]};
+ }
  const mapped=orderBookDiscoveredSources.get(id);
  return mapped?.source&&Date.now()-mapped.checkedAt<2*60*60*1000?mapped.source:null;
 }
@@ -3816,6 +3829,12 @@ function cryptoBookEntry(id){
  if(!a||a.group!=='crypto'||!b||b.id!==id)return null;
  const symbol=id==='ton'?'GRAM':a.symbol.replace('-USD','');
  if(b.unit!==symbol||b.pair!==symbol+'/USDT'||!Array.isArray(b.bids)||!Array.isArray(b.asks))return null;
+ if(a.extended){
+  const verified=p?.verifiedMarkets?.[id];
+  if(!verified||verified.coingeckoId!==a.coingeckoId||verified.symbol!==symbol||
+     verified.venue!==b.venue||verified.pair!==b.pair||
+     Date.now()/1000-Number(verified.verifiedAt)>7*24*60*60)return null;
+ }
  if(id==='ore'&&b.mint!=='oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp')return null;
  const t=Date.parse(b.capturedAt||'');
  if(!Number.isFinite(t)||t>Date.now()+60000||Date.now()-t>3*60*60*1000)return null;
@@ -3888,7 +3907,7 @@ async function loadAllCryptoBooks(serial,coin){
      {cache:'no-store',signal:controller.signal});
    if(!response.ok)throw Error('HTTP '+response.status);
    const payload=await response.json();
-   if(!payload||!payload.books||typeof payload.books!=='object'||payload.totalAssets!==42)
+   if(!payload||!payload.books||typeof payload.books!=='object'||![42,ORDER_BOOK_COINS.length].includes(payload.totalAssets))
     throw Error('Snapshot crypto non valido');
    const old=Date.parse(cryptoBookBundle()&&cryptoBookBundle().generatedAt||'')||0;
    const next=Date.parse(payload.generatedAt||'')||0;
@@ -4860,8 +4879,20 @@ async function refreshOrderBook(force=false){
  const serial=++orderBookState.serial,coin=orderBookState.id;
  orderBookState.busy=true;orderBookState.lastTry=Date.now();orderBookState.error=null;
  paintOrderBook();
- if(!src&&ASSET_BY_ID[coin]?.extended){
-  src=await discoverOrderBookSource(coin,serial);
+ if(ASSET_BY_ID[coin]?.extended){
+  // The GitHub-hosted collector verifies coin identity on the SERVER, avoiding
+  // the CORS/429 failures of unauthenticated browser-side CoinGecko calls.
+  try{
+   if(await loadAllCryptoBooks(serial,coin)){
+    if(serial!==orderBookState.serial)return;
+    orderBookState.busy=false;paintOrderBook();
+    startOrderBookLive(true);
+    return;
+   }
+  }catch(_error){/* If unavailable, check the selected coin directly below. */}
+  if(serial!==orderBookState.serial||coin!==orderBookState.id)return;
+  src=orderBookSource(coin);
+  if(!src)src=await discoverOrderBookSource(coin,serial);
   if(serial!==orderBookState.serial||coin!==orderBookState.id)return;
   updateOrderBookAssetList();
   if(src)startOrderBookLive(true);
