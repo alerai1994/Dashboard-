@@ -4,6 +4,14 @@ const fs=require('node:fs');
 const assert=require('node:assert/strict');
 const read=path=>fs.readFileSync(path,'utf8');
 const source=read('script.js'),html=read('index.html'),css=read('style.css');
+assert(source.includes("setInterval(()=>{if(state.page==='etf'&&!document.hidden)loadCryptoEtfHistory()},60000)"),
+ 'ETF volume and price history must refresh automatically when the ETF view is open');
+assert(source.includes('Date.now()-etfHistory.lastFetch<60000'),
+ 'ETF graph refresh must be throttled to once per minute');
+assert(source.includes('crypto-etf-refresh-state')&&source.includes('Mercato chiuso · ultimo scambio'),
+ 'ETF quote status must distinguish weekend closure from live market quotes');
+assert(source.includes('crypto-etf-chart-refresh'),'ETF charts must expose latest exchange trade time');
+assert(html.includes('script.js?v=20261121-etf-auto-refresh-v4'),'ETF refresh code must bypass mobile/desktop browser caches');
 assert(source.includes('function cryptoEtfVolumeChart(product,period,samples)'), 'ETF chart must expose share-volume bars');
 assert(source.includes('<rect class="etf-volume-rect"'), 'ETF volume bars must use flat 2D rectangles');
 assert(source.includes("return '<g class=\"etf-volume-bar\">'"), 'ETF bar groups must have one neutral class');
