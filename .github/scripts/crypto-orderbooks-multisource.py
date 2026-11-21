@@ -29,8 +29,12 @@ BOOK_TTL = 25 * 60
 SCAN_INTERVAL = 2 * 3600
 SCAN_BATCH = 32
 BOOK_BATCH = 220
-PRIORITY = ("btc", "eth", "sol", "usdt", "usdc", "hype", "usde", "xmr",
-            "rlusd", "figr_heloc", "pyusd", "shib", "link", "inj", "ore")
+# Prioritize assets shown without books in the mobile/desktop catalog.
+# Verification still requires exact CoinGecko ID AND an exchange-listed pair.
+PRIORITY = ("xmr", "leo", "wbt", "dai", "cro", "paxg", "ondo", "algo",
+            "icp", "kcs", "pol", "jup", "kas", "morpho", "rlusd", "pyusd",
+            "usdg", "xaut", "usdt", "bgb", "okb", "gt", "mnt", "usdd",
+            "btc", "eth", "sol", "usdc", "hype", "usde", "shib", "inj", "ore")
 KNOWN = {
     "Binance Spot": {"keys": {"binance"}},
     "Gate Spot": {"keys": {"gate", "gate-io"}},
@@ -267,16 +271,19 @@ def discover_one(cid, symbol, coin_id, ts):
                         break
                 except (OSError, ValueError, TypeError, KeyError):
                     break
-        # Popular assets have additional exchange-specific ticker pages.
-        # Both the ID and an actual live Spot exchangeInfo listing are required.
-        if cid in ("btc", "eth", "sol", "hype", "usdt", "usdc"):
+        # A filtered exchange page can expose genuine listings missing from
+        # CoinGecko's global top-volume pages. Probe only priority assets,
+        # and only venues not already found, to respect public rate limits.
+        # Both the exact CoinGecko ID and current exchange metadata must agree.
+        if cid in PRIORITY:
             for venue, exchange_id in (
                 ("Binance Spot", "binance"), ("Gate Spot", "gate"),
                 ("MEXC Spot", "mxc"), ("Bybit Spot", "bybit_spot"),
                 ("OKX Spot", "okex"), ("KuCoin Spot", "kucoin"),
-                ("Coinbase Exchange Spot", "gdax")
+                ("Coinbase Exchange Spot", "gdax"),
+                ("Kraken Spot", "kraken")
             ):
-                if "USDT" in candidates.get(venue, []):
+                if candidates.get(venue):
                     continue
                 try:
                     rows = base.fetch(
@@ -580,7 +587,7 @@ def run():
     previous_source = previous_source if isinstance(previous_source, dict) else {}
     previous_books = previous_books if isinstance(previous_books, dict) else {}
     checked = checked if isinstance(checked, dict) else {}
-    if data.get('multiDiscoveryVersion') != 4:
+    if data.get('multiDiscoveryVersion') != 5:
         checked = {}  # New all-exchange CoinGecko scan replaces a filtered query.
 
     sources = {}
@@ -790,7 +797,7 @@ def run():
     }
     data["venueBooks"] = venue_books
     data["marketSources"] = sources
-    data["multiDiscoveryVersion"] = 4
+    data["multiDiscoveryVersion"] = 5
     data["multiDiscoveryCheckedAt"] = {cid: checked[cid] for cid in registry
                                         if cid in checked}
     data["unavailable"] = {cid: "Nessun book pubblico verificato"
