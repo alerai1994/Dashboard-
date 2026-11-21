@@ -3757,24 +3757,26 @@ async function discoverOrderBookSource(id,serial){
 const orderBookVenueChoices=load('orderBookVenueChoices',{})||{};
 function orderBookVenueDescriptor(row){
  const venue=row?.venue,pair=String(row?.pair||''),symbol=pair.split('/')[0],quoted=pair.split('/')[1];
- if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot'].includes(venue)||
+ if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot'].includes(venue)||
   !/^[A-Z0-9]{2,20}\/(USDT|USDC|USD)$/.test(pair))return null;
  const coded=symbol+quoted;
  if(venue==='Binance Spot')return {venue,pair,urls:[
   'https://data-api.binance.vision/api/v3/depth?symbol='+coded+'&limit=20',
   'https://api.binance.com/api/v3/depth?symbol='+coded+'&limit=20']};
  if(venue==='Gate Spot')return {venue,pair,urls:[
-  'https://api.gateio.ws/api/v4/spot/order_book?currency_pair='+symbol+'_USDT&limit=20']};
+  'https://api.gateio.ws/api/v4/spot/order_book?currency_pair='+symbol+'_'+quoted+'&limit=20']};
  if(venue==='MEXC Spot')return {venue,pair,urls:[
   'https://api.mexc.com/api/v3/depth?symbol='+coded+'&limit=20']};
  if(venue==='Bybit Spot')return {venue,pair,format:'bybit',urls:[
   'https://api.bybit.com/v5/market/orderbook?category=spot&symbol='+coded+'&limit=20']};
  if(venue==='OKX Spot')return {venue,pair,format:'okx',urls:[
-  'https://www.okx.com/api/v5/market/books?instId='+symbol+'-USDT&sz=20']};
+  'https://www.okx.com/api/v5/market/books?instId='+symbol+'-'+quoted+'&sz=20']};
  if(venue==='KuCoin Spot')return {venue,pair,format:'kucoin',urls:[
   'https://api.kucoin.com/api/v1/market/orderbook/level2_20?symbol='+symbol+'-'+quoted]};
+ if(venue==='Coinbase Exchange Spot')return {venue,pair,format:'coinbase',urls:[
+  'https://api.exchange.coinbase.com/products/'+symbol+'-'+quoted+'/book?level=2']};
  return {venue,pair,format:'lbank',urls:[
-  'https://api.lbank.info/v2/depth.do?symbol='+symbol.toLowerCase()+'_usdt&size=20']};
+  'https://api.lbank.info/v2/depth.do?symbol='+symbol.toLowerCase()+'_'+quoted.toLowerCase()+'&size=20']};
 }
 function orderBookAvailableVenues(id){
  const asset=ASSET_BY_ID[id],bundle=cryptoBookBundle();
@@ -3794,7 +3796,7 @@ function orderBookAvailableVenues(id){
  }
  if(!asset.extended&&bundle?.books?.[id])add(bundle.books[id]);
  if(!found.size){const fallback=orderBookSource(id);if(fallback)found.set(fallback.venue,fallback);}
- const priority=['Binance Spot','Gate Spot','MEXC Spot','Bybit Spot','OKX Spot','KuCoin Spot','LBank Spot','Gate.io Spot'];
+ const priority=['Binance Spot','Gate Spot','MEXC Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','LBank Spot','Gate.io Spot'];
  return Array.from(found.values()).sort((a,b)=>priority.indexOf(a.venue)-priority.indexOf(b.venue));
 }
 function orderBookVenueMarkup(id){
@@ -3933,7 +3935,7 @@ function cryptoBookEntry(id){
  if(id==='ore'&&b.mint!=='oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp')return null;
  const t=Date.parse(b.capturedAt||'');
  if(!Number.isFinite(t)||t>Date.now()+60000||Date.now()-t>3*60*60*1000)return null;
- if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot'].includes(b.venue))return null;
+ if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot'].includes(b.venue))return null;
  const bids=b.bids.map(r=>[Number(r[0]),Number(r[1])])
   .filter(r=>r.length===2&&r.every(x=>Number.isFinite(x)&&x>0)).sort((a,b)=>b[0]-a[0]).slice(0,20);
  const asks=b.asks.map(r=>[Number(r[0]),Number(r[1])])
@@ -4676,7 +4678,7 @@ function liveBookConfig(id){
  if(venue==='MEXC Spot')return {venue,pair,symbol,kind:'poll',
   url:'https://api.mexc.com/api/v3/depth?symbol='+symbol+'&limit=20',
   priceUrl:'https://api.mexc.com/api/v3/ticker/price?symbol='+symbol};
- if(['Bybit Spot','OKX Spot','KuCoin Spot'].includes(venue)){
+ if(['Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot'].includes(venue)){
   const source=orderBookVenueDescriptor({venue,pair});
   if(source)return {venue,pair,symbol,kind:'poll',
    format:source.format,url:source.urls[0]};
