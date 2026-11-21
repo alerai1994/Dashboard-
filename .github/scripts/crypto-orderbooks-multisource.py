@@ -515,6 +515,22 @@ def run():
                 default_books[cid] = venues[venue]
                 break
 
+    # The expanded Binance collector has already verified the exact
+    # CoinGecko identity of these genuine primary books. Preserve them as
+    # separate exchange snapshots too; never let the alternative-feed
+    # cleanup make their exchange disappear from the venue selector.
+    for cid, book in default_books.items():
+        if cid in base.ALL or cid not in registry or not isinstance(book, dict):
+            continue
+        mapping = (data.get("verifiedMarkets") or {}).get(cid)
+        symbol, coin_id, _ = registry[cid]
+        if (source_valid(mapping, symbol, coin_id, ts) and
+            mapping.get("venue") == book.get("venue") and
+            mapping.get("pair") == book.get("pair") and
+            book.get("id") == cid and book.get("unit") == symbol and
+            preserve_recent(book, cid, mapping, ts)):
+            venue_books.setdefault(cid, {})[book["venue"]] = book
+
     data["books"] = default_books
     data["available"] = len(default_books)
     data["venueBooks"] = venue_books
