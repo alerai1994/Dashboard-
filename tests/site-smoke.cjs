@@ -9,9 +9,15 @@ assert(source.includes("if(a.group==='crypto')observeChartQuote(id,quote(id))"),
 assert(source.includes('function chartLiveObservedPricePoints(id,base)'), 'Verified CoinGecko price lines must update in the open chart');
 assert(source.includes("chartSeries.sampled===true&&history.includes('coingecko')"), 'CoinGecko snapshots must never be silently inserted into real OHLC');
 assert(source.includes('async function pollFocusedCryptoQuote()'), 'Selected catalog crypto must receive focused updates');
+assert(source.includes('const focusedChartStream={socket:null'), 'Detail-only exchange stream must be available for approved crypto pairs');
+assert(source.includes("CHART_APPROVED_BINANCE_SPOT[id]"), 'Detail WebSocket must only use verified instrument mappings');
+assert(source.includes("new WebSocket('wss://data-stream.binance.vision/ws/'"), 'Approved crypto detail charts need a direct tick stream');
+assert(source.includes('closeFocusedCryptoStream();'), 'Closing the detail chart must release the focused WebSocket');
+assert(source.includes('period.ms<=86400000'), 'Recent 1D crypto graphs must prioritize genuine exchange OHLC');
+
 assert(source.includes('setInterval(()=>{if(state.dialogId)pollFocusedCryptoQuote()},60000)'), 'Focused crypto updates should continue while a chart is open');
 assert(source.includes('if(state.dialogId)pollFocusedCryptoQuote()'), 'Focused updates should resume after reconnect');
-assert(html.includes('script.js?v=20261121-all-crypto-live-detail-v6'), 'Browser script version must change for every operating system');
+assert(html.includes('script.js?v=20261121-crypto-approved-websocket-v7'), 'Browser script version must change for every operating system');
 
 assert(source.includes('function cryptoEtfSyncedSamples(product,period,rows)'),
  'ETF curves must synchronize with newer verified share-price feed snapshots');
@@ -22,7 +28,7 @@ assert(source.includes('return [...samples,[Math.floor(ms/1000),price,null]]'),
 assert(source.includes("if(period==='1D')"), '1D ETF graph must not mix adjacent trading sessions');
 assert(source.includes('String(latest.symbol).toUpperCase()!==String(fund.symbol'),
  'ETF graph must never mix prices from different exchanges');
-assert(html.includes('script.js?v=20261121-all-crypto-live-detail-v6'),
+assert(html.includes('script.js?v=20261121-crypto-approved-websocket-v7'),
  'Updated ETF graph synchronizer must bypass cached browser scripts');
 
 assert(source.includes("setInterval(()=>{if(state.page==='etf'&&!document.hidden)loadCryptoEtfHistory()},60000)"),
@@ -34,7 +40,7 @@ assert(source.includes('crypto-etf-refresh-state')&&source.includes('Mercato chi
 assert(source.includes('crypto-etf-chart-refresh'),'ETF charts must expose latest exchange trade time');
 assert(css.includes('.crypto-etf-market-note .crypto-etf-refresh-state'), 'ETF auto status must render on desktop and mobile');
 assert(html.includes('style.css?v=20261121-etf-auto-status-v4'), 'ETF status style must bypass device caches');
-assert(html.includes('script.js?v=20261121-all-crypto-live-detail-v6'),'ETF refresh code must bypass mobile/desktop browser caches');
+assert(html.includes('script.js?v=20261121-crypto-approved-websocket-v7'),'ETF refresh code must bypass mobile/desktop browser caches');
 assert(source.includes('function cryptoEtfVolumeChart(product,period,samples)'), 'ETF chart must expose share-volume bars');
 assert(source.includes('<rect class="etf-volume-rect"'), 'ETF volume bars must use flat 2D rectangles');
 assert(source.includes("return '<g class=\"etf-volume-bar\">'"), 'ETF bar groups must have one neutral class');
@@ -44,7 +50,7 @@ assert(css.includes('fill:#ffffff!important;')&&css.includes('fill-opacity:1!imp
 assert(!source.includes('etf-volume-side')&&!source.includes('etf-volume-top'), 'ETF chart must never render 3D faces');
 assert(css.includes('.etf-volume-bar .etf-volume-rect'), 'Flat ETF bar style must be defined');
 assert(!css.includes('.etf-volume-bar .etf-volume-side'), 'Obsolete 3D ETF side styles must be removed');
-assert(html.includes('script.js?v=20261121-all-crypto-live-detail-v6')&&html.includes('style.css?v=20261121-etf-auto-status-v4'),
+assert(html.includes('script.js?v=20261121-crypto-approved-websocket-v7')&&html.includes('style.css?v=20261121-etf-auto-status-v4'),
  'All platforms must receive the new flat ETF volumes chart assets');
 assert(source.includes("p.length>=2"), 'ETF chart must keep backward compatibility with price-only data');
 assert(source.includes("p.length>=3"), 'ETF volumes require verified volume rows, not synthetic values');
@@ -54,7 +60,7 @@ assert(css.includes('.crypto-etf-chart svg.etf-volume-svg'), 'ETF volume chart m
 assert(css.includes('fill:#ffffff!important;')&&!css.includes('.etf-volume-bar.down{'),
  'ETF volume bars must stay solid white with no green/red trend styling');
 assert(html.includes('style.css?v=20261121-etf-auto-status-v4')&&
- html.includes('script.js?v=20261121-all-crypto-live-detail-v6'),
+ html.includes('script.js?v=20261121-crypto-approved-websocket-v7'),
  'ETF volume resources must be refreshed across operating systems');
 
 assert(source.includes('async function pollCatalogPrices()'), 'Crypto catalog needs direct periodic quotes');
@@ -62,7 +68,7 @@ assert(source.includes('include_last_updated_at=true'), 'Provider timestamps are
 assert(source.includes('stamp<now-15*60000'), 'Stale catalog quotes must never look live');
 assert(source.includes('previousTime>=stamp'), 'Catalog poll must not overwrite newer market prices');
 assert(source.includes('setInterval(pollCatalogPrices,120000)'), 'Catalog must refresh without manual reload');
-assert(html.includes('script.js?v=20261121-all-crypto-live-detail-v6'),
+assert(html.includes('script.js?v=20261121-crypto-approved-websocket-v7'),
  'All platforms must load the latest catalog polling script');
 
 assert(source.includes('map-pin')&&source.includes('data-trend='), 'Map pins must carry the regional trend');
