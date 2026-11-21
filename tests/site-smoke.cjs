@@ -25,7 +25,7 @@ assert(source.includes('crypto-etf-refresh-state')&&source.includes('Mercato chi
 assert(source.includes('crypto-etf-chart-refresh'),'ETF charts must expose latest exchange trade time');
 assert(css.includes('.crypto-etf-market-note .crypto-etf-refresh-state'), 'ETF auto status must render on desktop and mobile');
 assert(html.includes('style.css?v=20261121-etf-auto-status-v4'), 'ETF status style must bypass device caches');
-assert(html.includes('script.js?v=20261121-etf-auto-refresh-v4'),'ETF refresh code must bypass mobile/desktop browser caches');
+assert(html.includes('script.js?v=20261121-etf-synced-quotes-v5'),'ETF refresh code must bypass mobile/desktop browser caches');
 assert(source.includes('function cryptoEtfVolumeChart(product,period,samples)'), 'ETF chart must expose share-volume bars');
 assert(source.includes('<rect class="etf-volume-rect"'), 'ETF volume bars must use flat 2D rectangles');
 assert(source.includes("return '<g class=\"etf-volume-bar\">'"), 'ETF bar groups must have one neutral class');
@@ -35,16 +35,17 @@ assert(css.includes('fill:#ffffff!important;')&&css.includes('fill-opacity:1!imp
 assert(!source.includes('etf-volume-side')&&!source.includes('etf-volume-top'), 'ETF chart must never render 3D faces');
 assert(css.includes('.etf-volume-bar .etf-volume-rect'), 'Flat ETF bar style must be defined');
 assert(!css.includes('.etf-volume-bar .etf-volume-side'), 'Obsolete 3D ETF side styles must be removed');
-assert(html.includes('script.js?v=20261121-etf-white-solid-volumes-v3')&&html.includes('style.css?v=20261121-etf-white-solid-volumes-v3'),
+assert(html.includes('script.js?v=20261121-etf-synced-quotes-v5')&&html.includes('style.css?v=20261121-etf-auto-status-v4'),
  'All platforms must receive the new flat ETF volumes chart assets');
 assert(source.includes("p.length>=2"), 'ETF chart must keep backward compatibility with price-only data');
 assert(source.includes("p.length>=3"), 'ETF volumes require verified volume rows, not synthetic values');
 assert(source.includes('Nessun volume simulato'), 'ETF chart must explicitly report unavailable volume');
 assert(source.includes('cryptoEtfVolumeChart(product,period,samples)'), 'ETF volume bars must render with the selected period');
 assert(css.includes('.crypto-etf-chart svg.etf-volume-svg'), 'ETF volume chart must resize on mobile');
-assert(css.includes('.etf-volume-bar.down'), 'ETF volume bars need red and green trend styling');
-assert(html.includes('style.css?v=20261121-etf-white-solid-volumes-v3')&&
- html.includes('script.js?v=20261121-etf-white-solid-volumes-v3'),
+assert(css.includes('fill:#ffffff!important;')&&!css.includes('.etf-volume-bar.down{'),
+ 'ETF volume bars must stay solid white with no green/red trend styling');
+assert(html.includes('style.css?v=20261121-etf-auto-status-v4')&&
+ html.includes('script.js?v=20261121-etf-synced-quotes-v5'),
  'ETF volume resources must be refreshed across operating systems');
 
 assert(source.includes('async function pollCatalogPrices()'), 'Crypto catalog needs direct periodic quotes');
@@ -52,14 +53,14 @@ assert(source.includes('include_last_updated_at=true'), 'Provider timestamps are
 assert(source.includes('stamp<now-15*60000'), 'Stale catalog quotes must never look live');
 assert(source.includes('previousTime>=stamp'), 'Catalog poll must not overwrite newer market prices');
 assert(source.includes('setInterval(pollCatalogPrices,120000)'), 'Catalog must refresh without manual reload');
-assert(html.includes('script.js?v=20261118-crypto-catalog-updates-v6'),
+assert(html.includes('script.js?v=20261121-etf-synced-quotes-v5'),
  'All platforms must load the latest catalog polling script');
 
 assert(source.includes('map-pin')&&source.includes('data-trend='), 'Map pins must carry the regional trend');
 assert(source.includes('el.dataset.trend=trend(avg)'), 'Map pins must update with incoming region data');
 assert(css.includes('#worldMap .map-stage button.map-pin[data-trend="up"]'), 'Positive map pins must be green');
 assert(css.includes('#worldMap .map-stage button.map-pin[data-trend="down"]'), 'Negative map pins must be red');
-assert(html.includes('style.css?v=20261118-region-pin-trend-v6'), 'New map pin colors must bypass cached desktop/mobile CSS');
+assert(html.includes('style.css?v=20261121-etf-auto-status-v4'), 'New map pin colors must bypass cached desktop/mobile CSS');
 
 assert(!source.includes('function cryptoRowAlertMarkup('),
  'Removed crypto arrow badge renderer must never return');
@@ -79,13 +80,13 @@ assert(!source.includes("const lunaStart=group.ids.indexOf('luna')"),
  'Price flashing must no longer be limited to LUNA and subsequent rows');
 assert(css.includes('.asset-price.crypto-threshold-flash'),
  'The targeted price blinking style must be available');
-assert(html.includes('20261118-crypto-price-trend-v5'),
+assert(html.includes('20261121-etf-synced-quotes-v5'),
  'All browsers should load the versioned price blinking assets');
 assert(css.includes('cryptoThresholdPriceBlink'),
  'Triggered UPPER/LOW prices must blink on desktop and mobile');
 assert(css.includes('.crypto-row-alert{display:none!important}'),
  'Even stale cached rows must hide the arrow badges');
-assert(html.includes('20261118-crypto-price-trend-v5'),
+assert(html.includes('20261121-etf-synced-quotes-v5'),
  'Updated JavaScript and styles must use fresh cache-busting URLs');
 assert(!source.includes("(alertRow?cryptoRowAlertMarkup(id):'')"),
  'Global crypto rows must not show the old up/down monitoring indicator');
