@@ -240,8 +240,8 @@ for(const method of ['chartReadHistoricalPricePoints(','chartLoadObservedPriceAr
   'chartSampledCandlesFromPrices(']){
  assert(source.includes(method),'Missing observed-price chart capability: '+method);
 }
-assert(source.includes("status:'ready',candles:sampled.slice(-48),sampled:true"),
- 'Markets must display sampled candles rather than price lines for new crypto');
+assert(source.includes('candles:sampled,sampled:true'),
+ 'MAX preview must retain all sampled history without truncation');
 assert(source.includes("sampled?'Candele campionate'")||
  source.includes("historical.sampled?'Candele campionate'"),
  'Markets sampled candles must be clearly distinguished from real OHLC');
@@ -365,8 +365,9 @@ assert(source.includes('async function chartCryptoIntradayResolution('),
  'Crypto detail charts must use verified OHLC/observed archives before sparse remote responses');
 assert(source.includes('await chartCryptoIntradayResolution(asset,period,from,now)'),
  'All crypto, including extended tokens, must try archived short-range history');
-assert(source.includes('await chartCryptoIntradayResolution(asset,period,now-period.ms,now)'),
- 'Markets card previews must first load recent dense history');
+assert(source.includes('const rows=monthly.length>=2?monthly:recent;')&&
+ source.includes('candles:rows,')&&source.includes('first:rows[0].t'),
+ 'Markets MAX preview must use the full available OHLC archive');
 assert(source.includes('function chartSampledMoves('),
  'Common sampled-price candles must be available without fake OHLC');
 assert(source.includes('if(sampled.length>=8&&(bars.length<8||sampled.length>bars.length*1.6))'),
@@ -402,8 +403,8 @@ const croArchive=JSON.parse(read('chart-history/crypto/intraday/cro.json'));
 const croActual=croArchive.periods['4H'].map(([t,v])=>({t,v}));
 assert(sampledMoves(croActual,600).length>=16,
  'Real Cronos 4H observations must supply a dense Market candlestick preview');
-assert(source.includes("a.group==='crypto'?'MAX':'1D'"),
- 'All crypto must open the real or sampled historical chart by default');
+assert(source.includes("chartRange=a.group==='crypto'&&['markets','workspace'].includes(state.page)?'MAX':'1D'"),
+ 'Markets crypto must open its full available history');
 // Verify the sampled-candle computation against actual first/high/low/last
 // observations within the date bucket. Never assume unknown trade extremes.
 const sampledCode=source.slice(
@@ -432,6 +433,22 @@ assert(source.includes("chart-history/crypto/'+encodeURIComponent(id)"),
  'Markets previews must fetch the selected crypto history rather than the old 42-coin feed');
 assert(source.includes("marketCryptoHistoryPreviews.get(id)"),
  'Markets preview chart must use loaded archived OHLC');
+assert(source.includes('const MARKET_PREVIEW_MAX_BARS=100;'),
+ 'Markets MAX must compact only the SVG rendering, preserving original data');
+const segment=source.slice(source.indexOf('const MARKET_PREVIEW_MAX_BARS=100;'),
+ source.indexOf('function marketChartPlot(id){'));
+const compactFn=new Function('marketPreviewCandleData','ASSET_BY_ID',segment+
+ ';return marketPreviewVisibleCandles;')(
+ ()=>Array.from({length:235},(_,i)=>({t:1000+i*60,o:100+i,
+ h:103+i,l:99+i,c:102+i})),{btc:{group:'crypto'}});
+const grouped=compactFn('btc');
+assert(grouped.length<=100,'MAX thumbnail must not show subpixel overlapping bars');
+assert.equal(grouped[0].t,1000,'MAX must include first available observation');
+assert.equal(grouped.at(-1).endT,1000+234*60,'MAX must include last available observation');
+assert.deepEqual([grouped[0].o,grouped[0].h,grouped[0].l,grouped[0].c],
+ [100,105,99,104],'OHLC compaction must preserve actual first/high/low/last');
+
+
 assert(source.includes("status:'unavailable'"),
  'Markets must show an honest unavailable state rather than synthetic candles');
 
