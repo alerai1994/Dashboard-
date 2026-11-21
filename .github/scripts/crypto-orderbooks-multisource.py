@@ -229,6 +229,30 @@ def discover_one(cid, symbol, coin_id, ts):
             "/tickers?order=trust_score_desc&depth=false&page=1"
         )
         candidates = candidate_quoted_markets(tickers.get("tickers"), symbol)
+        # CoinGecko's first ticker page often contains only the most liquid
+        # pairs, not every Spot book. For coins with no verified candidates,
+        # search deeper pages without treating API errors as absent markets.
+        # Stop once verified-looking pairs are found to limit public API calls.
+        if not candidates:
+            for page in (2, 3):
+                try:
+                    extra_tickers = base.fetch(
+                        "https://api.coingecko.com/api/v3/coins/" +
+                        quote(coin_id, safe="") +
+                        "/tickers?order=trust_score_desc&depth=false&page=" +
+                        str(page)
+                    )
+                    if not isinstance(extra_tickers, dict):
+                        break
+                    matched = candidate_quoted_markets(extra_tickers.get("tickers"), symbol)
+                    for venue, quotes in matched.items():
+                        prior = set(candidates.get(venue, []))
+                        candidates[venue] = [q for q in QUOTE_PRIORITY
+                                             if q in prior or q in quotes]
+                    if candidates or not extra_tickers.get("tickers"):
+                        break
+                except (OSError, ValueError, TypeError, KeyError):
+                    break
         # Popular assets have additional exchange-specific ticker pages.
         # Both the ID and an actual live Spot exchangeInfo listing are required.
         if cid in ("btc", "eth", "sol", "hype", "usdt", "usdc"):
@@ -401,6 +425,13 @@ def load_depth(cid, source, previous):
 
 def check_fixture():
     assert len(catalog_with_ids()) == 288
+    # Confirm a valid identity-specific USD market is still retained.
+    assert candidate_quoted_markets([
+        {"base": "BTC", "target": "USD",
+         "market": {"identifier": "gdax"}, "last": 123},
+        {"base": "BTC", "target": "USDT",
+         "market": {"identifier": "binance"}, "last": 122}
+    ], "BTC") == {"Coinbase Exchange Spot": ["USD"], "Binance Spot": ["USDT"]}
     assert candidate_tickers([
         {"base": "HYPE", "target": "USDT", "market": {"identifier": "gate"},
          "last": 35, "is_stale": False},
