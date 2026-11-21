@@ -265,6 +265,9 @@ def run():
         "books": books,
         "verifiedMarkets": mappings,
         "discoveryCheckedAt": {cid: checked[cid] for cid in extended if cid in checked},
+        "marketSources": previous.get("marketSources", {}),
+        "venueBooks": previous.get("venueBooks", {}),
+        "multiDiscoveryCheckedAt": previous.get("multiDiscoveryCheckedAt", {}),
         "unavailable": {cid: "Nessuna coppia Spot verificata o fonte non raggiungibile"
                         for cid in all_coins if cid not in books},
     }

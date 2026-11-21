@@ -8,6 +8,7 @@ on:
       - .github/scripts/ore-orderbook.py
       - .github/scripts/crypto-orderbooks.py
       - .github/scripts/crypto-orderbooks-expanded.py
+      - .github/scripts/crypto-orderbooks-multisource.py
       - crypto-extended.js
       - .github/workflows/ore-orderbook.yml
   schedule:
@@ -21,7 +22,7 @@ concurrency:
 jobs:
   snapshot:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - name: Validate order book fetcher
@@ -36,6 +37,12 @@ jobs:
           python3 .github/scripts/crypto-orderbooks-expanded.py --selftest
       - name: Refresh source-verified Spot depth for all 288 catalog assets
         run: python3 .github/scripts/crypto-orderbooks-expanded.py
+      - name: Validate multi-source collector
+        run: |
+          python3 -m py_compile .github/scripts/crypto-orderbooks-multisource.py
+          python3 .github/scripts/crypto-orderbooks-multisource.py --selftest
+      - name: Collect separate Binance, Gate and MEXC order books
+        run: python3 .github/scripts/crypto-orderbooks-multisource.py
       - name: Publish verified depth snapshot
         shell: bash
         run: |
