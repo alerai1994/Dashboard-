@@ -117,6 +117,7 @@ def collect(identity, symbol, previous):
     currency = None
     used_symbol = symbol
     for span, interval, selections in (
+        ("1d", "1m", ("1D",)),
         ("5d", "5m", ("1D", "5D")),
         ("1mo", "60m", ("1M",)),
         ("1y", "1d", ("1A",)),
@@ -129,6 +130,8 @@ def collect(identity, symbol, previous):
         used_symbol = observed["symbol"]
         currency = observed["currency"] or currency
         for selection in selections:
+            if selection in period_rows:
+                continue  # Prefer 1-minute 1D history; fallback is 5-minute.
             rows = observed["rows"]
             if selection == "1D":
                 rows = last_session(rows, observed["timezone"])
