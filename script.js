@@ -3976,6 +3976,7 @@ function updateOrderBookAssetList(){
  if(coverage)coverage.textContent=ORDER_BOOK_COINS.filter(a=>!!cryptoBookEntry(a.id)).length+'/'+ORDER_BOOK_COINS.length+' book verificati';
  const label=$('#orderBookSourceLabel'),src=orderBookSource(orderBookState.id);
  if(label)label.textContent=src?src.venue+' · '+src.pair:'Coppia Spot non verificata';
+ const toolbar=$('#orderBookVenueToolbar');if(toolbar)toolbar.innerHTML=orderBookVenueMarkup(orderBookState.id);
  const tb=$('#orderBookVenueToolbar');if(tb)tb.innerHTML=orderBookVenueMarkup(orderBookState.id);
 }
 // Local JS backup works for file:// and every OS. HTTP JSON refreshes the cache.
@@ -4501,8 +4502,9 @@ function orderBookPage(){
  '<div class="ob-detail-heading"><div class="ob-heading-name">'+assetLogo(coin)+'<div><h2>'+esc(coin.name)+'</h2>'+
  '<small id="orderBookSourceLabel">'+esc(source?source.venue+' · '+source.pair:'Coppia Spot non verificata')+'</small>'+(coin.id==='ton'?'<small>Toncoin rinominato GRAM (1:1)</small>':'')+'</div></div>'+
  '<button class="btn btn-small" type="button" data-order-book-refresh="1" aria-label="Aggiorna order book">'+sym('refresh')+' Aggiorna</button></div>'+
+ '<div class="ob-source-toolbar" id="orderBookVenueToolbar">'+orderBookVenueMarkup(coin.id)+'</div>'+
  '<div class="ob-content" id="orderBookContent" aria-live="off">'+orderBookDisplay()+'</div>'+
- '<p class="ob-footnote">Le '+ORDER_BOOK_COINS.length+' crypto sono selezionabili; i BID/ASK sono mostrati solo per coppie Spot verificate. I nuovi token vengono identificati usando CoinGecko e Binance alla selezione, mai tramite il solo ticker. Order Book Spot della criptovaluta selezionata: Binance, Gate e LBank ricevono aggiornamenti WebSocket in streaming (fino a 100 ms, secondo la fonte); MEXC utilizza richieste REST ogni circa 3 secondi, non uno stream live. Il badge indica se i dati sono LIVE, aggiornati con polling o uno snapshot di riserva. Solo livelli reali della coppia indicata, mai simulati. Se la rete o la fonte si interrompe, sono segnalati come non aggiornati. La pagina deve rimanere aperta.</p>'+
+ '<p class="ob-footnote">Seleziona Binance, Gate o MEXC quando le coppie sono verificate: ogni fonte usa solo il proprio book. Le '+ORDER_BOOK_COINS.length+' crypto sono selezionabili; i BID/ASK sono mostrati solo per coppie Spot verificate. I nuovi token vengono identificati usando CoinGecko e Binance alla selezione, mai tramite il solo ticker. Order Book Spot della criptovaluta selezionata: Binance, Gate e LBank ricevono aggiornamenti WebSocket in streaming (fino a 100 ms, secondo la fonte); MEXC utilizza richieste REST ogni circa 3 secondi, non uno stream live. Il badge indica se i dati sono LIVE, aggiornati con polling o uno snapshot di riserva. Solo livelli reali della coppia indicata, mai simulati. Se la rete o la fonte si interrompe, sono segnalati come non aggiornati. La pagina deve rimanere aperta.</p>'+
  '</section></div>';
 }
 function orderBookNumber(v,price=false){
@@ -5511,6 +5513,7 @@ function workspaceOrderBookLevels(){
  const time=book?.time?' · '+esc(localeDate(book.time,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'})):'';
  return '<div class="ws-book-active-head">'+assetLogo(coin)+'<div><strong>'+esc(coin.name)+
   '</strong><small>'+esc(venue+' · '+pair)+'</small></div></div>'+
+  '<div class="ob-source-toolbar">'+orderBookVenueMarkup(coin.id)+'</div>'+
   '<p class="ws-subnote ws-book-status" role="status">'+esc(status)+time+'</p>'+
   (book&&Array.isArray(book.bids)&&Array.isArray(book.asks)?
    '<div class="ws-book-grid">'+side(book.asks,false)+side(book.bids,true)+'</div>':
@@ -9301,6 +9304,7 @@ function setupEvents(){
  });
  $('#pageContainer').addEventListener('keydown',e=>{if(e.key==='Enter'){const tr=e.target.closest('tr[data-asset]');if(tr)openAsset(tr.dataset.asset)}});
  $('#pageContainer').addEventListener('change',e=>{
+  if(e.target.id==='orderBookVenueSelect'){selectOrderBookVenue(e.target.value);return;}
   if(e.target.id==='bullishGroup'){setMarketForceFilter(e.target.value);return;}
   if(e.target.id==='bullishAsset'){marketForceChooseAsset(e.target.value);return;}
   if(e.target.id==='marketForceAssetSelect'){marketForceChooseAsset(e.target.value);return;}
