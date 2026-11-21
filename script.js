@@ -4050,14 +4050,15 @@ function cryptoEtfSyncedSamples(product,period,rows){
  return [...samples,[Math.floor(ms/1000),price,null]];
 }
 
-/* The color follows EACH observed ETF share-price move, not just whether
-   the entire selected period closed up or down. Adjacent real observations
-   are split into continuous trend runs. No missing samples are inferred. */
-function cryptoEtfTrendPlot(points,prices,quoteId,period){
- const gradientId='etf-trend-'+String(quoteId).replace(/[^a-z0-9_-]/gi,'-')+'-'+period;
- const palette={up:'#17d49c',down:'#f06c80',flat:'#9daebb'};
+/* Native SVG LINE chart for each genuine ETF share-price observation.
+   Only consecutive observed points are connected; no filled areas, vertical
+   stripe bars or invented price samples. The stroke is green on increases
+   and red on decreases, consistent across desktop and mobile browsers. */
+function cryptoEtfTrendLine(points,prices){
+ if(!Array.isArray(points)||points.length<2||points.length!==prices?.length)
+  return {lines:'',lastTrend:'flat'};
  const fmt=p=>p[0].toFixed(1)+','+p[1].toFixed(1);
- const direction=(a,b,prev)=>b>a?'up':b<a?'down':prev||'flat';
+ const direction=(a,b,previous)=>b>a?'up':b<a?'down':previous||'flat';
  const groups=[];
  let start=0,trend=direction(prices[0],prices[1],null);
  for(let i=2;i<points.length;i++){
@@ -4068,26 +4069,13 @@ function cryptoEtfTrendPlot(points,prices,quoteId,period){
   }
  }
  groups.push({start,end:points.length-1,trend});
- const defs='<defs>'+Object.entries(palette).map(([key,color])=>
-  '<linearGradient id="'+gradientId+'-'+key+'" x1="0" y1="0" x2="0" y2="1">'+
-   '<stop offset="0%" stop-color="'+color+'" stop-opacity=".29"/>'+
-   '<stop offset="100%" stop-color="'+color+'" stop-opacity=".015"/>'+
-  '</linearGradient>').join('')+'</defs>';
- const segments=groups.map(g=>{
-  const fragment=points.slice(g.start,g.end+1);
-  const path='M'+fragment.map(fmt).join('L');
-  const begin=fragment[0],last=fragment[fragment.length-1];
-  const area='M'+begin[0].toFixed(1)+',143L'+fragment.map(fmt).join('L')+
-   'L'+last[0].toFixed(1)+',143Z';
-  return {trend:g.trend,path,area};
- });
  return {
-  defs,
-  areas:segments.map(s=>'<path class="etf-trend-area" d="'+s.area+
-   '" fill="url(#'+gradientId+'-'+s.trend+')"/>').join(''),
-  lines:segments.map(s=>'<path class="etf-trend-path etf-trend-'+s.trend+
-   '" d="'+s.path+'"/>').join(''),
-  lastTrend:segments.at(-1).trend
+  lines:groups.map(g=>{
+   const segment=points.slice(g.start,g.end+1);
+   return '<path class="etf-trend-path etf-trend-'+g.trend+
+    '" d="M'+segment.map(fmt).join('L')+'"/>';
+  }).join(''),
+  lastTrend:groups.at(-1).trend
  };
 }
 
@@ -4108,16 +4096,16 @@ function cryptoEtfChart(product){
   (etfHistory.error?'Storico temporaneamente non raggiungibile.':'Storico di borsa verificato in preparazione.')+'</p></div>';
  const prices=samples.map(p=>Number(p[1])),lo=Math.min(...prices),hi=Math.max(...prices),pad=Math.max((hi-lo)*.15,hi*.002);
  const points=samples.map((p,i)=>[25+470*i/(samples.length-1),143-120*(Number(p[1])-(lo-pad))/(hi-lo+2*pad)]);
- const gradient=cryptoEtfTrendPlot(points,prices,product.quoteId,period);
+ const trendLine=cryptoEtfTrendLine(points,prices);
  const end=points[points.length-1];
  const dt=v=>new Intl.DateTimeFormat('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Rome'}).format(new Date(Number(v)*1000));
  return '<div class="crypto-etf-chart">'+header+
-  '<svg viewBox="0 0 520 183" preserveAspectRatio="none" role="img" aria-label="Andamento quotazione '+esc(product.ticker)+' · '+period+'">'+
+  '<svg viewBox="0 0 520 183" preserveAspectRatio="none" role="img" aria-label="Grafico a linee della quota '+esc(product.ticker)+' · '+period+' · verde in salita e rosso in discesa">'+
   '<line class="etf-gridline" x1="25" y1="42" x2="495" y2="42"/>'+
   '<line class="etf-gridline" x1="25" y1="92" x2="495" y2="92"/>'+
   '<line class="etf-gridline" x1="25" y1="143" x2="495" y2="143"/>'+
-  gradient.defs+gradient.areas+gradient.lines+
-  '<circle class="etf-dot etf-trend-'+gradient.lastTrend+'" cx="'+end[0].toFixed(1)+'" cy="'+end[1].toFixed(1)+'" r="3"/>'+
+  trendLine.lines+
+  '<circle class="etf-dot etf-trend-'+trendLine.lastTrend+'" cx="'+end[0].toFixed(1)+'" cy="'+end[1].toFixed(1)+'" r="3"/>'+
   '<text x="25" y="13">'+esc(cryptoEtfNumberFormat.format(hi))+'</text>'+
   '<text x="25" y="158">'+esc(cryptoEtfNumberFormat.format(lo))+'</text>'+
   '<text x="25" y="177">'+esc(dt(samples[0][0]))+'</text>'+
