@@ -3918,7 +3918,13 @@ function cryptoEtfQuoteMarkup(product){
  const delayed=hasDelay?' · ritardo indicato '+Number(row.delayMinutes)+' min':' · possibile ritardo';
  const source=typeof row.source==='string'?row.source:'Yahoo Finance';
  const venue=product.crypto==='inj'?(row.symbol==='AINJ.PA'?' · Euronext Paris':' · Euronext Amsterdam'):'';
- return '<small>Ultima quotazione quota '+esc(product.ticker)+'</small>'+
+ const venueZone=product.crypto==='inj'?'Europe/Amsterdam':'America/New_York';
+ const weekDay=new Intl.DateTimeFormat('en-US',{weekday:'short',timeZone:venueZone}).format(new Date());
+ const weekend=weekDay==='Sat'||weekDay==='Sun';
+ const autoStatus=weekend?'Mercato chiuso · ultimo scambio':
+  'Aggiornamento automatico · fonte anche differita';
+ return '<small class="crypto-etf-refresh-state">'+esc(autoStatus)+'</small>'+
+  '<small>Ultima quotazione quota '+esc(product.ticker)+'</small>'+
   '<div class="crypto-etf-quote-line"><strong class="crypto-etf-share-price">'+esc(price)+' <span>'+esc(currency)+'</span></strong>'+
   '<span class="crypto-etf-share-change '+cls+'">'+esc(delta)+'</span></div>'+
   '<small class="crypto-etf-quote-meta">'+esc('Rilevata '+date+' · '+source+venue+delayed)+'</small>';
@@ -3998,7 +4004,11 @@ function cryptoEtfChart(product){
  const period=etfPeriods[product.quoteId]||'1M';
  const rows=etfHistory.funds[product.quoteId]?.periods?.[period];
  const samples=Array.isArray(rows)?rows.filter(p=>Array.isArray(p)&&p.length>=2&&Number(p[0])>946684800&&Number.isFinite(Number(p[1]))&&Number(p[1])>0):[];
+ const latestTime=Date.parse(etfHistory.funds[product.quoteId]?.asOf||'');
+ const latestText=Number.isFinite(latestTime)?
+  cryptoEtfDateFormat.format(new Date(latestTime)):'non disponibile';
  const header='<div class="crypto-etf-chart-head"><strong>Grafico quota '+esc(product.ticker)+'</strong>'+
+  '<small class="crypto-etf-chart-refresh">↻ AUTO · ultimo scambio '+esc(latestText)+'</small>'+
   '<div class="crypto-etf-periods" role="group" aria-label="Periodo del grafico">'+ETF_CHART_PERIODS.map(p=>
    '<button type="button" data-etf-chart-period="'+p+'" data-etf-id="'+esc(product.quoteId)+
    '" aria-pressed="'+(p===period)+'" class="'+(p===period?'active':'')+'">'+p+'</button>').join('')+'</div></div>';
@@ -4030,7 +4040,7 @@ function paintCryptoEtfCharts(){
  }
 }
 async function loadCryptoEtfHistory(){
- if(etfHistory.loading||Date.now()-etfHistory.lastFetch<300000)return;
+ if(document.hidden||etfHistory.loading||Date.now()-etfHistory.lastFetch<60000)return;
  etfHistory.loading=true;etfHistory.lastFetch=Date.now();
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),7500);
  try{
@@ -4085,7 +4095,7 @@ function cryptoEtfSection(){
  }).join('');
  return '<section class="crypto-etfs-section" aria-label="ETF ed ETP delle criptovalute">'+
   '<div class="crypto-etf-title"><div><h2>ETF ed ETP Crypto</h2>'+
-  '<p>Bitcoin, Ethereum, Solana e Injective · quotazioni e grafici storici ETF/ETP</p></div>'+
+  '<p>Bitcoin, Ethereum, Solana e Injective · aggiornamento automatico di quote e volumi · dati di borsa eventualmente differiti</p></div>'+
   '<span class="crypto-etf-total">'+ALL_CRYPTO_ETF_QUOTES.length+' quotazioni · 4 grafici</span></div>'+
   '<div class="crypto-etf-grid">'+cards+'</div>'+
   '<p class="crypto-etf-disclaimer">Le quotazioni delle quote ETF/ETP provengono da Yahoo Finance e, per Parigi quando necessario, dai dati pubblici Borsa Italiana/Euronext, differiti di 15 minuti. Non è uno streaming di borsa in tempo reale. '+
@@ -9080,6 +9090,8 @@ function startVertexApp(){
  setInterval(()=>{if(!document.hidden&&state.page==='global')refreshGlobalCryptoCaps()},GLOBAL_CRYPTO_CAP_POLL_MS);
  setInterval(pollCryptoPrices,15000);
  setInterval(pollCatalogPrices,120000);
+ // Source-verified ETF share prices and volume charts, never fictitious live ticks.
+ setInterval(()=>{if(state.page==='etf'&&!document.hidden)loadCryptoEtfHistory()},60000);
  // Retry charts which were previously unavailable when their real data
  // archives are published; don't repeatedly hit providers on every tick.
  setInterval(()=>{
@@ -9095,12 +9107,14 @@ function startVertexApp(){
   else {
    checkVertexRomeMidnight();
    connectCryptoStream();connectForexStream();fetchQuotes().then(()=>pollCatalogPrices());pollCryptoPrices();refreshVisibleQuoteFreshness();updateWorldSunlight(true);applyBrightness();
+   if(state.page==='etf')loadCryptoEtfHistory();
    if(orderBookViewActive()){startOrderBookLive();refreshOrderBook()}
     if(state.dialogId){scheduleDetailChartDraw();scheduleChartLiveRefresh()}
   }
  });
  window.addEventListener('online',()=>{
   checkVertexRomeMidnight();connectCryptoStream();connectForexStream();fetchQuotes().then(()=>pollCatalogPrices());pollCryptoPrices();
+  if(state.page==='etf')loadCryptoEtfHistory();
   if(orderBookViewActive()){startOrderBookLive(true);refreshOrderBook(true)}
  });
  window.addEventListener('offline',()=>{
