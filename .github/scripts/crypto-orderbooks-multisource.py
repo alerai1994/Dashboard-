@@ -275,7 +275,7 @@ def discover_one(cid, symbol, coin_id, ts):
         # CoinGecko's global top-volume pages. Probe only priority assets,
         # and only venues not already found, to respect public rate limits.
         # Both the exact CoinGecko ID and current exchange metadata must agree.
-        if cid in PRIORITY:
+        if cid in PRIORITY[:12]:
             for venue, exchange_id in (
                 ("Binance Spot", "binance"), ("Gate Spot", "gate"),
                 ("MEXC Spot", "mxc"), ("Bybit Spot", "bybit_spot"),
