@@ -4817,3 +4817,30 @@ body.page-global :is(.photo-cover,.map-svg,.spark){
 @media(prefers-reduced-motion:reduce){
  .etf-volume-bar,.etf-volume-bar rect{animation:none!important;transition:none!important}
 }
+
+/* ETF automatic updates: show provenance clearly on phones and computers.
+   "AUTO" is a refresh status, not a promise of exchange real-time access. */
+.crypto-etf-market-note .crypto-etf-refresh-state{
+ display:inline-block;
+ width:fit-content;
+ max-width:100%;
+ padding:3px 7px;
+ border-radius:7px;
+ border:1px solid var(--line);
+ color:var(--muted);
+ background:var(--surface);
+ font-size:10px;
+ font-weight:750;
+ overflow-wrap:anywhere;
+}
+.crypto-etf-chart-head .crypto-etf-chart-refresh{
+ flex:1 1 115px;
+ color:var(--muted);
+ font-size:9px;
+ text-align:right;
+ font-variant-numeric:tabular-nums;
+ line-height:1.45;
+}
+@media(max-width:650px){
+ .crypto-etf-chart-head .crypto-etf-chart-refresh{flex-basis:100%;text-align:left}
+}
