@@ -812,6 +812,10 @@ def run():
     print("Depth fetch result: successful", dict(_depth_success),
           "failures", dict(_depth_errors.most_common(12)))
 
+    # Fresh depth responses are timestamped AFTER the run's initial ts. Using
+    # that earlier ts incorrectly rejected genuine new books as "from the future".
+    cleanup_ts = base.now().timestamp()
+
     # Remove old/identity-unverified alternative snapshots.
     for cid, venues in list(venue_books.items()):
         if not isinstance(venues, dict):
@@ -830,11 +834,11 @@ def run():
                 # while that proof and the actual levels are both fresh.
                 mapped = (data.get("verifiedMarkets") or {}).get(cid)
                 meta = registry.get(cid)
-                if (meta and source_valid(mapped, meta[0], meta[1], ts) and
+                if (meta and source_valid(mapped, meta[0], meta[1], cleanup_ts) and
                     mapped.get("venue") == venue and
-                    preserve_recent(book, cid, mapped, ts)):
+                    preserve_recent(book, cid, mapped, cleanup_ts)):
                     continue
-            if (not source or not preserve_recent(book, cid, source, ts)):
+            if (not source or not preserve_recent(book, cid, source, cleanup_ts)):
                 del venues[venue]
         if not venues:
             del venue_books[cid]
@@ -858,11 +862,11 @@ def run():
             continue
         mapping = (data.get("verifiedMarkets") or {}).get(cid)
         symbol, coin_id, _ = registry[cid]
-        if (source_valid(mapping, symbol, coin_id, ts) and
+        if (source_valid(mapping, symbol, coin_id, cleanup_ts) and
             mapping.get("venue") == book.get("venue") and
             mapping.get("pair") == book.get("pair") and
             book.get("id") == cid and book.get("unit") == symbol and
-            preserve_recent(book, cid, mapping, ts)):
+            preserve_recent(book, cid, mapping, cleanup_ts)):
             venue_books.setdefault(cid, {})[book["venue"]] = book
 
     data["books"] = default_books
