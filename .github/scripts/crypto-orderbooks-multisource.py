@@ -53,7 +53,7 @@ KNOWN = {
     "WhiteBIT Spot": {"keys": {"whitebit"}},
 }
 VENUE_ORDER = ("Binance Spot", "Gate Spot", "MEXC Spot", "Bybit Spot", "OKX Spot", "KuCoin Spot", "Coinbase Exchange Spot", "Kraken Spot", "Bitget Spot", "WhiteBIT Spot", "LBank Spot")
-QUOTE_PRIORITY = ("USDT", "USDC", "USD")
+QUOTE_PRIORITY = ("USDT", "USDC", "USD", "EUR")
 
 # Explicit catalog identity mappings for widely traded assets whose public
 # CoinGecko tickers are often inaccessible from GitHub Actions. The exchange
@@ -112,7 +112,7 @@ CURATED_SPOT = {
     "mana": ("MANA", "decentraland", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
     "syrup": ("SYRUP", "syrup", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
     "imx": ("IMX", "immutable-x", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
-    "mkr": ("MKR", "maker", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"), ("Kraken Spot", "USD"))),
+    "mkr": ("MKR", "maker", (("Coinbase Exchange Spot", "USD"), ("Kraken Spot", "EUR"), ("Binance Spot", "USDT"), ("Kraken Spot", "USD"))),
     "snx": ("SNX", "havven", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
     "mina": ("MINA", "mina-protocol", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
     "rose": ("ROSE", "oasis-network", (("Binance Spot", "USDT"), ("Kraken Spot", "USD"))),
@@ -135,7 +135,7 @@ CURATED_SPOT = {
     "yfi": ("YFI", "yearn-finance", (("Kraken Spot", "USD"), ("Coinbase Exchange Spot", "USD"))),
     "amp": ("AMP", "amp-token", (("Coinbase Exchange Spot", "USD"), ("Kraken Spot", "USD"))),
     "cspr": ("CSPR", "casper-network", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"))),
-    "lrc": ("LRC", "loopring", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
+    "lrc": ("LRC", "loopring", (("Coinbase Exchange Spot", "USD"), ("Kraken Spot", "EUR"), ("Gate Spot", "USDT"), ("Binance Spot", "USDT"))),
     "ankr": ("ANKR", "ankr", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
     "blur": ("BLUR", "blur", (("Binance Spot", "USDT"), ("Coinbase Exchange Spot", "USD"))),
     "gmx": ("GMX", "gmx", (("Binance Spot", "USDT"), ("Gate Spot", "USDT"))),
@@ -148,7 +148,7 @@ CURATED_SPOT = {
     "turbo": ("TURBO", "turbo", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
     "popcat": ("POPCAT", "popcat", (("Kraken Spot", "USD"), ("Coinbase Exchange Spot", "USD"))),
     "waxp": ("WAXP", "wax", (("Binance Spot", "USDT"), ("Gate Spot", "USDT"))),
-    "bal": ("BAL", "balancer", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
+    "bal": ("BAL", "balancer", (("Coinbase Exchange Spot", "USD"), ("Kraken Spot", "EUR"), ("Gate Spot", "USDT"), ("Binance Spot", "USDT"))),
     "band": ("BAND", "band-protocol", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
     "api3": ("API3", "api3", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
     "skl": ("SKL", "skale", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
@@ -167,7 +167,7 @@ CURATED_SPOT = {
     "ong": ("ONG", "ong", (("Binance Spot", "USDT"), ("Gate Spot", "USDT"))),
     "ont": ("ONT", "ontology", (("Binance Spot", "USDT"), ("Gate Spot", "USDT"))),
     "hnt": ("HNT", "helium", (("Coinbase Exchange Spot", "USD"), ("Kraken Spot", "USD"))),
-    "xch": ("XCH", "chia", (("Kraken Spot", "USD"), ("Coinbase Exchange Spot", "USD"))),
+    "xch": ("XCH", "chia", (("Kraken Spot", "USD"), ("Kraken Spot", "EUR"), ("Coinbase Exchange Spot", "USD"), ("Gate Spot", "USDT"))),
     "xno": ("XNO", "nano", (("Kraken Spot", "USD"), ("Gate Spot", "USDT"), ("KuCoin Spot", "USDT"))),
     "pha": ("PHA", "pha", (("Binance Spot", "USDT"), ("OKX Spot", "USDT"))),
     "kda": ("KDA", "kadena", (("Kraken Spot", "USD"), ("Gate Spot", "USDT"))),
@@ -175,12 +175,12 @@ CURATED_SPOT = {
     "pi": ("PI", "pi-network", (("OKX Spot", "USDT"),)),
     "night": ("NIGHT", "midnight-3", (("Binance Spot", "USDT"),)),
     "lit": ("LIT", "lighter", (("OKX Spot", "USDT"), ("WhiteBIT Spot", "USDT"), ("Bitget Spot", "USDT"), ("Coinbase Exchange Spot", "USD"))),
-    "gho": ("GHO", "gho", (("Kraken Spot", "USD"),)),
+    "gho": ("GHO", "gho", (("Gate Spot", "USDT"), ("Bitget Spot", "USDT"), ("Kraken Spot", "USD"))),
     "tusd": ("TUSD", "true-usd", (("Binance Spot", "USDT"),)),
     "frax": ("FRAX", "frax", (("Binance Spot", "USDT"), ("Bybit Spot", "USDT"), ("Kraken Spot", "USD"))),
-    "fluid": ("FLUID", "instadapp", (("Binance Spot", "USDT"),)),
+    "fluid": ("FLUID", "instadapp", (("Gate Spot", "USDT"), ("Bitget Spot", "USDT"), ("Binance Spot", "USDT"))),
     "mx": ("MX", "mx-token", (("MEXC Spot", "USDT"),)),
-    "gusd": ("GUSD", "gusd", (("Kraken Spot", "USD"),)),
+    "gusd": ("GUSD", "gusd", (("Kraken Spot", "USD"), ("Coinbase Exchange Spot", "USD"), ("Kraken Spot", "EUR"))),
     "geod": ("GEOD", "geodnet", (("Coinbase Exchange Spot", "USD"),)),
     "zbcn": ("ZBCN", "zebec-network", (("Gate Spot", "USDT"),)),
     "met": ("MET", "meteora", (("Coinbase Exchange Spot", "USD"),)),
@@ -195,6 +195,23 @@ CURATED_SPOT = {
     "mon": ("MON", "monad", (("Coinbase Exchange Spot", "USD"), ("Gate Spot", "USDT"), ("KuCoin Spot", "USDT"))),
     "bdx": ("BDX", "beldex", (("MEXC Spot", "USDT"), ("Gate Spot", "USDT"))),
     "dydx": ("DYDX", "dydx-chain", (("Binance Spot", "USDT"), ("Kraken Spot", "USD"), ("OKX Spot", "USDT"))),
+    "zama": ("ZAMA", "zama", (("Bitget Spot", "USDT"), ("Gate Spot", "USDT"), ("MEXC Spot", "USDT"))),
+    "drv": ("DRV", "derive", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"), ("Bitget Spot", "USDT"))),
+    "ff": ("FF", "falcon-finance-ff", (("Gate Spot", "USDT"), ("Bitget Spot", "USDT"), ("MEXC Spot", "USDT"))),
+    "gomining": ("GOMINING", "gmt-token", (("Gate Spot", "USDT"), ("Bitget Spot", "USDT"))),
+    "crvusd": ("CRVUSD", "crvusd", (("Gate Spot", "USDT"), ("Bitget Spot", "USDT"))),
+    "htx": ("HTX", "htx-dao", (("Gate Spot", "USDT"), ("Bitget Spot", "USDT"))),
+    "usdo": ("USDO", "openeden-open-dollar", (("Gate Spot", "USDT"), ("Bitget Spot", "USDT"))),
+    "pieverse": ("PIEVERSE", "pieverse", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"), ("Bitget Spot", "USDT"))),
+    "stable": ("STABLE", "stable-2", (("Gate Spot", "USDT"), ("Bitget Spot", "USDT"))),
+    "ub": ("UB", "unibase", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"))),
+    "ake": ("AKE", "akedo", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"))),
+    "bp": ("BP", "backpack", (("Gate Spot", "USDT"), ("Bitget Spot", "USDT"))),
+    "ozo": ("OZO", "ozone-chain", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"))),
+    "koge": ("KOGE", "bnb48-club-token", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"))),
+    "shfl": ("SHFL", "shuffle-2", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"))),
+    "btse": ("BTSE", "btse-token", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"))),
+    "anvl": ("ANVL", "anvil", (("Gate Spot", "USDT"), ("Bitget Spot", "USDT"))),
 }
 
 
@@ -674,6 +691,8 @@ def check_fixture():
     assert normalize_exchange_depth("Bitget Spot", {
         "code": "00000", "data": {"bids": [["1", "2"]],
                                  "asks": [["2", "2"]]}})["bids"]
+    assert "EUR" in QUOTE_PRIORITY
+    assert CURATED_SPOT["zama"][:2] == ("ZAMA", "zama")
     assert CURATED_SPOT["xmr"][:2] == ("XMR", "monero")
     assert all(registry_id == catalog_with_ids()[cid][1] and sym == catalog_with_ids()[cid][0]
                for cid, (sym, registry_id, _) in CURATED_SPOT.items())
