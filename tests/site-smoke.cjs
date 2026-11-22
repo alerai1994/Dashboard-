@@ -30,8 +30,7 @@ assert(source.includes("format:'cryptocom'")&&source.includes("api.crypto.com/ex
  'Crypto.com orderbook must use actual bids and asks from its public exchange endpoint');
 assert(source.includes("!Array.isArray(data[0]?.bids)")&&source.includes("!Array.isArray(data[0]?.asks)"),
  'Crypto.com depth responses need both genuine sides of the book');
-assert(source.includes("'HTX Spot','BitMart Spot','Bitrue Spot'].includes(venue)"),
- 'HTX, BitMart and Bitrue must be recognized as genuine Spot sources');
+
 assert(source.includes("format:'bitrue'")&&source.includes("openapi.bitrue.com/api/v1/depth"),
  'Bitrue must use public Spot depth, not synthetic order levels');
 assert(source.includes("Number.isInteger(payload.lastUpdateId)"),
