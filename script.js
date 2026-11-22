@@ -3757,7 +3757,7 @@ async function discoverOrderBookSource(id,serial){
 const orderBookVenueChoices=load('orderBookVenueChoices',{})||{};
 function orderBookVenueDescriptor(row){
  const venue=row?.venue,pair=String(row?.pair||''),symbol=pair.split('/')[0],quoted=pair.split('/')[1];
- if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot'].includes(venue)||
+ if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot'].includes(venue)||
   !/^[A-Z0-9]{1,20}\/(USDT|USDC|USD|EUR)$/.test(pair))return null;
  const coded=symbol+quoted;
  if(venue==='Binance Spot')return {venue,pair,urls:[
@@ -3791,6 +3791,8 @@ function orderBookVenueDescriptor(row){
   'https://openapi.bitrue.com/api/v1/depth?symbol='+coded+'&limit=20']};
  if(venue==='Crypto.com Spot')return {venue,pair,format:'cryptocom',urls:[
   'https://api.crypto.com/exchange/v1/public/get-book?instrument_name='+symbol+'_'+quoted+'&depth=20']};
+ if(venue==='Gemini Spot')return {venue,pair,format:'gemini',urls:[
+  'https://api.gemini.com/v1/book/'+coded.toLowerCase()+'?limit_bids=20&limit_asks=20']};
  return {venue,pair,format:'lbank',urls:[
   'https://api.lbank.info/v2/depth.do?symbol='+symbol.toLowerCase()+'_'+quoted.toLowerCase()+'&size=20']};
 }
@@ -3812,7 +3814,7 @@ function orderBookAvailableVenues(id){
  }
  if(!asset.extended&&bundle?.books?.[id])add(bundle.books[id]);
  if(!found.size){const fallback=orderBookSource(id);if(fallback)found.set(fallback.venue,fallback);}
- const priority=['Binance Spot','Gate Spot','MEXC Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','LBank Spot','HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gate.io Spot'];
+ const priority=['Binance Spot','Gate Spot','MEXC Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','LBank Spot','HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot','Gate.io Spot'];
  return Array.from(found.values()).sort((a,b)=>priority.indexOf(a.venue)-priority.indexOf(b.venue));
 }
 function orderBookVenueMarkup(id){
@@ -3960,7 +3962,7 @@ function cryptoBookEntry(id){
  if(id==='ore'&&b.mint!=='oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp')return null;
  const t=Date.parse(b.capturedAt||'');
  if(!Number.isFinite(t)||t>Date.now()+60000||Date.now()-t>3*60*60*1000)return null;
- if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot'].includes(b.venue))return null;
+ if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot'].includes(b.venue))return null;
  const bids=b.bids.map(r=>[Number(r[0]),Number(r[1])])
   .filter(r=>r.length===2&&r.every(x=>Number.isFinite(x)&&x>0)).sort((a,b)=>b[0]-a[0]).slice(0,20);
  const asks=b.asks.map(r=>[Number(r[0]),Number(r[1])])
@@ -4713,7 +4715,7 @@ function liveBookConfig(id){
  if(venue==='MEXC Spot')return {venue,pair,symbol,kind:'poll',
   url:'https://api.mexc.com/api/v3/depth?symbol='+symbol+'&limit=20',
   priceUrl:'https://api.mexc.com/api/v3/ticker/price?symbol='+symbol};
- if(['Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot'].includes(venue)){
+ if(['Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot'].includes(venue)){
   const source=orderBookVenueDescriptor({venue,pair});
   if(source)return {venue,pair,symbol,kind:'poll',
    format:source.format,url:source.urls[0]};
@@ -4728,6 +4730,14 @@ function decodeOrderBookDepth(payload,format){
   const n=Number(ts),delay=Date.now()-n;
   return Number.isFinite(n)&&n>1e12&&delay>=0&&delay<600000;
  };
+ if(format==='gemini'){
+  if(!Array.isArray(payload.bids)||!Array.isArray(payload.asks)||
+     ![...payload.bids,...payload.asks].every(row=>
+       row&&typeof row==='object'&&row.price!=null&&row.amount!=null))
+   throw Error('Gemini Spot non disponibile');
+  return {bids:payload.bids.map(row=>[row.price,row.amount]),
+   asks:payload.asks.map(row=>[row.price,row.amount])};
+ }
  if(format==='cryptocom'){
   const data=payload?.result?.data;
   if(String(payload.code)!=='0'||!Array.isArray(data)||data.length!==1||
