@@ -268,6 +268,9 @@ def run():
         "marketSources": previous.get("marketSources", {}),
         "venueBooks": previous.get("venueBooks", {}),
         "multiDiscoveryCheckedAt": previous.get("multiDiscoveryCheckedAt", {}),
+        # Preserve the multisource schema across each expanded-collector pass.
+        # Without this, the next stage resets its discovery progress to zero.
+        "multiDiscoveryVersion": previous.get("multiDiscoveryVersion"),
         "unavailable": {cid: "Nessuna coppia Spot verificata o fonte non raggiungibile"
                         for cid in all_coins if cid not in books},
     }
