@@ -48,6 +48,27 @@ KNOWN = {
 VENUE_ORDER = ("Binance Spot", "Gate Spot", "MEXC Spot", "Bybit Spot", "OKX Spot", "KuCoin Spot", "Coinbase Exchange Spot", "Kraken Spot", "LBank Spot")
 QUOTE_PRIORITY = ("USDT", "USDC", "USD")
 
+# Explicit catalog identity mappings for widely traded assets whose public
+# CoinGecko tickers are often inaccessible from GitHub Actions. The exchange
+# must STILL report an active Spot instrument for the exact base/quote before
+# its live BID/ASK depth is accepted. Never infer order levels from prices.
+CURATED_SPOT = {
+    "xmr": ("XMR", "monero", (("Kraken Spot", "USD"), ("Gate Spot", "USDT"))),
+    "paxg": ("PAXG", "pax-gold", (("Kraken Spot", "USD"), ("Binance Spot", "USDT"))),
+    "dai": ("DAI", "dai", (("Coinbase Exchange Spot", "USD"), ("Kraken Spot", "USD"), ("OKX Spot", "USDT"))),
+    "algo": ("ALGO", "algorand", (("Coinbase Exchange Spot", "USD"), ("Kraken Spot", "USD"), ("OKX Spot", "USDT"))),
+    "cro": ("CRO", "crypto-com-chain", (("Coinbase Exchange Spot", "USD"), ("Kraken Spot", "USD"))),
+    "ondo": ("ONDO", "ondo-finance", (("Coinbase Exchange Spot", "USD"), ("OKX Spot", "USDT"))),
+    "icp": ("ICP", "internet-computer", (("Coinbase Exchange Spot", "USD"), ("Kraken Spot", "USD"))),
+    "jup": ("JUP", "jupiter-exchange-solana", (("Coinbase Exchange Spot", "USD"), ("Kraken Spot", "USD"))),
+    "kas": ("KAS", "kaspa", (("Kraken Spot", "USD"), ("Gate Spot", "USDT"))),
+    "kcs": ("KCS", "kucoin-shares", (("KuCoin Spot", "USDT"),)),
+    "gt": ("GT", "gatechain-token", (("Gate Spot", "USDT"),)),
+    "pol": ("POL", "polygon-ecosystem-token", (("Coinbase Exchange Spot", "USD"), ("OKX Spot", "USDT"))),
+    "morpho": ("MORPHO", "morpho", (("Coinbase Exchange Spot", "USD"), ("Kraken Spot", "USD"))),
+    "usdt": ("USDT", "tether", (("Coinbase Exchange Spot", "USD"), ("Kraken Spot", "USD"), ("OKX Spot", "USDC"))),
+}
+
 
 def stamp(value):
     try:
@@ -318,6 +339,39 @@ def discover_one(cid, symbol, coin_id, ts):
         return cid, None  # API failure, not proof that this market is absent.
 
 
+def discover_curated_markets(registry, sources, ts):
+    """Independently confirm curated identity pairs with current Spot metadata.
+
+    A curated candidate is NOT a book. The exchange must confirm the active
+    instrument, and load_depth must retrieve authentic uncrossed order levels.
+    """
+    checks = []
+    for cid, (expected_symbol, expected_id, pairs) in CURATED_SPOT.items():
+        if cid not in registry:
+            continue
+        symbol, coin_id, _ = registry[cid]
+        if symbol != expected_symbol or coin_id != expected_id:
+            continue
+        current = {(m["venue"], m["pair"]) for m in sources.get(cid, [])}
+        for venue, quoted in pairs:
+            if (venue, symbol + "/" + quoted) not in current:
+                checks.append((cid, symbol, coin_id, quoted, venue))
+    discovered = []
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        jobs = [pool.submit(verify_bulk_pair, cid, symbol, coin_id, quoted,
+                            venue, ts)
+                for cid, symbol, coin_id, quoted, venue in checks]
+        for task in as_completed(jobs):
+            try:
+                cid, market = task.result()
+                if market:
+                    market["identityMethod"] = "curated-catalog-and-live-spot-metadata"
+                    discovered.append((cid, market))
+            except (OSError, ValueError, TypeError):
+                continue
+    return discovered, len(checks)
+
+
 def bulk_exchange_candidates(tickers, registry):
     """Match CoinGecko's EXACT coin_id and base symbol; ticker alone is unsafe.
     Exchange metadata must separately verify the live Spot pair.
@@ -453,6 +507,8 @@ def load_depth(cid, source, previous):
 
 def check_fixture():
     assert len(catalog_with_ids()) == 288
+    assert CURATED_SPOT["xmr"][:2] == ("XMR", "monero")
+    assert CURATED_SPOT["usdt"][:2] == ("USDT", "tether")
     assert exchange_market_valid("Kraken Spot", {"error": [], "result": {
         "XXBTZUSD": {"wsname": "XBT/USD", "status": "online"}}}, "BTC", "USD")
     assert not exchange_market_valid("Kraken Spot", {"error": [], "result": {
@@ -652,6 +708,17 @@ def run():
                         sources[cid] = list(mapping.values())
                 except (OSError, ValueError, TypeError):
                     continue
+
+    # When CoinGecko cannot serve its ticker pages, verify a short, explicit
+    # set of catalog identities against the exchange's own CURRENT Spot listing.
+    # No depth is attributed to a coin until its exchange metadata and actual
+    # orderbook both pass validation.
+    curated, curated_checked = discover_curated_markets(registry, sources, ts)
+    for cid, mapping in curated:
+        records = {m["venue"]: m for m in sources.get(cid, [])}
+        records[mapping["venue"]] = mapping
+        sources[cid] = list(records.values())
+    print("Curated Spot metadata checks:", curated_checked, "verified", len(curated))
 
     # Each run scans four public ticker pages of one exchange, rotating venues.
     # The CoinGecko ticker's coin_id AND base symbol must agree with the Vertex
