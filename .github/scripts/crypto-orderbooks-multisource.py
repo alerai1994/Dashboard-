@@ -54,8 +54,10 @@ KNOWN = {
     "WhiteBIT Spot": {"keys": {"whitebit"}},
     "BTSE Spot": {"keys": {"btse"}},
     "LBank Spot": {"keys": {"lbank"}},
+    "HTX Spot": {"keys": {"htx", "huobi"}},
+    "BitMart Spot": {"keys": {"bitmart"}},
 }
-VENUE_ORDER = ("Binance Spot", "Gate Spot", "MEXC Spot", "Bybit Spot", "OKX Spot", "KuCoin Spot", "Coinbase Exchange Spot", "Kraken Spot", "Bitget Spot", "WhiteBIT Spot", "BTSE Spot", "LBank Spot")
+VENUE_ORDER = ("Binance Spot", "Gate Spot", "MEXC Spot", "Bybit Spot", "OKX Spot", "KuCoin Spot", "Coinbase Exchange Spot", "Kraken Spot", "Bitget Spot", "WhiteBIT Spot", "BTSE Spot", "LBank Spot", "HTX Spot", "BitMart Spot")
 QUOTE_PRIORITY = ("USDT", "USDC", "USD", "EUR")
 
 # Explicit catalog identity mappings for widely traded assets whose public
@@ -342,7 +344,57 @@ def lbank_market_list():
     return base.fetch("https://api.lbank.info/v2/currencyPairs.do")
 
 
+@lru_cache(maxsize=2)
+def shared_spot_markets(venue):
+    """Fetch one venue's complete public Spot catalog per run."""
+    url = {
+        "HTX Spot": "https://api.huobi.pro/v2/settings/common/symbols",
+        "BitMart Spot": "https://api-cloud.bitmart.com/spot/v1/symbols/details",
+    }[venue]
+    return base.fetch(url)
+
+
+def get_spot_metadata(venue, symbol, quoted):
+    if venue == "LBank Spot":
+        return lbank_market_list()
+    if venue in ("HTX Spot", "BitMart Spot"):
+        return shared_spot_markets(venue)
+    return base.fetch(exchange_info_url(venue, symbol, quoted))
+
+
+def fresh_exchange_millis(value, limit_seconds=600):
+    """Reject old and future-dated depth snapshots."""
+    try:
+        seconds_ago = base.now().timestamp() - float(value) / 1000
+        return 0 <= seconds_ago < limit_seconds
+    except (ValueError, TypeError, OverflowError):
+        return False
+
+
 def exchange_market_valid(venue, payload, symbol, quote='USDT'):
+    if venue == "HTX Spot":
+        return (isinstance(payload, dict) and payload.get("status") == "ok"
+                and isinstance(payload.get("data"), list)
+                and any(isinstance(m, dict) and
+                        m.get("sc") == (symbol + quote).lower() and
+                        m.get("bc") == symbol.lower() and
+                        m.get("qc") == quote.lower() and
+                        m.get("bcdn") == symbol and
+                        m.get("qcdn") == quote and
+                        m.get("state") == "online" and m.get("te") is True
+                        for m in payload["data"]))
+    if venue == "BitMart Spot":
+        rows = payload.get("data") if isinstance(payload, dict) else None
+        return (isinstance(payload, dict) and
+                str(payload.get("code")) == "1000" and
+                isinstance(rows, dict) and
+                isinstance(rows.get("symbols"), list) and
+                any(isinstance(m, dict) and
+                    m.get("symbol") == symbol + "_" + quote and
+                    m.get("base_currency") == symbol and
+                    m.get("quote_currency") == quote and
+                    m.get("trade_status") == "trading"
+                    for m in rows["symbols"]))
     if venue == "LBank Spot":
         return (isinstance(payload, dict) and
                 str(payload.get("result", "")).lower() in ("true", "1") and
@@ -439,6 +491,10 @@ def exchange_market_valid(venue, payload, symbol, quote='USDT'):
 
 
 def exchange_info_url(venue, symbol, quote='USDT'):
+    if venue == "HTX Spot":
+        return "https://api.huobi.pro/v2/settings/common/symbols"
+    if venue == "BitMart Spot":
+        return "https://api-cloud.bitmart.com/spot/v1/symbols/details"
     if venue == "LBank Spot":
         return "https://api.lbank.info/v2/currencyPairs.do"
     if venue == "Binance Spot":
@@ -514,6 +570,7 @@ def discover_one(cid, symbol, coin_id, ts):
             for venue, exchange_id in (
                 ("Binance Spot", "binance"), ("Gate Spot", "gate"),
                 ("MEXC Spot", "mxc"), ("Bybit Spot", "bybit_spot"),
+                ("HTX Spot", "htx"), ("BitMart Spot", "bitmart"),
                 ("OKX Spot", "okex"), ("KuCoin Spot", "kucoin"),
                 ("Coinbase Exchange Spot", "gdax"),
                 ("Kraken Spot", "kraken")
@@ -538,8 +595,7 @@ def discover_one(cid, symbol, coin_id, ts):
         for venue in VENUE_ORDER:
             for quoted in candidates.get(venue, []):
                 try:
-                    market = (lbank_market_list() if venue == "LBank Spot" else
-                              base.fetch(exchange_info_url(venue, symbol, quoted)))
+                    market = get_spot_metadata(venue, symbol, quoted)
                     if exchange_market_valid(venue, market, symbol, quoted):
                         sources.append({
                             "venue": venue, "pair": symbol + "/" + quoted,
@@ -620,8 +676,7 @@ def bulk_exchange_candidates(tickers, registry):
 
 def verify_bulk_pair(cid, symbol, coin_id, quoted, venue, ts):
     try:
-        meta = (lbank_market_list() if venue == "LBank Spot" else
-                base.fetch(exchange_info_url(venue, symbol, quoted)))
+        meta = get_spot_metadata(venue, symbol, quoted)
         if exchange_market_valid(venue, meta, symbol, quoted):
             return cid, {
                 "venue": venue, "pair": symbol + "/" + quoted,
@@ -634,6 +689,12 @@ def verify_bulk_pair(cid, symbol, coin_id, quoted, venue, ts):
 
 def depth_url(venue, symbol, quote='USDT'):
     pair = symbol + quote
+    if venue == "HTX Spot":
+        return ("https://api.huobi.pro/market/depth?symbol=" +
+                pair.lower() + "&type=step0&depth=20")
+    if venue == "BitMart Spot":
+        return ("https://api-cloud.bitmart.com/spot/quotation/v3/books?symbol=" +
+                symbol + "_" + quote + "&limit=20")
     if venue == "LBank Spot":
         return ("https://api.lbank.info/v2/depth.do?symbol=" +
                 symbol.lower() + "_" + quote.lower() + "&size=20")
@@ -672,6 +733,18 @@ def depth_url(venue, symbol, quote='USDT'):
 def normalize_exchange_depth(venue, raw):
     if not isinstance(raw, dict):
         raise ValueError("Not an exchange depth response")
+    if venue == "HTX Spot":
+        tick = raw.get("tick")
+        if (raw.get("status") != "ok" or not isinstance(tick, dict) or
+            not fresh_exchange_millis(tick.get("ts"))):
+            raise ValueError("HTX Spot orderbook rejected or stale")
+        return {"bids": tick.get("bids"), "asks": tick.get("asks")}
+    if venue == "BitMart Spot":
+        data = raw.get("data")
+        if (str(raw.get("code")) != "1000" or not isinstance(data, dict) or
+            not fresh_exchange_millis(data.get("ts"))):
+            raise ValueError("BitMart Spot orderbook rejected or stale")
+        return {"bids": data.get("bids"), "asks": data.get("asks")}
     if venue == "LBank Spot":
         if (str(raw.get("result", "")).lower() not in ("true", "1") or
             raw.get("error_code") not in (None, 0, "0") or
@@ -756,6 +829,33 @@ def load_depth(cid, source, previous):
 
 def check_fixture():
     assert len(catalog_with_ids()) == 288
+    assert exchange_market_valid("HTX Spot", {"status": "ok", "data": [{
+        "sc":"vrausdt", "bc":"vra", "qc":"usdt", "bcdn":"VRA", "qcdn":"USDT",
+        "state":"online", "te":True}]}, "VRA", "USDT")
+    assert not exchange_market_valid("HTX Spot", {"status":"ok", "data":[{
+        "sc":"vrausdt", "bc":"other", "qc":"usdt", "bcdn":"VRA",
+        "qcdn":"USDT", "state":"online", "te":True}]}, "VRA", "USDT")
+    assert exchange_market_valid("BitMart Spot", {"code":1000, "data":{
+        "symbols":[{"symbol":"VRA_USDT", "base_currency":"VRA",
+        "quote_currency":"USDT", "trade_status":"trading"}]}}, "VRA", "USDT")
+    assert not exchange_market_valid("BitMart Spot", {"code":1000, "data":{
+        "symbols":[{"symbol":"VRA_USDT", "base_currency":"VRA",
+        "quote_currency":"USDT", "trade_status":"pre-trade"}]}}, "VRA", "USDT")
+    current_ms = int(base.now().timestamp() * 1000)
+    assert normalize_exchange_depth("HTX Spot", {"status":"ok",
+        "tick":{"ts":current_ms,"bids":[["1","2"]],"asks":[["1.1","3"]]}})["bids"]
+    assert normalize_exchange_depth("BitMart Spot", {"code":1000,
+        "data":{"ts":current_ms,"bids":[["1","2"]],"asks":[["1.1","3"]]}})["asks"]
+    for venue, invalid in (("HTX Spot", {"status":"ok","tick":{"ts":1000,
+        "bids":[["1","2"]],"asks":[["1.1","3"]]}}),
+        ("BitMart Spot", {"code":1000,"data":{"ts":1000,
+        "bids":[["1","2"]],"asks":[["1.1","3"]]}})):
+        try:
+            normalize_exchange_depth(venue, invalid)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("stale book accepted")
     assert catalog_with_ids()["vra"][1] == "verasity"
     assert catalog_with_ids()["tai"][1] == "tars-protocol"
     assert exchange_market_valid("LBank Spot", {"result": True, "error_code": 0,
@@ -924,7 +1024,7 @@ def run():
     previous_source = previous_source if isinstance(previous_source, dict) else {}
     previous_books = previous_books if isinstance(previous_books, dict) else {}
     checked = checked if isinstance(checked, dict) else {}
-    if data.get('multiDiscoveryVersion') != 6:
+    if data.get('multiDiscoveryVersion') != 7:
         checked = {}  # New all-exchange CoinGecko scan replaces a filtered query.
 
     sources = {}
@@ -1170,7 +1270,7 @@ def run():
     }
     data["venueBooks"] = venue_books
     data["marketSources"] = sources
-    data["multiDiscoveryVersion"] = 6
+    data["multiDiscoveryVersion"] = 7
     data["multiDiscoveryCheckedAt"] = {cid: checked[cid] for cid in registry
                                         if cid in checked}
     data["unavailable"] = {cid: "Nessun book pubblico verificato"
