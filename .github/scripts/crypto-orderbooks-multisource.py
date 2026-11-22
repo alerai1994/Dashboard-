@@ -112,7 +112,7 @@ CURATED_SPOT = {
     "mana": ("MANA", "decentraland", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
     "syrup": ("SYRUP", "syrup", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
     "imx": ("IMX", "immutable-x", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
-    "mkr": ("MKR", "maker", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
+    "mkr": ("MKR", "maker", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"), ("Kraken Spot", "USD"))),
     "snx": ("SNX", "havven", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
     "mina": ("MINA", "mina-protocol", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
     "rose": ("ROSE", "oasis-network", (("Binance Spot", "USDT"), ("Kraken Spot", "USD"))),
@@ -174,10 +174,10 @@ CURATED_SPOT = {
     "vvv": ("VVV", "venice-token", (("Coinbase Exchange Spot", "USD"),)),
     "pi": ("PI", "pi-network", (("OKX Spot", "USDT"),)),
     "night": ("NIGHT", "midnight-3", (("Binance Spot", "USDT"),)),
-    "lit": ("LIT", "lighter", (("Coinbase Exchange Spot", "USD"),)),
+    "lit": ("LIT", "lighter", (("OKX Spot", "USDT"), ("WhiteBIT Spot", "USDT"), ("Bitget Spot", "USDT"), ("Coinbase Exchange Spot", "USD"))),
     "gho": ("GHO", "gho", (("Kraken Spot", "USD"),)),
     "tusd": ("TUSD", "true-usd", (("Binance Spot", "USDT"),)),
-    "frax": ("FRAX", "frax", (("Kraken Spot", "USD"),)),
+    "frax": ("FRAX", "frax", (("Binance Spot", "USDT"), ("Bybit Spot", "USDT"), ("Kraken Spot", "USD"))),
     "fluid": ("FLUID", "instadapp", (("Binance Spot", "USDT"),)),
     "mx": ("MX", "mx-token", (("MEXC Spot", "USDT"),)),
     "gusd": ("GUSD", "gusd", (("Kraken Spot", "USD"),)),
@@ -191,9 +191,10 @@ CURATED_SPOT = {
     "usdf": ("USDF", "falcon-finance", (("Gate Spot", "USDT"),)),
     "bgb": ("BGB", "bitget-token", (("Bitget Spot", "USDT"), ("Gate Spot", "USDT"))),
     "s": ("S", "sonic-3", (("Binance Spot", "USDT"), ("OKX Spot", "USDT"), ("Coinbase Exchange Spot", "USD"))),
-    "beam": ("BEAM", "beam-2", (("Binance Spot", "USDT"), ("Gate Spot", "USDT"))),
+    "beam": ("BEAM", "beam-2", (("Binance Spot", "USDT"), ("Gate Spot", "USDT"), ("Coinbase Exchange Spot", "USD"), ("Coinbase Exchange Spot", "USDC"))),
     "mon": ("MON", "monad", (("Coinbase Exchange Spot", "USD"), ("Gate Spot", "USDT"), ("KuCoin Spot", "USDT"))),
     "bdx": ("BDX", "beldex", (("MEXC Spot", "USDT"), ("Gate Spot", "USDT"))),
+    "dydx": ("DYDX", "dydx-chain", (("Binance Spot", "USDT"), ("Kraken Spot", "USD"), ("OKX Spot", "USDT"))),
 }
 
 
