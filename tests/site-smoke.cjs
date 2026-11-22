@@ -284,6 +284,11 @@ assert(descriptor({venue:'OKX Spot',pair:'USDT/USDC'}).urls[0]
 assert(descriptor({venue:'Gate Spot',pair:'BTC/USDC'}).urls[0]
  .includes('currency_pair=BTC_USDC'),
  'Gate must request the correct real USDC pair');
+assert(descriptor({venue:'BTSE Spot',pair:'BTSE/USDT'}).urls[0]
+ .includes('/public-api/market/v1/orderbook?symbol=BTSE-USDT&depth=20'),
+ 'BTSE must use the genuine level-two public Spot book, not futures');
+assert.equal(descriptor({venue:'BTSE Spot',pair:'BTSE/PERP'}),null,
+ 'BTSE perpetuals must never be shown as a Spot book');
 assert(descriptor({venue:'Coinbase Exchange Spot',pair:'BTC/EUR'}).urls[0]
  .includes('/products/BTC-EUR/book?level=2'),
  'Supported EUR markets must request the exact EUR orderbook');
