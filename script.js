@@ -3701,7 +3701,7 @@ const ORDER_BOOK_COINS=ASSETS.filter(a=>a.group==='crypto');
 const orderBookDiscoveredSources=new Map();
 function orderBookVerifiedBinanceMarket(asset,coinTickers,exchangeInfo){
  const symbol=String(asset?.symbol||'').replace(/-USD$/i,'').toUpperCase();
- if(!asset?.coingeckoId||!/^[A-Z0-9]{2,20}$/.test(symbol)||
+ if(!asset?.coingeckoId||!/^[A-Z0-9]{1,20}$/.test(symbol)||
   !Array.isArray(coinTickers?.tickers)||!Array.isArray(exchangeInfo?.symbols))return null;
  const pair=symbol+'USDT';
  const listed=coinTickers.tickers.some(t=>t&&
@@ -3732,7 +3732,7 @@ async function discoverOrderBookSource(id,serial){
  const ttl=prior?.source?2*60*60*1000:5*60*1000;
  if(prior&&Date.now()-prior.checkedAt<ttl)return prior.source;
  const symbol=String(asset.symbol||'').replace(/-USD$/i,'').toUpperCase();
- if(!/^[A-Z0-9]{2,20}$/.test(symbol))return null;
+ if(!/^[A-Z0-9]{1,20}$/.test(symbol))return null;
  let source=null;
  try{
   const tickers=await orderBookDiscoveryFetch('https://api.coingecko.com/api/v3/coins/'+
@@ -3758,7 +3758,7 @@ const orderBookVenueChoices=load('orderBookVenueChoices',{})||{};
 function orderBookVenueDescriptor(row){
  const venue=row?.venue,pair=String(row?.pair||''),symbol=pair.split('/')[0],quoted=pair.split('/')[1];
  if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot'].includes(venue)||
-  !/^[A-Z0-9]{2,20}\/(USDT|USDC|USD)$/.test(pair))return null;
+  !/^[A-Z0-9]{1,20}\/(USDT|USDC|USD)$/.test(pair))return null;
  const coded=symbol+quoted;
  if(venue==='Binance Spot')return {venue,pair,urls:[
   'https://data-api.binance.vision/api/v3/depth?symbol='+coded+'&limit=20',
@@ -3938,7 +3938,7 @@ function cryptoBookEntry(id){
  const b=wanted?(pick||(primary?.venue===wanted?primary:null)):primary;
  if(!a||a.group!=='crypto'||!b||b.id!==id)return null;
  const symbol=id==='ton'?'GRAM':a.symbol.replace('-USD','');
- if(b.unit!==symbol||!/^[A-Z0-9]{2,20}\/(USDT|USDC|USD)$/.test(String(b.pair||''))||
+ if(b.unit!==symbol||!/^[A-Z0-9]{1,20}\/(USDT|USDC|USD)$/.test(String(b.pair||''))||
    b.pair.split('/')[0]!==symbol||!Array.isArray(b.bids)||!Array.isArray(b.asks))return null;
  if(a.extended){
   const listings=p?.marketSources?.[id]||[];
@@ -4680,7 +4680,7 @@ function liveBookConfig(id){
  if(!source&&!snapshot)return null;
  const venue=snapshot?snapshot.venue:source.venue;
  const pair=snapshot?snapshot.pair:source.pair;
- if(!pair||!/^[A-Z0-9]{2,20}\/(USDT|USDC|USD)$/.test(pair))return null;
+ if(!pair||!/^[A-Z0-9]{1,20}\/(USDT|USDC|USD)$/.test(pair))return null;
  const symbol=pair.replace('/','');
  if(venue==='Binance Spot')return {venue,pair,symbol,kind:'binance',
   url:'wss://data-stream.binance.vision/stream?streams='+symbol.toLowerCase()+
