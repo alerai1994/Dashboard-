@@ -3757,7 +3757,7 @@ async function discoverOrderBookSource(id,serial){
 const orderBookVenueChoices=load('orderBookVenueChoices',{})||{};
 function orderBookVenueDescriptor(row){
  const venue=row?.venue,pair=String(row?.pair||''),symbol=pair.split('/')[0],quoted=pair.split('/')[1];
- if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot'].includes(venue)||
+ if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot','Bitrue Spot'].includes(venue)||
   !/^[A-Z0-9]{1,20}\/(USDT|USDC|USD|EUR)$/.test(pair))return null;
  const coded=symbol+quoted;
  if(venue==='Binance Spot')return {venue,pair,urls:[
@@ -3787,6 +3787,8 @@ function orderBookVenueDescriptor(row){
   'https://api.huobi.pro/market/depth?symbol='+coded.toLowerCase()+'&type=step0&depth=20']};
  if(venue==='BitMart Spot')return {venue,pair,format:'bitmart',urls:[
   'https://api-cloud.bitmart.com/spot/quotation/v3/books?symbol='+symbol+'_'+quoted+'&limit=20']};
+ if(venue==='Bitrue Spot')return {venue,pair,format:'bitrue',urls:[
+  'https://openapi.bitrue.com/api/v1/depth?symbol='+coded+'&limit=20']};
  return {venue,pair,format:'lbank',urls:[
   'https://api.lbank.info/v2/depth.do?symbol='+symbol.toLowerCase()+'_'+quoted.toLowerCase()+'&size=20']};
 }
@@ -3808,7 +3810,7 @@ function orderBookAvailableVenues(id){
  }
  if(!asset.extended&&bundle?.books?.[id])add(bundle.books[id]);
  if(!found.size){const fallback=orderBookSource(id);if(fallback)found.set(fallback.venue,fallback);}
- const priority=['Binance Spot','Gate Spot','MEXC Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','LBank Spot','HTX Spot','BitMart Spot','Gate.io Spot'];
+ const priority=['Binance Spot','Gate Spot','MEXC Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','LBank Spot','HTX Spot','BitMart Spot','Bitrue Spot','Gate.io Spot'];
  return Array.from(found.values()).sort((a,b)=>priority.indexOf(a.venue)-priority.indexOf(b.venue));
 }
 function orderBookVenueMarkup(id){
@@ -4699,7 +4701,7 @@ function liveBookConfig(id){
  if(venue==='MEXC Spot')return {venue,pair,symbol,kind:'poll',
   url:'https://api.mexc.com/api/v3/depth?symbol='+symbol+'&limit=20',
   priceUrl:'https://api.mexc.com/api/v3/ticker/price?symbol='+symbol};
- if(['Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot'].includes(venue)){
+ if(['Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot','Bitrue Spot'].includes(venue)){
   const source=orderBookVenueDescriptor({venue,pair});
   if(source)return {venue,pair,symbol,kind:'poll',
    format:source.format,url:source.urls[0]};
@@ -4714,6 +4716,11 @@ function decodeOrderBookDepth(payload,format){
   const n=Number(ts),delay=Date.now()-n;
   return Number.isFinite(n)&&n>1e12&&delay>=0&&delay<600000;
  };
+ if(format==='bitrue'){
+  if(!Number.isInteger(payload.lastUpdateId)||!Array.isArray(payload.bids)||
+     !Array.isArray(payload.asks))throw Error('Bitrue Spot non disponibile');
+  return {bids:payload.bids,asks:payload.asks,sequence:payload.lastUpdateId};
+ }
  if(format==='htx'){
   if(payload.status!=='ok'||!payload.tick||!freshExchangeMs(payload.tick.ts))
    throw Error('HTX Spot non disponibile o book scaduto');
