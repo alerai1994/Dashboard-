@@ -57,8 +57,9 @@ KNOWN = {
     "HTX Spot": {"keys": {"htx", "huobi"}},
     "BitMart Spot": {"keys": {"bitmart"}},
     "Bitrue Spot": {"keys": {"bitrue"}},
+    "Crypto.com Spot": {"keys": {"crypto_com", "crypto-com", "crypto_com_exchange"}},
 }
-VENUE_ORDER = ("Binance Spot", "Gate Spot", "MEXC Spot", "Bybit Spot", "OKX Spot", "KuCoin Spot", "Coinbase Exchange Spot", "Kraken Spot", "Bitget Spot", "WhiteBIT Spot", "BTSE Spot", "LBank Spot", "HTX Spot", "BitMart Spot", "Bitrue Spot")
+VENUE_ORDER = ("Binance Spot", "Gate Spot", "MEXC Spot", "Bybit Spot", "OKX Spot", "KuCoin Spot", "Coinbase Exchange Spot", "Kraken Spot", "Bitget Spot", "WhiteBIT Spot", "BTSE Spot", "LBank Spot", "HTX Spot", "BitMart Spot", "Bitrue Spot", "Crypto.com Spot")
 QUOTE_PRIORITY = ("USDT", "USDC", "USD", "EUR")
 
 # Explicit catalog identity mappings for widely traded assets whose public
@@ -66,7 +67,7 @@ QUOTE_PRIORITY = ("USDT", "USDC", "USD", "EUR")
 # must STILL report an active Spot instrument for the exact base/quote before
 # its live BID/ASK depth is accepted. Never infer order levels from prices.
 CURATED_SPOT = {
-    "vra": ("VRA", "verasity", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"), ("LBank Spot", "USDT"), ("HTX Spot", "USDT"), ("BitMart Spot", "USDT"), ("Bitrue Spot", "USDT"))),
+    "vra": ("VRA", "verasity", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"), ("LBank Spot", "USDT"), ("HTX Spot", "USDT"), ("BitMart Spot", "USDT"), ("Bitrue Spot", "USDT"), ("Crypto.com Spot", "USDT"))),
     "tai": ("TAI", "tars-protocol", (("KuCoin Spot", "USDT"), ("MEXC Spot", "USDT"), ("Gate Spot", "USDT"))),
     "xmr": ("XMR", "monero", (("Kraken Spot", "USD"), ("Gate Spot", "USDT"))),
     "paxg": ("PAXG", "pax-gold", (("Kraken Spot", "USD"), ("Binance Spot", "USDT"))),
@@ -170,8 +171,8 @@ CURATED_SPOT = {
     "rvn": ("RVN", "ravencoin", (("Binance Spot", "USDT"), ("Kraken Spot", "USD"))),
     "sc": ("SC", "siacoin", (("Kraken Spot", "USD"), ("Binance Spot", "USDT"))),
     "zrx": ("ZRX", "0x", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
-    "kmd": ("KMD", "komodo", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"), ("HTX Spot", "USDT"), ("BitMart Spot", "USDT"), ("Bitrue Spot", "USDT"))),
-    "icx": ("ICX", "icon", (("Binance Spot", "USDT"), ("Gate Spot", "USDT"), ("HTX Spot", "USDT"), ("BitMart Spot", "USDT"), ("Bitrue Spot", "USDT"))),
+    "kmd": ("KMD", "komodo", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"), ("HTX Spot", "USDT"), ("BitMart Spot", "USDT"), ("Bitrue Spot", "USDT"), ("Crypto.com Spot", "USDT"))),
+    "icx": ("ICX", "icon", (("Binance Spot", "USDT"), ("Gate Spot", "USDT"), ("HTX Spot", "USDT"), ("BitMart Spot", "USDT"), ("Bitrue Spot", "USDT"), ("Crypto.com Spot", "USDT"))),
     "ong": ("ONG", "ong", (("Binance Spot", "USDT"), ("Gate Spot", "USDT"))),
     "ont": ("ONT", "ontology", (("Binance Spot", "USDT"), ("Gate Spot", "USDT"))),
     "hnt": ("HNT", "helium", (("Coinbase Exchange Spot", "USD"), ("Kraken Spot", "USD"))),
@@ -188,11 +189,11 @@ CURATED_SPOT = {
     "frax": ("FRAX", "frax", (("Binance Spot", "USDT"), ("Bybit Spot", "USDT"), ("Kraken Spot", "USD"))),
     "fluid": ("FLUID", "instadapp", (("Gate Spot", "USDT"), ("Bitget Spot", "USDT"), ("Binance Spot", "USDT"))),
     "mx": ("MX", "mx-token", (("MEXC Spot", "USDT"),)),
-    "gusd": ("GUSD", "gusd", (("Kraken Spot", "USD"), ("Coinbase Exchange Spot", "USD"), ("Kraken Spot", "EUR"), ("HTX Spot", "USDT"))),
+    "gusd": ("GUSD", "gusd", (("Kraken Spot", "USD"), ("Coinbase Exchange Spot", "USD"), ("Kraken Spot", "EUR"), ("HTX Spot", "USDT"), ("Crypto.com Spot", "USD"))),
     "geod": ("GEOD", "geodnet", (("Coinbase Exchange Spot", "USD"),)),
     "zbcn": ("ZBCN", "zebec-network", (("Gate Spot", "USDT"),)),
     "met": ("MET", "meteora", (("Coinbase Exchange Spot", "USD"),)),
-    "ohm": ("OHM", "olympus", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"), ("Kraken Spot", "USD"), ("HTX Spot", "USDT"), ("BitMart Spot", "USDT"), ("Bitrue Spot", "USDT"))),
+    "ohm": ("OHM", "olympus", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"), ("Kraken Spot", "USD"), ("HTX Spot", "USDT"), ("BitMart Spot", "USDT"), ("Bitrue Spot", "USDT"), ("Crypto.com Spot", "USDT"))),
     "xpl": ("XPL", "plasma", (("Kraken Spot", "USD"),)),
     "leo": ("LEO", "leo-token", (("Gate Spot", "USDT"),)),
     "wbt": ("WBT", "whitebit", (("WhiteBIT Spot", "USDT"), ("Gate Spot", "USDT"))),
@@ -228,7 +229,7 @@ CURATED_SPOT = {
     "ausd": ("AUSD", "agora-dollar", (("Gate Spot", "USDT"), ("Bitget Spot", "USDT"), ("BitMart Spot", "USDT"))),
     "br": ("BR", "bedrock-token", (("Gate Spot", "USDT"), ("Bitget Spot", "USDT"))),
     "vsn": ("VSN", "vision-3", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"))),
-    "borg": ("BORG", "swissborg", (("Kraken Spot", "EUR"), ("Gate Spot", "USDT"), ("BitMart Spot", "USDT"))),
+    "borg": ("BORG", "swissborg", (("Kraken Spot", "EUR"), ("Gate Spot", "USDT"), ("BitMart Spot", "USDT"), ("Crypto.com Spot", "USD"))),
     "sn51": ("SN51", "celium", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"))),
     "jpysc": ("JPYSC", "jpysc", (("Gate Spot", "USDT"), ("BitMart Spot", "USDT"))),
     "usx": ("USX", "usx", (("Gate Spot", "USDT"), ("Bitget Spot", "USDT"))),
@@ -345,13 +346,14 @@ def lbank_market_list():
     return base.fetch("https://api.lbank.info/v2/currencyPairs.do")
 
 
-@lru_cache(maxsize=3)
+@lru_cache(maxsize=4)
 def shared_spot_markets(venue):
     """Fetch one venue's complete public Spot catalog per run."""
     url = {
         "HTX Spot": "https://api.huobi.pro/v2/settings/common/symbols",
         "BitMart Spot": "https://api-cloud.bitmart.com/spot/v1/symbols/details",
         "Bitrue Spot": "https://openapi.bitrue.com/api/v1/exchangeInfo",
+        "Crypto.com Spot": "https://api.crypto.com/exchange/v1/public/get-instruments",
     }[venue]
     return base.fetch(url)
 
@@ -359,7 +361,7 @@ def shared_spot_markets(venue):
 def get_spot_metadata(venue, symbol, quoted):
     if venue == "LBank Spot":
         return lbank_market_list()
-    if venue in ("HTX Spot", "BitMart Spot", "Bitrue Spot"):
+    if venue in ("HTX Spot", "BitMart Spot", "Bitrue Spot", "Crypto.com Spot"):
         return shared_spot_markets(venue)
     return base.fetch(exchange_info_url(venue, symbol, quoted))
 
@@ -374,6 +376,18 @@ def fresh_exchange_millis(value, limit_seconds=600):
 
 
 def exchange_market_valid(venue, payload, symbol, quote='USDT'):
+    if venue == "Crypto.com Spot":
+        catalog = payload.get("result") if isinstance(payload, dict) else None
+        return (str(payload.get("code")) == "0" and
+                isinstance(catalog, dict) and
+                isinstance(catalog.get("data"), list) and
+                any(isinstance(m, dict) and
+                    m.get("symbol") == symbol + "_" + quote and
+                    m.get("base_ccy") == symbol and
+                    m.get("quote_ccy") == quote and
+                    m.get("inst_type") == "CCY_PAIR" and
+                    m.get("tradable") is True
+                    for m in catalog["data"]))
     if venue == "Bitrue Spot":
         # Only actual SPOT listings; a symbol match alone is never a verified asset identity.
         return (isinstance(payload, dict) and
@@ -504,6 +518,8 @@ def exchange_market_valid(venue, payload, symbol, quote='USDT'):
 
 
 def exchange_info_url(venue, symbol, quote='USDT'):
+    if venue == "Crypto.com Spot":
+        return "https://api.crypto.com/exchange/v1/public/get-instruments"
     if venue == "Bitrue Spot":
         return "https://openapi.bitrue.com/api/v1/exchangeInfo"
     if venue == "HTX Spot":
@@ -586,7 +602,7 @@ def discover_one(cid, symbol, coin_id, ts):
                 ("Binance Spot", "binance"), ("Gate Spot", "gate"),
                 ("MEXC Spot", "mxc"), ("Bybit Spot", "bybit_spot"),
                 ("HTX Spot", "htx"), ("BitMart Spot", "bitmart"),
-                ("Bitrue Spot", "bitrue"),
+                ("Bitrue Spot", "bitrue"), ("Crypto.com Spot", "crypto_com"),
                 ("OKX Spot", "okex"), ("KuCoin Spot", "kucoin"),
                 ("Coinbase Exchange Spot", "gdax"),
                 ("Kraken Spot", "kraken")
@@ -705,6 +721,9 @@ def verify_bulk_pair(cid, symbol, coin_id, quoted, venue, ts):
 
 def depth_url(venue, symbol, quote='USDT'):
     pair = symbol + quote
+    if venue == "Crypto.com Spot":
+        return ("https://api.crypto.com/exchange/v1/public/get-book?instrument_name=" +
+                symbol + "_" + quote + "&depth=20")
     if venue == "Bitrue Spot":
         return ("https://openapi.bitrue.com/api/v1/depth?symbol=" +
                 pair + "&limit=20")
@@ -752,6 +771,16 @@ def depth_url(venue, symbol, quote='USDT'):
 def normalize_exchange_depth(venue, raw):
     if not isinstance(raw, dict):
         raise ValueError("Not an exchange depth response")
+    if venue == "Crypto.com Spot":
+        result = raw.get("result")
+        if (str(raw.get("code")) != "0" or not isinstance(result, dict) or
+            not isinstance(result.get("data"), list) or len(result["data"]) != 1 or
+            not isinstance(result["data"][0], dict)):
+            raise ValueError("Crypto.com rejected Spot book or did not send a snapshot")
+        book = result["data"][0]
+        if not isinstance(book.get("bids"), list) or not isinstance(book.get("asks"), list):
+            raise ValueError("Crypto.com Spot depth is invalid")
+        return book
     if venue == "Bitrue Spot":
         if (not isinstance(raw.get("lastUpdateId"), int) or
             not isinstance(raw.get("bids"), list) or
@@ -854,6 +883,28 @@ def load_depth(cid, source, previous):
 
 def check_fixture():
     assert len(catalog_with_ids()) == 288
+    verified_spot = {"code": 0, "result": {"data": [{
+        "symbol": "ICX_USDT", "base_ccy": "ICX", "quote_ccy": "USDT",
+        "inst_type": "CCY_PAIR", "tradable": True
+    }]}}
+    assert exchange_market_valid("Crypto.com Spot", verified_spot, "ICX")
+    assert not exchange_market_valid("Crypto.com Spot", verified_spot, "OTHER")
+    assert not exchange_market_valid("Crypto.com Spot", {"code": 0, "result": {"data": [{
+        **verified_spot["result"]["data"][0], "inst_type": "PERPETUAL_SWAP"
+    }]}}, "ICX")
+    assert not exchange_market_valid("Crypto.com Spot", {"code": 0, "result": {"data": [{
+        **verified_spot["result"]["data"][0], "tradable": False
+    }]}}, "ICX")
+    assert normalize_exchange_depth("Crypto.com Spot", {"code": 0,
+        "result": {"data": [{"bids": [["1", "2", 3]],
+                             "asks": [["1.1", "4", 2]]}]}})["bids"]
+    try:
+        normalize_exchange_depth("Crypto.com Spot", {"code": 10004,
+            "result": {"data": []}})
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Crypto.com API rejection accepted")
     assert exchange_market_valid("Bitrue Spot", {"symbols": [{
         "symbol":"VRAUSDT","baseAsset":"VRA","quoteAsset":"USDT",
         "status":"TRADING","orderTypes":["LIMIT","MARKET"]}]}, "VRA")
@@ -1068,7 +1119,7 @@ def run():
     previous_source = previous_source if isinstance(previous_source, dict) else {}
     previous_books = previous_books if isinstance(previous_books, dict) else {}
     checked = checked if isinstance(checked, dict) else {}
-    if data.get('multiDiscoveryVersion') != 8:
+    if data.get('multiDiscoveryVersion') != 9:
         checked = {}  # New all-exchange CoinGecko scan replaces a filtered query.
 
     sources = {}
@@ -1314,7 +1365,7 @@ def run():
     }
     data["venueBooks"] = venue_books
     data["marketSources"] = sources
-    data["multiDiscoveryVersion"] = 8
+    data["multiDiscoveryVersion"] = 9
     data["multiDiscoveryCheckedAt"] = {cid: checked[cid] for cid in registry
                                         if cid in checked}
     data["unavailable"] = {cid: "Nessun book pubblico verificato"
