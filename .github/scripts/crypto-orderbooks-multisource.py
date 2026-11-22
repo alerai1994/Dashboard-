@@ -49,8 +49,10 @@ KNOWN = {
     "KuCoin Spot": {"keys": {"kucoin"}},
     "Coinbase Exchange Spot": {"keys": {"gdax"}},
     "Kraken Spot": {"keys": {"kraken"}},
+    "Bitget Spot": {"keys": {"bitget", "bitget_spot"}},
+    "WhiteBIT Spot": {"keys": {"whitebit"}},
 }
-VENUE_ORDER = ("Binance Spot", "Gate Spot", "MEXC Spot", "Bybit Spot", "OKX Spot", "KuCoin Spot", "Coinbase Exchange Spot", "Kraken Spot", "LBank Spot")
+VENUE_ORDER = ("Binance Spot", "Gate Spot", "MEXC Spot", "Bybit Spot", "OKX Spot", "KuCoin Spot", "Coinbase Exchange Spot", "Kraken Spot", "Bitget Spot", "WhiteBIT Spot", "LBank Spot")
 QUOTE_PRIORITY = ("USDT", "USDC", "USD")
 
 # Explicit catalog identity mappings for widely traded assets whose public
@@ -116,7 +118,7 @@ CURATED_SPOT = {
     "rose": ("ROSE", "oasis-network", (("Binance Spot", "USDT"), ("Kraken Spot", "USD"))),
     "nexo": ("NEXO", "nexo", (("Kraken Spot", "USD"), ("Gate Spot", "USDT"))),
     "sky": ("SKY", "sky", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
-    "mnt": ("MNT", "mantle", (("OKX Spot", "USDT"), ("Bybit Spot", "USDT"))),
+    "mnt": ("MNT", "mantle", (("Bitget Spot", "USDT"), ("OKX Spot", "USDT"), ("Bybit Spot", "USDT"))),
     "jst": ("JST", "just", (("Binance Spot", "USDT"), ("Gate Spot", "USDT"))),
     "aster": ("ASTER", "aster-2", (("Binance Spot", "USDT"), ("OKX Spot", "USDT"))),
     "okb": ("OKB", "okb", (("OKX Spot", "USDT"),)),
@@ -185,9 +187,9 @@ CURATED_SPOT = {
     "ohm": ("OHM", "olympus", (("Kraken Spot", "USD"),)),
     "xpl": ("XPL", "plasma", (("Kraken Spot", "USD"),)),
     "leo": ("LEO", "leo-token", (("Gate Spot", "USDT"),)),
-    "wbt": ("WBT", "whitebit", (("Gate Spot", "USDT"),)),
+    "wbt": ("WBT", "whitebit", (("WhiteBIT Spot", "USDT"), ("Gate Spot", "USDT"))),
     "usdf": ("USDF", "falcon-finance", (("Gate Spot", "USDT"),)),
-    "bgb": ("BGB", "bitget-token", (("Gate Spot", "USDT"),)),
+    "bgb": ("BGB", "bitget-token", (("Bitget Spot", "USDT"), ("Gate Spot", "USDT"))),
 }
 
 
@@ -344,6 +346,17 @@ def exchange_market_valid(venue, payload, symbol, quote='USDT'):
         return any(isinstance(m, dict) and m.get("wsname") == expected and
                    m.get("status", "online") == "online"
                    for m in payload["result"].values())
+    if venue == "Bitget Spot":
+        return (isinstance(payload, dict) and str(payload.get("code")) == "00000" and
+                any(isinstance(m, dict) and m.get("symbol") == symbol + quote and
+                    m.get("baseCoin") == symbol and m.get("quoteCoin") == quote and
+                    m.get("status") == "online" for m in payload.get("data", [])))
+    if venue == "WhiteBIT Spot":
+        return (isinstance(payload, list) and
+                any(isinstance(m, dict) and m.get("name") == symbol + "_" + quote and
+                    m.get("stock") == symbol and m.get("money") == quote and
+                    m.get("type") == "spot" and m.get("tradesEnabled") is True
+                    for m in payload))
     if venue == "Coinbase Exchange Spot":
         return (isinstance(payload, dict) and
                 payload.get("id") == symbol + "-" + quote and
@@ -376,6 +389,10 @@ def exchange_info_url(venue, symbol, quote='USDT'):
                 symbol + "-" + quote)
     if venue == "Kraken Spot":
         return "https://api.kraken.com/0/public/AssetPairs?pair=" + kraken_alias(symbol) + quote
+    if venue == "Bitget Spot":
+        return "https://api.bitget.com/api/v2/spot/public/symbols?symbol=" + symbol + quote
+    if venue == "WhiteBIT Spot":
+        return "https://whitebit.com/api/v4/public/markets"
     raise ValueError("Unsupported venue")
 
 
@@ -559,6 +576,12 @@ def depth_url(venue, symbol, quote='USDT'):
                 symbol + "-" + quote + "/book?level=2")
     if venue == "Kraken Spot":
         return "https://api.kraken.com/0/public/Depth?pair=" + kraken_alias(symbol) + quote + "&count=20"
+    if venue == "Bitget Spot":
+        return ("https://api.bitget.com/api/v2/spot/market/orderbook?symbol=" +
+                pair + "&type=step0&limit=20")
+    if venue == "WhiteBIT Spot":
+        return ("https://whitebit.com/api/v4/public/orderbook/" + symbol +
+                "_" + quote + "?limit=20&level=0")
     raise ValueError("Unsupported venue")
 
 
@@ -585,6 +608,10 @@ def normalize_exchange_depth(venue, raw):
             raise ValueError("Kraken API rejected spot orderbook")
         book = next(iter(raw["result"].values()))
         return {"bids": book.get("bids"), "asks": book.get("asks")}
+    if venue == "Bitget Spot":
+        if str(raw.get("code")) != "00000" or not isinstance(raw.get("data"), dict):
+            raise ValueError("Bitget API rejected Spot orderbook")
+        return {"bids": raw["data"].get("bids"), "asks": raw["data"].get("asks")}
     if venue == "Coinbase Exchange Spot":
         if not isinstance(raw.get("bids"), list) or not isinstance(raw.get("asks"), list):
             raise ValueError("Coinbase Exchange API rejected spot orderbook")
@@ -633,6 +660,15 @@ def load_depth(cid, source, previous):
 
 def check_fixture():
     assert len(catalog_with_ids()) == 288
+    assert exchange_market_valid("Bitget Spot", {"code": "00000", "data": [
+        {"symbol": "BGBUSDT", "baseCoin": "BGB", "quoteCoin": "USDT",
+         "status": "online"}]}, "BGB", "USDT")
+    assert exchange_market_valid("WhiteBIT Spot", [{
+        "name": "WBT_USDT", "stock": "WBT", "money": "USDT",
+        "type": "spot", "tradesEnabled": True}], "WBT", "USDT")
+    assert normalize_exchange_depth("Bitget Spot", {
+        "code": "00000", "data": {"bids": [["1", "2"]],
+                                 "asks": [["2", "2"]]}})["bids"]
     assert CURATED_SPOT["xmr"][:2] == ("XMR", "monero")
     assert all(registry_id == catalog_with_ids()[cid][1] and sym == catalog_with_ids()[cid][0]
                for cid, (sym, registry_id, _) in CURATED_SPOT.items())
