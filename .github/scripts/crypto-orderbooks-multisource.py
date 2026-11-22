@@ -61,7 +61,7 @@ KNOWN = {
     "Gemini Spot": {"keys": {"gemini"}},
 }
 VENUE_ORDER = ("Binance Spot", "Gate Spot", "MEXC Spot", "Bybit Spot", "OKX Spot", "KuCoin Spot", "Coinbase Exchange Spot", "Kraken Spot", "Bitget Spot", "WhiteBIT Spot", "BTSE Spot", "LBank Spot", "HTX Spot", "BitMart Spot", "Bitrue Spot", "Crypto.com Spot", "Gemini Spot")
-QUOTE_PRIORITY = ("USDT", "USDC", "USD", "EUR")
+QUOTE_PRIORITY = ("USDT", "USDC", "USD", "EUR", "BTC", "ETH")
 
 # Explicit catalog identity mappings for widely traded assets whose public
 # CoinGecko tickers are often inaccessible from GitHub Actions. The exchange
@@ -736,34 +736,34 @@ def depth_url(venue, symbol, quote='USDT'):
     pair = symbol + quote
     if venue == "Gemini Spot":
         return ("https://api.gemini.com/v1/book/" +
-                pair.lower() + "?limit_bids=20&limit_asks=20")
+                pair.lower() + "?limit_bids=50&limit_asks=50")
     if venue == "Crypto.com Spot":
         return ("https://api.crypto.com/exchange/v1/public/get-book?instrument_name=" +
-                symbol + "_" + quote + "&depth=20")
+                symbol + "_" + quote + "&depth=50")
     if venue == "Bitrue Spot":
         return ("https://openapi.bitrue.com/api/v1/depth?symbol=" +
-                pair + "&limit=20")
+                pair + "&limit=50")
     if venue == "HTX Spot":
         return ("https://api.huobi.pro/market/depth?symbol=" +
-                pair.lower() + "&type=step0&depth=20")
+                pair.lower() + "&type=step0&depth=50")
     if venue == "BitMart Spot":
         return ("https://api-cloud.bitmart.com/spot/quotation/v3/books?symbol=" +
-                symbol + "_" + quote + "&limit=20")
+                symbol + "_" + quote + "&limit=50")
     if venue == "LBank Spot":
         return ("https://api.lbank.info/v2/depth.do?symbol=" +
-                symbol.lower() + "_" + quote.lower() + "&size=20")
+                symbol.lower() + "_" + quote.lower() + "&size=50")
     if venue == "Binance Spot":
-        return "https://data-api.binance.vision/api/v3/depth?symbol=" + pair + "&limit=20"
+        return "https://data-api.binance.vision/api/v3/depth?symbol=" + pair + "&limit=50"
     if venue == "Gate Spot":
         return ("https://api.gateio.ws/api/v4/spot/order_book?currency_pair=" +
-                symbol + "_" + quote + "&limit=20")
+                symbol + "_" + quote + "&limit=50")
     if venue == "MEXC Spot":
-        return "https://api.mexc.com/api/v3/depth?symbol=" + pair + "&limit=20"
+        return "https://api.mexc.com/api/v3/depth?symbol=" + pair + "&limit=50"
     if venue == "Bybit Spot":
         return ("https://api.bybit.com/v5/market/orderbook?category=spot&symbol=" +
-                pair + "&limit=20")
+                pair + "&limit=50")
     if venue == "OKX Spot":
-        return "https://www.okx.com/api/v5/market/books?instId=" + symbol + "-" + quote + "&sz=20"
+        return "https://www.okx.com/api/v5/market/books?instId=" + symbol + "-" + quote + "&sz=50"
     if venue == "KuCoin Spot":
         return ("https://api.kucoin.com/api/v1/market/orderbook/level2_20?symbol=" +
                 symbol + "-" + quote)
@@ -771,16 +771,16 @@ def depth_url(venue, symbol, quote='USDT'):
         return ("https://api.exchange.coinbase.com/products/" +
                 symbol + "-" + quote + "/book?level=2")
     if venue == "Kraken Spot":
-        return "https://api.kraken.com/0/public/Depth?pair=" + kraken_alias(symbol) + quote + "&count=20"
+        return "https://api.kraken.com/0/public/Depth?pair=" + kraken_alias(symbol) + quote + "&count=50"
     if venue == "Bitget Spot":
         return ("https://api.bitget.com/api/v2/spot/market/orderbook?symbol=" +
-                pair + "&type=step0&limit=20")
+                pair + "&type=step0&limit=50")
     if venue == "WhiteBIT Spot":
         return ("https://whitebit.com/api/v4/public/orderbook/" + symbol +
-                "_" + quote + "?limit=20&level=0")
+                "_" + quote + "?limit=50&level=0")
     if venue == "BTSE Spot":
         return ("https://api.btse.com/public-api/market/v1/orderbook?symbol=" +
-                symbol + "-" + quote + "&depth=20")
+                symbol + "-" + quote + "&depth=50")
     raise ValueError("Unsupported venue")
 
 
@@ -1028,7 +1028,7 @@ def check_fixture():
     assert normalize_exchange_depth("Bitget Spot", {
         "code": "00000", "data": {"bids": [["1", "2"]],
                                  "asks": [["2", "2"]]}})["bids"]
-    assert "EUR" in QUOTE_PRIORITY
+    assert "EUR" in QUOTE_PRIORITY and "BTC" in QUOTE_PRIORITY and "ETH" in QUOTE_PRIORITY
     assert CURATED_SPOT["zama"][:2] == ("ZAMA", "zama")
     assert CURATED_SPOT["xmr"][:2] == ("XMR", "monero")
     assert all(registry_id == catalog_with_ids()[cid][1] and sym == catalog_with_ids()[cid][0]
@@ -1168,7 +1168,7 @@ def run():
     previous_source = previous_source if isinstance(previous_source, dict) else {}
     previous_books = previous_books if isinstance(previous_books, dict) else {}
     checked = checked if isinstance(checked, dict) else {}
-    if data.get('multiDiscoveryVersion') != 10:
+    if data.get('multiDiscoveryVersion') != 11:
         checked = {}  # New all-exchange CoinGecko scan replaces a filtered query.
 
     sources = {}
@@ -1213,6 +1213,8 @@ def run():
 
     candidates = [r for r in eligible if elapsed(r[0]) >= SCAN_INTERVAL]
     candidates.sort(key=lambda r: (
+        0 if r[0] not in default_books else 1,
+        0 if r[0] not in sources else 1,
         PRIORITY.index(r[0]) if r[0] in PRIORITY else len(PRIORITY),
         -elapsed(r[0]), r[0]))
     selected = candidates[:SCAN_BATCH]
@@ -1414,7 +1416,7 @@ def run():
     }
     data["venueBooks"] = venue_books
     data["marketSources"] = sources
-    data["multiDiscoveryVersion"] = 10
+    data["multiDiscoveryVersion"] = 11
     data["multiDiscoveryCheckedAt"] = {cid: checked[cid] for cid in registry
                                         if cid in checked}
     data["unavailable"] = {cid: "Nessun book pubblico verificato"
