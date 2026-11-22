@@ -118,7 +118,7 @@ CURATED_SPOT = {
     "rose": ("ROSE", "oasis-network", (("Binance Spot", "USDT"), ("Kraken Spot", "USD"))),
     "nexo": ("NEXO", "nexo", (("Kraken Spot", "USD"), ("Gate Spot", "USDT"))),
     "sky": ("SKY", "sky", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
-    "mnt": ("MNT", "mantle", (("Bitget Spot", "USDT"), ("OKX Spot", "USDT"), ("Bybit Spot", "USDT"))),
+    "mnt": ("MNT", "mantle", (("Bybit Spot", "USDT"), ("Gate Spot", "USDT"), ("Coinbase Exchange Spot", "USD"), ("Bitget Spot", "USDT"), ("OKX Spot", "USDT"))),
     "jst": ("JST", "just", (("Binance Spot", "USDT"), ("Gate Spot", "USDT"))),
     "aster": ("ASTER", "aster-2", (("Binance Spot", "USDT"), ("OKX Spot", "USDT"))),
     "okb": ("OKB", "okb", (("OKX Spot", "USDT"),)),
@@ -168,7 +168,7 @@ CURATED_SPOT = {
     "ont": ("ONT", "ontology", (("Binance Spot", "USDT"), ("Gate Spot", "USDT"))),
     "hnt": ("HNT", "helium", (("Coinbase Exchange Spot", "USD"), ("Kraken Spot", "USD"))),
     "xch": ("XCH", "chia", (("Kraken Spot", "USD"), ("Coinbase Exchange Spot", "USD"))),
-    "xno": ("XNO", "nano", (("Kraken Spot", "USD"), ("Gate Spot", "USDT"))),
+    "xno": ("XNO", "nano", (("Kraken Spot", "USD"), ("Gate Spot", "USDT"), ("KuCoin Spot", "USDT"))),
     "pha": ("PHA", "pha", (("Binance Spot", "USDT"), ("OKX Spot", "USDT"))),
     "kda": ("KDA", "kadena", (("Kraken Spot", "USD"), ("Gate Spot", "USDT"))),
     "vvv": ("VVV", "venice-token", (("Coinbase Exchange Spot", "USD"),)),
@@ -190,6 +190,10 @@ CURATED_SPOT = {
     "wbt": ("WBT", "whitebit", (("WhiteBIT Spot", "USDT"), ("Gate Spot", "USDT"))),
     "usdf": ("USDF", "falcon-finance", (("Gate Spot", "USDT"),)),
     "bgb": ("BGB", "bitget-token", (("Bitget Spot", "USDT"), ("Gate Spot", "USDT"))),
+    "s": ("S", "sonic-3", (("Binance Spot", "USDT"), ("OKX Spot", "USDT"), ("Coinbase Exchange Spot", "USD"))),
+    "beam": ("BEAM", "beam-2", (("Binance Spot", "USDT"), ("Gate Spot", "USDT"))),
+    "mon": ("MON", "monad", (("Coinbase Exchange Spot", "USD"), ("Gate Spot", "USDT"), ("KuCoin Spot", "USDT"))),
+    "bdx": ("BDX", "beldex", (("MEXC Spot", "USDT"), ("Gate Spot", "USDT"))),
 }
 
 
@@ -397,7 +401,7 @@ def exchange_info_url(venue, symbol, quote='USDT'):
 
 
 def discover_one(cid, symbol, coin_id, ts):
-    if not coin_id or not re.fullmatch(r"[A-Z0-9]{2,20}", symbol):
+    if not coin_id or not re.fullmatch(r"[A-Z0-9]{1,20}", symbol):
         return cid, None
     try:
         tickers = base.fetch(
@@ -843,7 +847,7 @@ def run():
 
     eligible = [(cid, *data_row) for cid, data_row in registry.items()
                 if data_row[1] and
-                re.fullmatch(r"[A-Z0-9]{2,20}", data_row[0])]
+                re.fullmatch(r"[A-Z0-9]{1,20}", data_row[0])]
     def elapsed(cid):
         try:
             return ts - float(checked.get(cid, 0))
