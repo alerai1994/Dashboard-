@@ -3893,11 +3893,11 @@ function orderBookAvailableVenues(id){
 }
 function orderBookVenueMarkup(id){
  const options=orderBookAvailableVenues(id);
- if(!options.length)return '<p class="ob-venues-note">Fonte Spot non verificata; nessun livello inventato</p>';
+ if(!options.length)return '<p class="ob-venues-note">Nessuna coppia verificata; nessun livello inventato</p>';
  const wanted=id===orderBookState.id?orderBookState.venueChoice:orderBookVenueChoices[id];
  const baseline=cryptoBookEntry(id)?.venue||orderBookSource(id)?.venue||options[0].venue;
  const chosen=options.some(x=>x.venue===wanted)?wanted:baseline;
- return '<label for="orderBookVenueSelect" class="ob-venues-label">Fonte Spot</label>'+
+ return '<span class="ob-venues-label">Exchange verificati</span>'+
  '<select id="orderBookVenueSelect" class="ob-venues-select" aria-label="Seleziona exchange order book">'+
  options.map(x=>'<option value="'+esc(x.venue)+'"'+(x.venue===chosen?' selected':'')+'>'+esc(x.venue+' · '+x.pair)+'</option>').join('')+
  '</select><p class="ob-venues-note">'+options.length+' exchange verificati · BID e ASK non vengono uniti fra fonti</p>';
@@ -4091,7 +4091,7 @@ function updateOrderBookAssetList(){
  if(coverage)coverage.textContent=ORDER_BOOK_COINS.filter(a=>!!cryptoBookEntry(a.id)).length+'/'+ORDER_BOOK_COINS.length+' book verificati';
  const label=$('#orderBookSourceLabel'),src=orderBookSource(orderBookState.id);
  if(label)label.textContent=src?src.venue+' · '+src.pair:'Coppia Spot non verificata';
- const toolbar=$('#orderBookVenueToolbar');if(toolbar)toolbar.innerHTML=orderBookVenueMarkup(orderBookState.id);
+
 }
 // Local JS backup works for file:// and every OS. HTTP JSON refreshes the cache.
 async function loadAllCryptoBooks(serial,coin){
@@ -4624,7 +4624,7 @@ function orderBookPage(){
  '<div class="ob-detail-heading"><div class="ob-heading-name">'+assetLogo(coin)+'<div><h2>'+esc(coin.name)+'</h2>'+
  '<small id="orderBookSourceLabel">'+esc(source?source.venue+' · '+source.pair:'Coppia Spot non verificata')+'</small>'+(coin.id==='ton'?'<small>Toncoin rinominato GRAM (1:1)</small>':'')+'</div></div>'+
  '<button class="btn btn-small" type="button" data-order-book-refresh="1" aria-label="Aggiorna order book">'+sym('refresh')+' Aggiorna</button></div>'+
- '<div class="ob-source-toolbar" id="orderBookVenueToolbar">'+orderBookVenueMarkup(coin.id)+'</div>'+
+
  '<div class="ob-content" id="orderBookContent" aria-live="off">'+orderBookDisplay()+'</div>'+
  '<p class="ob-footnote">Tutte le '+ORDER_BOOK_COINS.length+' criptovalute sono selezionabili su browser desktop e mobile. BID, ASK, spread e profondità provengono sempre da una coppia Spot verificata e da un singolo exchange, senza ordini inventati e senza sommare offerte di fonti diverse. Controlla l’orario del book: può essere LIVE (WebSocket), aggiornato tramite REST o uno snapshot non più attuale. I token privi di un mercato negoziabile verificato rimangono visibili, ma non mostrano BID/ASK simulati. La presenza di un mercato non garantisce l’accesso al trading dalla tua giurisdizione; Vertex è un visualizzatore, non esegue ordini.</p>'+
  '</section></div>';
@@ -5721,7 +5721,7 @@ function workspaceOrderBookLevels(){
  const time=book?.time?' · '+esc(localeDate(book.time,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'})):'';
  return '<div class="ws-book-active-head">'+assetLogo(coin)+'<div><strong>'+esc(coin.name)+
   '</strong><small>'+esc(venue+' · '+pair)+'</small></div></div>'+
-  '<div class="ob-source-toolbar">'+orderBookVenueMarkup(coin.id)+'</div>'+
+
   '<p class="ws-subnote ws-book-status" role="status">'+esc(status)+time+'</p>'+
   (book&&Array.isArray(book.bids)&&Array.isArray(book.asks)?
    '<div class="ws-book-grid">'+side(book.asks,false)+side(book.bids,true)+'</div>':
