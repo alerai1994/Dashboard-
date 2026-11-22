@@ -152,10 +152,10 @@ CURATED_SPOT = {
     "band": ("BAND", "band-protocol", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
     "api3": ("API3", "api3", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
     "skl": ("SKL", "skale", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
-    "storj": ("STORJ", "storj", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
+    "storj": ("STORJ", "storj", (("Gate Spot", "USDC"), ("Gate Spot", "USDT"), ("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
     "rlc": ("RLC", "iexec-rlc", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
     "ctsi": ("CTSI", "cartesi", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
-    "dent": ("DENT", "dent", (("Binance Spot", "USDT"), ("MEXC Spot", "USDT"))),
+    "dent": ("DENT", "dent", (("Gate Spot", "USDT"), ("Binance Spot", "USDT"), ("MEXC Spot", "USDT"))),
     "cvc": ("CVC", "civic", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
     "iotx": ("IOTX", "iotex", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
     "one": ("ONE", "harmony", (("Binance Spot", "USDT"), ("Gate Spot", "USDT"))),
@@ -227,6 +227,7 @@ CURATED_SPOT = {
     "eutbl": ("EUTBL", "eutbl", (("Gate Spot", "USDT"),)),
     "kag": ("KAG", "kinesis-silver", (("Gate Spot", "USDT"),)),
     "cards": ("CARDS", "collector-crypt", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"))),
+    "usat": ("USAT", "usa", (("Gate Spot", "USDT"), ("Bitget Spot", "USDT"))),
 }
 
 
