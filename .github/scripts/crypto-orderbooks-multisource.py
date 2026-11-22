@@ -58,8 +58,9 @@ KNOWN = {
     "BitMart Spot": {"keys": {"bitmart"}},
     "Bitrue Spot": {"keys": {"bitrue"}},
     "Crypto.com Spot": {"keys": {"crypto_com", "crypto-com", "crypto_com_exchange"}},
+    "Gemini Spot": {"keys": {"gemini"}},
 }
-VENUE_ORDER = ("Binance Spot", "Gate Spot", "MEXC Spot", "Bybit Spot", "OKX Spot", "KuCoin Spot", "Coinbase Exchange Spot", "Kraken Spot", "Bitget Spot", "WhiteBIT Spot", "BTSE Spot", "LBank Spot", "HTX Spot", "BitMart Spot", "Bitrue Spot", "Crypto.com Spot")
+VENUE_ORDER = ("Binance Spot", "Gate Spot", "MEXC Spot", "Bybit Spot", "OKX Spot", "KuCoin Spot", "Coinbase Exchange Spot", "Kraken Spot", "Bitget Spot", "WhiteBIT Spot", "BTSE Spot", "LBank Spot", "HTX Spot", "BitMart Spot", "Bitrue Spot", "Crypto.com Spot", "Gemini Spot")
 QUOTE_PRIORITY = ("USDT", "USDC", "USD", "EUR")
 
 # Explicit catalog identity mappings for widely traded assets whose public
@@ -121,7 +122,7 @@ CURATED_SPOT = {
     "mana": ("MANA", "decentraland", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
     "syrup": ("SYRUP", "syrup", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
     "imx": ("IMX", "immutable-x", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
-    "mkr": ("MKR", "maker", (("Coinbase Exchange Spot", "USD"), ("Kraken Spot", "EUR"), ("Binance Spot", "USDT"), ("Kraken Spot", "USD"), ("HTX Spot", "USDT"), ("BitMart Spot", "USDT"), ("Bitrue Spot", "USDT"))),
+    "mkr": ("MKR", "maker", (("Gemini Spot", "USD"), ("Coinbase Exchange Spot", "USD"), ("Kraken Spot", "EUR"), ("Binance Spot", "USDT"), ("Kraken Spot", "USD"), ("HTX Spot", "USDT"), ("BitMart Spot", "USDT"), ("Bitrue Spot", "USDT"))),
     "snx": ("SNX", "havven", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
     "mina": ("MINA", "mina-protocol", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
     "rose": ("ROSE", "oasis-network", (("Binance Spot", "USDT"), ("Kraken Spot", "USD"))),
@@ -189,7 +190,7 @@ CURATED_SPOT = {
     "frax": ("FRAX", "frax", (("Binance Spot", "USDT"), ("Bybit Spot", "USDT"), ("Kraken Spot", "USD"))),
     "fluid": ("FLUID", "instadapp", (("Gate Spot", "USDT"), ("Bitget Spot", "USDT"), ("Binance Spot", "USDT"))),
     "mx": ("MX", "mx-token", (("MEXC Spot", "USDT"),)),
-    "gusd": ("GUSD", "gusd", (("Kraken Spot", "USD"), ("Coinbase Exchange Spot", "USD"), ("Kraken Spot", "EUR"), ("HTX Spot", "USDT"), ("Crypto.com Spot", "USD"))),
+    "gusd": ("GUSD", "gusd", (("Gemini Spot", "USD"), ("Kraken Spot", "USD"), ("Coinbase Exchange Spot", "USD"), ("Kraken Spot", "EUR"), ("HTX Spot", "USDT"), ("Crypto.com Spot", "USD"))),
     "geod": ("GEOD", "geodnet", (("Coinbase Exchange Spot", "USD"),)),
     "zbcn": ("ZBCN", "zebec-network", (("Gate Spot", "USDT"),)),
     "met": ("MET", "meteora", (("Coinbase Exchange Spot", "USD"),)),
@@ -376,6 +377,14 @@ def fresh_exchange_millis(value, limit_seconds=600):
 
 
 def exchange_market_valid(venue, payload, symbol, quote='USDT'):
+    if venue == "Gemini Spot":
+        return (isinstance(payload, dict) and
+                payload.get("symbol", "").upper() == symbol + quote and
+                payload.get("base_currency") == symbol and
+                payload.get("quote_currency") == quote and
+                payload.get("product_type") == "spot" and
+                payload.get("contract_type") == "vanilla" and
+                payload.get("status") == "open")
     if venue == "Crypto.com Spot":
         catalog = payload.get("result") if isinstance(payload, dict) else None
         return (str(payload.get("code")) == "0" and
@@ -518,6 +527,9 @@ def exchange_market_valid(venue, payload, symbol, quote='USDT'):
 
 
 def exchange_info_url(venue, symbol, quote='USDT'):
+    if venue == "Gemini Spot":
+        return ("https://api.gemini.com/v1/symbols/details/" +
+                symbol.lower() + quote.lower())
     if venue == "Crypto.com Spot":
         return "https://api.crypto.com/exchange/v1/public/get-instruments"
     if venue == "Bitrue Spot":
@@ -603,6 +615,7 @@ def discover_one(cid, symbol, coin_id, ts):
                 ("MEXC Spot", "mxc"), ("Bybit Spot", "bybit_spot"),
                 ("HTX Spot", "htx"), ("BitMart Spot", "bitmart"),
                 ("Bitrue Spot", "bitrue"), ("Crypto.com Spot", "crypto_com"),
+                ("Gemini Spot", "gemini"),
                 ("OKX Spot", "okex"), ("KuCoin Spot", "kucoin"),
                 ("Coinbase Exchange Spot", "gdax"),
                 ("Kraken Spot", "kraken")
@@ -721,6 +734,9 @@ def verify_bulk_pair(cid, symbol, coin_id, quoted, venue, ts):
 
 def depth_url(venue, symbol, quote='USDT'):
     pair = symbol + quote
+    if venue == "Gemini Spot":
+        return ("https://api.gemini.com/v1/book/" +
+                pair.lower() + "?limit_bids=20&limit_asks=20")
     if venue == "Crypto.com Spot":
         return ("https://api.crypto.com/exchange/v1/public/get-book?instrument_name=" +
                 symbol + "_" + quote + "&depth=20")
@@ -771,6 +787,18 @@ def depth_url(venue, symbol, quote='USDT'):
 def normalize_exchange_depth(venue, raw):
     if not isinstance(raw, dict):
         raise ValueError("Not an exchange depth response")
+    if venue == "Gemini Spot":
+        if (not isinstance(raw.get("bids"), list) or
+            not isinstance(raw.get("asks"), list)):
+            raise ValueError("Gemini did not return a genuine Spot bid/ask book")
+        if not all(isinstance(level, dict) and
+                   "price" in level and "amount" in level
+                   for level in raw["bids"] + raw["asks"]):
+            raise ValueError("Gemini depth has invalid price/amount records")
+        # Gemini explicitly warns that entry.timestamp is a dummy value.
+        # Never infer market freshness from it; capturedAt is the fetch time.
+        return {"bids": [[x["price"], x["amount"]] for x in raw["bids"]],
+                "asks": [[x["price"], x["amount"]] for x in raw["asks"]]}
     if venue == "Crypto.com Spot":
         result = raw.get("result")
         if (str(raw.get("code")) != "0" or not isinstance(result, dict) or
@@ -883,6 +911,27 @@ def load_depth(cid, source, previous):
 
 def check_fixture():
     assert len(catalog_with_ids()) == 288
+    spot_gusd = {"symbol": "gusdusd", "base_currency": "GUSD",
+                 "quote_currency": "USD", "product_type": "spot",
+                 "contract_type": "vanilla", "status": "open"}
+    assert exchange_market_valid("Gemini Spot", spot_gusd, "GUSD", "USD")
+    assert not exchange_market_valid("Gemini Spot", {
+        **spot_gusd, "product_type": "swap"}, "GUSD", "USD")
+    assert not exchange_market_valid("Gemini Spot", {
+        **spot_gusd, "status": "cancel_only"}, "GUSD", "USD")
+    assert not exchange_market_valid("Gemini Spot", {
+        **spot_gusd, "base_currency": "WRONG"}, "GUSD", "USD")
+    assert normalize_exchange_depth("Gemini Spot", {
+        "bids": [{"price": "0.999", "amount": "50", "timestamp": "0"}],
+        "asks": [{"price": "1.001", "amount": "20", "timestamp": "0"}]
+    }) == {"bids": [["0.999", "50"]], "asks": [["1.001", "20"]]}
+    try:
+        normalize_exchange_depth("Gemini Spot", {"bids": [{"amount": "1"}],
+                                                  "asks": []})
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Gemini malformed bid accepted")
     verified_spot = {"code": 0, "result": {"data": [{
         "symbol": "ICX_USDT", "base_ccy": "ICX", "quote_ccy": "USDT",
         "inst_type": "CCY_PAIR", "tradable": True
@@ -1119,7 +1168,7 @@ def run():
     previous_source = previous_source if isinstance(previous_source, dict) else {}
     previous_books = previous_books if isinstance(previous_books, dict) else {}
     checked = checked if isinstance(checked, dict) else {}
-    if data.get('multiDiscoveryVersion') != 9:
+    if data.get('multiDiscoveryVersion') != 10:
         checked = {}  # New all-exchange CoinGecko scan replaces a filtered query.
 
     sources = {}
@@ -1365,7 +1414,7 @@ def run():
     }
     data["venueBooks"] = venue_books
     data["marketSources"] = sources
-    data["multiDiscoveryVersion"] = 9
+    data["multiDiscoveryVersion"] = 10
     data["multiDiscoveryCheckedAt"] = {cid: checked[cid] for cid in registry
                                         if cid in checked}
     data["unavailable"] = {cid: "Nessun book pubblico verificato"
