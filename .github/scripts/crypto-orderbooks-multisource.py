@@ -51,8 +51,9 @@ KNOWN = {
     "Kraken Spot": {"keys": {"kraken"}},
     "Bitget Spot": {"keys": {"bitget", "bitget_spot"}},
     "WhiteBIT Spot": {"keys": {"whitebit"}},
+    "BTSE Spot": {"keys": {"btse"}},
 }
-VENUE_ORDER = ("Binance Spot", "Gate Spot", "MEXC Spot", "Bybit Spot", "OKX Spot", "KuCoin Spot", "Coinbase Exchange Spot", "Kraken Spot", "Bitget Spot", "WhiteBIT Spot", "LBank Spot")
+VENUE_ORDER = ("Binance Spot", "Gate Spot", "MEXC Spot", "Bybit Spot", "OKX Spot", "KuCoin Spot", "Coinbase Exchange Spot", "Kraken Spot", "Bitget Spot", "WhiteBIT Spot", "BTSE Spot", "LBank Spot")
 QUOTE_PRIORITY = ("USDT", "USDC", "USD", "EUR")
 
 # Explicit catalog identity mappings for widely traded assets whose public
@@ -211,7 +212,7 @@ CURATED_SPOT = {
     "koge": ("KOGE", "bnb48-club-token", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"))),
     "shfl": ("SHFL", "shuffle-2", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"))),
     "btse": ("BTSE", "btse-token", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"))),
-    "anvl": ("ANVL", "anvil", (("Gate Spot", "USDT"), ("Bitget Spot", "USDT"))),
+    "anvl": ("ANVL", "anvil", (("MEXC Spot", "USDT"), ("Gate Spot", "USDT"), ("Bitget Spot", "USDT"))),
     "cc": ("CC", "canton-network", (("Gate Spot", "USDT"), ("Bitget Spot", "USDT"), ("MEXC Spot", "USDT"))),
     "m": ("M", "memecore", (("Gate Spot", "USDT"), ("Bitget Spot", "USDT"))),
     "ousd": ("OUSD", "open-usd", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"))),
@@ -228,6 +229,7 @@ CURATED_SPOT = {
     "kag": ("KAG", "kinesis-silver", (("Gate Spot", "USDT"),)),
     "cards": ("CARDS", "collector-crypt", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"))),
     "usat": ("USAT", "usa", (("Gate Spot", "USDT"), ("Bitget Spot", "USDT"))),
+    "rain": ("RAIN", "rain", (("Gate Spot", "USDT"), ("KuCoin Spot", "USDT"), ("WhiteBIT Spot", "USDT"), ("MEXC Spot", "USDT"))),    "btse": ("BTSE", "btse-token", (("BTSE Spot", "USDT"),)),
 }
 
 
@@ -395,6 +397,16 @@ def exchange_market_valid(venue, payload, symbol, quote='USDT'):
                     m.get("stock") == symbol and m.get("money") == quote and
                     m.get("type") == "spot" and m.get("tradesEnabled") is True
                     for m in payload))
+    if venue == "BTSE Spot":
+        return (isinstance(payload, dict) and payload.get("success") is True and
+                isinstance(payload.get("data"), dict) and
+                any(isinstance(m, dict) and
+                    m.get("symbol") == symbol + "-" + quote and
+                    m.get("type") == "Spot" and
+                    m.get("baseCurrency") == symbol and
+                    m.get("quoteCurrency") == quote and
+                    m.get("active") is True
+                    for m in payload["data"].get("symbols", [])))
     if venue == "Coinbase Exchange Spot":
         return (isinstance(payload, dict) and
                 payload.get("id") == symbol + "-" + quote and
@@ -431,6 +443,9 @@ def exchange_info_url(venue, symbol, quote='USDT'):
         return "https://api.bitget.com/api/v2/spot/public/symbols?symbol=" + symbol + quote
     if venue == "WhiteBIT Spot":
         return "https://whitebit.com/api/v4/public/markets"
+    if venue == "BTSE Spot":
+        return ("https://api.btse.com/public-api/market/v1/exchangeInfo?symbol=" +
+                symbol + "-" + quote)
     raise ValueError("Unsupported venue")
 
 
@@ -620,6 +635,9 @@ def depth_url(venue, symbol, quote='USDT'):
     if venue == "WhiteBIT Spot":
         return ("https://whitebit.com/api/v4/public/orderbook/" + symbol +
                 "_" + quote + "?limit=20&level=0")
+    if venue == "BTSE Spot":
+        return ("https://api.btse.com/public-api/market/v1/orderbook?symbol=" +
+                symbol + "-" + quote + "&depth=20")
     raise ValueError("Unsupported venue")
 
 
@@ -646,6 +664,10 @@ def normalize_exchange_depth(venue, raw):
             raise ValueError("Kraken API rejected spot orderbook")
         book = next(iter(raw["result"].values()))
         return {"bids": book.get("bids"), "asks": book.get("asks")}
+    if venue == "BTSE Spot":
+        if raw.get("success") is not True or not isinstance(raw.get("data"), dict):
+            raise ValueError("BTSE API rejected Spot orderbook")
+        return {"bids": raw["data"].get("bids"), "asks": raw["data"].get("asks")}
     if venue == "Bitget Spot":
         if str(raw.get("code")) != "00000" or not isinstance(raw.get("data"), dict):
             raise ValueError("Bitget API rejected Spot orderbook")
@@ -698,6 +720,16 @@ def load_depth(cid, source, previous):
 
 def check_fixture():
     assert len(catalog_with_ids()) == 288
+    assert exchange_market_valid("BTSE Spot", {"success": True,
+        "data": {"symbols": [{"symbol": "BTSE-USDT", "type": "Spot",
+        "baseCurrency": "BTSE", "quoteCurrency": "USDT", "active": True}]}},
+        "BTSE", "USDT")
+    assert not exchange_market_valid("BTSE Spot", {"success": True,
+        "data": {"symbols": [{"symbol": "BTSE-USDT", "type": "FuturesPerpetual",
+        "baseCurrency": "BTSE", "quoteCurrency": "USDT", "active": True}]}},
+        "BTSE", "USDT")
+    assert normalize_exchange_depth("BTSE Spot", {"success": True,
+        "data": {"bids": [["1", "2"]], "asks": [["2", "3"]]}})["asks"]
     assert exchange_market_valid("Bitget Spot", {"code": "00000", "data": [
         {"symbol": "BGBUSDT", "baseCoin": "BGB", "quoteCoin": "USDT",
          "status": "online"}]}, "BGB", "USDT")
