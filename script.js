@@ -3844,10 +3844,7 @@ function orderBookDepthRequestUrls(src){
  });
 }
 function orderBookFilterMarkup(){
- const validCount=ORDER_BOOK_COINS.filter(a=>!!cryptoBookEntry(a.id)).length;
- const labels={all:'Tutte ('+ORDER_BOOK_COINS.length+')',
-  verified:'Con book ('+validCount+')',
-  missing:'Senza book ('+(ORDER_BOOK_COINS.length-validCount)+')'};
+ const labels={all:'Tutte',verified:'Con book',missing:'In attesa'};
  return '<div class="ob-list-filters" role="group" aria-label="Filtra le criptovalute per disponibilità del book">'+
   OB_FILTERS.map(v=>'<button type="button" data-order-book-filter="'+v+'"'+
    ' aria-pressed="'+(orderBookState.filter===v)+'" class="ob-filter'+
@@ -3953,7 +3950,7 @@ function selectOrderBookVenue(venue){
  refreshOrderBook(true);startOrderBookLive(true);
 }
 const orderBookState={
- id:load('orderBookCoin','btc'),search:'',filter:'all',expanded:false,
+ id:load('orderBookCoin','btc'),search:'',filter:load('orderBookFilter','all'),
  levelLimit:load('orderBookLevelLimit',50),data:null,error:null,busy:false,
  venueChoice:'',
  lastTry:0,updatedAt:0,venue:'',pair:'',mode:'',serial:0,abort:null,lastTrade:null,lastTradeAt:0,previousTrade:null
@@ -4188,10 +4185,10 @@ function orderBookAssetList(){
   const age=book?Math.floor((Date.now()-book.time)/60000):null;
   const spread=book?orderBookSpreadText(book.bids[0][0],book.asks[0][0]):null;
   const price=book?'<span class="ob-coin-prices"><span class="color-up" title="Miglior prezzo BID">BID '+orderBookNumber(book.bids[0][0],true)+'</span><span class="color-down" title="Miglior prezzo ASK">ASK '+orderBookNumber(book.asks[0][0],true)+'</span>'+(spread?'<span class="ob-coin-spread" title="Differenza percentuale tra ASK e BID osservati">SPREAD '+spread+'</span>':'')+'</span>':
-    '<span class="ob-coin-unavailable">'+(src?'Ordini non ricevuti':'Senza book Spot verificato')+'</span>';
+    '<span class="ob-coin-unavailable">'+(src?'Book in attesa':a.extended?'Mercato Spot non verificato':'Book non disponibile')+'</span>';
   return '<button class="ob-coin'+(selected?' is-selected':'')+'" data-order-book-asset="'+esc(a.id)+'" type="button" aria-pressed="'+selected+'">'+
    '<span class="ob-coin-logo">'+assetLogo(a)+'</span><span class="ob-coin-label"><strong>'+esc(a.short||a.name)+'</strong><small>'+esc(a.id==='ton'?'TON → GRAM':a.symbol.replace('-USD',''))+(book?' · '+esc(book.venue)+(age>30?' · '+age+' min':''):'')+'</small>'+price+'</span>'+
-   '<span class="ob-coin-venue" title="'+esc(book?book.venue:(src?src.venue+' · book non ricevuto':'Mercato Spot non verificato'))+'">'+(book?'●':'○')+'</span></button>';
+   '<span class="ob-coin-venue" title="'+esc(book?book.venue:(src?src.venue+' · in attesa':'Coppia non verificata'))+'">'+(book?'●':'—')+'</span></button>';
  }).join('');
 }
 // Verified exchange-traded products shown in the dedicated ETF page below Order Book in the sidebar.
@@ -4660,13 +4657,11 @@ function orderBookPage(){
  const coin=ASSET_BY_ID[orderBookState.id]||ORDER_BOOK_COINS[0],snap=cryptoBookEntry(coin.id),source=snap?{venue:snap.venue,pair:snap.pair}:orderBookSource(coin.id);
  return secHeader('Order Book Crypto','Profondità reale per mercati Spot verificati (USDT, USDC, USD, EUR, BTC o ETH), senza ordini simulati.')+
  '<div class="ob-layout"><aside class="ob-picker panel" aria-label="Seleziona una criptovaluta">'+
- '<div class="ob-picker-header"><strong>Tutte le '+ORDER_BOOK_COINS.length+' criptovalute</strong><span id="orderBookCoverage">'+ORDER_BOOK_COINS.filter(a=>!!cryptoBookEntry(a.id)).length+'/'+ORDER_BOOK_COINS.length+' book verificati</span></div>'+
+ '<div class="ob-picker-header"><strong>Tutte le criptovalute</strong><span id="orderBookCoverage">'+ORDER_BOOK_COINS.filter(a=>!!cryptoBookEntry(a.id)).length+'/'+ORDER_BOOK_COINS.length+' book verificati</span></div>'+
  '<label class="ob-search-label" for="orderBookSearch">Cerca crypto</label>'+
  '<input type="search" class="ob-search" id="orderBookSearch" placeholder="Nome o simbolo..." value="'+esc(orderBookState.search)+'" autocomplete="off">'+
  orderBookFilterMarkup()+
- '<button class="ob-list-expand" type="button" data-order-book-expand="1" aria-controls="orderBookAssetList" aria-expanded="'+
-  orderBookState.expanded+'">'+(orderBookState.expanded?'Comprimi elenco':'Espandi elenco completo · '+ORDER_BOOK_COINS.length+' crypto')+'</button>'+
- '<div class="ob-coin-list'+(orderBookState.expanded?' is-expanded':'')+'" id="orderBookAssetList">'+orderBookAssetList()+'</div></aside>'+ 
+ '<div class="ob-coin-list" id="orderBookAssetList">'+orderBookAssetList()+'</div></aside>'+ 
  '<section class="ob-detail panel" aria-label="Order book della crypto selezionata">'+
  '<div class="ob-detail-heading"><div class="ob-heading-name">'+assetLogo(coin)+'<div><h2>'+esc(coin.name)+'</h2>'+
  '<small id="orderBookSourceLabel">'+esc(source?source.venue+' · '+source.pair:'Coppia Spot non verificata')+'</small>'+(coin.id==='ton'?'<small>Toncoin rinominato GRAM (1:1)</small>':'')+'</div></div>'+
@@ -5777,7 +5772,7 @@ function workspaceOrderBookChoices(){
    '<span class="ws-book-choice-logo">'+assetLogo(a)+'</span>'+
    '<span class="ws-book-choice-info"><strong>'+esc(a.short||a.name)+'</strong>'+
    '<small>'+esc(a.symbol.replace('-USD',''))+' · '+esc(book?.venue||src?.venue||'Nessuna fonte')+'</small></span>'+
-   '<span class="ws-book-choice-indicator'+(book||hasData?' has-book':'')+'" title="'+(live?'Feed attivo':book||hasData?'Book presente':'Senza book verificato')+'">'+(book||hasData?'●':'○')+'</span></button>';
+   '<span class="ws-book-choice-indicator'+(book||hasData?' has-book':'')+'" title="'+(live?'Feed attivo':book||hasData?'Book presente':'Book in attesa')+'">'+(book||hasData?'●':'○')+'</span></button>';
  }).join('');
 }
 function workspaceOrderBookLevels(){
@@ -9496,19 +9491,10 @@ function setupEvents(){
   if(btn.dataset.capRefresh!==undefined&&state.page==='etf'){
    loadCryptoCapData(true);return;
   }
-  if(btn.dataset.orderBookExpand){
-   orderBookState.expanded=!orderBookState.expanded;
-   const list=$('#orderBookAssetList');
-   if(list)list.classList.toggle('is-expanded',orderBookState.expanded);
-   btn.setAttribute('aria-expanded',String(orderBookState.expanded));
-   btn.textContent=orderBookState.expanded?'Comprimi elenco':
-    'Espandi elenco completo · '+ORDER_BOOK_COINS.length+' crypto';
-   return;
-  }
   if(btn.dataset.orderBookFilter){
    const filter=btn.dataset.orderBookFilter;
    if(!OB_FILTERS.includes(filter))return;
-   orderBookState.filter=filter;
+   orderBookState.filter=filter;save('orderBookFilter',filter);
    const control=$('.ob-list-filters');if(control)control.outerHTML=orderBookFilterMarkup();
    const list=$('#orderBookAssetList');if(list){list.innerHTML=orderBookAssetList();list.scrollTop=0;}
    return;
