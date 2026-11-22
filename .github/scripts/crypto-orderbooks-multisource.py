@@ -536,7 +536,7 @@ def check_fixture():
          "last": 1.0},
         {"base": "OTHER", "target": "USDC", "market": {"identifier": "okex"},
          "last": 1.0}
-    ], "USDT") == {"OKX Spot": ["USDC"]}
+    ], "USDT") == {"OKX Spot": ["USDC"], "Kraken Spot": ["USD"]}
     assert exchange_market_valid("OKX Spot", {
         "code": "0", "data": [{"instId": "USDT-USDC", "instType": "SPOT",
         "baseCcy": "USDT", "quoteCcy": "USDC", "state": "live"}]},
