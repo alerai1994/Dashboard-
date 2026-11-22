@@ -22,7 +22,7 @@ assert(source.includes('period.ms<=86400000'), 'Recent 1D crypto graphs must pri
 
 assert(source.includes('setInterval(()=>{if(state.dialogId)pollFocusedCryptoQuote()},60000)'), 'Focused crypto updates should continue while a chart is open');
 assert(source.includes('if(state.dialogId)pollFocusedCryptoQuote()'), 'Focused updates should resume after reconnect');
-assert(html.includes('script.js?v=20261122-288-multiquote-realbook-v23-gemini'), 'Browser script version must change for every operating system');
+assert(html.includes('script.js?v=20261122-288-multiquote-realbook-v24-depth50'), 'Browser script version must change for every operating system');
 
 assert(source.includes("'HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot'].includes(venue)"),
  'Gemini book must be selectable only as an independently verified live Spot source');
@@ -89,7 +89,7 @@ assert(source.includes('return [...samples,[Math.floor(ms/1000),price,null]]'),
 assert(source.includes("if(period==='1D')"), '1D ETF graph must not mix adjacent trading sessions');
 assert(source.includes('String(latest.symbol).toUpperCase()!==String(fund.symbol'),
  'ETF graph must never mix prices from different exchanges');
-assert(html.includes('script.js?v=20261122-288-multiquote-realbook-v23-gemini'),
+assert(html.includes('script.js?v=20261122-288-multiquote-realbook-v24-depth50'),
  'Updated ETF graph synchronizer must bypass cached browser scripts');
 
 assert(source.includes("setInterval(()=>{if(state.page==='etf'&&!document.hidden)loadCryptoEtfHistory()},60000)"),
@@ -100,8 +100,8 @@ assert(source.includes('crypto-etf-refresh-state')&&source.includes('Mercato chi
  'ETF quote status must distinguish weekend closure from live market quotes');
 assert(source.includes('crypto-etf-chart-refresh'),'ETF charts must expose latest exchange trade time');
 assert(css.includes('.crypto-etf-market-note .crypto-etf-refresh-state'), 'ETF auto status must render on desktop and mobile');
-assert(html.includes('style.css?v=20261122-288-multiquote-realbook-v23-gemini'), 'ETF status style must bypass device caches');
-assert(html.includes('script.js?v=20261122-288-multiquote-realbook-v23-gemini'),'ETF refresh code must bypass mobile/desktop browser caches');
+assert(html.includes('style.css?v=20261122-288-multiquote-realbook-v24-depth50'), 'ETF status style must bypass device caches');
+assert(html.includes('script.js?v=20261122-288-multiquote-realbook-v24-depth50'),'ETF refresh code must bypass mobile/desktop browser caches');
 assert(source.includes('function cryptoEtfVolumeChart(product,period,samples)'), 'ETF chart must expose share-volume bars');
 assert(source.includes('<rect class="etf-volume-rect"'), 'ETF volume bars must use flat 2D rectangles');
 assert(source.includes("return '<g class=\"etf-volume-bar\">'"), 'ETF bar groups must have one neutral class');
@@ -111,7 +111,7 @@ assert(css.includes('fill:#ffffff!important;')&&css.includes('fill-opacity:1!imp
 assert(!source.includes('etf-volume-side')&&!source.includes('etf-volume-top'), 'ETF chart must never render 3D faces');
 assert(css.includes('.etf-volume-bar .etf-volume-rect'), 'Flat ETF bar style must be defined');
 assert(!css.includes('.etf-volume-bar .etf-volume-side'), 'Obsolete 3D ETF side styles must be removed');
-assert(html.includes('script.js?v=20261122-288-multiquote-realbook-v23-gemini')&&html.includes('style.css?v=20261122-288-multiquote-realbook-v23-gemini'),
+assert(html.includes('script.js?v=20261122-288-multiquote-realbook-v24-depth50')&&html.includes('style.css?v=20261122-288-multiquote-realbook-v24-depth50'),
  'All platforms must receive the new flat ETF volumes chart assets');
 assert(source.includes("p.length>=2"), 'ETF chart must keep backward compatibility with price-only data');
 assert(source.includes("p.length>=3"), 'ETF volumes require verified volume rows, not synthetic values');
@@ -120,8 +120,8 @@ assert(source.includes('cryptoEtfVolumeChart(product,period,samples)'), 'ETF vol
 assert(css.includes('.crypto-etf-chart svg.etf-volume-svg'), 'ETF volume chart must resize on mobile');
 assert(css.includes('fill:#ffffff!important;')&&!css.includes('.etf-volume-bar.down{'),
  'ETF volume bars must stay solid white with no green/red trend styling');
-assert(html.includes('style.css?v=20261122-288-multiquote-realbook-v23-gemini')&&
- html.includes('script.js?v=20261122-288-multiquote-realbook-v23-gemini'),
+assert(html.includes('style.css?v=20261122-288-multiquote-realbook-v24-depth50')&&
+ html.includes('script.js?v=20261122-288-multiquote-realbook-v24-depth50'),
  'ETF volume resources must be refreshed across operating systems');
 
 assert(source.includes('async function pollCatalogPrices()'), 'Crypto catalog needs direct periodic quotes');
@@ -129,14 +129,14 @@ assert(source.includes('include_last_updated_at=true'), 'Provider timestamps are
 assert(source.includes('stamp<now-15*60000'), 'Stale catalog quotes must never look live');
 assert(source.includes('previousTime>=stamp'), 'Catalog poll must not overwrite newer market prices');
 assert(source.includes('setInterval(pollCatalogPrices,120000)'), 'Catalog must refresh without manual reload');
-assert(html.includes('script.js?v=20261122-288-multiquote-realbook-v23-gemini'),
+assert(html.includes('script.js?v=20261122-288-multiquote-realbook-v24-depth50'),
  'All platforms must load the latest catalog polling script');
 
 assert(source.includes('map-pin')&&source.includes('data-trend='), 'Map pins must carry the regional trend');
 assert(source.includes('el.dataset.trend=trend(avg)'), 'Map pins must update with incoming region data');
 assert(css.includes('#worldMap .map-stage button.map-pin[data-trend="up"]'), 'Positive map pins must be green');
 assert(css.includes('#worldMap .map-stage button.map-pin[data-trend="down"]'), 'Negative map pins must be red');
-assert(html.includes('style.css?v=20261122-288-multiquote-realbook-v23-gemini'), 'New map pin colors must bypass cached desktop/mobile CSS');
+assert(html.includes('style.css?v=20261122-288-multiquote-realbook-v24-depth50'), 'New map pin colors must bypass cached desktop/mobile CSS');
 
 assert(!source.includes('function cryptoRowAlertMarkup('),
  'Removed crypto arrow badge renderer must never return');
@@ -156,13 +156,13 @@ assert(!source.includes("const lunaStart=group.ids.indexOf('luna')"),
  'Price flashing must no longer be limited to LUNA and subsequent rows');
 assert(css.includes('.asset-price.crypto-threshold-flash'),
  'The targeted price blinking style must be available');
-assert(html.includes('20261122-288-multiquote-realbook-v23-gemini'),
+assert(html.includes('20261122-288-multiquote-realbook-v24-depth50'),
  'All browsers should load the versioned price blinking assets');
 assert(css.includes('cryptoThresholdPriceBlink'),
  'Triggered UPPER/LOW prices must blink on desktop and mobile');
 assert(css.includes('.crypto-row-alert{display:none!important}'),
  'Even stale cached rows must hide the arrow badges');
-assert(html.includes('20261122-288-multiquote-realbook-v23-gemini'),
+assert(html.includes('20261122-288-multiquote-realbook-v24-depth50'),
  'Updated JavaScript and styles must use fresh cache-busting URLs');
 assert(!source.includes("(alertRow?cryptoRowAlertMarkup(id):'')"),
  'Global crypto rows must not show the old up/down monitoring indicator');
@@ -313,13 +313,27 @@ assert(descriptor({venue:'Gate Spot',pair:'BTC/USDC'}).urls[0]
  .includes('currency_pair=BTC_USDC'),
  'Gate must request the correct real USDC pair');
 assert(descriptor({venue:'BTSE Spot',pair:'BTSE/USDT'}).urls[0]
- .includes('/public-api/market/v1/orderbook?symbol=BTSE-USDT&depth=20'),
+ .includes('/public-api/market/v1/orderbook?symbol=BTSE-USDT&depth=50'),
  'BTSE must use the genuine level-two public Spot book, not futures');
 assert.equal(descriptor({venue:'BTSE Spot',pair:'BTSE/PERP'}),null,
  'BTSE perpetuals must never be shown as a Spot book');
 assert(descriptor({venue:'Coinbase Exchange Spot',pair:'BTC/EUR'}).urls[0]
  .includes('/products/BTC-EUR/book?level=2'),
  'Supported EUR markets must request the exact EUR orderbook');
+assert(descriptor({venue:'Binance Spot',pair:'LTC/BTC'}).urls[0].includes('symbol=LTCBTC'),
+ 'BTC-quoted Spot books must retain the exact exchange instrument');
+const discoveryCheckCode=source.slice(source.indexOf('function orderBookDiscoveryMarketUrl('),
+ source.indexOf('async function discoverOrderBookSource('));
+const verifyDiscovery=new Function(discoveryCheckCode+';return orderBookDiscoveryTradable;')();
+assert(verifyDiscovery('Gate Spot',{id:'LTC_BTC',base:'LTC',quote:'BTC',
+ trade_status:'tradable'},'LTC','BTC'),
+ 'On-demand discovery must verify an active Spot pair');
+assert(!verifyDiscovery('Gate Spot',{id:'LTC_BTC',base:'OTHER',quote:'BTC',
+ trade_status:'tradable'},'LTC','BTC'),
+ 'Wrong-base markets cannot masquerade as another token');
+assert(!verifyDiscovery('OKX Spot',{code:'0',data:[{instId:'LTC-BTC',
+ instType:'SWAP',baseCcy:'LTC',quoteCcy:'BTC',state:'live'}]},'LTC','BTC'),
+ 'Derivative books must be rejected');
 assert.equal(descriptor({venue:'Coinbase Exchange Spot',pair:'BTC/XYZ'}),null,
  'Unsupported currencies must never be substituted silently');
 const sideCode=source.slice(source.indexOf('function orderBookSide('),
@@ -662,7 +676,7 @@ const books=JSON.parse(read('crypto-orderbooks-data.js').replace(/^window\.__VER
 assert([42,288].includes(books.totalAssets),'Initial seed or full 288 book snapshot expected');
 assert(source.includes('verifiedMarkets')&&source.includes('loadAllCryptoBooks(serial,coin)'),
  'Extended orderbook must use verified server snapshots before browser discovery');
-assert(html.includes('crypto-orderbooks-data.js?v=20261122-288-multiquote-realbook-v23-gemini'),
+assert(html.includes('crypto-orderbooks-data.js?v=20261122-288-multiquote-realbook-v24-depth50'),
  'Browsers and installed PWAs need a fresh snapshot URL');
 assert.equal(Object.keys(books.books).length,books.available);
 assert(books.available<=books.totalAssets&&books.available>=0,'Snapshot availability must match actual verified books');
