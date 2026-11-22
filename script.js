@@ -4047,6 +4047,13 @@ async function loadAllCryptoBooks(serial,coin){
  return hasBook;
 }
 
+function orderBookSpreadText(bid,ask){
+ const buy=Number(bid),sell=Number(ask);
+ if(!Number.isFinite(buy)||!Number.isFinite(sell)||buy<=0||sell<=buy)return null;
+ const percent=(sell-buy)/((sell+buy)/2)*100;
+ return Number.isFinite(percent)?percent.toLocaleString('it-IT',
+  {minimumFractionDigits:2,maximumFractionDigits:3})+'%':null;
+}
 function orderBookAssetList(){
  const needle=orderBookState.search.trim().toLowerCase();
  const assets=ORDER_BOOK_COINS.filter(a=>(a.name+' '+a.short+' '+a.symbol).toLowerCase().includes(needle));
@@ -4054,7 +4061,8 @@ function orderBookAssetList(){
  return assets.map(a=>{
   const src=orderBookSource(a.id),book=cryptoBookEntry(a.id),selected=orderBookState.id===a.id;
   const age=book?Math.floor((Date.now()-book.time)/60000):null;
-  const price=book?'<span class="ob-coin-prices"><span class="color-up" title="Miglior prezzo BID">BID '+orderBookNumber(book.bids[0][0],true)+'</span><span class="color-down" title="Miglior prezzo ASK">ASK '+orderBookNumber(book.asks[0][0],true)+'</span></span>':
+  const spread=book?orderBookSpreadText(book.bids[0][0],book.asks[0][0]):null;
+  const price=book?'<span class="ob-coin-prices"><span class="color-up" title="Miglior prezzo BID">BID '+orderBookNumber(book.bids[0][0],true)+'</span><span class="color-down" title="Miglior prezzo ASK">ASK '+orderBookNumber(book.asks[0][0],true)+'</span>'+(spread?'<span class="ob-coin-spread" title="Differenza percentuale tra ASK e BID osservati">SPREAD '+spread+'</span>':'')+'</span>':
     '<span class="ob-coin-unavailable">'+(src?'Book in attesa':a.extended?'Mercato Spot non verificato':'Book non disponibile')+'</span>';
   return '<button class="ob-coin'+(selected?' is-selected':'')+'" data-order-book-asset="'+esc(a.id)+'" type="button" aria-pressed="'+selected+'">'+
    '<span class="ob-coin-logo">'+assetLogo(a)+'</span><span class="ob-coin-label"><strong>'+esc(a.short||a.name)+'</strong><small>'+esc(a.id==='ton'?'TON → GRAM':a.symbol.replace('-USD',''))+(book?' · '+esc(book.venue)+(age>30?' · '+age+' min':''):'')+'</small>'+price+'</span>'+
@@ -4646,7 +4654,8 @@ function orderBookDisplay(){
  '<div class="ob-trade-value"><small>'+priceTitle+'</small>'+
  '<strong class="ob-trade-number">'+orderBookNumber(referencePrice,true)+
  ' <span class="ob-price-arrow ob-price-arrow-'+priceTrend+'" title="'+esc(arrowHint)+'" aria-label="'+esc(arrowHint)+'">'+priceArrow+'</span>'+
- ' <span class="ob-trade-currency">'+esc(quoteCurrency)+'</span></strong></div>'+
+ ' <span class="ob-trade-currency">'+esc(quoteCurrency)+'</span></strong>'+
+ '<small>Spread BID/ASK osservato: '+(orderBookSpreadText(bid,ask)||'—')+'</small></div>'+
  orderBookPressureBar(bids,asks,quoteCurrency)+
  '</section>'+
  orderBookSide(bids,'bid',book.unit,quoteCurrency)+
@@ -4666,7 +4675,8 @@ function paintOrderBook(){
    const summary=row&&row.querySelector('.ob-coin-prices');
    if(summary&&orderBookState.data.bids.length&&orderBookState.data.asks.length){
     summary.innerHTML='<span class="color-up">BID '+orderBookNumber(orderBookState.data.bids[0][0],true)+
-     '</span><span class="color-down">ASK '+orderBookNumber(orderBookState.data.asks[0][0],true)+'</span>';
+     '</span><span class="color-down">ASK '+orderBookNumber(orderBookState.data.asks[0][0],true)+'</span>'+
+     '<span class="ob-coin-spread">SPREAD '+orderBookSpreadText(orderBookState.data.bids[0][0],orderBookState.data.asks[0][0])+'</span>';
    }
   }
  }
