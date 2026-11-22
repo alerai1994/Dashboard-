@@ -957,6 +957,7 @@ body.theme-light .settings-theme-swatch{border-color:#b2cce1}
 .ob-coin-label{gap:4px}
 .ob-coin-prices{display:flex;flex-wrap:wrap;gap:4px 9px;align-items:center;font-size:10px;font-weight:700;font-variant-numeric:tabular-nums}
 .ob-coin-prices>span{white-space:nowrap}
+.ob-coin-prices .ob-coin-spread{color:var(--muted);font-weight:600;letter-spacing:.01em}
 .ob-coin-unavailable{font-size:10px;color:var(--muted);font-weight:550}
 .ob-coin-venue{margin-top:5px;flex-shrink:0}
 .ob-picker-header span{white-space:nowrap}
