@@ -5006,26 +5006,3 @@ body .topbar .top-actions .search-wrap[hidden]{display:none!important}
  .ob-list-filters{gap:5px}
  .ob-filter{flex:1 1 auto;padding:9px 7px}
 }
-
-/* Every catalog crypto remains reachable on phone, tablet and desktop.
-   The full-list control removes the scroll window without hiding assets. */
-.ob-list-expand{display:block;width:100%;margin:0 0 10px;border:1px solid var(--line);
- border-radius:10px;padding:11px 12px;background:var(--surface);color:var(--text);
- text-align:center;cursor:pointer;font:inherit;font-size:12px;font-weight:700;min-height:44px}
-.ob-list-expand:hover,.ob-list-expand:focus-visible{border-color:var(--brand);outline-offset:2px}
-.ob-coin-list{max-height:min(72vh,960px)}
-.ob-coin-list.is-expanded{max-height:none;overflow:visible}
-.ob-filter{white-space:nowrap}
-@media(max-width:720px){
- .ob-coin-list{max-height:60vh}
- .ob-coin-list.is-expanded{max-height:none;overflow:visible}
- .ob-coin-list .ob-coin{min-width:0}
- .ob-list-filters{gap:5px}
- .ob-filter{font-size:11px;white-space:normal}
-}
-@media(max-width:480px){
- .ob-coin-list{grid-template-columns:1fr;max-height:58vh}
- .ob-coin-list.is-expanded{max-height:none}
- .ob-coin{min-height:56px}
- .ob-coin-logo{flex-shrink:0}
-}
