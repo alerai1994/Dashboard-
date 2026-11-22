@@ -10,6 +10,7 @@ Absent markets remain unavailable; no synthetic price or depth is generated.
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
+from functools import lru_cache
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from threading import Lock
@@ -36,7 +37,7 @@ SCAN_BATCH = 32
 BOOK_BATCH = 650
 # Prioritize assets shown without books in the mobile/desktop catalog.
 # Verification still requires exact CoinGecko ID AND an exchange-listed pair.
-PRIORITY = ("xmr", "leo", "wbt", "dai", "cro", "paxg", "ondo", "algo",
+PRIORITY = ("vra", "tai", "mkr", "kmd", "icx", "xmr", "leo", "wbt", "dai", "cro", "paxg", "ondo", "algo",
             "icp", "kcs", "pol", "jup", "kas", "morpho", "rlusd", "pyusd",
             "usdg", "xaut", "usdt", "bgb", "okb", "gt", "mnt", "usdd",
             "btc", "eth", "sol", "usdc", "hype", "usde", "shib", "inj", "ore")
@@ -52,6 +53,7 @@ KNOWN = {
     "Bitget Spot": {"keys": {"bitget", "bitget_spot"}},
     "WhiteBIT Spot": {"keys": {"whitebit"}},
     "BTSE Spot": {"keys": {"btse"}},
+    "LBank Spot": {"keys": {"lbank"}},
 }
 VENUE_ORDER = ("Binance Spot", "Gate Spot", "MEXC Spot", "Bybit Spot", "OKX Spot", "KuCoin Spot", "Coinbase Exchange Spot", "Kraken Spot", "Bitget Spot", "WhiteBIT Spot", "BTSE Spot", "LBank Spot")
 QUOTE_PRIORITY = ("USDT", "USDC", "USD", "EUR")
@@ -61,6 +63,8 @@ QUOTE_PRIORITY = ("USDT", "USDC", "USD", "EUR")
 # must STILL report an active Spot instrument for the exact base/quote before
 # its live BID/ASK depth is accepted. Never infer order levels from prices.
 CURATED_SPOT = {
+    "vra": ("VRA", "verasity", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"), ("LBank Spot", "USDT"))),
+    "tai": ("TAI", "tars-protocol", (("KuCoin Spot", "USDT"), ("MEXC Spot", "USDT"), ("Gate Spot", "USDT"))),
     "xmr": ("XMR", "monero", (("Kraken Spot", "USD"), ("Gate Spot", "USDT"))),
     "paxg": ("PAXG", "pax-gold", (("Kraken Spot", "USD"), ("Binance Spot", "USDT"))),
     "dai": ("DAI", "dai", (("Coinbase Exchange Spot", "USD"), ("Kraken Spot", "USD"), ("OKX Spot", "USDT"))),
@@ -251,10 +255,14 @@ def coin_ids():
             if isinstance(item, list) and len(item) >= 3}
 
 
+# Explicit identities for original 42 coins absent from extra catalog.
+BASE_COINGECKO_IDS = {"VRA": "verasity", "TAI": "tars-protocol"}
+
+
 def catalog_with_ids():
     registry = expanded.catalog()
     ids = coin_ids()
-    return {cid: (sym, coin_id or ids.get(sym), extended)
+    return {cid: (sym, coin_id or ids.get(sym) or BASE_COINGECKO_IDS.get(sym), extended)
             for cid, (sym, coin_id, extended) in registry.items()}
 
 
@@ -328,7 +336,20 @@ def kraken_alias(symbol):
     return {"BTC": "XBT", "DOGE": "XDG"}.get(symbol, symbol)
 
 
+@lru_cache(maxsize=1)
+def lbank_market_list():
+    """Reuse public pair-list metadata throughout one collector run."""
+    return base.fetch("https://api.lbank.info/v2/currencyPairs.do")
+
+
 def exchange_market_valid(venue, payload, symbol, quote='USDT'):
+    if venue == "LBank Spot":
+        return (isinstance(payload, dict) and
+                str(payload.get("result", "")).lower() in ("true", "1") and
+                payload.get("error_code") in (None, 0, "0") and
+                isinstance(payload.get("data"), list) and
+                (symbol + "_" + quote).lower() in
+                {str(p).lower() for p in payload["data"]})
     if venue == "Binance Spot":
         return isinstance(payload, dict) and any(
             isinstance(row, dict) and
@@ -418,6 +439,8 @@ def exchange_market_valid(venue, payload, symbol, quote='USDT'):
 
 
 def exchange_info_url(venue, symbol, quote='USDT'):
+    if venue == "LBank Spot":
+        return "https://api.lbank.info/v2/currencyPairs.do"
     if venue == "Binance Spot":
         return ("https://data-api.binance.vision/api/v3/exchangeInfo?symbol="
                 + symbol + quote)
@@ -515,7 +538,8 @@ def discover_one(cid, symbol, coin_id, ts):
         for venue in VENUE_ORDER:
             for quoted in candidates.get(venue, []):
                 try:
-                    market = base.fetch(exchange_info_url(venue, symbol, quoted))
+                    market = (lbank_market_list() if venue == "LBank Spot" else
+                              base.fetch(exchange_info_url(venue, symbol, quoted)))
                     if exchange_market_valid(venue, market, symbol, quoted):
                         sources.append({
                             "venue": venue, "pair": symbol + "/" + quoted,
@@ -596,7 +620,8 @@ def bulk_exchange_candidates(tickers, registry):
 
 def verify_bulk_pair(cid, symbol, coin_id, quoted, venue, ts):
     try:
-        meta = base.fetch(exchange_info_url(venue, symbol, quoted))
+        meta = (lbank_market_list() if venue == "LBank Spot" else
+                base.fetch(exchange_info_url(venue, symbol, quoted)))
         if exchange_market_valid(venue, meta, symbol, quoted):
             return cid, {
                 "venue": venue, "pair": symbol + "/" + quoted,
@@ -609,6 +634,9 @@ def verify_bulk_pair(cid, symbol, coin_id, quoted, venue, ts):
 
 def depth_url(venue, symbol, quote='USDT'):
     pair = symbol + quote
+    if venue == "LBank Spot":
+        return ("https://api.lbank.info/v2/depth.do?symbol=" +
+                symbol.lower() + "_" + quote.lower() + "&size=20")
     if venue == "Binance Spot":
         return "https://data-api.binance.vision/api/v3/depth?symbol=" + pair + "&limit=20"
     if venue == "Gate Spot":
@@ -644,6 +672,14 @@ def depth_url(venue, symbol, quote='USDT'):
 def normalize_exchange_depth(venue, raw):
     if not isinstance(raw, dict):
         raise ValueError("Not an exchange depth response")
+    if venue == "LBank Spot":
+        if (str(raw.get("result", "")).lower() not in ("true", "1") or
+            raw.get("error_code") not in (None, 0, "0") or
+            not isinstance(raw.get("data"), dict)):
+            raise ValueError("LBank rejected Spot orderbook")
+        # Also verify genuine uncrossed levels and source timestamp if supplied.
+        base.checked(raw, "LBank")
+        return raw["data"]
     if venue == "Bybit Spot":
         if raw.get("retCode") != 0:
             raise ValueError("Bybit API rejected spot orderbook")
@@ -720,6 +756,15 @@ def load_depth(cid, source, previous):
 
 def check_fixture():
     assert len(catalog_with_ids()) == 288
+    assert catalog_with_ids()["vra"][1] == "verasity"
+    assert catalog_with_ids()["tai"][1] == "tars-protocol"
+    assert exchange_market_valid("LBank Spot", {"result": True, "error_code": 0,
+        "data": ["vra_usdt", "tai_usdt"]}, "TAI", "USDT")
+    assert not exchange_market_valid("LBank Spot", {"result": True, "error_code": 0,
+        "data": ["other_usdt"]}, "TAI", "USDT")
+    assert normalize_exchange_depth("LBank Spot", {"result": True, "error_code": 0,
+        "data": {"timestamp": int(base.now().timestamp() * 1000),
+                 "bids": [["1", "2"]], "asks": [["1.1", "3"]]}})["bids"]
     assert exchange_market_valid("BTSE Spot", {"success": True,
         "data": {"symbols": [{"symbol": "BTSE-USDT", "type": "Spot",
         "baseCurrency": "BTSE", "quoteCurrency": "USDT", "active": True}]}},
@@ -879,7 +924,7 @@ def run():
     previous_source = previous_source if isinstance(previous_source, dict) else {}
     previous_books = previous_books if isinstance(previous_books, dict) else {}
     checked = checked if isinstance(checked, dict) else {}
-    if data.get('multiDiscoveryVersion') != 5:
+    if data.get('multiDiscoveryVersion') != 6:
         checked = {}  # New all-exchange CoinGecko scan replaces a filtered query.
 
     sources = {}
@@ -1125,7 +1170,7 @@ def run():
     }
     data["venueBooks"] = venue_books
     data["marketSources"] = sources
-    data["multiDiscoveryVersion"] = 5
+    data["multiDiscoveryVersion"] = 6
     data["multiDiscoveryCheckedAt"] = {cid: checked[cid] for cid in registry
                                         if cid in checked}
     data["unavailable"] = {cid: "Nessun book pubblico verificato"
