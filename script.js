@@ -3892,9 +3892,8 @@ function orderBookSource(id){
  if(id==='orai')return {venue:'Gate.io Spot',pair:'ORAI/USDT',urls:[
   'https://api.gateio.ws/api/v4/spot/order_book?currency_pair=ORAI_USDT&limit=20'
  ]};
- if(id==='tai')return {venue:'MEXC Spot',pair:'TAI/USDT',urls:[
-  'https://api.mexc.com/api/v3/depth?symbol=TAIUSDT&limit=20'
- ]};
+ // Never assume the legacy TAI/MEXC pair still exists: use the current
+ // identity-verified marketSources or a fresh CoinGecko/exchange discovery.
  const asset=ASSET_BY_ID[id],published=cryptoBookBundle()?.verifiedMarkets?.[id];
  // A currently verified primary USD/USDC pair takes precedence over a
  // previously verified Binance USDT pair when the selected venue is unset.
