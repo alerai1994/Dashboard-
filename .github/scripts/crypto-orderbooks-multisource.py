@@ -33,7 +33,7 @@ SOURCE_TTL = 7 * 86400
 BOOK_TTL = 25 * 60
 SCAN_INTERVAL = 2 * 3600
 SCAN_BATCH = 32
-BOOK_BATCH = 220
+BOOK_BATCH = 650
 # Prioritize assets shown without books in the mobile/desktop catalog.
 # Verification still requires exact CoinGecko ID AND an exchange-listed pair.
 PRIORITY = ("xmr", "leo", "wbt", "dai", "cro", "paxg", "ondo", "algo",
@@ -1026,10 +1026,21 @@ def run():
             old = venue_books.get(cid, {}).get(source["venue"])
             age = ts - stamp(old.get("capturedAt")) if isinstance(old, dict) else 1e12
             tasks.append((age, cid, source, old))
-    # Refresh the least-recently-updated first; bounded for GitHub runners.
-    # All verified exchanges stay separate; do not synthesize a consolidated book.
+    # Keep at least one live depth fetch for EVERY verified asset before
+    # scheduling secondary venues. A flat 220-book cap silently dropped real
+    # books as the verified catalog grew beyond the refresh limit.
     tasks.sort(key=lambda row: (-row[0], row[1]))
-    tasks = tasks[:BOOK_BATCH]
+    first_by_asset = {}
+    extra_venues = []
+    for task in tasks:
+        cid = task[1]
+        if cid not in first_by_asset:
+            first_by_asset[cid] = task
+        else:
+            extra_venues.append(task)
+    tasks = (list(first_by_asset.values()) + extra_venues)[:BOOK_BATCH]
+    print("Depth scheduled:", len(tasks), "for", len(first_by_asset),
+          "distinct validated assets")
     if tasks:
         with ThreadPoolExecutor(max_workers=12) as pool:
             jobs = {pool.submit(load_depth, cid, src, prior): (cid, src)
