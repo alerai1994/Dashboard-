@@ -55,7 +55,7 @@ def level_rows(rows, reverse):
         except (ValueError,TypeError):
             continue
     result.sort(key=lambda item:item[0],reverse=reverse)
-    return result[:20]
+    return result[:50]
 
 def checked(raw, exchange):
     if not isinstance(raw,dict):
@@ -85,14 +85,14 @@ def checked(raw, exchange):
 def sources(cid,symbol):
     if cid=="ore":
         for host in ("api.lbank.info","api.lbkex.com"):
-            yield "LBank", "ORE/USDT", f"https://{host}/v2/depth.do?symbol=ore_usdt&size=20"
+            yield "LBank", "ORE/USDT", f"https://{host}/v2/depth.do?symbol=ore_usdt&size=50"
         return
     b=f"{symbol}USDT"
     g=f"{symbol}_USDT"
     items=[
-        ("Binance",f"{symbol}/USDT","https://data-api.binance.vision/api/v3/depth?"+urlencode({"symbol":b,"limit":20})),
-        ("Gate",f"{symbol}/USDT","https://api.gateio.ws/api/v4/spot/order_book?"+urlencode({"currency_pair":g,"limit":20})),
-        ("MEXC",f"{symbol}/USDT","https://api.mexc.com/api/v3/depth?"+urlencode({"symbol":b,"limit":20}))
+        ("Binance",f"{symbol}/USDT","https://data-api.binance.vision/api/v3/depth?"+urlencode({"symbol":b,"limit":50})),
+        ("Gate",f"{symbol}/USDT","https://api.gateio.ws/api/v4/spot/order_book?"+urlencode({"currency_pair":g,"limit":50})),
+        ("MEXC",f"{symbol}/USDT","https://api.mexc.com/api/v3/depth?"+urlencode({"symbol":b,"limit":50}))
     ]
     if cid in ("orai","vra","lunc","hot"):
         items=[items[1],items[2],items[0]]
