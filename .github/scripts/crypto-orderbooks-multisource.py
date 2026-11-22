@@ -7,10 +7,12 @@ A market is accepted only when CoinGecko maps the EXACT CoinGecko coin ID to
 the named exchange AND the exchange reports the same tradable Spot pair.
 Absent markets remain unavailable; no synthetic price or depth is generated.
 """
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
+from threading import Lock
 from urllib.parse import quote
 import json
 import re
@@ -22,6 +24,9 @@ expanded = module_from_spec(MODULE)
 MODULE.loader.exec_module(expanded)
 base = expanded.base
 
+_depth_diag_lock = Lock()
+_depth_errors = Counter()
+_depth_success = Counter()
 OUT_JSON = Path("crypto-orderbooks.json")
 OUT_JS = Path("crypto-orderbooks-data.js")
 SOURCE_TTL = 7 * 86400
@@ -499,8 +504,13 @@ def load_depth(cid, source, previous):
             "capturedAt": base.now().isoformat(),
         }
         # Last price is optional and is NEVER derived from midpoint.
+        with _depth_diag_lock:
+            _depth_success[venue] += 1
         return cid, venue, data
-    except (OSError, ValueError, TypeError, KeyError):
+    except (OSError, ValueError, TypeError, KeyError) as exc:
+        label = "HTTP" + str(exc.code) if hasattr(exc, "code") else type(exc).__name__
+        with _depth_diag_lock:
+            _depth_errors[(venue, label)] += 1
         return cid, venue, preserve_recent(previous, cid, source,
                                            base.now().timestamp())
 
@@ -798,6 +808,9 @@ def run():
                     continue
                 if book:
                     venue_books.setdefault(cid, {})[venue] = book
+
+    print("Depth fetch result: successful", dict(_depth_success),
+          "failures", dict(_depth_errors.most_common(12)))
 
     # Remove old/identity-unverified alternative snapshots.
     for cid, venues in list(venue_books.items()):
