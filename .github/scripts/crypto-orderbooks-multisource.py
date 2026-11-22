@@ -904,7 +904,14 @@ def run():
     curated, curated_checked = discover_curated_markets(registry, sources, ts)
     for cid, mapping in curated:
         records = {m["venue"]: m for m in sources.get(cid, [])}
-        records[mapping["venue"]] = mapping
+        existing = records.get(mapping["venue"])
+        # Keep a preferred and already verified quote for each venue.
+        # Concurrent responses must not randomly replace USD with EUR (or
+        # overwrite a usable old instrument with a different quote).
+        if (not existing or
+            QUOTE_PRIORITY.index(mapping["pair"].split("/")[1]) <
+            QUOTE_PRIORITY.index(existing["pair"].split("/")[1])):
+            records[mapping["venue"]] = mapping
         sources[cid] = list(records.values())
     print("Curated Spot metadata checks:", curated_checked, "verified", len(curated))
 
