@@ -3825,6 +3825,38 @@ async function discoverOrderBookSource(id,serial){
 }
 /* Each displayed BID/ASK set must belong to one actual exchange venue. */
 const orderBookVenueChoices=load('orderBookVenueChoices',{})||{};
+const OB_LEVEL_OPTIONS=[20,50,100];
+const OB_FILTERS=['all','verified','missing'];
+function orderBookVisibleLevelCount(){
+ return OB_LEVEL_OPTIONS.includes(orderBookState.levelLimit)?orderBookState.levelLimit:50;
+}
+function orderBookDepthRequestUrls(src){
+ if(!src||!Array.isArray(src.urls))return [];
+ const desired=orderBookVisibleLevelCount();
+ const supports100=['Binance Spot','Gate Spot','MEXC Spot','Bybit Spot','OKX Spot',
+  'KuCoin Spot','Kraken Spot','Bitget Spot','Bitrue Spot','Coinbase Exchange Spot'].includes(src.venue);
+ const count=desired===100&&!supports100?50:desired;
+ return src.urls.map(url=>{
+  if(src.venue==='KuCoin Spot')
+   return url.replace(/level2_(20|100)/,'level2_'+(count>20?100:20));
+  return url.replace(/([?&](?:limit|depth|sz|size|count|limit_bids|limit_asks)=)(20|50|100)(?=&|$)/g,
+   (_,prefix)=>prefix+count);
+ });
+}
+function orderBookFilterMarkup(){
+ const labels={all:'Tutte',verified:'Con book',missing:'In attesa'};
+ return '<div class="ob-list-filters" role="group" aria-label="Filtra le criptovalute per disponibilità del book">'+
+  OB_FILTERS.map(v=>'<button type="button" data-order-book-filter="'+v+'"'+
+   ' aria-pressed="'+(orderBookState.filter===v)+'" class="ob-filter'+
+   (orderBookState.filter===v?' is-selected':'')+'">'+labels[v]+'</button>').join('')+
+  '</div>';
+}
+function orderBookLevelSelector(){
+ return '<label for="orderBookLevelCount" class="ob-venues-label">Livelli visibili</label>'+
+  '<select id="orderBookLevelCount" class="ob-venues-select" aria-label="Mostra i livelli reali disponibili">'+
+  OB_LEVEL_OPTIONS.map(n=>'<option value="'+n+'"'+(orderBookVisibleLevelCount()===n?' selected':'')+
+  '>'+n+' livelli / lato (se disponibili)</option>').join('')+'</select>';
+}
 function orderBookVenueDescriptor(row){
  const venue=row?.venue,pair=String(row?.pair||''),symbol=pair.split('/')[0],quoted=pair.split('/')[1];
  if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot'].includes(venue)||
@@ -3918,11 +3950,14 @@ function selectOrderBookVenue(venue){
  refreshOrderBook(true);startOrderBookLive(true);
 }
 const orderBookState={
- id:load('orderBookCoin','btc'),search:'',data:null,error:null,busy:false,
+ id:load('orderBookCoin','btc'),search:'',filter:load('orderBookFilter','all'),
+ levelLimit:load('orderBookLevelLimit',50),data:null,error:null,busy:false,
  venueChoice:'',
  lastTry:0,updatedAt:0,venue:'',pair:'',mode:'',serial:0,abort:null,lastTrade:null,lastTradeAt:0,previousTrade:null
 };
 if(!ORDER_BOOK_COINS.some(a=>a.id===orderBookState.id))orderBookState.id='btc';
+if(!OB_FILTERS.includes(orderBookState.filter))orderBookState.filter='all';
+if(!OB_LEVEL_OPTIONS.includes(orderBookState.levelLimit))orderBookState.levelLimit=50;
 orderBookState.venueChoice=typeof orderBookVenueChoices[orderBookState.id]==='string'?orderBookVenueChoices[orderBookState.id]:'';
 const orderBookLive={
  socket:null,coin:null,transport:'',connected:false,startedAt:0,lastDepthAt:0,
@@ -4081,6 +4116,7 @@ function updateOrderBookAssetList(){
   return;
  }
  if(state.page!=='orderbook')return;
+ const filters=$('.ob-list-filters');if(filters)filters.outerHTML=orderBookFilterMarkup();
  const list=$('#orderBookAssetList');
  if(list){
   const top=list.scrollTop;
@@ -4091,7 +4127,7 @@ function updateOrderBookAssetList(){
  if(coverage)coverage.textContent=ORDER_BOOK_COINS.filter(a=>!!cryptoBookEntry(a.id)).length+'/'+ORDER_BOOK_COINS.length+' book verificati';
  const label=$('#orderBookSourceLabel'),src=orderBookSource(orderBookState.id);
  if(label)label.textContent=src?src.venue+' · '+src.pair:'Coppia Spot non verificata';
- const toolbar=$('#orderBookVenueToolbar');if(toolbar)toolbar.innerHTML=orderBookVenueMarkup(orderBookState.id);
+ const toolbar=$('#orderBookVenueToolbar');if(toolbar)toolbar.innerHTML=orderBookVenueMarkup(orderBookState.id)+orderBookLevelSelector();
 }
 // Local JS backup works for file:// and every OS. HTTP JSON refreshes the cache.
 async function loadAllCryptoBooks(serial,coin){
@@ -4137,7 +4173,12 @@ function orderBookSpreadText(bid,ask){
 }
 function orderBookAssetList(){
  const needle=orderBookState.search.trim().toLowerCase();
- const assets=ORDER_BOOK_COINS.filter(a=>(a.name+' '+a.short+' '+a.symbol).toLowerCase().includes(needle));
+ const assets=ORDER_BOOK_COINS.filter(a=>{
+  if(!(a.name+' '+a.short+' '+a.symbol).toLowerCase().includes(needle))return false;
+  const verified=!!cryptoBookEntry(a.id);
+  return orderBookState.filter==='verified'?verified:
+   orderBookState.filter==='missing'?!verified:true;
+ });
  if(!assets.length)return '<div class="ob-empty-list">Nessuna crypto trovata.</div>';
  return assets.map(a=>{
   const src=orderBookSource(a.id),book=cryptoBookEntry(a.id),selected=orderBookState.id===a.id;
@@ -4619,12 +4660,13 @@ function orderBookPage(){
  '<div class="ob-picker-header"><strong>Tutte le criptovalute</strong><span id="orderBookCoverage">'+ORDER_BOOK_COINS.filter(a=>!!cryptoBookEntry(a.id)).length+'/'+ORDER_BOOK_COINS.length+' book verificati</span></div>'+
  '<label class="ob-search-label" for="orderBookSearch">Cerca crypto</label>'+
  '<input type="search" class="ob-search" id="orderBookSearch" placeholder="Nome o simbolo..." value="'+esc(orderBookState.search)+'" autocomplete="off">'+
+ orderBookFilterMarkup()+
  '<div class="ob-coin-list" id="orderBookAssetList">'+orderBookAssetList()+'</div></aside>'+ 
  '<section class="ob-detail panel" aria-label="Order book della crypto selezionata">'+
  '<div class="ob-detail-heading"><div class="ob-heading-name">'+assetLogo(coin)+'<div><h2>'+esc(coin.name)+'</h2>'+
  '<small id="orderBookSourceLabel">'+esc(source?source.venue+' · '+source.pair:'Coppia Spot non verificata')+'</small>'+(coin.id==='ton'?'<small>Toncoin rinominato GRAM (1:1)</small>':'')+'</div></div>'+
  '<button class="btn btn-small" type="button" data-order-book-refresh="1" aria-label="Aggiorna order book">'+sym('refresh')+' Aggiorna</button></div>'+
- '<div class="ob-source-toolbar" id="orderBookVenueToolbar">'+orderBookVenueMarkup(coin.id)+'</div>'+
+ '<div class="ob-source-toolbar" id="orderBookVenueToolbar">'+orderBookVenueMarkup(coin.id)+orderBookLevelSelector()+'</div>'+
  '<div class="ob-content" id="orderBookContent" aria-live="off">'+orderBookDisplay()+'</div>'+
  '<p class="ob-footnote">Tutte le '+ORDER_BOOK_COINS.length+' criptovalute sono selezionabili su browser desktop e mobile. BID, ASK, spread e profondità provengono sempre da una coppia Spot verificata e da un singolo exchange, senza ordini inventati e senza sommare offerte di fonti diverse. Controlla l’orario del book: può essere LIVE (WebSocket), aggiornato tramite REST o uno snapshot non più attuale. I token privi di un mercato negoziabile verificato rimangono visibili, ma non mostrano BID/ASK simulati. La presenza di un mercato non garantisce l’accesso al trading dalla tua giurisdizione; Vertex è un visualizzatore, non esegue ordini.</p>'+
  '</section></div>';
@@ -4696,13 +4738,38 @@ function orderBookPressureBar(bids,asks,quoteCurrency='USDT'){
   '<span class="ob-pressure-label ob-pressure-ask">ASK <strong>'+sell+'</strong></span>'+
   '</div>';
 }
+/* Metrics reflect real resting orders at the SELECTED exchange only. */
+function orderBookMetricsMarkup(bids,asks,unit,quoteCurrency){
+ if(!bids?.length||!asks?.length)return '';
+ const bid=bids[0][0],ask=asks[0][0],absSpread=ask-bid;
+ const metrics=orderBookPressureStats(bids,asks);
+ const sumQty=rows=>rows.reduce((sum,row)=>sum+Number(row[1]),0);
+ const values=[
+  ['Miglior BID',orderBookNumber(bid,true)+' '+quoteCurrency,'buy'],
+  ['Miglior ASK',orderBookNumber(ask,true)+' '+quoteCurrency,'sell'],
+  ['Spread assoluto',orderBookNumber(absSpread,true)+' '+quoteCurrency,'neutral'],
+  ['Spread %',orderBookSpreadText(bid,ask)||'—','neutral'],
+  ['Profondità acquisti',orderBookNumber(metrics?.bidTotal||0)+' '+quoteCurrency,'buy'],
+  ['Profondità vendite',orderBookNumber(metrics?.askTotal||0)+' '+quoteCurrency,'sell'],
+  ['Quantità in BID',orderBookNumber(sumQty(bids))+' '+unit,'buy'],
+  ['Quantità in ASK',orderBookNumber(sumQty(asks))+' '+unit,'sell']
+ ];
+ return '<section class="ob-metrics" aria-label="Statistiche degli ordini verificati">'+
+  '<div class="ob-metrics-heading"><strong>Riepilogo dei livelli reali</strong><small>'+
+  bids.length+' BID / '+asks.length+' ASK ricevuti · '+orderBookVisibleLevelCount()+
+  ' richiesti per lato · profondità visibile, non volume giornaliero</small></div>'+
+  '<div class="ob-metrics-grid">'+values.map(([label,value,tone])=>
+  '<div class="ob-metric ob-metric-'+tone+'"><small>'+esc(label)+'</small><strong>'+
+  esc(value)+'</strong></div>').join('')+'</div></section>';
+}
 function orderBookDisplay(){
  const src=orderBookSource(orderBookState.id);
  if(!src)return '<div class="ob-status"><strong>'+(orderBookState.busy?'Verifica coppia Spot in corso…':'Order book Spot non disponibile')+'</strong><p>'+esc(orderBookState.error||'Nessuna coppia Spot verificata per questa crypto. Non vengono mostrati ordini di un token omonimo o dati stimati.')+'</p></div>';
  const book=orderBookState.data,stale=book&&Date.now()-orderBookState.updatedAt>30000;
  if(!book)return '<div class="ob-status"><strong>'+(orderBookState.busy?'Caricamento degli ordini reali…':'Dati non disponibili')+'</strong>'+
  '<p>'+esc(orderBookState.error||'Lettura del book Spot da '+src.venue+' in corso. Se la fonte non risponde, comparirà un avviso.')+'</p></div>';
- const bids=book.bids,asks=book.asks,bid=bids[0][0],ask=asks[0][0],mid=(ask+bid)/2;
+ const bids=book.bids.slice(0,orderBookVisibleLevelCount()),asks=book.asks.slice(0,orderBookVisibleLevelCount());
+ const bid=bids[0][0],ask=asks[0][0],mid=(ask+bid)/2;
  const quoteCurrency=(orderBookState.pair||src.pair).split('/')[1]||'USDT';
  const stamp=orderBookState.updatedAt?new Intl.DateTimeFormat('it-IT',{hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date(orderBookState.updatedAt)):'—';
  const changed=orderBookState.error?'<div class="ob-inline-warning">'+esc(orderBookState.error)+'</div>':'';
@@ -4729,6 +4796,7 @@ function orderBookDisplay(){
   priceTrend==='flat'?'Prezzo invariato rispetto alla rilevazione precedente':'Direzione non disponibile: manca un prezzo precedente verificato';
  return '<div class="ob-market-status ob-market-'+bookMode+'" data-orderbook-connection="'+bookMode+'">'+sourceLabel+
  ' · '+esc(orderBookState.venue||src.venue)+' · '+stamp+'</div>'+changed+
+ orderBookMetricsMarkup(bids,asks,book.unit,quoteCurrency)+
  '<div class="ob-book-stack" aria-label="Order Book verticale: vendite, prezzo di scambio e acquisti">'+
  orderBookSide(asks,'ask',book.unit,quoteCurrency)+
  '<section class="ob-trade-price" aria-label="'+esc(priceTitle)+'">'+
@@ -4782,6 +4850,16 @@ function liveBookConfig(id){
  const pair=snapshot?snapshot.pair:source.pair;
  if(!pair||!/^[A-Z0-9]{1,20}\/(USDT|USDC|USD|EUR|BTC|ETH)$/.test(pair))return null;
  const symbol=pair.replace('/','');
+ // A deep view uses real REST snapshots; Binance partial WebSocket
+ // messages carry only 20 levels and cannot be stretched to 100.
+ if(orderBookVisibleLevelCount()>20){
+  const deeper=orderBookDepthRequestUrls(source||orderBookVenueDescriptor({venue,pair}));
+  if(deeper[0])return {venue,pair,symbol,kind:'poll',format:source?.format||
+   orderBookVenueDescriptor({venue,pair})?.format,url:deeper[0],
+   priceUrl:venue==='Binance Spot'?
+    'https://data-api.binance.vision/api/v3/ticker/price?symbol='+symbol:
+    venue==='MEXC Spot'?'https://api.mexc.com/api/v3/ticker/price?symbol='+symbol:null};
+ }
  if(venue==='Binance Spot')return {venue,pair,symbol,kind:'binance',
   url:'wss://data-stream.binance.vision/stream?streams='+symbol.toLowerCase()+
    '@depth20@100ms/'+symbol.toLowerCase()+'@trade',
@@ -4883,7 +4961,7 @@ function normalizeLiveLevels(rawBids,rawAsks){
  const side=(rows,desc)=>Array.isArray(rows)?rows.map(row=>
    Array.isArray(row)&&row.length>1?[Number(row[0]),Number(row[1])]:[NaN,NaN])
   .filter(([price,qty])=>Number.isFinite(price)&&Number.isFinite(qty)&&price>0&&qty>0)
-  .sort((a,b)=>desc?b[0]-a[0]:a[0]-b[0]).slice(0,50):[];
+  .sort((a,b)=>desc?b[0]-a[0]:a[0]-b[0]).slice(0,100):[];
  const bids=side(rawBids,true),asks=side(rawAsks,false);
  return bids.length&&asks.length&&bids[0][0]<asks[0][0]?{bids,asks}:null;
 }
@@ -5232,7 +5310,7 @@ async function refreshOrderBook(force=false){
   if(serial!==orderBookState.serial)return;
  }
  let success=false,failure=backupFailure||'La fonte non risponde o blocca le richieste dal browser.';
- for(const url of src.urls){
+ for(const url of orderBookDepthRequestUrls(src)){
   const controller=new AbortController();
   orderBookState.abort=controller;
   const timeout=setTimeout(()=>controller.abort(),8500);
@@ -5249,7 +5327,7 @@ async function refreshOrderBook(force=false){
        Math.abs(Date.now()-marketTimestamp)>180000)
       throw Error('Snapshot LBank non aggiornato');
    }
-   const levels=rows=>rows.map(row=>[Number(row[0]),Number(row[1])]).filter(([p,q])=>Number.isFinite(p)&&Number.isFinite(q)&&p>0&&q>0).slice(0,50);
+   const levels=rows=>rows.map(row=>[Number(row[0]),Number(row[1])]).filter(([p,q])=>Number.isFinite(p)&&Number.isFinite(q)&&p>0&&q>0).slice(0,100);
    const bids=levels(depth.bids).sort((a,b)=>b[0]-a[0]),asks=levels(depth.asks).sort((a,b)=>a[0]-b[0]);
    if(!bids.length||!asks.length||bids[0][0]>=asks[0][0])throw Error('Livelli bid/ask non validi');
    if(serial!==orderBookState.serial||coin!==orderBookState.id)return;
@@ -5715,13 +5793,13 @@ function workspaceOrderBookLevels(){
   orderBookState.busy?'Caricamento dei livelli BID/ASK…':'Book non disponibile: dati verificati assenti';
  const side=(rows,bid)=>'<div class="ws-book-side '+(bid?'ws-book-bid':'ws-book-ask')+'">'+
   '<strong>'+(bid?'BID · Acquisti':'ASK · Vendite')+'</strong>'+
-  '<div class="ws-book-headers"><span>Prezzo</span><span>Quantità</span><span>Totale (USDT)</span></div>'+
-  rows.slice(0,10).map(([price,qty])=>'<div class="ws-book-row"><span>'+orderBookNumber(price,true)+'</span>'+
+  '<div class="ws-book-headers"><span>Prezzo</span><span>Quantità</span><span>Totale ('+esc(pair.split('/')[1]||'valuta')+')</span></div>'+
+  rows.slice(0,Math.min(25,orderBookVisibleLevelCount())).map(([price,qty])=>'<div class="ws-book-row"><span>'+orderBookNumber(price,true)+'</span>'+
    '<span>'+orderBookNumber(qty)+'</span><span>'+orderBookNumber(price*qty)+'</span></div>').join('')+'</div>';
  const time=book?.time?' · '+esc(localeDate(book.time,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'})):'';
  return '<div class="ws-book-active-head">'+assetLogo(coin)+'<div><strong>'+esc(coin.name)+
   '</strong><small>'+esc(venue+' · '+pair)+'</small></div></div>'+
-  '<div class="ob-source-toolbar">'+orderBookVenueMarkup(coin.id)+'</div>'+
+  '<div class="ob-source-toolbar">'+orderBookVenueMarkup(coin.id)+orderBookLevelSelector()+'</div>'+
   '<p class="ws-subnote ws-book-status" role="status">'+esc(status)+time+'</p>'+
   (book&&Array.isArray(book.bids)&&Array.isArray(book.asks)?
    '<div class="ws-book-grid">'+side(book.asks,false)+side(book.bids,true)+'</div>':
@@ -9413,6 +9491,14 @@ function setupEvents(){
   if(btn.dataset.capRefresh!==undefined&&state.page==='etf'){
    loadCryptoCapData(true);return;
   }
+  if(btn.dataset.orderBookFilter){
+   const filter=btn.dataset.orderBookFilter;
+   if(!OB_FILTERS.includes(filter))return;
+   orderBookState.filter=filter;save('orderBookFilter',filter);
+   const control=$('.ob-list-filters');if(control)control.outerHTML=orderBookFilterMarkup();
+   const list=$('#orderBookAssetList');if(list){list.innerHTML=orderBookAssetList();list.scrollTop=0;}
+   return;
+  }
   if(btn.dataset.orderBookAsset){selectOrderBookAsset(btn.dataset.orderBookAsset);return;}
   if(btn.dataset.orderBookRefresh){startOrderBookLive(true);refreshOrderBook(true);return;}
   if(btn.dataset.vertexIcon){setVertexAppIcon(btn.dataset.vertexIcon);return;}
@@ -9513,6 +9599,14 @@ function setupEvents(){
  $('#pageContainer').addEventListener('keydown',e=>{if(e.key==='Enter'){const tr=e.target.closest('tr[data-asset]');if(tr)openAsset(tr.dataset.asset)}});
  $('#pageContainer').addEventListener('change',e=>{
   if(e.target.id==='orderBookVenueSelect'){selectOrderBookVenue(e.target.value);return;}
+  if(e.target.id==='orderBookLevelCount'){
+   const count=Number(e.target.value);
+   if(!OB_LEVEL_OPTIONS.includes(count))return;
+   orderBookState.levelLimit=count;save('orderBookLevelLimit',count);
+   stopOrderBookLive();cancelOrderBookFetch();paintOrderBook();
+   refreshOrderBook(true);startOrderBookLive(true);
+   return;
+  }
   if(e.target.id==='bullishGroup'){setMarketForceFilter(e.target.value);return;}
   if(e.target.id==='bullishAsset'){marketForceChooseAsset(e.target.value);return;}
   if(e.target.id==='marketForceAssetSelect'){marketForceChooseAsset(e.target.value);return;}
