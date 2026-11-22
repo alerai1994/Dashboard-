@@ -284,7 +284,10 @@ assert(descriptor({venue:'OKX Spot',pair:'USDT/USDC'}).urls[0]
 assert(descriptor({venue:'Gate Spot',pair:'BTC/USDC'}).urls[0]
  .includes('currency_pair=BTC_USDC'),
  'Gate must request the correct real USDC pair');
-assert.equal(descriptor({venue:'Coinbase Exchange Spot',pair:'BTC/EUR'}),null,
+assert(descriptor({venue:'Coinbase Exchange Spot',pair:'BTC/EUR'}).urls[0]
+ .includes('/products/BTC-EUR/book?level=2'),
+ 'Supported EUR markets must request the exact EUR orderbook');
+assert.equal(descriptor({venue:'Coinbase Exchange Spot',pair:'BTC/XYZ'}),null,
  'Unsupported currencies must never be substituted silently');
 const sideCode=source.slice(source.indexOf('function orderBookSide('),
  source.indexOf('function orderBookPressureStats('));
