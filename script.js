@@ -4533,7 +4533,7 @@ function etfPage(){
 }
 function orderBookPage(){
  const coin=ASSET_BY_ID[orderBookState.id]||ORDER_BOOK_COINS[0],snap=cryptoBookEntry(coin.id),source=snap?{venue:snap.venue,pair:snap.pair}:orderBookSource(coin.id);
- return secHeader('Order Book Crypto','Profondità Spot reale per exchange e coppia USDT, USDC oppure USD, senza ordini simulati.')+
+ return secHeader('Order Book Crypto','Profondità reale per mercati Spot verificati (USDT, USDC, USD o EUR), senza ordini simulati.')+
  '<div class="ob-layout"><aside class="ob-picker panel" aria-label="Seleziona una criptovaluta">'+
  '<div class="ob-picker-header"><strong>Tutte le criptovalute</strong><span id="orderBookCoverage">'+ORDER_BOOK_COINS.filter(a=>!!cryptoBookEntry(a.id)).length+'/'+ORDER_BOOK_COINS.length+' book verificati</span></div>'+
  '<label class="ob-search-label" for="orderBookSearch">Cerca crypto</label>'+
@@ -4545,7 +4545,7 @@ function orderBookPage(){
  '<button class="btn btn-small" type="button" data-order-book-refresh="1" aria-label="Aggiorna order book">'+sym('refresh')+' Aggiorna</button></div>'+
  '<div class="ob-source-toolbar" id="orderBookVenueToolbar">'+orderBookVenueMarkup(coin.id)+'</div>'+
  '<div class="ob-content" id="orderBookContent" aria-live="off">'+orderBookDisplay()+'</div>'+
- '<p class="ob-footnote">Seleziona Binance, Gate o MEXC quando le coppie sono verificate: ogni fonte usa solo il proprio book. Le '+ORDER_BOOK_COINS.length+' crypto sono selezionabili; i BID/ASK sono mostrati solo per coppie Spot verificate. I nuovi token vengono identificati usando CoinGecko e Binance alla selezione, mai tramite il solo ticker. Order Book Spot della criptovaluta selezionata: Binance, Gate e LBank ricevono aggiornamenti WebSocket in streaming (fino a 100 ms, secondo la fonte); MEXC utilizza richieste REST ogni circa 3 secondi, non uno stream live. Il badge indica se i dati sono LIVE, aggiornati con polling o uno snapshot di riserva. Solo livelli reali della coppia indicata, mai simulati. Se la rete o la fonte si interrompe, sono segnalati come non aggiornati. La pagina deve rimanere aperta.</p>'+
+ '<p class="ob-footnote">Tutte le '+ORDER_BOOK_COINS.length+' criptovalute sono selezionabili su browser desktop e mobile. BID, ASK, spread e profondità provengono sempre da una coppia Spot verificata e da un singolo exchange, senza ordini inventati e senza sommare offerte di fonti diverse. Controlla l’orario del book: può essere LIVE (WebSocket), aggiornato tramite REST o uno snapshot non più attuale. I token privi di un mercato negoziabile verificato rimangono visibili, ma non mostrano BID/ASK simulati. La presenza di un mercato non garantisce l’accesso al trading dalla tua giurisdizione; Vertex è un visualizzatore, non esegue ordini.</p>'+
  '</section></div>';
 }
 function orderBookNumber(v,price=false){
