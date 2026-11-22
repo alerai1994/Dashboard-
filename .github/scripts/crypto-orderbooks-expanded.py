@@ -161,7 +161,7 @@ def live_book(cid, symbol, previous):
     try:
         raw = base.fetch(
             "https://data-api.binance.vision/api/v3/depth?symbol=" +
-            symbol + "USDT&limit=20"
+            symbol + "USDT&limit=50"
         )
         bids, asks = base.checked(raw, "Binance")
         captured = base.now().isoformat()
