@@ -4726,27 +4726,13 @@ function etfPage(){
  return cryptoEtfSection()+cryptoCapCalculator();
 }
 function orderBookPage(){
- const coin=ASSET_BY_ID[orderBookState.id]||ORDER_BOOK_COINS[0];
  return secHeader('Order Book Crypto','Profondità reale per mercati Spot verificati (USDT, USDC, USD, EUR, BTC o ETH), senza ordini simulati.')+
  '<div class="ob-layout"><aside class="ob-picker panel" aria-label="Seleziona una criptovaluta">'+
  '<div class="ob-picker-header"><strong>Tutte le criptovalute</strong><span id="orderBookCoverage">'+orderBookCoverageText()+'</span></div>'+
  '<label class="ob-search-label" for="orderBookSearch">Cerca crypto</label>'+
  '<input type="search" class="ob-search" id="orderBookSearch" placeholder="Nome o simbolo..." value="'+esc(orderBookState.search)+'" autocomplete="off">'+
- '<div class="ob-filter-group" role="group" aria-label="Filtra order book">'+
-  [['all','Tutte'],['ready','Con book'],['waiting','In attesa']].map(([key,label])=>
-   '<button type="button" class="ob-filter-button'+(orderBookState.filter===key?' is-active':'')+'" data-order-book-filter="'+key+'" aria-pressed="'+(orderBookState.filter===key)+'">'+label+'</button>').join('')+'</div>'+ 
- '<div class="ob-coin-list" id="orderBookAssetList">'+orderBookAssetList()+'</div></aside>'+ 
- '<section class="ob-detail panel" aria-label="Order book della crypto selezionata">'+
- '<div class="ob-detail-heading"><div class="ob-heading-name">'+assetLogo(coin)+'<div><h2>'+esc(coin.name)+'</h2>'+
- '<small id="orderBookSourceLabel">'+esc(orderBookSourceLabel(coin.id))+'</small>'+(coin.id==='ton'?'<small>Toncoin rinominato GRAM (1:1)</small>':'')+'</div></div>'+
- '<button class="btn btn-small" type="button" data-order-book-refresh="1" aria-label="Aggiorna order book">'+sym('refresh')+' Aggiorna</button></div>'+
-
- '<div class="ob-source-toolbar" id="orderBookVenueToolbar">'+
- '<label class="ob-venues-label" for="orderBookVenueSelect">Fonte Order Book · Spot / Fusion</label>'+
- '<select class="ob-venues-select" id="orderBookVenueSelect" aria-label="Seleziona exchange Spot verificato">'+
- orderBookVenueOptions(coin.id)+'</select>'+
- '<p class="ob-venues-note">Exchange disponibili per questa crypto: '+orderBookVerifiedVenues(coin.id).length+
- ' · Le fonti restano separate: BID/ASK mai sommati tra mercati.</p></div>'+
+ '<div class="ob-coin-list" id="orderBookAssetList">'+orderBookAssetList()+'</div></aside>'+
+ '<section class="ob-detail panel" aria-label="Livelli BID e ASK della crypto selezionata">'+
  '<div class="ob-content" id="orderBookContent" aria-live="off">'+orderBookDisplay()+'</div>'+
  '<p class="ob-footnote">Tutte le '+ORDER_BOOK_COINS.length+' criptovalute sono selezionabili su browser desktop e mobile. BID, ASK, spread e profondità provengono da coppie verificate; i book Spot dei singoli exchange non vengono mai sommati. Bitpanda Fusion, se configurato tramite API privata, è un broker con liquidità aggregata mostrato separatamente, non un singolo exchange. Controlla l’orario del book: può essere LIVE (WebSocket), aggiornato tramite REST o uno snapshot non più attuale. I token privi di un mercato negoziabile verificato rimangono visibili, ma non mostrano BID/ASK simulati. La presenza di un mercato non garantisce l’accesso al trading dalla tua giurisdizione; Vertex è un visualizzatore, non esegue ordini.</p>'+
  '</section></div>';
@@ -9592,17 +9578,7 @@ function setupEvents(){
   if(btn.dataset.capRefresh!==undefined&&state.page==='etf'){
    loadCryptoCapData(true);return;
   }
-  if(btn.dataset.orderBookFilter&&state.page==='orderbook'){
-    orderBookState.filter=btn.dataset.orderBookFilter;
-    document.querySelectorAll('[data-order-book-filter]').forEach(node=>{
-     const active=node.dataset.orderBookFilter===orderBookState.filter;
-     node.classList.toggle('is-active',active);
-     node.setAttribute('aria-pressed',String(active));
-    });
-    updateOrderBookAssetList();
-    return;
-   }
-   if(btn.dataset.orderBookAsset){selectOrderBookAsset(btn.dataset.orderBookAsset);return;}
+  if(btn.dataset.orderBookAsset){selectOrderBookAsset(btn.dataset.orderBookAsset);return;}
   if(btn.dataset.orderBookRefresh){startOrderBookLive(true);refreshOrderBook(true);return;}
   if(btn.dataset.vertexIcon){setVertexAppIcon(btn.dataset.vertexIcon);return;}
   if(btn.dataset.copyVertexInstall){
