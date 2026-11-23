@@ -717,6 +717,31 @@ const allCrypto=appWindow.__vertexPriceBoardBackend.assets.filter(a=>a.group==='
 for(const [symbol] of screenshotCatalog)
  assert(allCrypto.some(a=>a.symbol===symbol+'-USD'),'Missing screenshot crypto '+symbol);
 assert.equal(new Set(allCrypto.map(a=>a.id)).size,allCrypto.length,'Duplicate crypto IDs');
+const sourceLabelFunctions=source.slice(
+ source.indexOf('function orderBookActiveSource(id){'),
+ source.indexOf('function updateOrderBookAssetList(){'));
+assert(sourceLabelFunctions.includes('function orderBookSourceLabel(id)'),
+ 'Order Book heading must follow the actual currently received venue/pair');
+const activeSourceState={id:'btc',data:{bids:[[100,1]],asks:[[101,1]]},
+ venue:'Coinbase Exchange Spot',pair:'BTC/USD',updatedAt:Date.now()};
+const activeLabel=new Function('orderBookState','cryptoBookEntry','orderBookSource',
+ sourceLabelFunctions+';return orderBookSourceLabel;')(
+ activeSourceState,
+ ()=>({venue:'Binance Spot',pair:'BTC/USDT'}),
+ ()=>({venue:'Binance Spot',pair:'BTC/USDT'}));
+assert.equal(activeLabel('btc'),'Coinbase Exchange Spot · BTC/USD',
+ 'Display must never mislabel Coinbase BTC/USD liquidity as Binance USDT');
+activeSourceState.updatedAt=Date.now()-4*60*60*1000;
+assert.equal(activeLabel('btc'),'Binance Spot · BTC/USDT',
+ 'Expired active depth must not override the verified fallback source');
+const workspaceBookCode=source.slice(source.indexOf('function workspaceOrderBookLevels(){'),
+ source.indexOf('function workspaceWidgetBody(id){'));
+assert(workspaceBookCode.includes("'<span>Totale ('+esc(quoteCurrency)+')</span>")&&
+ !workspaceBookCode.includes('<span>Totale (USDT)</span>')&&
+ workspaceBookCode.includes("'Coppia non verificata'"),
+ 'Workspace total must use the actual pair quote and never invent USDT for unknown pairs');
+assert(!source.includes('Fonte Spot')&&!source.includes('orderBookVenueSelect'),
+ 'Source selection panel must stay removed on every device');
 const bookHtml=app.PAGE_RENDERERS.orderbook();
 assert(!bookHtml.includes('id="orderBookVenueSelect"')&&
  !bookHtml.includes('id="orderBookVenueToolbar"')&&
