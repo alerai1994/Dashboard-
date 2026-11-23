@@ -3736,10 +3736,13 @@ const ORDER_BOOK_DISCOVERY_VENUES={
  mxc:'MEXC Spot',mexc:'MEXC Spot',bybit_spot:'Bybit Spot',
  okex:'OKX Spot',okx:'OKX Spot',kucoin:'KuCoin Spot',
  gdax:'Coinbase Exchange Spot',kraken:'Kraken Spot',
- bitget:'Bitget Spot',bitget_spot:'Bitget Spot'
+ bitget:'Bitget Spot',bitget_spot:'Bitget Spot',
+ bingx:'BingX Spot',coinex:'CoinEx Spot'
 };
 function orderBookDiscoveryMarketUrl(venue,base,quote){
  const pair=base+quote,under=base+'_'+quote,dash=base+'-'+quote;
+ if(venue==='BingX Spot')return 'https://open-api.bingx.com/openApi/spot/v1/common/symbols?symbol='+dash;
+ if(venue==='CoinEx Spot')return 'https://api.coinex.com/v2/spot/market?market='+pair;
  if(venue==='Binance Spot')return 'https://data-api.binance.vision/api/v3/exchangeInfo?symbol='+pair;
  if(venue==='Gate Spot')return 'https://api.gateio.ws/api/v4/spot/currency_pairs/'+under;
  if(venue==='MEXC Spot')return 'https://api.mexc.com/api/v3/exchangeInfo?symbol='+pair;
@@ -3754,6 +3757,11 @@ function orderBookDiscoveryMarketUrl(venue,base,quote){
 function orderBookDiscoveryTradable(venue,raw,base,quote){
  if(!raw||typeof raw!=='object')return false;
  const pair=base+quote,under=base+'_'+quote,dash=base+'-'+quote;
+ if(venue==='BingX Spot')return String(raw.code)==='0'&&Array.isArray(raw.data?.symbols)&&
+   raw.data.symbols.some(m=>m?.symbol===dash&&(m.status===1||m.status==='1'));
+ if(venue==='CoinEx Spot')return String(raw.code)==='0'&&Array.isArray(raw.data)&&
+   raw.data.some(m=>m?.market===pair&&m.base_ccy===base&&m.quote_ccy===quote&&
+     m.status==='online'&&m.is_api_trading_available!==false);
  if(venue==='Binance Spot')return Array.isArray(raw.symbols)&&raw.symbols.some(m=>
   m.symbol===pair&&m.baseAsset===base&&m.quoteAsset===quote&&m.status==='TRADING'&&m.isSpotTradingAllowed!==false);
  if(venue==='Gate Spot')return raw.id===under&&raw.base===base&&raw.quote===quote&&raw.trade_status==='tradable';
@@ -3806,7 +3814,7 @@ async function discoverOrderBookSource(id,serial){
  }catch(_error){/* CoinGecko can rate-limit or block CORS; keep verified snapshots instead. */}
  if(!requested())return null;
  const priority=['Binance Spot','Gate Spot','MEXC Spot','Bybit Spot','OKX Spot',
-  'KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot'];
+  'KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','BingX Spot','CoinEx Spot'];
  const proposed=[...candidates.entries()].sort((a,b)=>priority.indexOf(a[0])-priority.indexOf(b[0])).slice(0,9);
  const tested=await Promise.all(proposed.map(async ([venue,quoted])=>{
   const url=orderBookDiscoveryMarketUrl(venue,symbol,quoted);
@@ -3826,9 +3834,13 @@ async function discoverOrderBookSource(id,serial){
 /* Each displayed BID/ASK set must belong to one actual exchange venue. */
 function orderBookVenueDescriptor(row){
  const venue=row?.venue,pair=String(row?.pair||''),symbol=pair.split('/')[0],quoted=pair.split('/')[1];
- if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot'].includes(venue)||
+ if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot','BingX Spot','CoinEx Spot'].includes(venue)||
   !/^[A-Z0-9]{1,20}\/(USDT|USDC|USD|EUR|BTC|ETH)$/.test(pair))return null;
  const coded=symbol+quoted;
+ if(venue==='BingX Spot')return {venue,pair,format:'bingx',urls:[
+  'https://open-api.bingx.com/openApi/spot/v1/market/depth?symbol='+symbol+'-'+quoted+'&limit=50']};
+ if(venue==='CoinEx Spot')return {venue,pair,format:'coinex',urls:[
+  'https://api.coinex.com/v2/spot/depth?market='+coded+'&limit=50&interval=0']};
  if(venue==='Binance Spot')return {venue,pair,urls:[
   'https://data-api.binance.vision/api/v3/depth?symbol='+coded+'&limit=50',
   'https://api.binance.com/api/v3/depth?symbol='+coded+'&limit=50']};
@@ -3971,7 +3983,7 @@ function cryptoBookEntry(id){
  if(id==='ore'&&b.mint!=='oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp')return null;
  const t=Date.parse(b.capturedAt||'');
  if(!Number.isFinite(t)||t>Date.now()+60000||Date.now()-t>3*60*60*1000)return null;
- if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot'].includes(b.venue))return null;
+ if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot','BingX Spot','CoinEx Spot'].includes(b.venue))return null;
  const bids=b.bids.map(r=>[Number(r[0]),Number(r[1])])
   .filter(r=>r.length===2&&r.every(x=>Number.isFinite(x)&&x>0)).sort((a,b)=>b[0]-a[0]).slice(0,50);
  const asks=b.asks.map(r=>[Number(r[0]),Number(r[1])])
@@ -4764,7 +4776,7 @@ function liveBookConfig(id){
  if(venue==='MEXC Spot')return {venue,pair,symbol,kind:'poll',
   url:'https://api.mexc.com/api/v3/depth?symbol='+symbol+'&limit=50',
   priceUrl:'https://api.mexc.com/api/v3/ticker/price?symbol='+symbol};
- if(['Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot'].includes(venue)){
+ if(['Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot','BingX Spot','CoinEx Spot'].includes(venue)){
   const source=orderBookVenueDescriptor({venue,pair});
   if(source)return {venue,pair,symbol,kind:'poll',
    format:source.format,url:source.urls[0]};
@@ -4779,6 +4791,21 @@ function decodeOrderBookDepth(payload,format){
   const n=Number(ts),delay=Date.now()-n;
   return Number.isFinite(n)&&n>1e12&&delay>=0&&delay<600000;
  };
+ if(format==='bingx'){
+  if(String(payload.code)!=='0'||!payload.data||
+     !freshExchangeMs(payload.data.ts)||!Array.isArray(payload.data.bids)||
+     !Array.isArray(payload.data.asks))
+   throw Error('BingX Spot non disponibile o book scaduto');
+  return {bids:payload.data.bids,asks:payload.data.asks,sequence:payload.data.ts};
+ }
+ if(format==='coinex'){
+  const data=payload.data,depth=data?.depth;
+  if(String(payload.code)!=='0'||!data||data.is_full!==true||!depth||
+     !freshExchangeMs(depth.updated_at)||!Array.isArray(depth.bids)||
+     !Array.isArray(depth.asks))
+   throw Error('CoinEx Spot non disponibile o book scaduto');
+  return {bids:depth.bids,asks:depth.asks,sequence:depth.updated_at};
+ }
  if(format==='gemini'){
   if(!Array.isArray(payload.bids)||!Array.isArray(payload.asks)||
      ![...payload.bids,...payload.asks].every(row=>
