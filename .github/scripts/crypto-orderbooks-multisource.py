@@ -220,7 +220,7 @@ CURATED_SPOT = {
     "ozo": ("OZO", "ozone-chain", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"))),
     "koge": ("KOGE", "bnb48-club-token", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"), ("BitMart Spot", "USDT"))),
     "shfl": ("SHFL", "shuffle-2", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"), ("BitMart Spot", "USDT"))),
-    "btse": ("BTSE", "btse-token", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"))),
+    "btse": ("BTSE", "btse-token", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"), ("BTSE Spot", "USDT"))),
     "anvl": ("ANVL", "anvil", (("MEXC Spot", "USDT"), ("Gate Spot", "USDT"), ("Bitget Spot", "USDT"))),
     "cc": ("CC", "canton-network", (("Gate Spot", "USDT"), ("Bitget Spot", "USDT"), ("MEXC Spot", "USDT"))),
     "m": ("M", "memecore", (("Gate Spot", "USDT"), ("Bitget Spot", "USDT"))),
@@ -238,7 +238,7 @@ CURATED_SPOT = {
     "kag": ("KAG", "kinesis-silver", (("Gate Spot", "USDT"),)),
     "cards": ("CARDS", "collector-crypt", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"))),
     "usat": ("USAT", "usa", (("Gate Spot", "USDT"), ("Bitget Spot", "USDT"))),
-    "rain": ("RAIN", "rain", (("Gate Spot", "USDT"), ("KuCoin Spot", "USDT"), ("WhiteBIT Spot", "USDT"), ("MEXC Spot", "USDT"))),    "btse": ("BTSE", "btse-token", (("BTSE Spot", "USDT"),)),
+    "rain": ("RAIN", "rain", (("Gate Spot", "USDT"), ("KuCoin Spot", "USDT"), ("WhiteBIT Spot", "USDT"), ("MEXC Spot", "USDT"))),
 }
 
 
