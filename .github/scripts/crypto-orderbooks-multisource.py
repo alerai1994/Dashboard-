@@ -15,6 +15,7 @@ from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from threading import Lock
 from urllib.parse import quote
+quote_url = quote
 import json
 import re
 import sys
@@ -70,8 +71,12 @@ KNOWN = {
     "CoinEx Spot": {"keys": {"coinex"}},
     "Poloniex Spot": {"keys": {"poloniex"}},
     "Bitstamp Spot": {"keys": {"bitstamp"}},
+    "WEEX Spot": {"keys": {"weex"}},
+    "Bitunix Spot": {"keys": {"bitunix"}},
+    "XT Spot": {"keys": {"xt"}},
+
 }
-VENUE_ORDER = ("Binance Spot", "Gate Spot", "MEXC Spot", "Bybit Spot", "OKX Spot", "KuCoin Spot", "Coinbase Exchange Spot", "Kraken Spot", "Bitget Spot", "WhiteBIT Spot", "BTSE Spot", "LBank Spot", "HTX Spot", "BitMart Spot", "Bitrue Spot", "Crypto.com Spot", "Gemini Spot", "BingX Spot", "CoinEx Spot", "Poloniex Spot", "Bitstamp Spot")
+VENUE_ORDER = ("Binance Spot", "Gate Spot", "MEXC Spot", "Bybit Spot", "OKX Spot", "KuCoin Spot", "Coinbase Exchange Spot", "Kraken Spot", "Bitget Spot", "WhiteBIT Spot", "BTSE Spot", "LBank Spot", "HTX Spot", "BitMart Spot", "Bitrue Spot", "Crypto.com Spot", "Gemini Spot", "BingX Spot", "CoinEx Spot", "Poloniex Spot", "Bitstamp Spot", "WEEX Spot", "Bitunix Spot", "XT Spot")
 QUOTE_PRIORITY = ("USDT", "USDC", "USD", "EUR", "BTC", "ETH")
 
 # Explicit catalog identity mappings for widely traded assets whose public
@@ -361,7 +366,7 @@ def lbank_market_list():
     return base.fetch("https://api.lbank.info/v2/currencyPairs.do")
 
 
-@lru_cache(maxsize=8)
+@lru_cache(maxsize=12)
 def shared_spot_markets(venue):
     """Fetch one venue's complete public Spot catalog per run."""
     url = {
@@ -373,6 +378,9 @@ def shared_spot_markets(venue):
         "CoinEx Spot": "https://api.coinex.com/v2/spot/market",
         "Poloniex Spot": "https://api.poloniex.com/markets",
         "Bitstamp Spot": "https://www.bitstamp.net/api/v2/markets/",
+        "WEEX Spot": "https://api-spot.weex.com/api/v3/exchangeInfo",
+        "Bitunix Spot": "https://openapi.bitunix.com/api/spot/v1/common/coin_pair/list",
+        "XT Spot": "https://sapi.xt.com/v4/public/symbol",
     }[venue]
     return base.fetch(url)
 
@@ -380,7 +388,7 @@ def shared_spot_markets(venue):
 def get_spot_metadata(venue, symbol, quoted):
     if venue == "LBank Spot":
         return lbank_market_list()
-    if venue in ("HTX Spot", "BitMart Spot", "Bitrue Spot", "Crypto.com Spot", "BingX Spot", "CoinEx Spot", "Poloniex Spot", "Bitstamp Spot"):
+    if venue in ("HTX Spot", "BitMart Spot", "Bitrue Spot", "Crypto.com Spot", "BingX Spot", "CoinEx Spot", "Poloniex Spot", "Bitstamp Spot", "WEEX Spot", "Bitunix Spot", "XT Spot"):
         return shared_spot_markets(venue)
     return base.fetch(exchange_info_url(venue, symbol, quoted))
 
@@ -395,6 +403,39 @@ def fresh_exchange_millis(value, limit_seconds=600):
 
 
 def exchange_market_valid(venue, payload, symbol, quote='USDT'):
+    if venue == "WEEX Spot":
+        return (isinstance(payload, dict) and isinstance(payload.get("symbols"), list)
+                and any(isinstance(m, dict)
+                        and m.get("symbol") == symbol + quote
+                        and m.get("baseAsset") == symbol
+                        and m.get("quoteAsset") == quote
+                        and m.get("status") == "TRADING"
+                        and m.get("enableTrade") is True
+                        for m in payload["symbols"]))
+    if venue == "Bitunix Spot":
+        return (isinstance(payload, dict) and str(payload.get("code")) == "0"
+                and isinstance(payload.get("data"), list)
+                and any(isinstance(m, dict)
+                        and str(m.get("base", "")).upper() == symbol
+                        and str(m.get("quote", "")).upper() == quote
+                        and str(m.get("isOpen", "")).lower() in ("1", "true")
+                        and str(m.get("isShow", "1")).lower() in ("1", "true")
+                        and any(float(x) > 0 for x in m.get("precisions", [])
+                                if str(x).replace(".", "", 1).isdigit())
+                        for m in payload["data"]))
+    if venue == "XT Spot":
+        rows = payload.get("result") if isinstance(payload, dict) else None
+        rows = rows.get("symbols") if isinstance(rows, dict) else None
+        return (isinstance(payload, dict) and str(payload.get("rc")) == "0"
+                and isinstance(rows, list) and
+                any(isinstance(m, dict)
+                    and str(m.get("symbol", "")).lower() == (symbol + "_" + quote).lower()
+                    and str(m.get("baseCurrency", "")).upper() == symbol
+                    and str(m.get("quoteCurrency", "")).upper() == quote
+                    and m.get("state") == "ONLINE"
+                    and m.get("tradingEnabled") is True
+                    and m.get("openapiEnabled") is True
+                    for m in rows))
     if venue == "Poloniex Spot":
         return (isinstance(payload, list) and
                 any(isinstance(m, dict) and
@@ -577,6 +618,12 @@ def exchange_market_valid(venue, payload, symbol, quote='USDT'):
 
 
 def exchange_info_url(venue, symbol, quote='USDT'):
+    if venue == "WEEX Spot":
+        return "https://api-spot.weex.com/api/v3/exchangeInfo"
+    if venue == "Bitunix Spot":
+        return "https://openapi.bitunix.com/api/spot/v1/common/coin_pair/list"
+    if venue == "XT Spot":
+        return "https://sapi.xt.com/v4/public/symbol"
     if venue == "Poloniex Spot":
         return "https://api.poloniex.com/markets/" + symbol + "_" + quote
     if venue == "Bitstamp Spot":
@@ -791,6 +838,32 @@ def verify_bulk_pair(cid, symbol, coin_id, quoted, venue, ts):
 
 
 def depth_url(venue, symbol, quote='USDT'):
+    if venue == "WEEX Spot":
+        return "https://api-spot.weex.com/api/v3/market/depth?symbol=" + symbol + quote + "&limit=200"
+    if venue == "XT Spot":
+        return ("https://sapi.xt.com/v4/public/depth?symbol=" +
+                (symbol + "_" + quote).lower() + "&limit=50")
+    if venue == "Bitunix Spot":
+        # Precision MUST come from the venue's own live public Spot catalog.
+        # An invented precision could return an aggregated or invalid book.
+        market = shared_spot_markets(venue)
+        if not isinstance(market, dict) or str(market.get("code")) != "0":
+            raise ValueError("Bitunix public Spot catalog unavailable")
+        for item in market.get("data") or []:
+            if (isinstance(item, dict) and
+                str(item.get("base", "")).upper() == symbol and
+                str(item.get("quote", "")).upper() == quote and
+                str(item.get("isOpen", "")).lower() in ("1", "true")):
+                precisions = item.get("precisions")
+                if isinstance(precisions, list):
+                    for precision in precisions:
+                        try:
+                            if float(precision) > 0:
+                                return ("https://openapi.bitunix.com/api/spot/v1/market/depth?symbol="
+                                        + symbol + quote + "&precision=" + quote_url(str(precision), safe=""))
+                        except (TypeError, ValueError):
+                            continue
+        raise ValueError("Bitunix has no verified precision for Spot depth")
     if venue == "Poloniex Spot":
         return "https://api.poloniex.com/markets/" + symbol + "_" + quote + "/orderBook?limit=50"
     if venue == "Bitstamp Spot":
@@ -853,6 +926,36 @@ def depth_url(venue, symbol, quote='USDT'):
 
 
 def normalize_exchange_depth(venue, raw):
+    if venue == "WEEX Spot":
+        if (not isinstance(raw, dict) or
+            not isinstance(raw.get("lastUpdateId"), int) or
+            not isinstance(raw.get("bids"), list) or
+            not isinstance(raw.get("asks"), list)):
+            raise ValueError("WEEX V3 did not return real Spot depth")
+        return raw
+    if venue == "Bitunix Spot":
+        data = raw.get("data") if isinstance(raw, dict) else None
+        if (not isinstance(raw, dict) or str(raw.get("code")) != "0"
+            or not isinstance(data, dict) or
+            not fresh_exchange_millis(data.get("ts")) or
+            not isinstance(data.get("bids"), list) or
+            not isinstance(data.get("asks"), list)):
+            raise ValueError("Bitunix Spot book missing or stale")
+        if not all(isinstance(level, dict) and
+                   "price" in level and "volume" in level
+                   for level in data["bids"] + data["asks"]):
+            raise ValueError("Bitunix depth level has invalid price or volume")
+        return {"bids": [[x["price"], x["volume"]] for x in data["bids"]],
+                "asks": [[x["price"], x["volume"]] for x in data["asks"]]}
+    if venue == "XT Spot":
+        data = raw.get("result") if isinstance(raw, dict) else None
+        if (not isinstance(raw, dict) or str(raw.get("rc")) != "0"
+            or not isinstance(data, dict) or
+            not fresh_exchange_millis(data.get("timestamp")) or
+            not isinstance(data.get("bids"), list) or
+            not isinstance(data.get("asks"), list)):
+            raise ValueError("XT Spot order book missing or stale")
+        return data
     if venue == "Poloniex Spot":
         if (not isinstance(raw, dict) or not fresh_exchange_millis(raw.get("ts"))
             or not isinstance(raw.get("bids"), list)
@@ -1016,6 +1119,32 @@ def load_depth(cid, source, previous):
 def check_fixture():
     assert len(catalog_with_ids()) == 288
     assert len(SCREENSHOT_PRIORITY) == 40
+    assert exchange_market_valid("WEEX Spot", {"symbols": [{
+        "symbol":"VRAUSDT","baseAsset":"VRA","quoteAsset":"USDT",
+        "status":"TRADING","enableTrade":True}]}, "VRA")
+    assert not exchange_market_valid("WEEX Spot", {"symbols": [{
+        "symbol":"VRAUSDT","baseAsset":"OTHER","quoteAsset":"USDT",
+        "status":"TRADING","enableTrade":True}]}, "VRA")
+    assert exchange_market_valid("Bitunix Spot", {"code":0,"data":[{
+        "id":"vra_usdt","base":"VRA","quote":"USDT","isOpen":"1",
+        "precisions":["0.0001"]}]}, "VRA")
+    assert not exchange_market_valid("Bitunix Spot", {"code":0,"data":[{
+        "id":"vra_usdt","base":"VRA","quote":"USDT","isOpen":"0",
+        "precisions":["0.0001"]}]}, "VRA")
+    assert exchange_market_valid("XT Spot", {"rc":0,"result":{"symbols":[{
+        "symbol":"vra_usdt","baseCurrency":"vra","quoteCurrency":"usdt",
+        "state":"ONLINE","tradingEnabled":True,"openapiEnabled":True}]}}, "VRA")
+    assert not exchange_market_valid("XT Spot", {"rc":0,"result":{"symbols":[{
+        "symbol":"vra_usdt","baseCurrency":"vra","quoteCurrency":"usdt",
+        "state":"OFFLINE","tradingEnabled":True,"openapiEnabled":True}]}}, "VRA")
+    ms = int(base.now().timestamp()*1000)
+    assert normalize_exchange_depth("WEEX Spot", {"lastUpdateId":20,
+        "bids":[["10","2"]], "asks":[["11","3"]]})["bids"]
+    assert normalize_exchange_depth("Bitunix Spot", {"code":0,"data":{
+        "ts":str(ms), "bids":[{"price":"10","volume":"2"}],
+        "asks":[{"price":"11","volume":"3"}]}})["asks"] == [["11","3"]]
+    assert normalize_exchange_depth("XT Spot", {"rc":0,"result":{
+        "timestamp":ms,"bids":[["10","2"]],"asks":[["11","3"]]}})["asks"]
     assert exchange_market_valid("Poloniex Spot", [{
         "symbol":"VRA_USDT","baseCurrencyName":"VRA",
         "quoteCurrencyName":"USDT","state":"NORMAL"}], "VRA")
@@ -1324,7 +1453,7 @@ def run():
     previous_source = previous_source if isinstance(previous_source, dict) else {}
     previous_books = previous_books if isinstance(previous_books, dict) else {}
     checked = checked if isinstance(checked, dict) else {}
-    if data.get('multiDiscoveryVersion') != 12:
+    if data.get('multiDiscoveryVersion') != 13:
         checked = {}  # New all-exchange CoinGecko scan replaces a filtered query.
 
     sources = {}
@@ -1572,7 +1701,7 @@ def run():
     }
     data["venueBooks"] = venue_books
     data["marketSources"] = sources
-    data["multiDiscoveryVersion"] = 12
+    data["multiDiscoveryVersion"] = 13
     data["multiDiscoveryCheckedAt"] = {cid: checked[cid] for cid in registry
                                         if cid in checked}
     data["unavailable"] = {cid: "Nessun book pubblico verificato"
