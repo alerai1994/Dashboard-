@@ -6,6 +6,7 @@ const read=path=>fs.readFileSync(path,'utf8');
 const source=read('script.js'),html=read('index.html'),css=read('style.css');
 /* DeFi AMM pools must never be misrepresented as centralized BID/ASK. */
 const defiUi=read('defi-orderbook.js');
+new (require('node:vm').Script)(defiUi,{filename:'defi-orderbook.js'});
 assert(html.includes('crypto-defi-pools-data.js?v=20261123-defi-pools-v35')&&
  html.includes('defi-orderbook.js?v=20261123-defi-pools-v35'),
  'Every desktop and mobile browser must load the same verified DeFi snapshot and panel');
