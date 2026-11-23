@@ -3893,11 +3893,15 @@ async function discoverOrderBookSource(id,serial){
 /* Each displayed BID/ASK set must belong to one actual exchange venue. */
 function orderBookVenueDescriptor(row){
  const venue=row?.venue,pair=String(row?.pair||''),symbol=pair.split('/')[0],quoted=pair.split('/')[1];
- if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot','BingX Spot','CoinEx Spot','Poloniex Spot','Bitstamp Spot','WEEX Spot','Bitunix Spot','XT Spot','Bitpanda Fusion'].includes(venue)||
+ if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot','BingX Spot','CoinEx Spot','Poloniex Spot','Bitstamp Spot','WEEX Spot','Bitunix Spot','XT Spot','LATOKEN Spot','Bitpanda Fusion'].includes(venue)||
   !/^[A-Z0-9]{1,20}\/(USDT|USDC|USD|EUR|BTC|ETH)$/.test(pair))return null;
  const coded=symbol+quoted;
  // Bitpanda Fusion requires a server-side API key and exposes aggregated broker liquidity.
  if(venue==='Bitpanda Fusion')return {venue,pair,format:'snapshot',urls:[]};
+ // LATOKEN exposes currency UUIDs and an order book without a source timestamp.
+ // Only the server collector can validate active ICX/USDT + a recent traded
+ // ticker; display its verified snapshot, never an unverified browser fetch.
+ if(venue==='LATOKEN Spot')return {venue,pair,format:'snapshot',urls:[]};
  if(venue==='WEEX Spot')return {venue,pair,format:'weex',urls:[
   'https://api-spot.weex.com/api/v3/market/depth?symbol='+coded+'&limit=200']};
  if(venue==='Bitunix Spot'){
@@ -4123,7 +4127,7 @@ function cryptoBookEntry(id,venue){
  if(id==='ore'&&b.mint!=='oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp')return null;
  const t=Date.parse(b.capturedAt||'');
  if(!Number.isFinite(t)||t>Date.now()+60000||Date.now()-t>3*60*60*1000)return null;
- if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot','BingX Spot','CoinEx Spot','Poloniex Spot','Bitstamp Spot','WEEX Spot','Bitunix Spot','XT Spot','Bitpanda Fusion'].includes(b.venue))return null;
+ if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot','BingX Spot','CoinEx Spot','Poloniex Spot','Bitstamp Spot','WEEX Spot','Bitunix Spot','XT Spot','LATOKEN Spot','Bitpanda Fusion'].includes(b.venue))return null;
  const bids=b.bids.map(r=>[Number(r[0]),Number(r[1])])
   .filter(r=>r.length===2&&r.every(x=>Number.isFinite(x)&&x>0)).sort((a,b)=>b[0]-a[0]).slice(0,50);
  const asks=b.asks.map(r=>[Number(r[0]),Number(r[1])])
