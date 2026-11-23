@@ -369,7 +369,7 @@ assert(source.includes('function cryptoBookEntry(id,venue){')&&
  source.includes('orderBookVenueDescriptor(extra)')&&
  source.includes('if(verified)return verified;'),
  'BID and ASK must use the independently verified primary market from one exchange');
-assert(css.includes('#orderBookVenueToolbar{display:flex!important}')&&
+assert(css.includes('#orderBookVenueToolbar{display:flex!important;')&&
  !css.includes('.ob-source-toolbar,#orderBookVenueToolbar{display:none!important}'),
  'Verified source selector must remain visible on mobile and desktop');
 assert(source.includes('await discoverOrderBookSource(coin,serial)'),
