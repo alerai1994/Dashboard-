@@ -4977,8 +4977,9 @@ body .topbar .top-actions .search-wrap[hidden]{display:none!important}
 @media(max-width:640px){.ob-coin-label .ob-venue-line{font-size:9px;line-height:1.4}.ob-coin-label .ob-venue-lines{gap:3px}}
 
 
-/* Legacy browser/PWA safeguard: never render the removed Fonte Spot toolbar. */
-.ob-source-toolbar,#orderBookVenueToolbar{display:none!important}
+/* Source selector is available on Android, iOS, desktop and installed PWAs. */
+#orderBookVenueToolbar{display:flex!important;max-width:100%}
+#orderBookVenueSelect{max-width:100%;touch-action:manipulation}
 
 
 /* Verified Spot order-book catalog: keyboard-friendly filters on every screen. */
