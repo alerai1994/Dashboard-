@@ -74,9 +74,10 @@ KNOWN = {
     "WEEX Spot": {"keys": {"weex"}},
     "Bitunix Spot": {"keys": {"bitunix"}},
     "XT Spot": {"keys": {"xt"}},
+    "LATOKEN Spot": {"keys": {"latoken"}},
 
 }
-VENUE_ORDER = ("Binance Spot", "Gate Spot", "MEXC Spot", "Bybit Spot", "OKX Spot", "KuCoin Spot", "Coinbase Exchange Spot", "Kraken Spot", "Bitget Spot", "WhiteBIT Spot", "BTSE Spot", "LBank Spot", "HTX Spot", "BitMart Spot", "Bitrue Spot", "Crypto.com Spot", "Gemini Spot", "BingX Spot", "CoinEx Spot", "Poloniex Spot", "Bitstamp Spot", "WEEX Spot", "Bitunix Spot", "XT Spot")
+VENUE_ORDER = ("Binance Spot", "Gate Spot", "MEXC Spot", "Bybit Spot", "OKX Spot", "KuCoin Spot", "Coinbase Exchange Spot", "Kraken Spot", "Bitget Spot", "WhiteBIT Spot", "BTSE Spot", "LBank Spot", "HTX Spot", "BitMart Spot", "Bitrue Spot", "Crypto.com Spot", "Gemini Spot", "BingX Spot", "CoinEx Spot", "Poloniex Spot", "Bitstamp Spot", "WEEX Spot", "Bitunix Spot", "XT Spot", "LATOKEN Spot")
 QUOTE_PRIORITY = ("USDT", "USDC", "USD", "EUR", "BTC", "ETH")
 
 # Explicit catalog identity mappings for widely traded assets whose public
@@ -189,7 +190,7 @@ CURATED_SPOT = {
     "sc": ("SC", "siacoin", (("Kraken Spot", "USD"), ("Binance Spot", "USDT"))),
     "zrx": ("ZRX", "0x", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
     "kmd": ("KMD", "komodo", (("XT Spot", "USDT"), ("Gate Spot", "USDT"), ("MEXC Spot", "USDT"), ("HTX Spot", "USDT"), ("BitMart Spot", "USDT"), ("Bitrue Spot", "USDT"), ("Crypto.com Spot", "USDT"))),
-    "icx": ("ICX", "icon", (("Gate Spot", "USDT"), ("KuCoin Spot", "USDT"), ("Bitget Spot", "USDT"), ("MEXC Spot", "USDT"), ("CoinEx Spot", "USDT"), ("XT Spot", "USDT"), ("HTX Spot", "USDT"), ("BitMart Spot", "USDT"), ("Bitrue Spot", "USDT"), ("Crypto.com Spot", "USDT"))),
+    "icx": ("ICX", "icon", (("LATOKEN Spot", "USDT"), ("Gate Spot", "USDT"), ("KuCoin Spot", "USDT"), ("Bitget Spot", "USDT"), ("MEXC Spot", "USDT"), ("CoinEx Spot", "USDT"), ("XT Spot", "USDT"), ("HTX Spot", "USDT"), ("BitMart Spot", "USDT"), ("Bitrue Spot", "USDT"), ("Crypto.com Spot", "USDT"))),
     "ong": ("ONG", "ong", (("Binance Spot", "USDT"), ("Gate Spot", "USDT"))),
     "ont": ("ONT", "ontology", (("Binance Spot", "USDT"), ("Gate Spot", "USDT"))),
     "hnt": ("HNT", "helium", (("Coinbase Exchange Spot", "USD"), ("Kraken Spot", "USD"))),
@@ -299,6 +300,13 @@ def source_valid(row, symbol, coin_id, ts):
         row.get("pair") not in {symbol + "/" + q for q in QUOTE_PRIORITY}):
         return False
     try:
+        if row.get("venue") == "LATOKEN Spot":
+            ids = row.get("latokenIds") or {}
+            if not isinstance(ids, dict) or not all(
+                re.fullmatch(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}",
+                             str(ids.get(k, ""))) for k in ("base", "quote")
+            ):
+                return False
         if row.get("venue") == "Bitunix Spot":
             value = float(row.get("precision", 0))
             if not 0 < value < 1e15:
@@ -394,6 +402,41 @@ def lbank_market_list():
     return base.fetch("https://api.lbank.info/v2/currencyPairs.do")
 
 
+@lru_cache(maxsize=1)
+def latoken_spot_catalog():
+    """Public LATOKEN v2 currency UUIDs and active Spot pair catalog."""
+    currencies = base.fetch("https://api.latoken.com/v2/currency")
+    markets = base.fetch("https://api.latoken.com/v2/pair")
+    if not isinstance(currencies, list) or not isinstance(markets, list):
+        raise ValueError("LATOKEN public Spot metadata invalid")
+    return currencies, markets
+
+
+def latoken_spot_metadata(symbol, quoted):
+    # Only the requested ICON token; the exchange's currency tag alone is
+    # not enough: its full project name must also identify ICON.
+    if symbol != "ICX" or quoted != "USDT":
+        return None
+    currencies, markets = latoken_spot_catalog()
+    by_id = {v.get("id"): v for v in currencies if isinstance(v, dict)}
+    matches = []
+    for m in markets:
+        if not isinstance(m, dict) or m.get("status") != "PAIR_STATUS_ACTIVE":
+            continue
+        base_info, quote_info = by_id.get(m.get("baseCurrency")), by_id.get(m.get("quoteCurrency"))
+        if not isinstance(base_info, dict) or not isinstance(quote_info, dict):
+            continue
+        if (str(base_info.get("tag", "")).upper() != "ICX" or
+            str(quote_info.get("tag", "")).upper() != "USDT" or
+            not str(base_info.get("name", "")).upper().startswith("ICON") or
+            base_info.get("status") != "CURRENCY_STATUS_ACTIVE" or
+            quote_info.get("status") != "CURRENCY_STATUS_ACTIVE"):
+            continue
+        matches.append({"status": m["status"], "symbol": "ICX/USDT",
+                        "base": m["baseCurrency"], "quote": m["quoteCurrency"]})
+    return matches[0] if len(matches) == 1 else None
+
+
 @lru_cache(maxsize=12)
 def shared_spot_markets(venue):
     """Fetch one venue's complete public Spot catalog per run."""
@@ -414,6 +457,8 @@ def shared_spot_markets(venue):
 
 
 def get_spot_metadata(venue, symbol, quoted):
+    if venue == "LATOKEN Spot":
+        return latoken_spot_metadata(symbol, quoted)
     if venue == "LBank Spot":
         return lbank_market_list()
     if venue in ("HTX Spot", "BitMart Spot", "Bitrue Spot", "Crypto.com Spot", "BingX Spot", "CoinEx Spot", "Poloniex Spot", "Bitstamp Spot", "WEEX Spot", "Bitunix Spot", "XT Spot"):
@@ -450,6 +495,12 @@ def bitunix_precision(payload, symbol, quote):
 
 
 def exchange_market_valid(venue, payload, symbol, quote='USDT'):
+    if venue == "LATOKEN Spot":
+        return (isinstance(payload, dict) and
+                payload.get("symbol") == symbol + "/" + quote and
+                payload.get("status") == "PAIR_STATUS_ACTIVE" and
+                all(re.fullmatch(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}",
+                                 str(payload.get(k, ""))) for k in ("base", "quote")))
     if venue == "WEEX Spot":
         return (isinstance(payload, dict) and isinstance(payload.get("symbols"), list)
                 and any(isinstance(m, dict)
@@ -880,6 +931,8 @@ def verify_bulk_pair(cid, symbol, coin_id, quoted, venue, ts):
             }
             if venue == "Bitunix Spot":
                 mapping["precision"] = bitunix_precision(meta, symbol, quoted)
+            if venue == "LATOKEN Spot":
+                mapping["latokenIds"] = {"base": meta["base"], "quote": meta["quote"]}
             return cid, mapping
     except (OSError, ValueError, TypeError, KeyError) as exc:
         if cid in ("icx", "vra"):
@@ -888,7 +941,15 @@ def verify_bulk_pair(cid, symbol, coin_id, quoted, venue, ts):
     return cid, None
 
 
-def depth_url(venue, symbol, quote='USDT', precision=None):
+def depth_url(venue, symbol, quote='USDT', precision=None, latoken_ids=None):
+    if venue == "LATOKEN Spot":
+        ids = latoken_ids or {}
+        if not isinstance(ids, dict) or not all(
+            re.fullmatch(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}",
+                         str(ids.get(k, ""))) for k in ("base", "quote")
+        ):
+            raise ValueError("LATOKEN ID verified currency pair required")
+        return ("https://api.latoken.com/v2/book/" + ids["base"] + "/" + ids["quote"] + "?limit=50")
     if venue == "WEEX Spot":
         return "https://api-spot.weex.com/api/v3/market/depth?symbol=" + symbol + quote + "&limit=200"
     if venue == "XT Spot":
@@ -984,6 +1045,22 @@ def depth_url(venue, symbol, quote='USDT', precision=None):
 
 
 def normalize_exchange_depth(venue, raw):
+    if venue == "LATOKEN Spot":
+        if (not isinstance(raw, dict) or not isinstance(raw.get("bid"), list) or
+            not isinstance(raw.get("ask"), list)):
+            raise ValueError("LATOKEN order book missing")
+        def positive(rows):
+            result = []
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                try:
+                    if float(row.get("price") or 0) > 0 and float(row.get("quantity") or 0) > 0:
+                        result.append([row["price"], row["quantity"]])
+                except (TypeError, ValueError):
+                    pass
+            return result
+        return {"bids": positive(raw["bid"]), "asks": positive(raw["ask"])}
     if venue == "WEEX Spot":
         if (not isinstance(raw, dict) or
             not isinstance(raw.get("lastUpdateId"), int) or
@@ -1155,7 +1232,19 @@ def load_depth(cid, source, previous):
     venue, symbol = source["venue"], source["symbol"]
     try:
         quote_currency = source["pair"].split("/")[1]
-        raw = base.fetch(depth_url(venue, symbol, quote_currency, source.get("precision")))
+        if venue == "LATOKEN Spot":
+            # Its REST book has no exchange timestamp. Require a recent actual
+            # ticker update AND nonzero 24h volume to reject idle ghost books.
+            ids = source.get("latokenIds") or {}
+            ticker = base.fetch("https://api.latoken.com/v2/ticker/" +
+                                str(ids.get("base", "")) + "/" + str(ids.get("quote", "")))
+            if (not isinstance(ticker, dict) or
+                not fresh_exchange_millis(ticker.get("updateTimestamp"), 1800) or
+                float(ticker.get("lastPrice") or 0) <= 0 or
+                float(ticker.get("volume24h") or 0) <= 0):
+                raise ValueError("LATOKEN ICX pair has no recent genuine trading")
+        raw = base.fetch(depth_url(venue, symbol, quote_currency,
+                                   source.get("precision"), source.get("latokenIds")))
         bids, asks = base.checked(normalize_exchange_depth(venue, raw), "Binance")
         data = {
             "id": cid, "venue": venue, "pair": source["pair"],
@@ -1357,6 +1446,19 @@ def check_fixture():
     assert "WEEX Spot" in [venue for venue, _ in CURATED_SPOT["vra"][2]]
     assert "KuCoin Spot" in [venue for venue, _ in CURATED_SPOT["icx"][2]]
     assert "Binance Spot" not in [venue for venue, _ in CURATED_SPOT["icx"][2]]
+    fake_id = "01234567-89ab-cdef-0123-456789abcdef"
+    latoken_meta = {"symbol": "ICX/USDT", "status": "PAIR_STATUS_ACTIVE",
+                    "base": fake_id, "quote": fake_id}
+    assert exchange_market_valid("LATOKEN Spot", latoken_meta, "ICX")
+    assert not exchange_market_valid("LATOKEN Spot",
+        {**latoken_meta, "status": "PAIR_STATUS_INACTIVE"}, "ICX")
+    assert normalize_exchange_depth("LATOKEN Spot", {
+        "bid": [{"price": "0.1", "quantity": "10"}],
+        "ask": [{"price": "0.2", "quantity": "12"}]}) == {
+        "bids": [["0.1", "10"]], "asks": [["0.2", "12"]]}
+    assert depth_url("LATOKEN Spot", "ICX", latoken_ids={
+        "base": fake_id, "quote": fake_id}).endswith(fake_id + "?limit=50")
+
 
     assert all(CURATED_SPOT[cid][:2] == catalog_with_ids()[cid][:2]
                for cid in FOCUSED_BOOK_IDS)
