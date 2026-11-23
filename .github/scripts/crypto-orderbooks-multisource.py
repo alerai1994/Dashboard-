@@ -37,7 +37,14 @@ SCAN_BATCH = 32
 BOOK_BATCH = 650
 # Prioritize assets shown without books in the mobile/desktop catalog.
 # Verification still requires exact CoinGecko ID AND an exchange-listed pair.
-PRIORITY = ("vra", "tai", "mkr", "kmd", "icx", "xmr", "leo", "wbt", "dai", "cro", "paxg", "ondo", "algo",
+# Missing tokens from the 10 user screenshots get verified first, not fake data.
+SCREENSHOT_PRIORITY = ("vra", "figr_heloc", "usdy", "usyc", "eursafo", "buidl",
+ "u", "btw", "ousd", "ustb", "pearl", "jaaa", "usdo", "ylds", "eutbl", "a7a5",
+ "crypto-5e01-5b89-4eba-751f", "hash", "reusd", "kau", "sofid", "ousg",
+ "apxusd", "safo", "ohm", "pc0000031", "bp", "usx", "ozo", "mglo",
+ "koge", "shfl", "kag", "ustbl", "spcxb", "pc0000033",
+ "usdai", "gusd", "apyusd", "pc0000097")
+PRIORITY = SCREENSHOT_PRIORITY + ("tai", "mkr", "kmd", "icx", "xmr", "leo", "wbt", "dai", "cro", "paxg", "ondo", "algo",
             "icp", "kcs", "pol", "jup", "kas", "morpho", "rlusd", "pyusd",
             "usdg", "xaut", "usdt", "bgb", "okb", "gt", "mnt", "usdd",
             "btc", "eth", "sol", "usdc", "hype", "usde", "shib", "inj", "ore")
@@ -59,8 +66,10 @@ KNOWN = {
     "Bitrue Spot": {"keys": {"bitrue"}},
     "Crypto.com Spot": {"keys": {"crypto_com", "crypto-com", "crypto_com_exchange"}},
     "Gemini Spot": {"keys": {"gemini"}},
+    "BingX Spot": {"keys": {"bingx"}},
+    "CoinEx Spot": {"keys": {"coinex"}},
 }
-VENUE_ORDER = ("Binance Spot", "Gate Spot", "MEXC Spot", "Bybit Spot", "OKX Spot", "KuCoin Spot", "Coinbase Exchange Spot", "Kraken Spot", "Bitget Spot", "WhiteBIT Spot", "BTSE Spot", "LBank Spot", "HTX Spot", "BitMart Spot", "Bitrue Spot", "Crypto.com Spot", "Gemini Spot")
+VENUE_ORDER = ("Binance Spot", "Gate Spot", "MEXC Spot", "Bybit Spot", "OKX Spot", "KuCoin Spot", "Coinbase Exchange Spot", "Kraken Spot", "Bitget Spot", "WhiteBIT Spot", "BTSE Spot", "LBank Spot", "HTX Spot", "BitMart Spot", "Bitrue Spot", "Crypto.com Spot", "Gemini Spot", "BingX Spot", "CoinEx Spot")
 QUOTE_PRIORITY = ("USDT", "USDC", "USD", "EUR", "BTC", "ETH")
 
 # Explicit catalog identity mappings for widely traded assets whose public
@@ -68,7 +77,7 @@ QUOTE_PRIORITY = ("USDT", "USDC", "USD", "EUR", "BTC", "ETH")
 # must STILL report an active Spot instrument for the exact base/quote before
 # its live BID/ASK depth is accepted. Never infer order levels from prices.
 CURATED_SPOT = {
-    "vra": ("VRA", "verasity", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"), ("LBank Spot", "USDT"), ("HTX Spot", "USDT"), ("BitMart Spot", "USDT"), ("Bitrue Spot", "USDT"), ("Crypto.com Spot", "USDT"))),
+    "vra": ("VRA", "verasity", (("CoinEx Spot", "USDT"), ("Gate Spot", "USDT"), ("MEXC Spot", "USDT"), ("LBank Spot", "USDT"), ("HTX Spot", "USDT"), ("BitMart Spot", "USDT"), ("Bitrue Spot", "USDT"), ("Crypto.com Spot", "USDT"))),
     "tai": ("TAI", "tars-protocol", (("KuCoin Spot", "USDT"), ("MEXC Spot", "USDT"), ("Gate Spot", "USDT"))),
     "xmr": ("XMR", "monero", (("Kraken Spot", "USD"), ("Gate Spot", "USDT"))),
     "paxg": ("PAXG", "pax-gold", (("Kraken Spot", "USD"), ("Binance Spot", "USDT"))),
@@ -217,7 +226,7 @@ CURATED_SPOT = {
     "ub": ("UB", "unibase", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"))),
     "ake": ("AKE", "akedo", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"))),
     "bp": ("BP", "backpack", (("Gate Spot", "USDT"), ("Bitget Spot", "USDT"), ("BitMart Spot", "USDT"))),
-    "ozo": ("OZO", "ozone-chain", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"))),
+    "ozo": ("OZO", "ozone-chain", (("BingX Spot", "USDT"), ("Gate Spot", "USDT"), ("MEXC Spot", "USDT"))),
     "koge": ("KOGE", "bnb48-club-token", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"), ("BitMart Spot", "USDT"))),
     "shfl": ("SHFL", "shuffle-2", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"), ("BitMart Spot", "USDT"))),
     "btse": ("BTSE", "btse-token", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"), ("BTSE Spot", "USDT"))),
@@ -347,7 +356,7 @@ def lbank_market_list():
     return base.fetch("https://api.lbank.info/v2/currencyPairs.do")
 
 
-@lru_cache(maxsize=4)
+@lru_cache(maxsize=6)
 def shared_spot_markets(venue):
     """Fetch one venue's complete public Spot catalog per run."""
     url = {
@@ -355,6 +364,8 @@ def shared_spot_markets(venue):
         "BitMart Spot": "https://api-cloud.bitmart.com/spot/v1/symbols/details",
         "Bitrue Spot": "https://openapi.bitrue.com/api/v1/exchangeInfo",
         "Crypto.com Spot": "https://api.crypto.com/exchange/v1/public/get-instruments",
+        "BingX Spot": "https://open-api.bingx.com/openApi/spot/v1/common/symbols",
+        "CoinEx Spot": "https://api.coinex.com/v2/spot/market",
     }[venue]
     return base.fetch(url)
 
@@ -362,7 +373,7 @@ def shared_spot_markets(venue):
 def get_spot_metadata(venue, symbol, quoted):
     if venue == "LBank Spot":
         return lbank_market_list()
-    if venue in ("HTX Spot", "BitMart Spot", "Bitrue Spot", "Crypto.com Spot"):
+    if venue in ("HTX Spot", "BitMart Spot", "Bitrue Spot", "Crypto.com Spot", "BingX Spot", "CoinEx Spot"):
         return shared_spot_markets(venue)
     return base.fetch(exchange_info_url(venue, symbol, quoted))
 
@@ -377,6 +388,22 @@ def fresh_exchange_millis(value, limit_seconds=600):
 
 
 def exchange_market_valid(venue, payload, symbol, quote='USDT'):
+    if venue == "BingX Spot":
+        rows = (payload.get("data") or {}).get("symbols") if isinstance(payload, dict) else None
+        return (isinstance(payload, dict) and str(payload.get("code")) == "0"
+                and isinstance(rows, list)
+                and any(isinstance(m, dict) and m.get("symbol") == symbol + "-" + quote
+                        and m.get("status") in (1, "1") for m in rows))
+    if venue == "CoinEx Spot":
+        return (isinstance(payload, dict) and str(payload.get("code")) == "0"
+                and isinstance(payload.get("data"), list)
+                and any(isinstance(m, dict)
+                        and m.get("market") == symbol + quote
+                        and m.get("base_ccy") == symbol
+                        and m.get("quote_ccy") == quote
+                        and m.get("status") == "online"
+                        and m.get("is_api_trading_available") is not False
+                        for m in payload["data"]))
     if venue == "Gemini Spot":
         return (isinstance(payload, dict) and
                 payload.get("symbol", "").upper() == symbol + quote and
@@ -527,6 +554,10 @@ def exchange_market_valid(venue, payload, symbol, quote='USDT'):
 
 
 def exchange_info_url(venue, symbol, quote='USDT'):
+    if venue == "BingX Spot":
+        return "https://open-api.bingx.com/openApi/spot/v1/common/symbols?symbol=" + symbol + "-" + quote
+    if venue == "CoinEx Spot":
+        return "https://api.coinex.com/v2/spot/market?market=" + symbol + quote
     if venue == "Gemini Spot":
         return ("https://api.gemini.com/v1/symbols/details/" +
                 symbol.lower() + quote.lower())
@@ -733,6 +764,12 @@ def verify_bulk_pair(cid, symbol, coin_id, quoted, venue, ts):
 
 
 def depth_url(venue, symbol, quote='USDT'):
+    if venue == "BingX Spot":
+        return ("https://open-api.bingx.com/openApi/spot/v1/market/depth?symbol=" +
+                symbol + "-" + quote + "&limit=50")
+    if venue == "CoinEx Spot":
+        return ("https://api.coinex.com/v2/spot/depth?market=" +
+                symbol + quote + "&limit=50&interval=0")
     pair = symbol + quote
     if venue == "Gemini Spot":
         return ("https://api.gemini.com/v1/book/" +
@@ -787,6 +824,25 @@ def depth_url(venue, symbol, quote='USDT'):
 def normalize_exchange_depth(venue, raw):
     if not isinstance(raw, dict):
         raise ValueError("Not an exchange depth response")
+    if venue == "BingX Spot":
+        data = raw.get("data")
+        if (str(raw.get("code")) != "0" or not isinstance(data, dict)
+                or not fresh_exchange_millis(data.get("ts"))
+                or not isinstance(data.get("bids"), list)
+                or not isinstance(data.get("asks"), list)):
+            raise ValueError("BingX Spot returned invalid or stale depth")
+        return data
+    if venue == "CoinEx Spot":
+        data = raw.get("data")
+        depth = data.get("depth") if isinstance(data, dict) else None
+        if (str(raw.get("code")) != "0" or not isinstance(data, dict)
+                or data.get("is_full") is not True
+                or not isinstance(depth, dict)
+                or not fresh_exchange_millis(depth.get("updated_at"))
+                or not isinstance(depth.get("bids"), list)
+                or not isinstance(depth.get("asks"), list)):
+            raise ValueError("CoinEx Spot returned invalid, incremental or stale depth")
+        return depth
     if venue == "Gemini Spot":
         if (not isinstance(raw.get("bids"), list) or
             not isinstance(raw.get("asks"), list)):
@@ -911,6 +967,32 @@ def load_depth(cid, source, previous):
 
 def check_fixture():
     assert len(catalog_with_ids()) == 288
+    assert len(SCREENSHOT_PRIORITY) == 40
+    assert exchange_market_valid("BingX Spot", {"code": 0, "data": {"symbols": [
+        {"symbol": "OZO-USDT", "status": 1}]}}, "OZO")
+    assert not exchange_market_valid("BingX Spot", {"code": 0, "data": {"symbols": [
+        {"symbol": "OZO-USDT", "status": 0}]}}, "OZO")
+    assert exchange_market_valid("CoinEx Spot", {"code": 0, "data": [
+        {"market": "VRAUSDT", "base_ccy": "VRA", "quote_ccy": "USDT",
+         "status": "online", "is_api_trading_available": True}]}, "VRA")
+    assert not exchange_market_valid("CoinEx Spot", {"code": 0, "data": [
+        {"market": "VRAUSDT", "base_ccy": "VRA", "quote_ccy": "USDT",
+         "status": "offline"}]}, "VRA")
+    ms = int(base.now().timestamp() * 1000)
+    assert normalize_exchange_depth("BingX Spot", {"code": 0, "data": {
+        "ts": ms, "bids": [["1","2"]], "asks": [["2","3"]]}})["bids"]
+    assert normalize_exchange_depth("CoinEx Spot", {"code": 0, "data": {
+        "market": "VRAUSDT", "is_full": True,
+        "depth": {"updated_at": ms,
+         "bids": [["1","2"]], "asks": [["2","3"]]}}})["asks"]
+    try:
+        normalize_exchange_depth("CoinEx Spot", {"code": 0, "data": {
+            "is_full": False, "depth": {"updated_at": ms,
+             "bids": [["1","2"]], "asks": [["2","3"]]}}})
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Incremental CoinEx depth accepted")
     spot_gusd = {"symbol": "gusdusd", "base_currency": "GUSD",
                  "quote_currency": "USD", "product_type": "spot",
                  "contract_type": "vanilla", "status": "open"}
@@ -1168,7 +1250,7 @@ def run():
     previous_source = previous_source if isinstance(previous_source, dict) else {}
     previous_books = previous_books if isinstance(previous_books, dict) else {}
     checked = checked if isinstance(checked, dict) else {}
-    if data.get('multiDiscoveryVersion') != 11:
+    if data.get('multiDiscoveryVersion') != 12:
         checked = {}  # New all-exchange CoinGecko scan replaces a filtered query.
 
     sources = {}
@@ -1416,7 +1498,7 @@ def run():
     }
     data["venueBooks"] = venue_books
     data["marketSources"] = sources
-    data["multiDiscoveryVersion"] = 11
+    data["multiDiscoveryVersion"] = 12
     data["multiDiscoveryCheckedAt"] = {cid: checked[cid] for cid in registry
                                         if cid in checked}
     data["unavailable"] = {cid: "Nessun book pubblico verificato"
