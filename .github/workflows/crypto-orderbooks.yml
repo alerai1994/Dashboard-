@@ -67,6 +67,25 @@ jobs:
               assert all(float(r[1])>0 for r in book['bids']+book['asks']), cid
               when=datetime.fromisoformat(book['capturedAt'].replace('Z','+00:00'))
               assert when.tzinfo and (datetime.now(timezone.utc)-when).total_seconds()<10800, cid
+          # Show actual verified coverage for the four requested tokens.
+          # Do not mark an unlisted/delisted market as live or fill fake bids.
+          focus={'icx':('ICX','icon'), 'kmd':('KMD','komodo'),
+                 'tai':('TAI','tars-protocol'), 'vra':('VRA','verasity')}
+          for cid,(symbol,coin_id) in focus.items():
+              book=books.get(cid)
+              if book is None:
+                  print(f'{symbol}: no verified fresh Spot order book (unavailable)')
+                  continue
+              proofs=payload.get('marketSources',{}).get(cid,[])
+              assert any(
+                  item.get('symbol')==symbol and
+                  item.get('coingeckoId')==coin_id and
+                  item.get('venue')==book['venue'] and
+                  item.get('pair')==book['pair'] and
+                  float(item.get('verifiedAt') or 0)>0
+                  for item in proofs
+              ), f'{symbol}: primary depth has no exchange/identity evidence'
+              print(f"{symbol}: verified {book['venue']} {book['pair']} captured {book['capturedAt']}")
           js=Path('crypto-orderbooks-data.js').read_text(encoding='utf-8').strip()
           assert js.startswith('window.__VERTEX_CRYPTO_BOOKS__ = ')
           assert json.loads(js.removeprefix('window.__VERTEX_CRYPTO_BOOKS__ = ').removesuffix(';'))==payload
