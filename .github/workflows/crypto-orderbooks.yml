@@ -86,6 +86,23 @@ jobs:
                   for item in proofs
               ), f'{symbol}: primary depth has no exchange/identity evidence'
               print(f"{symbol}: verified {book['venue']} {book['pair']} captured {book['capturedAt']}")
+          # Universal server-side invariant: every available crypto has an
+          # identity-verified venue/pair (not just the four focus tokens).
+          # An unverified same-ticker book must never be published to any OS.
+          import importlib.util
+          module=importlib.util.spec_from_file_location(
+              'vertex_orderbook_verified', '.github/scripts/crypto-orderbooks-multisource.py')
+          collector=importlib.util.module_from_spec(module)
+          module.loader.exec_module(collector)
+          registry=collector.catalog_with_ids()
+          assert len(registry)==288
+          now=datetime.now(timezone.utc).timestamp()
+          for cid,book in books.items():
+              assert collector.book_has_verified_identity(
+                  cid,book,payload.get('marketSources',{}),registry,now
+              ), f'{cid}: no authentic, recent and identity-matched Spot market'
+          assert set(payload.get('unavailable',{})).isdisjoint(books)
+          print(f"ALL {len(books)} published orderbooks carry verified asset identities")
           js=Path('crypto-orderbooks-data.js').read_text(encoding='utf-8').strip()
           assert js.startswith('window.__VERTEX_CRYPTO_BOOKS__ = ')
           assert json.loads(js.removeprefix('window.__VERTEX_CRYPTO_BOOKS__ = ').removesuffix(';'))==payload
