@@ -199,7 +199,10 @@ CURATED_SPOT = {
     "frax": ("FRAX", "frax", (("Binance Spot", "USDT"), ("Bybit Spot", "USDT"), ("Kraken Spot", "USD"))),
     "fluid": ("FLUID", "instadapp", (("Gate Spot", "USDT"), ("Bitget Spot", "USDT"), ("Binance Spot", "USDT"))),
     "mx": ("MX", "mx-token", (("MEXC Spot", "USDT"),)),
-    "gusd": ("GUSD", "gusd", (("Gemini Spot", "USD"), ("Kraken Spot", "USD"), ("Coinbase Exchange Spot", "USD"), ("Kraken Spot", "EUR"), ("HTX Spot", "USDT"), ("Crypto.com Spot", "USD"))),
+    # United Stables is explicitly listed on Binance U/USDT. Verify live
+    # exchangeInfo AND public depth before accepting it as real liquidity.
+    "u": ("U", "united-stables", (("Binance Spot", "USDT"), ("MEXC Spot", "USDT"), ("Bitget Spot", "USDT"))),
+    "gusd": ("GUSD", "gusd", (("Gate Spot", "USDT"), ("Gemini Spot", "USD"), ("Kraken Spot", "USD"), ("Coinbase Exchange Spot", "USD"), ("Kraken Spot", "EUR"), ("HTX Spot", "USDT"), ("Crypto.com Spot", "USD"))),
     "geod": ("GEOD", "geodnet", (("Coinbase Exchange Spot", "USD"),)),
     "zbcn": ("ZBCN", "zebec-network", (("Gate Spot", "USDT"),)),
     "met": ("MET", "meteora", (("Coinbase Exchange Spot", "USD"),)),
