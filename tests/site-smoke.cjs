@@ -24,7 +24,7 @@ assert(source.includes('setInterval(()=>{if(state.dialogId)pollFocusedCryptoQuot
 assert(source.includes('if(state.dialogId)pollFocusedCryptoQuote()'), 'Focused updates should resume after reconnect');
 assert(html.includes('script.js?v=20261123-orderbook-live-catalog-v32'), 'Browser script version must change for every operating system');
 
-assert(source.includes("'HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot'].includes(venue)"),
+assert(source.includes("'HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot','BingX Spot','CoinEx Spot'].includes(venue)"),
  'Gemini book must be selectable only as an independently verified live Spot source');
 assert(source.includes("format:'gemini'")&&source.includes('api.gemini.com/v1/book/'),
  'Gemini depth must use the official orderbook endpoint');
@@ -42,8 +42,15 @@ assert(source.includes("Number.isInteger(payload.lastUpdateId)"),
 assert(source.includes("format:'htx'")&&source.includes("format:'bitmart'"), 'New sources must use exchange-specific order-book adapters');
 assert(source.includes("freshExchangeMs(payload.tick.ts)")&&source.includes("freshExchangeMs(payload.data.ts)"),
  'HTX and BitMart data must reject stale snapshots');
-assert(source.includes("'HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot'].includes(b.venue)"),
+assert(source.includes("'HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot','BingX Spot','CoinEx Spot'].includes(b.venue)"),
  'Snapshots from every verified new Spot source must be visible in all browsers');
+assert(source.includes("format:'bingx'")&&source.includes("format:'coinex'")&&
+ source.includes("api.coinex.com/v2/spot/depth")&&source.includes("open-api.bingx.com/openApi/spot/v1/market/depth"),
+ 'CoinEx and BingX public Spot depth must be decoded from actual exchange levels');
+assert(source.includes("data.is_full!==true")&&source.includes("!freshExchangeMs(depth.updated_at)"),
+ 'CoinEx must never interpret incremental or stale depth as a full book');
+assert(source.includes("!freshExchangeMs(payload.data.ts)"),
+ 'BingX must reject obsolete or future Spot depth');
 assert(source.includes('function orderBookSpreadText(bid,ask){'),
  'Spread on all tradeable crypto must be derived from observed BID and ASK');
 const spreadSource=source.slice(source.indexOf('function orderBookSpreadText(bid,ask){'),
