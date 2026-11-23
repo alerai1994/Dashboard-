@@ -4004,6 +4004,18 @@ function useCryptoBookEntry(id,serial){
  paintOrderBook();
  return true;
 }
+function orderBookActiveSource(id){
+ if(id===orderBookState.id&&orderBookState.data&&
+  orderBookState.venue&&orderBookState.pair&&
+  Date.now()-orderBookState.updatedAt<3*60*60*1000)
+  return {venue:orderBookState.venue,pair:orderBookState.pair};
+ const verified=cryptoBookEntry(id);
+ return verified?{venue:verified.venue,pair:verified.pair}:orderBookSource(id);
+}
+function orderBookSourceLabel(id){
+ const source=orderBookActiveSource(id);
+ return source?source.venue+' · '+source.pair:'Coppia Spot non verificata';
+}
 function updateOrderBookAssetList(){
  if(state.page==='workspace'&&workspaceShown('orderbook')){
   const list=$('#workspaceBookChoiceList');
@@ -4019,8 +4031,8 @@ function updateOrderBookAssetList(){
  }
  const coverage=$('#orderBookCoverage');
  if(coverage)coverage.textContent=ORDER_BOOK_COINS.filter(a=>!!cryptoBookEntry(a.id)).length+'/'+ORDER_BOOK_COINS.length+' book verificati';
- const label=$('#orderBookSourceLabel'),src=orderBookSource(orderBookState.id);
- if(label)label.textContent=src?src.venue+' · '+src.pair:'Coppia Spot non verificata';
+ const label=$('#orderBookSourceLabel');
+ if(label)label.textContent=orderBookSourceLabel(orderBookState.id);
 
 }
 // Local JS backup works for file:// and every OS. HTTP JSON refreshes the cache.
@@ -4035,7 +4047,7 @@ async function loadAllCryptoBooks(serial,coin){
  const urls=location.protocol==='file:'?[urlBase,cdn]:['crypto-orderbooks.json',urlBase,cdn];
  for(const url of urls){
   const controller=new AbortController();
-  const timeout=setTimeout(()=>controller.abort(),2700);
+  const timeout=setTimeout(()=>controller.abort(),6500);
   try{
    const response=await fetch(url+(url.includes('?')?'&':'?')+'v='+Date.now(),
      {cache:'no-store',signal:controller.signal});
@@ -4543,7 +4555,7 @@ function etfPage(){
  return cryptoEtfSection()+cryptoCapCalculator();
 }
 function orderBookPage(){
- const coin=ASSET_BY_ID[orderBookState.id]||ORDER_BOOK_COINS[0],snap=cryptoBookEntry(coin.id),source=snap?{venue:snap.venue,pair:snap.pair}:orderBookSource(coin.id);
+ const coin=ASSET_BY_ID[orderBookState.id]||ORDER_BOOK_COINS[0];
  return secHeader('Order Book Crypto','Profondità reale per mercati Spot verificati (USDT, USDC, USD, EUR, BTC o ETH), senza ordini simulati.')+
  '<div class="ob-layout"><aside class="ob-picker panel" aria-label="Seleziona una criptovaluta">'+
  '<div class="ob-picker-header"><strong>Tutte le criptovalute</strong><span id="orderBookCoverage">'+ORDER_BOOK_COINS.filter(a=>!!cryptoBookEntry(a.id)).length+'/'+ORDER_BOOK_COINS.length+' book verificati</span></div>'+
@@ -4552,7 +4564,7 @@ function orderBookPage(){
  '<div class="ob-coin-list" id="orderBookAssetList">'+orderBookAssetList()+'</div></aside>'+ 
  '<section class="ob-detail panel" aria-label="Order book della crypto selezionata">'+
  '<div class="ob-detail-heading"><div class="ob-heading-name">'+assetLogo(coin)+'<div><h2>'+esc(coin.name)+'</h2>'+
- '<small id="orderBookSourceLabel">'+esc(source?source.venue+' · '+source.pair:'Coppia Spot non verificata')+'</small>'+(coin.id==='ton'?'<small>Toncoin rinominato GRAM (1:1)</small>':'')+'</div></div>'+
+ '<small id="orderBookSourceLabel">'+esc(orderBookSourceLabel(coin.id))+'</small>'+(coin.id==='ton'?'<small>Toncoin rinominato GRAM (1:1)</small>':'')+'</div></div>'+
  '<button class="btn btn-small" type="button" data-order-book-refresh="1" aria-label="Aggiorna order book">'+sym('refresh')+' Aggiorna</button></div>'+
 
  '<div class="ob-content" id="orderBookContent" aria-live="off">'+orderBookDisplay()+'</div>'+
@@ -4627,7 +4639,7 @@ function orderBookPressureBar(bids,asks,quoteCurrency='USDT'){
   '</div>';
 }
 function orderBookDisplay(){
- const src=orderBookSource(orderBookState.id);
+ const src=orderBookActiveSource(orderBookState.id);
  if(!src)return '<div class="ob-status"><strong>'+(orderBookState.busy?'Verifica coppia Spot in corso…':'Order book Spot non disponibile')+'</strong><p>'+esc(orderBookState.error||'Nessuna coppia Spot verificata per questa crypto. Non vengono mostrati ordini di un token omonimo o dati stimati.')+'</p></div>';
  const book=orderBookState.data,stale=book&&Date.now()-orderBookState.updatedAt>30000;
  if(!book)return '<div class="ob-status"><strong>'+(orderBookState.busy?'Caricamento degli ordini reali…':'Dati non disponibili')+'</strong>'+
@@ -4675,6 +4687,8 @@ function orderBookDisplay(){
 function paintOrderBook(){
  const node=$('#orderBookContent');
  if(node&&state.page==='orderbook'){
+  const label=$('#orderBookSourceLabel');
+  if(label)label.textContent=orderBookSourceLabel(orderBookState.id);
   // Preserve horizontal/vertical scroll while real market data updates.
   const oldScroll=[...node.querySelectorAll('.ob-table-scroll')].map(el=>({x:el.scrollLeft,y:el.scrollTop}));
   node.innerHTML=orderBookDisplay();
@@ -5616,7 +5630,8 @@ function workspaceOrderBookChoices(){
  if(!matches.length)return '<p class="ws-empty">Nessuna criptovaluta trovata.</p>';
  return matches.map(a=>{
   const selected=a.id===workspaceBookCoin,book=cryptoBookEntry(a.id),src=orderBookSource(a.id);
-  const hasData=selected&&!!orderBookState.data&&Date.now()-orderBookState.updatedAt<90000;
+  const hasData=selected&&!!orderBookState.data&&Date.now()-orderBookState.updatedAt<
+  (orderBookState.mode==='snapshot'?3*60*60*1000:90000);
   const live=selected&&(orderBookIsStreaming()||orderBookIsFastPolling());
   return '<button type="button" class="ws-book-choice'+(selected?' is-selected':'')+
    '" data-ws-book="'+esc(a.id)+'" aria-pressed="'+selected+'">'+
@@ -5634,7 +5649,8 @@ function workspaceOrderBookLevels(){
  const book=current?{bids:orderBookState.data.bids,asks:orderBookState.data.asks,
   venue:orderBookState.venue,pair:orderBookState.pair,time:orderBookState.updatedAt}:snapshot;
  const src=orderBookSource(coin.id),venue=book?.venue||src?.venue||'Fonte non verificata';
- const pair=book?.pair||src?.pair||coin.symbol.replace('-USD','')+'/USDT';
+ const pair=book?.pair||src?.pair||'Coppia non verificata';
+ const quoteCurrency=pair.includes('/')?pair.split('/')[1]:'—';
  const live=coin.id===orderBookState.id&&orderBookIsStreaming();
  const poll=coin.id===orderBookState.id&&orderBookIsFastPolling();
  const status=live?'● LIVE · WebSocket':
@@ -5644,7 +5660,7 @@ function workspaceOrderBookLevels(){
   orderBookState.busy?'Caricamento dei livelli BID/ASK…':'Book non disponibile: dati verificati assenti';
  const side=(rows,bid)=>'<div class="ws-book-side '+(bid?'ws-book-bid':'ws-book-ask')+'">'+
   '<strong>'+(bid?'BID · Acquisti':'ASK · Vendite')+'</strong>'+
-  '<div class="ws-book-headers"><span>Prezzo</span><span>Quantità</span><span>Totale (USDT)</span></div>'+
+  '<div class="ws-book-headers"><span>Prezzo</span><span>Quantità</span><span>Totale ('+esc(quoteCurrency)+')</span></div>'+
   rows.slice(0,10).map(([price,qty])=>'<div class="ws-book-row"><span>'+orderBookNumber(price,true)+'</span>'+
    '<span>'+orderBookNumber(qty)+'</span><span>'+orderBookNumber(price*qty)+'</span></div>').join('')+'</div>';
  const time=book?.time?' · '+esc(localeDate(book.time,{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'})):'';
