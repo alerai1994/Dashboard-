@@ -3739,10 +3739,22 @@ const ORDER_BOOK_DISCOVERY_VENUES={
  bitget:'Bitget Spot',bitget_spot:'Bitget Spot',
  bingx:'BingX Spot',coinex:'CoinEx Spot',
  poloniex:'Poloniex Spot',bitstamp:'Bitstamp Spot',
- weex:'WEEX Spot',bitunix:'Bitunix Spot',xt:'XT Spot'
+ weex:'WEEX Spot',bitunix:'Bitunix Spot',xt:'XT Spot',
+ htx:'HTX Spot',huobi:'HTX Spot',lbank:'LBank Spot',
+ crypto_com:'Crypto.com Spot','crypto-com':'Crypto.com Spot',
+ crypto_com_exchange:'Crypto.com Spot',whitebit:'WhiteBIT Spot',
+ btse:'BTSE Spot',bitmart:'BitMart Spot',bitrue:'Bitrue Spot',gemini:'Gemini Spot'
 };
 function orderBookDiscoveryMarketUrl(venue,base,quote){
  const pair=base+quote,under=base+'_'+quote,dash=base+'-'+quote;
+ if(venue==='HTX Spot')return 'https://api.huobi.pro/v2/settings/common/symbols';
+ if(venue==='LBank Spot')return 'https://api.lbank.info/v2/currencyPairs.do';
+ if(venue==='Crypto.com Spot')return 'https://api.crypto.com/exchange/v1/public/get-instruments';
+ if(venue==='WhiteBIT Spot')return 'https://whitebit.com/api/v4/public/markets';
+ if(venue==='BTSE Spot')return 'https://api.btse.com/public-api/market/v1/exchangeInfo?symbol='+dash;
+ if(venue==='BitMart Spot')return 'https://api-cloud.bitmart.com/spot/v1/symbols/details';
+ if(venue==='Bitrue Spot')return 'https://openapi.bitrue.com/api/v1/exchangeInfo';
+ if(venue==='Gemini Spot')return 'https://api.gemini.com/v1/symbols/details/'+pair.toLowerCase();
  if(venue==='WEEX Spot')return 'https://api-spot.weex.com/api/v3/exchangeInfo';
  if(venue==='Bitunix Spot')return 'https://openapi.bitunix.com/api/spot/v1/common/coin_pair/list';
  if(venue==='XT Spot')return 'https://sapi.xt.com/v4/public/symbol';
@@ -3764,6 +3776,29 @@ function orderBookDiscoveryMarketUrl(venue,base,quote){
 function orderBookDiscoveryTradable(venue,raw,base,quote){
  if(!raw||typeof raw!=='object')return false;
  const pair=base+quote,under=base+'_'+quote,dash=base+'-'+quote;
+ if(venue==='HTX Spot')return raw.status==='ok'&&Array.isArray(raw.data)&&raw.data.some(m=>
+   m?.sc===pair.toLowerCase()&&m.bc===base.toLowerCase()&&m.qc===quote.toLowerCase()&&
+   m.bcdn===base&&m.qcdn===quote&&m.state==='online'&&m.te===true);
+ if(venue==='LBank Spot')return ['true','1'].includes(String(raw.result).toLowerCase())&&
+   (raw.error_code===undefined||String(raw.error_code)==='0')&&Array.isArray(raw.data)&&
+   raw.data.some(x=>String(x).toLowerCase()===under.toLowerCase());
+ if(venue==='Crypto.com Spot')return String(raw.code)==='0'&&Array.isArray(raw.result?.data)&&
+   raw.result.data.some(m=>m?.symbol===under&&m.base_ccy===base&&m.quote_ccy===quote&&
+   m.inst_type==='CCY_PAIR'&&m.tradable===true);
+ if(venue==='WhiteBIT Spot')return Array.isArray(raw)&&raw.some(m=>m?.name===under&&
+   m.stock===base&&m.money===quote&&m.type==='spot'&&m.tradesEnabled===true);
+ if(venue==='BTSE Spot')return raw.success===true&&Array.isArray(raw.data?.symbols)&&
+   raw.data.symbols.some(m=>m?.symbol===dash&&m.baseCurrency===base&&
+   m.quoteCurrency===quote&&m.type==='Spot'&&m.active===true);
+ if(venue==='BitMart Spot')return String(raw.code)==='1000'&&Array.isArray(raw.data?.symbols)&&
+   raw.data.symbols.some(m=>m?.symbol===under&&m.base_currency===base&&
+   m.quote_currency===quote&&m.trade_status==='trading');
+ if(venue==='Bitrue Spot')return Array.isArray(raw.symbols)&&raw.symbols.some(m=>
+   m?.symbol===pair&&m.baseAsset===base&&m.quoteAsset===quote&&
+   m.status==='TRADING'&&Array.isArray(m.orderTypes)&&m.orderTypes.includes('LIMIT'));
+ if(venue==='Gemini Spot')return raw.symbol?.toUpperCase()===pair&&
+   raw.base_currency===base&&raw.quote_currency===quote&&
+   raw.product_type==='spot'&&raw.contract_type==='vanilla'&&raw.status==='open';
  if(venue==='WEEX Spot')return Array.isArray(raw.symbols)&&raw.symbols.some(m=>
    m?.symbol===pair&&m.baseAsset===base&&m.quoteAsset===quote&&m.status==='TRADING'&&m.enableTrade===true);
  if(venue==='Bitunix Spot')return String(raw.code)==='0'&&Array.isArray(raw.data)&&
@@ -3836,8 +3871,10 @@ async function discoverOrderBookSource(id,serial){
  }catch(_error){/* CoinGecko can rate-limit or block CORS; keep verified snapshots instead. */}
  if(!requested())return null;
  const priority=['Binance Spot','Gate Spot','MEXC Spot','Bybit Spot','OKX Spot',
-  'KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','BingX Spot','CoinEx Spot','Poloniex Spot','Bitstamp Spot','WEEX Spot','Bitunix Spot','XT Spot'];
- const proposed=[...candidates.entries()].sort((a,b)=>priority.indexOf(a[0])-priority.indexOf(b[0])).slice(0,9);
+  'KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','BingX Spot','Crypto.com Spot',
+  'HTX Spot','LBank Spot','WhiteBIT Spot','BTSE Spot','BitMart Spot','Bitrue Spot','Gemini Spot',
+  'CoinEx Spot','Poloniex Spot','Bitstamp Spot','WEEX Spot','Bitunix Spot','XT Spot'];
+ const proposed=[...candidates.entries()].sort((a,b)=>priority.indexOf(a[0])-priority.indexOf(b[0])).slice(0,14);
  const tested=await Promise.all(proposed.map(async ([venue,quoted])=>{
   const url=orderBookDiscoveryMarketUrl(venue,symbol,quoted);
   if(!url)return null;
@@ -3856,9 +3893,11 @@ async function discoverOrderBookSource(id,serial){
 /* Each displayed BID/ASK set must belong to one actual exchange venue. */
 function orderBookVenueDescriptor(row){
  const venue=row?.venue,pair=String(row?.pair||''),symbol=pair.split('/')[0],quoted=pair.split('/')[1];
- if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot','BingX Spot','CoinEx Spot','Poloniex Spot','Bitstamp Spot','WEEX Spot','Bitunix Spot','XT Spot'].includes(venue)||
+ if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot','BingX Spot','CoinEx Spot','Poloniex Spot','Bitstamp Spot','WEEX Spot','Bitunix Spot','XT Spot','Bitpanda Fusion'].includes(venue)||
   !/^[A-Z0-9]{1,20}\/(USDT|USDC|USD|EUR|BTC|ETH)$/.test(pair))return null;
  const coded=symbol+quoted;
+ // Bitpanda Fusion requires a server-side API key and exposes aggregated broker liquidity.
+ if(venue==='Bitpanda Fusion')return {venue,pair,format:'snapshot',urls:[]};
  if(venue==='WEEX Spot')return {venue,pair,format:'weex',urls:[
   'https://api-spot.weex.com/api/v3/market/depth?symbol='+coded+'&limit=200']};
  if(venue==='Bitunix Spot'){
@@ -4047,8 +4086,10 @@ function orderBookVenueOptions(id){
  return '<option value="">'+esc('Automatico · '+(primary?primary.venue+' · '+primary.pair:'migliore fonte disponibile'))+'</option>'+
   venues.map(row=>'<option value="'+esc(row.venue)+'"'+
    (orderBookState.venueChoice===row.venue?' selected':'')+'>'+
-   esc(row.venue+' · '+row.pair)+(cryptoBookEntry(id,row.venue)?' · book verificato':' · mercato verificato')+
-   '</option>').join('');
+   esc(row.venue+' · '+row.pair)+(row.venue==='Bitpanda Fusion'?' · profondità aggregata':
+    cryptoBookEntry(id,row.venue)?' · book verificato':' · mercato verificato')+
+   '</option>').join('')+
+  (cryptoBookBundle()?.bitpandaFusion?.status==='needs-readonly-api-key'?'<option disabled>Bitpanda Fusion · richiede API privata</option>':'');
 }
 function cryptoBookEntry(id,venue){
  const p=cryptoBookBundle(),a=ASSET_BY_ID[id];
@@ -4069,7 +4110,7 @@ function cryptoBookEntry(id,venue){
  if(id==='ore'&&b.mint!=='oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp')return null;
  const t=Date.parse(b.capturedAt||'');
  if(!Number.isFinite(t)||t>Date.now()+60000||Date.now()-t>3*60*60*1000)return null;
- if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot','BingX Spot','CoinEx Spot','Poloniex Spot','Bitstamp Spot','WEEX Spot','Bitunix Spot','XT Spot'].includes(b.venue))return null;
+ if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot','BingX Spot','CoinEx Spot','Poloniex Spot','Bitstamp Spot','WEEX Spot','Bitunix Spot','XT Spot','Bitpanda Fusion'].includes(b.venue))return null;
  const bids=b.bids.map(r=>[Number(r[0]),Number(r[1])])
   .filter(r=>r.length===2&&r.every(x=>Number.isFinite(x)&&x>0)).sort((a,b)=>b[0]-a[0]).slice(0,50);
  const asks=b.asks.map(r=>[Number(r[0]),Number(r[1])])
@@ -4701,13 +4742,13 @@ function orderBookPage(){
  '<button class="btn btn-small" type="button" data-order-book-refresh="1" aria-label="Aggiorna order book">'+sym('refresh')+' Aggiorna</button></div>'+
 
  '<div class="ob-source-toolbar" id="orderBookVenueToolbar">'+
- '<label class="ob-venues-label" for="orderBookVenueSelect">Fonte Spot · Exchange</label>'+
+ '<label class="ob-venues-label" for="orderBookVenueSelect">Fonte Order Book · Spot / Fusion</label>'+
  '<select class="ob-venues-select" id="orderBookVenueSelect" aria-label="Seleziona exchange Spot verificato">'+
  orderBookVenueOptions(coin.id)+'</select>'+
  '<p class="ob-venues-note">Exchange disponibili per questa crypto: '+orderBookVerifiedVenues(coin.id).length+
  ' · Le fonti restano separate: BID/ASK mai sommati tra mercati.</p></div>'+
  '<div class="ob-content" id="orderBookContent" aria-live="off">'+orderBookDisplay()+'</div>'+
- '<p class="ob-footnote">Tutte le '+ORDER_BOOK_COINS.length+' criptovalute sono selezionabili su browser desktop e mobile. BID, ASK, spread e profondità provengono sempre da una coppia Spot verificata e da un singolo exchange, senza ordini inventati e senza sommare offerte di fonti diverse. Controlla l’orario del book: può essere LIVE (WebSocket), aggiornato tramite REST o uno snapshot non più attuale. I token privi di un mercato negoziabile verificato rimangono visibili, ma non mostrano BID/ASK simulati. La presenza di un mercato non garantisce l’accesso al trading dalla tua giurisdizione; Vertex è un visualizzatore, non esegue ordini.</p>'+
+ '<p class="ob-footnote">Tutte le '+ORDER_BOOK_COINS.length+' criptovalute sono selezionabili su browser desktop e mobile. BID, ASK, spread e profondità provengono da coppie verificate; i book Spot dei singoli exchange non vengono mai sommati. Bitpanda Fusion, se configurato tramite API privata, è un broker con liquidità aggregata mostrato separatamente, non un singolo exchange. Controlla l’orario del book: può essere LIVE (WebSocket), aggiornato tramite REST o uno snapshot non più attuale. I token privi di un mercato negoziabile verificato rimangono visibili, ma non mostrano BID/ASK simulati. La presenza di un mercato non garantisce l’accesso al trading dalla tua giurisdizione; Vertex è un visualizzatore, non esegue ordini.</p>'+
  '</section></div>';
 }
 function orderBookNumber(v,price=false){
