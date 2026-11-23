@@ -99,13 +99,13 @@ const ASSETS=[
 {id:'usdchf',name:'USD / CHF',short:'USD / CHF',group:'forex',symbol:'CHF=X',icon:'🇨🇭',currency:'RATIO'},
 {id:'audusd',name:'AUD / USD',short:'AUD / USD',group:'forex',symbol:'AUDUSD=X',icon:'🇦🇺',currency:'RATIO'},
 {id:'usdcny',name:'USD / CNY',short:'USD / CNY',group:'forex',symbol:'CNY=X',icon:'🇨🇳',currency:'RATIO'},
-{id:'btc',name:'Bitcoin (BTC)',short:'Bitcoin',group:'crypto',symbol:'BTC-USD',icon:'₿',currency:'USD'},
-{id:'eth',name:'Ethereum (ETH)',short:'Ethereum',group:'crypto',symbol:'ETH-USD',icon:'◆',currency:'USD'},
-{id:'sol',name:'Solana (SOL)',short:'Solana',group:'crypto',symbol:'SOL-USD',icon:'◎',currency:'USD'},
-{id:'xrp',name:'XRP',short:'XRP',group:'crypto',symbol:'XRP-USD',icon:'✕',currency:'USD'},
-{id:'bnb',name:'BNB',short:'BNB',group:'crypto',symbol:'BNB-USD',icon:'⬡',currency:'USD'},
-{id:'doge',name:'Dogecoin (DOGE)',short:'Dogecoin',group:'crypto',symbol:'DOGE-USD',icon:'Ð',currency:'USD'},
-{id:'inj',name:'Injective (INJ)',short:'Injective',group:'crypto',symbol:'INJ-USD',icon:'∿',currency:'USD'},
+{id:'btc',name:'Bitcoin (BTC)',short:'Bitcoin',group:'crypto',symbol:'BTC-USD',icon:'₿',currency:'USD',coingeckoId:'bitcoin'},
+{id:'eth',name:'Ethereum (ETH)',short:'Ethereum',group:'crypto',symbol:'ETH-USD',icon:'◆',currency:'USD',coingeckoId:'ethereum'},
+{id:'sol',name:'Solana (SOL)',short:'Solana',group:'crypto',symbol:'SOL-USD',icon:'◎',currency:'USD',coingeckoId:'solana'},
+{id:'xrp',name:'XRP',short:'XRP',group:'crypto',symbol:'XRP-USD',icon:'✕',currency:'USD',coingeckoId:'ripple'},
+{id:'bnb',name:'BNB',short:'BNB',group:'crypto',symbol:'BNB-USD',icon:'⬡',currency:'USD',coingeckoId:'binancecoin'},
+{id:'doge',name:'Dogecoin (DOGE)',short:'Dogecoin',group:'crypto',symbol:'DOGE-USD',icon:'Ð',currency:'USD',coingeckoId:'dogecoin'},
+{id:'inj',name:'Injective (INJ)',short:'Injective',group:'crypto',symbol:'INJ-USD',icon:'∿',currency:'USD',coingeckoId:'injective-protocol'},
 {id:'ore',name:'ORE Protocol (ORE)',short:'ORE Protocol',group:'crypto',symbol:'ORE',icon:'⛏',currency:'USD',coingeckoId:'ore',network:'Solana'},
 {id:'ada',name:'Cardano (ADA)',short:'Cardano',group:'crypto',symbol:'ADA-USD',icon:'₳',currency:'USD',coingeckoId:'cardano'},
 {id:'avax',name:'Avalanche (AVAX)',short:'Avalanche',group:'crypto',symbol:'AVAX-USD',icon:'▲',currency:'USD',coingeckoId:'avalanche-2'},
@@ -3842,7 +3842,9 @@ function orderBookDiscoveryTradable(venue,raw,base,quote){
 }
 async function discoverOrderBookSource(id,serial){
  const asset=ASSET_BY_ID[id],prior=orderBookDiscoveredSources.get(id);
- if(!asset||!asset.extended||!asset.coingeckoId)return null;
+ // Identity-verified fallback applies equally to the original 42 and the
+ // later 246 assets. Never infer a token from its ticker alone.
+ if(!asset||!asset.coingeckoId||id==='ore'||id==='ton')return null;
  const ttl=prior?.source?2*60*60*1000:5*60*1000;
  if(prior&&Date.now()-prior.checkedAt<ttl)return prior.source;
  const symbol=String(asset.symbol||'').replace(/-USD$/i,'').toUpperCase();
@@ -4001,40 +4003,28 @@ function orderBookSource(id){
    if(descriptor&&(descriptor.urls?.length||cryptoBookEntry(id,choice)))return descriptor;
   }
  }
- // Prefer the exact asset's independently verified Spot market for
- // ICON, Komodo, TARS AI and Verasity, not a hard-coded Binance pair.
- if(['vra','tai','kmd','icx'].includes(id)){
-  const verified=cryptoBookEntry(id);
-  const preferred=verified&&orderBookVenueDescriptor({
-   venue:verified.venue,pair:verified.pair,precision:verified.precision
-  });
-  if(preferred)return preferred;
- }
- const binance=id==='vra'?null:STREAM_PAIRS[id];
- if(binance){
-  const pair=binance.toUpperCase();
-  return {venue:'Binance Spot',pair,urls:[
-   'https://data-api.binance.vision/api/v3/depth?symbol='+pair+'&limit=50',
-   'https://api.binance.com/api/v3/depth?symbol='+pair+'&limit=50'
-  ]};
- }
- if(id==='orai')return {venue:'Gate.io Spot',pair:'ORAI/USDT',urls:[
-  'https://api.gateio.ws/api/v4/spot/order_book?currency_pair=ORAI_USDT&limit=50'
- ]};
+ // A legacy STREAM_PAIRS ticker must NEVER be enough to display a
+ // purported Spot book: only select the same coin's verified venue + pair.
+ // This is identical for all 288 assets and on every operating system.
+ const verified=cryptoBookEntry(id);
+ const preferred=verified&&orderBookVenueDescriptor({
+  venue:verified.venue,pair:verified.pair,precision:verified.precision
+ });
+ if(preferred)return preferred;
  // Never assume the legacy TAI/MEXC pair still exists: use the current
  // identity-verified marketSources or a fresh CoinGecko/exchange discovery.
  const asset=ASSET_BY_ID[id],published=cryptoBookBundle()?.verifiedMarkets?.[id];
  // A currently verified primary USD/USDC pair takes precedence over a
  // previously verified Binance USDT pair when the selected venue is unset.
  const primaryBook=raw?.books?.[id],identity=raw?.marketSources?.[id];
- if(asset?.extended&&primaryBook&&Array.isArray(identity)){
+ if(asset?.coingeckoId&&primaryBook&&Array.isArray(identity)){
   const listing=identity.find(x=>x?.venue===primaryBook.venue&&
    x?.pair===primaryBook.pair&&x?.coingeckoId===asset.coingeckoId&&
    Number(x.verifiedAt)>0&&Date.now()/1000-Number(x.verifiedAt)<7*86400);
   const verified=orderBookVenueDescriptor(listing);
   if(verified)return verified;
  }
- if(asset?.extended&&published?.coingeckoId===asset.coingeckoId&&
+ if(asset?.coingeckoId&&published?.coingeckoId===asset.coingeckoId&&
     published?.symbol===asset.symbol.replace('-USD','')&&
     published?.pair===published.symbol+'/USDT'&&
     published?.venue==='Binance Spot'&&
@@ -4068,7 +4058,8 @@ function orderBookVerifiedVenues(id){
  if(!bundle||!asset||asset.group!=='crypto')return [];
  const symbol=id==='ton'?'GRAM':String(asset.symbol||'').replace('-USD','');
  const validProof=(venue,pair)=>{
-  if(!asset.extended)return true;
+  if(id==='ore'||id==='ton')return true;
+  if(!asset.coingeckoId)return false;
   const records=bundle.marketSources?.[id]||[];
   const fallback=bundle.verifiedMarkets?.[id];
   const proofs=[...(Array.isArray(records)?records:[]),fallback].filter(Boolean);
@@ -4117,9 +4108,11 @@ function cryptoBookEntry(id,venue){
  const symbol=id==='ton'?'GRAM':a.symbol.replace('-USD','');
  if(b.unit!==symbol||!/^[A-Z0-9]{1,20}\/(USDT|USDC|USD|EUR|BTC|ETH)$/.test(String(b.pair||''))||
    b.pair.split('/')[0]!==symbol||!Array.isArray(b.bids)||!Array.isArray(b.asks))return null;
- // The original 42-coin collector checked the symbol but not the exact
- // asset identity; extend CoinGecko-ID proof to Verasity and TARS AI.
- if(a.extended||id==='vra'||id==='tai'){
+ // One rule for all 288: exact CoinGecko ID, venue, Spot pair, and recent
+ // proof. A token with the same symbol (or a migrated replacement) is not
+ // interchangeable. ORE mint and labeled TON→GRAM have their own safeguards.
+ if(id!=='ore'&&id!=='ton'){
+  if(!a.coingeckoId)return null;
   const listings=p?.marketSources?.[id]||[],fallback=p?.verifiedMarkets?.[id];
   const fresh=m=>m?.venue===b.venue&&m.pair===b.pair&&
    m.symbol===symbol&&m.coingeckoId===a.coingeckoId&&
@@ -5407,6 +5400,10 @@ async function refreshOrderBook(force=false){
   }catch(err){backupFailure=err&&err.message?err.message:'Snapshot non raggiungibile';}
   if(serial!==orderBookState.serial)return;
   src=orderBookSource(coin);
+  if(!src)src=await discoverOrderBookSource(coin,serial);
+  if(serial!==orderBookState.serial||coin!==orderBookState.id)return;
+  updateOrderBookAssetList();
+  if(src)startOrderBookLive(true);
  }
  if(!src){
   orderBookState.error=backupFailure||
