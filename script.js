@@ -4020,25 +4020,25 @@ function orderBookVerifiedVenues(id){
    Number(m.verifiedAt)>0&&Date.now()/1000-Number(m.verifiedAt)<7*86400&&
    Date.now()/1000-Number(m.verifiedAt)>-60);
  };
- const add=(venue,pair)=>{
-  const descriptor=orderBookVenueDescriptor({venue,pair});
-  if(descriptor&&validProof(venue,pair))options.set(venue,{venue,pair});
+ const add=(venue,pair,precision)=>{
+  const descriptor=orderBookVenueDescriptor({venue,pair,precision});
+  if(descriptor&&validProof(venue,pair))options.set(venue,{venue,pair,precision});
  };
  const primary=cryptoBookEntry(id);
- if(primary)add(primary.venue,primary.pair);
+ if(primary)add(primary.venue,primary.pair,primary.precision);
  const rows=bundle.marketSources?.[id];
  if(Array.isArray(rows))rows.forEach(m=>{if(m&&m.symbol===symbol&&
    Number(m.verifiedAt)>0&&Date.now()/1000-Number(m.verifiedAt)<7*86400)
-  add(m.venue,m.pair)});
+  add(m.venue,m.pair,m.precision)});
  const published=bundle.verifiedMarkets?.[id];
  if(published&&Number(published.verifiedAt)>0&&
    Date.now()/1000-Number(published.verifiedAt)<7*86400)
-  add(published.venue,published.pair);
+  add(published.venue,published.pair,published.precision);
  const multi=bundle.venueBooks?.[id];
  if(multi&&typeof multi==='object')
   Object.keys(multi).forEach(venue=>{
    const book=cryptoBookEntry(id,venue);
-   if(book)add(book.venue,book.pair);
+   if(book)add(book.venue,book.pair,book.precision);
   });
  return [...options.values()].sort((a,b)=>a.venue.localeCompare(b.venue,'it'));
 }
@@ -4081,7 +4081,9 @@ function cryptoBookEntry(id,venue){
  const previous=Number(b.previousTrade),previousAt=Date.parse(b.previousTradeAt||'');
  const previousTrade=lastTrade!==null&&Number.isFinite(previous)&&previous>0&&
   Number.isFinite(previousAt)&&previousAt<t&&t-previousAt<=3*60*60*1000?previous:null;
- return {bids,asks,unit:symbol,pair:b.pair,venue:b.venue,time:t,lastTrade,
+ const meta=(p?.marketSources?.[id]||[]).find(m=>m?.venue===b.venue&&m?.pair===b.pair);
+ return {bids,asks,unit:symbol,pair:b.pair,venue:b.venue,
+  precision:meta?.precision,time:t,lastTrade,
   lastTradeAt:lastTrade!==null?tradeTime:0,previousTrade};
 }
 function useCryptoBookEntry(id,serial){
@@ -4875,9 +4877,10 @@ function liveBookConfig(id){
  if(venue==='MEXC Spot')return {venue,pair,symbol,kind:'poll',
   url:'https://api.mexc.com/api/v3/depth?symbol='+symbol+'&limit=50',
   priceUrl:'https://api.mexc.com/api/v3/ticker/price?symbol='+symbol};
- if(['Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot','BingX Spot','CoinEx Spot','Poloniex Spot','Bitstamp Spot'].includes(venue)){
-  const source=orderBookVenueDescriptor({venue,pair});
-  if(source)return {venue,pair,symbol,kind:'poll',
+ if(['Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot','BingX Spot','CoinEx Spot','Poloniex Spot','Bitstamp Spot','WEEX Spot','Bitunix Spot','XT Spot'].includes(venue)){
+  const candidate=orderBookVerifiedVenues(id).find(x=>x.venue===venue);
+  const source=orderBookVenueDescriptor({venue,pair,precision:candidate?.precision});
+  if(source?.urls?.[0])return {venue,pair,symbol,kind:'poll',
    format:source.format,url:source.urls[0]};
  }
  return null;
@@ -4890,6 +4893,29 @@ function decodeOrderBookDepth(payload,format){
   const n=Number(ts),delay=Date.now()-n;
   return Number.isFinite(n)&&n>1e12&&delay>=0&&delay<600000;
  };
+ if(format==='weex'){
+  if(!Number.isInteger(payload.lastUpdateId)||!Array.isArray(payload.bids)||
+     !Array.isArray(payload.asks))
+   throw Error('WEEX Spot non disponibile');
+  return {bids:payload.bids,asks:payload.asks,sequence:payload.lastUpdateId};
+ }
+ if(format==='bitunix'){
+  const book=payload.data;
+  if(String(payload.code)!=='0'||!book||!freshExchangeMs(book.ts)||
+     !Array.isArray(book.bids)||!Array.isArray(book.asks)||
+     ![...book.bids,...book.asks].every(row=>row&&
+      row.price!=null&&row.volume!=null))
+   throw Error('Bitunix Spot non disponibile o book scaduto');
+  return {bids:book.bids.map(row=>[row.price,row.volume]),
+   asks:book.asks.map(row=>[row.price,row.volume]),sequence:book.ts};
+ }
+ if(format==='xt'){
+  const book=payload.result;
+  if(String(payload.rc)!=='0'||!book||!freshExchangeMs(book.timestamp)||
+     !Array.isArray(book.bids)||!Array.isArray(book.asks))
+   throw Error('XT Spot non disponibile o book scaduto');
+  return {bids:book.bids,asks:book.asks,sequence:book.lastUpdateId};
+ }
  if(format==='poloniex'){
   if(!Array.isArray(payload.bids)||!Array.isArray(payload.asks)||
      !freshExchangeMs(payload.ts)||payload.bids.length%2||payload.asks.length%2)
