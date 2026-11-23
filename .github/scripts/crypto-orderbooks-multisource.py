@@ -68,8 +68,10 @@ KNOWN = {
     "Gemini Spot": {"keys": {"gemini"}},
     "BingX Spot": {"keys": {"bingx"}},
     "CoinEx Spot": {"keys": {"coinex"}},
+    "Poloniex Spot": {"keys": {"poloniex"}},
+    "Bitstamp Spot": {"keys": {"bitstamp"}},
 }
-VENUE_ORDER = ("Binance Spot", "Gate Spot", "MEXC Spot", "Bybit Spot", "OKX Spot", "KuCoin Spot", "Coinbase Exchange Spot", "Kraken Spot", "Bitget Spot", "WhiteBIT Spot", "BTSE Spot", "LBank Spot", "HTX Spot", "BitMart Spot", "Bitrue Spot", "Crypto.com Spot", "Gemini Spot", "BingX Spot", "CoinEx Spot")
+VENUE_ORDER = ("Binance Spot", "Gate Spot", "MEXC Spot", "Bybit Spot", "OKX Spot", "KuCoin Spot", "Coinbase Exchange Spot", "Kraken Spot", "Bitget Spot", "WhiteBIT Spot", "BTSE Spot", "LBank Spot", "HTX Spot", "BitMart Spot", "Bitrue Spot", "Crypto.com Spot", "Gemini Spot", "BingX Spot", "CoinEx Spot", "Poloniex Spot", "Bitstamp Spot")
 QUOTE_PRIORITY = ("USDT", "USDC", "USD", "EUR", "BTC", "ETH")
 
 # Explicit catalog identity mappings for widely traded assets whose public
@@ -359,7 +361,7 @@ def lbank_market_list():
     return base.fetch("https://api.lbank.info/v2/currencyPairs.do")
 
 
-@lru_cache(maxsize=6)
+@lru_cache(maxsize=8)
 def shared_spot_markets(venue):
     """Fetch one venue's complete public Spot catalog per run."""
     url = {
@@ -369,6 +371,8 @@ def shared_spot_markets(venue):
         "Crypto.com Spot": "https://api.crypto.com/exchange/v1/public/get-instruments",
         "BingX Spot": "https://open-api.bingx.com/openApi/spot/v1/common/symbols",
         "CoinEx Spot": "https://api.coinex.com/v2/spot/market",
+        "Poloniex Spot": "https://api.poloniex.com/markets",
+        "Bitstamp Spot": "https://www.bitstamp.net/api/v2/markets/",
     }[venue]
     return base.fetch(url)
 
@@ -376,7 +380,7 @@ def shared_spot_markets(venue):
 def get_spot_metadata(venue, symbol, quoted):
     if venue == "LBank Spot":
         return lbank_market_list()
-    if venue in ("HTX Spot", "BitMart Spot", "Bitrue Spot", "Crypto.com Spot", "BingX Spot", "CoinEx Spot"):
+    if venue in ("HTX Spot", "BitMart Spot", "Bitrue Spot", "Crypto.com Spot", "BingX Spot", "CoinEx Spot", "Poloniex Spot", "Bitstamp Spot"):
         return shared_spot_markets(venue)
     return base.fetch(exchange_info_url(venue, symbol, quoted))
 
@@ -391,6 +395,22 @@ def fresh_exchange_millis(value, limit_seconds=600):
 
 
 def exchange_market_valid(venue, payload, symbol, quote='USDT'):
+    if venue == "Poloniex Spot":
+        return (isinstance(payload, list) and
+                any(isinstance(m, dict) and
+                    m.get("symbol") == symbol + "_" + quote and
+                    m.get("baseCurrencyName") == symbol and
+                    m.get("quoteCurrencyName") == quote and
+                    m.get("state") == "NORMAL" for m in payload))
+    if venue == "Bitstamp Spot":
+        return (isinstance(payload, list) and
+                any(isinstance(m, dict) and
+                    m.get("market_symbol") == (symbol + quote).lower() and
+                    m.get("base_currency") == symbol and
+                    m.get("counter_currency") == quote and
+                    m.get("market_type") == "SPOT" and
+                    m.get("trading") == "Enabled" and
+                    m.get("matching") == "Enabled" for m in payload))
     if venue == "BingX Spot":
         rows = (payload.get("data") or {}).get("symbols") if isinstance(payload, dict) else None
         return (isinstance(payload, dict) and str(payload.get("code")) == "0"
@@ -557,6 +577,10 @@ def exchange_market_valid(venue, payload, symbol, quote='USDT'):
 
 
 def exchange_info_url(venue, symbol, quote='USDT'):
+    if venue == "Poloniex Spot":
+        return "https://api.poloniex.com/markets/" + symbol + "_" + quote
+    if venue == "Bitstamp Spot":
+        return "https://www.bitstamp.net/api/v2/markets/"
     if venue == "BingX Spot":
         return "https://open-api.bingx.com/openApi/spot/v1/common/symbols?symbol=" + symbol + "-" + quote
     if venue == "CoinEx Spot":
@@ -767,6 +791,10 @@ def verify_bulk_pair(cid, symbol, coin_id, quoted, venue, ts):
 
 
 def depth_url(venue, symbol, quote='USDT'):
+    if venue == "Poloniex Spot":
+        return "https://api.poloniex.com/markets/" + symbol + "_" + quote + "/orderBook?limit=50"
+    if venue == "Bitstamp Spot":
+        return "https://www.bitstamp.net/api/v2/order_book/" + (symbol + quote).lower() + "/?group=0"
     if venue == "BingX Spot":
         return ("https://open-api.bingx.com/openApi/spot/v1/market/depth?symbol=" +
                 symbol + "-" + quote + "&limit=50")
@@ -825,6 +853,23 @@ def depth_url(venue, symbol, quote='USDT'):
 
 
 def normalize_exchange_depth(venue, raw):
+    if venue == "Poloniex Spot":
+        if (not isinstance(raw, dict) or not fresh_exchange_millis(raw.get("ts"))
+            or not isinstance(raw.get("bids"), list)
+            or not isinstance(raw.get("asks"), list)):
+            raise ValueError("Poloniex depth missing or stale")
+        def unpack(rows):
+            if len(rows) % 2 or not all(isinstance(x, (str, int, float)) for x in rows):
+                raise ValueError("Poloniex flat depth has invalid price/quantity")
+            return [[rows[i], rows[i+1]] for i in range(0, len(rows), 2)]
+        return {"bids": unpack(raw["bids"]), "asks": unpack(raw["asks"])}
+    if venue == "Bitstamp Spot":
+        if (not isinstance(raw, dict)
+            or not fresh_exchange_millis(float(raw.get("timestamp") or 0) * 1000)
+            or not isinstance(raw.get("bids"), list)
+            or not isinstance(raw.get("asks"), list)):
+            raise ValueError("Bitstamp depth missing or stale")
+        return raw
     if not isinstance(raw, dict):
         raise ValueError("Not an exchange depth response")
     if venue == "BingX Spot":
@@ -971,6 +1016,32 @@ def load_depth(cid, source, previous):
 def check_fixture():
     assert len(catalog_with_ids()) == 288
     assert len(SCREENSHOT_PRIORITY) == 40
+    assert exchange_market_valid("Poloniex Spot", [{
+        "symbol":"VRA_USDT","baseCurrencyName":"VRA",
+        "quoteCurrencyName":"USDT","state":"NORMAL"}], "VRA")
+    assert not exchange_market_valid("Poloniex Spot", [{
+        "symbol":"VRA_USDT","baseCurrencyName":"VRA",
+        "quoteCurrencyName":"USDT","state":"PAUSE"}], "VRA")
+    assert exchange_market_valid("Bitstamp Spot", [{
+        "market_symbol":"btcusd","base_currency":"BTC","counter_currency":"USD",
+        "market_type":"SPOT","trading":"Enabled","matching":"Enabled"}], "BTC", "USD")
+    assert not exchange_market_valid("Bitstamp Spot", [{
+        "market_symbol":"btcusd","base_currency":"BTC","counter_currency":"USD",
+        "market_type":"PERPETUAL","trading":"Enabled","matching":"Enabled"}], "BTC", "USD")
+    current_ms = int(base.now().timestamp() * 1000)
+    assert normalize_exchange_depth("Poloniex Spot", {
+        "ts": current_ms, "bids":["10","4","9","2"],
+        "asks":["11","3","12","2"]})["bids"] == [["10","4"], ["9","2"]]
+    assert normalize_exchange_depth("Bitstamp Spot", {
+        "timestamp":str(current_ms // 1000),
+        "bids":[["10","4"]], "asks":[["11","3"]]})["asks"]
+    try:
+        normalize_exchange_depth("Poloniex Spot", {
+            "ts": current_ms, "bids":["10","4","9"], "asks":["11","3"]})
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Incomplete Poloniex levels accepted")
     assert exchange_market_valid("BingX Spot", {"code": 0, "data": {"symbols": [
         {"symbol": "OZO-USDT", "status": 1}]}}, "OZO")
     assert not exchange_market_valid("BingX Spot", {"code": 0, "data": {"symbols": [
