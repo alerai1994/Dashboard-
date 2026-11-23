@@ -736,7 +736,7 @@ assert.equal(activeLabel('btc'),'Binance Spot · BTC/USDT',
  'Expired active depth must not override the verified fallback source');
 const workspaceBookCode=source.slice(source.indexOf('function workspaceOrderBookLevels(){'),
  source.indexOf('function workspaceWidgetBody(id){'));
-assert(workspaceBookCode.includes("'<span>Totale ('+esc(quoteCurrency)+')</span>")&&
+assert(workspaceBookCode.includes("<span>Totale ('+esc(quoteCurrency)+')</span>")&&
  !workspaceBookCode.includes('<span>Totale (USDT)</span>')&&
  workspaceBookCode.includes("'Coppia non verificata'"),
  'Workspace total must use the actual pair quote and never invent USDT for unknown pairs');
