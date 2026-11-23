@@ -281,7 +281,38 @@ def coin_ids():
 
 
 # Explicit identities for original 42 coins absent from extra catalog.
-BASE_COINGECKO_IDS = {"VRA": "verasity", "TAI": "tars-protocol"}
+BASE_COINGECKO_IDS = {
+    "BTC": "bitcoin", "ETH": "ethereum", "SOL": "solana",
+    "XRP": "ripple", "BNB": "binancecoin", "DOGE": "dogecoin",
+    "INJ": "injective-protocol", "ORE": "ore", "ADA": "cardano",
+    "AVAX": "avalanche-2", "LINK": "chainlink", "DOT": "polkadot",
+    "TRX": "tron", "TON": "the-open-network", "SUI": "sui",
+    "LTC": "litecoin", "BCH": "bitcoin-cash", "XLM": "stellar",
+    "HBAR": "hedera-hashgraph", "NEAR": "near", "APT": "aptos",
+    "ATOM": "cosmos", "UNI": "uniswap", "AAVE": "aave",
+    "ARB": "arbitrum", "OP": "optimism", "SHIB": "shiba-inu",
+    "PEPE": "pepe", "RENDER": "render-token", "RAY": "raydium",
+    "LUNC": "terra-luna", "VRA": "verasity",
+    "WLFI": "world-liberty-financial", "HOT": "holotoken",
+    "KSM": "kusama", "WLD": "worldcoin-wld", "FET": "fetch-ai",
+    "ORAI": "oraichain-token", "TAI": "tars-protocol",
+    "VIRTUAL": "virtual-protocol", "TAO": "bittensor",
+    "LUNA": "terra-luna-2",
+}
+
+# Every legacy coin now has a pinned identity, not merely a ticker. Add
+# exchange-metadata candidates for any original asset missing a curated
+# fallback. An entry is NEVER a book until the venue confirms Spot trading
+# and real uncrossed BID/ASK levels are downloaded.
+assert set(BASE_COINGECKO_IDS) == set(base.ALL.values())
+for _cid, _symbol in base.ALL.items():
+    if _cid not in CURATED_SPOT and _cid not in ("ore", "ton"):
+        CURATED_SPOT[_cid] = (
+            _symbol, BASE_COINGECKO_IDS[_symbol],
+            (("Binance Spot", "USDT"), ("Gate Spot", "USDT"),
+             ("MEXC Spot", "USDT")),
+        )
+
 
 
 def catalog_with_ids():
@@ -317,21 +348,31 @@ def source_valid(row, symbol, coin_id, ts):
         return False
 
 
-# These four coins require a current Spot market identity proof even when
-# the legacy 42-coin collector has already returned a depth snapshot.
-# The legacy collector alone checked the symbol, not its CoinGecko identity.
+# All 288 catalog entries require proof of the EXACT same asset and the
+# same venue/pair before their BID/ASK levels may be published. A coincident
+# symbol is not identity evidence. Two explicit historical migration/contract
+# exceptions are checked against their own recorded identity instead.
 FOCUSED_BOOK_IDS = ("icx", "kmd", "tai", "vra")
 
 
-def focused_book_has_identity(cid, book, sources, registry, ts):
-    if cid not in FOCUSED_BOOK_IDS:
-        return True
+def book_has_verified_identity(cid, book, sources, registry, ts):
     if not isinstance(book, dict) or cid not in registry:
         return False
     symbol, coin_id, _ = registry[cid]
-    if (book.get("id") != cid or book.get("unit") != symbol or
-        book.get("pair", "").split("/")[0] != symbol or
-        not 0 <= ts - stamp(book.get("capturedAt")) < BOOK_TTL):
+    if (book.get("id") != cid or not 0 <= ts - stamp(book.get("capturedAt")) < BOOK_TTL):
+        return False
+    if cid == "ore":
+        return (book.get("unit") == "ORE" and book.get("pair") == "ORE/USDT"
+                and book.get("venue") == "LBank Spot" and
+                book.get("mint") == base.ORE_MINT)
+    if cid == "ton":
+        # Existing labeled TON → GRAM conversion (not an interchangeable
+        # symbol): only the explicitly supported original Binance migration.
+        return (book.get("unit") == "GRAM" and
+                book.get("pair") == "GRAM/USDT" and
+                book.get("venue") == "Binance Spot")
+    if (not coin_id or book.get("unit") != symbol or
+            book.get("pair", "").split("/")[0] != symbol):
         return False
     return any(
         source_valid(row, symbol, coin_id, ts) and
@@ -1464,20 +1505,39 @@ def check_fixture():
 
     assert all(CURATED_SPOT[cid][:2] == catalog_with_ids()[cid][:2]
                for cid in FOCUSED_BOOK_IDS)
+    assert len(BASE_COINGECKO_IDS) == 42
+    assert all(catalog_with_ids()[cid][1] == BASE_COINGECKO_IDS[symbol]
+               for cid, symbol in base.ALL.items())
+    assert all(cid in CURATED_SPOT or cid in ("ore", "ton")
+               for cid in base.ALL)
     correct = {"id": "tai", "venue": "KuCoin Spot", "unit": "TAI",
                "pair": "TAI/USDT",
                "capturedAt": datetime.fromtimestamp(1100).isoformat() + "+00:00"}
     verified = {"venue": "KuCoin Spot", "symbol": "TAI", "pair": "TAI/USDT",
                 "coingeckoId": "tars-protocol", "verifiedAt": 1000}
-    assert focused_book_has_identity("tai", correct, {"tai": [verified]},
+    assert book_has_verified_identity("tai", correct, {"tai": [verified]},
                                      catalog_with_ids(), 1100)
-    assert not focused_book_has_identity("tai", {**correct, "unit": "OTHER"},
+    assert not book_has_verified_identity("tai", {**correct, "unit": "OTHER"},
                                          {"tai": [verified]}, catalog_with_ids(), 1100)
-    assert not focused_book_has_identity("tai", correct, {"tai": [
+    assert not book_has_verified_identity("tai", correct, {"tai": [
         {**verified, "coingeckoId": "another-tai"}]},
         catalog_with_ids(), 1100)
-    assert not focused_book_has_identity("tai", correct, {"tai": [verified]},
+    assert not book_has_verified_identity("tai", correct, {"tai": [verified]},
                                          catalog_with_ids(), 1100 + BOOK_TTL + 1)
+    same_symbol_wrong_identity = {"id": "btc", "venue": "Binance Spot",
+        "unit": "BTC", "pair": "BTC/USDT",
+        "capturedAt": datetime.fromtimestamp(1100).isoformat() + "+00:00"}
+    valid_btc = {"venue": "Binance Spot", "symbol": "BTC",
+                 "pair": "BTC/USDT", "coingeckoId": "bitcoin",
+                 "verifiedAt": 1000}
+    assert book_has_verified_identity("btc", same_symbol_wrong_identity,
+        {"btc": [valid_btc]}, catalog_with_ids(), 1100)
+    assert not book_has_verified_identity("btc", same_symbol_wrong_identity,
+        {"btc": [{**valid_btc, "coingeckoId": "wrapped-bitcoin"}]},
+        catalog_with_ids(), 1100)
+    assert not book_has_verified_identity("btc", same_symbol_wrong_identity,
+        {}, catalog_with_ids(), 1100)
+
     assert exchange_market_valid("LBank Spot", {"result": True, "error_code": 0,
         "data": ["vra_usdt", "tai_usdt"]}, "TAI", "USDT")
     assert not exchange_market_valid("LBank Spot", {"result": True, "error_code": 0,
@@ -1728,15 +1788,14 @@ def run():
             QUOTE_PRIORITY.index(existing["pair"].split("/")[1])):
             records[mapping["venue"]] = mapping
         sources[cid] = list(records.values())
-    # A depth snapshot from the initial 42-coin collector is NOT sufficient
-    # evidence for the four requested assets. Remove unproven, old or wrong
-    # same-symbol books before selecting a primary exchange.
-    for cid in FOCUSED_BOOK_IDS:
-        book = default_books.get(cid)
-        if book and not focused_book_has_identity(cid, book, sources, registry, ts):
-            default_books.pop(cid, None)
+    # This rule now applies to EVERY coin, not just a requested shortlist:
+    # a legacy "default" book may never override an identity-verified venue.
+    # Discard unproven primary snapshots, not the catalog asset itself.
+    for cid, book in list(default_books.items()):
+        if not book_has_verified_identity(cid, book, sources, registry, ts):
+            del default_books[cid]
             venues = venue_books.get(cid, {})
-            venues.pop(book.get("venue"), None)
+            venues.pop(book.get("venue") if isinstance(book, dict) else None, None)
             if not venues:
                 venue_books.pop(cid, None)
     print("Curated Spot metadata checks:", curated_checked, "verified", len(curated))
@@ -1847,18 +1906,13 @@ def run():
             source = next((s for s in sources.get(cid, [])
                            if s["venue"] == venue), None)
             primary = default_books.get(cid)
-            if primary is book:
-                if cid in base.ALL:
-                    # The original 42 were already curated by the original fetcher.
+            if primary is book and book_has_verified_identity(
+                    cid, book, sources, registry, cleanup_ts):
+                # ORE mint and labeled TON→GRAM migration cannot be checked
+                # through a same-ticker market source. Both are checked above.
+                if cid in ("ore", "ton"):
                     continue
-                # Expanded primary Binance books were verified by their
-                # CoinGecko coin ID. Keep them as venue-specific snapshots only
-                # while that proof and the actual levels are both fresh.
-                mapped = (data.get("verifiedMarkets") or {}).get(cid)
-                meta = registry.get(cid)
-                if (meta and source_valid(mapped, meta[0], meta[1], cleanup_ts) and
-                    mapped.get("venue") == venue and
-                    preserve_recent(book, cid, mapped, cleanup_ts)):
+                if source and preserve_recent(book, cid, source, cleanup_ts):
                     continue
             if (not source or not preserve_recent(book, cid, source, cleanup_ts)):
                 del venues[venue]
