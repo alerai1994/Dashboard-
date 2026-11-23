@@ -3738,10 +3738,14 @@ const ORDER_BOOK_DISCOVERY_VENUES={
  gdax:'Coinbase Exchange Spot',kraken:'Kraken Spot',
  bitget:'Bitget Spot',bitget_spot:'Bitget Spot',
  bingx:'BingX Spot',coinex:'CoinEx Spot',
- poloniex:'Poloniex Spot',bitstamp:'Bitstamp Spot'
+ poloniex:'Poloniex Spot',bitstamp:'Bitstamp Spot',
+ weex:'WEEX Spot',bitunix:'Bitunix Spot',xt:'XT Spot'
 };
 function orderBookDiscoveryMarketUrl(venue,base,quote){
  const pair=base+quote,under=base+'_'+quote,dash=base+'-'+quote;
+ if(venue==='WEEX Spot')return 'https://api-spot.weex.com/api/v3/exchangeInfo';
+ if(venue==='Bitunix Spot')return 'https://openapi.bitunix.com/api/spot/v1/common/coin_pair/list';
+ if(venue==='XT Spot')return 'https://sapi.xt.com/v4/public/symbol';
  if(venue==='Poloniex Spot')return 'https://api.poloniex.com/markets/'+under;
  if(venue==='Bitstamp Spot')return 'https://www.bitstamp.net/api/v2/markets/';
  if(venue==='BingX Spot')return 'https://open-api.bingx.com/openApi/spot/v1/common/symbols?symbol='+dash;
@@ -3760,6 +3764,16 @@ function orderBookDiscoveryMarketUrl(venue,base,quote){
 function orderBookDiscoveryTradable(venue,raw,base,quote){
  if(!raw||typeof raw!=='object')return false;
  const pair=base+quote,under=base+'_'+quote,dash=base+'-'+quote;
+ if(venue==='WEEX Spot')return Array.isArray(raw.symbols)&&raw.symbols.some(m=>
+   m?.symbol===pair&&m.baseAsset===base&&m.quoteAsset===quote&&m.status==='TRADING'&&m.enableTrade===true);
+ if(venue==='Bitunix Spot')return String(raw.code)==='0'&&Array.isArray(raw.data)&&
+   raw.data.some(m=>String(m?.base||'').toUpperCase()===base&&
+    String(m?.quote||'').toUpperCase()===quote&&['1','true'].includes(String(m?.isOpen).toLowerCase())&&
+    Array.isArray(m.precisions)&&m.precisions.some(p=>Number(p)>0));
+ if(venue==='XT Spot')return String(raw.rc)==='0'&&Array.isArray(raw.result?.symbols)&&
+   raw.result.symbols.some(m=>m?.symbol?.toLowerCase()===under.toLowerCase()&&
+    String(m.baseCurrency).toUpperCase()===base&&String(m.quoteCurrency).toUpperCase()===quote&&
+    m.state==='ONLINE'&&m.tradingEnabled===true&&m.openapiEnabled===true);
  if(venue==='Poloniex Spot')return Array.isArray(raw)&&raw.some(m=>m?.symbol===under&&
     m.baseCurrencyName===base&&m.quoteCurrencyName===quote&&m.state==='NORMAL');
  if(venue==='Bitstamp Spot')return Array.isArray(raw)&&raw.some(m=>m?.market_symbol===pair.toLowerCase()&&
@@ -3822,7 +3836,7 @@ async function discoverOrderBookSource(id,serial){
  }catch(_error){/* CoinGecko can rate-limit or block CORS; keep verified snapshots instead. */}
  if(!requested())return null;
  const priority=['Binance Spot','Gate Spot','MEXC Spot','Bybit Spot','OKX Spot',
-  'KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','BingX Spot','CoinEx Spot','Poloniex Spot','Bitstamp Spot'];
+  'KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','BingX Spot','CoinEx Spot','Poloniex Spot','Bitstamp Spot','WEEX Spot','Bitunix Spot','XT Spot'];
  const proposed=[...candidates.entries()].sort((a,b)=>priority.indexOf(a[0])-priority.indexOf(b[0])).slice(0,9);
  const tested=await Promise.all(proposed.map(async ([venue,quoted])=>{
   const url=orderBookDiscoveryMarketUrl(venue,symbol,quoted);
@@ -3842,9 +3856,19 @@ async function discoverOrderBookSource(id,serial){
 /* Each displayed BID/ASK set must belong to one actual exchange venue. */
 function orderBookVenueDescriptor(row){
  const venue=row?.venue,pair=String(row?.pair||''),symbol=pair.split('/')[0],quoted=pair.split('/')[1];
- if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot','BingX Spot','CoinEx Spot','Poloniex Spot','Bitstamp Spot'].includes(venue)||
+ if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot','BingX Spot','CoinEx Spot','Poloniex Spot','Bitstamp Spot','WEEX Spot','Bitunix Spot','XT Spot'].includes(venue)||
   !/^[A-Z0-9]{1,20}\/(USDT|USDC|USD|EUR|BTC|ETH)$/.test(pair))return null;
  const coded=symbol+quoted;
+ if(venue==='WEEX Spot')return {venue,pair,format:'weex',urls:[
+  'https://api-spot.weex.com/api/v3/market/depth?symbol='+coded+'&limit=200']};
+ if(venue==='Bitunix Spot'){
+  const precision=String(row?.precision||'');
+  return {venue,pair,precision,format:'bitunix',urls:Number(precision)>0?[
+   'https://openapi.bitunix.com/api/spot/v1/market/depth?symbol='+
+    coded+'&precision='+encodeURIComponent(precision)]:[]};
+ }
+ if(venue==='XT Spot')return {venue,pair,format:'xt',urls:[
+  'https://sapi.xt.com/v4/public/depth?symbol='+(symbol+'_'+quoted).toLowerCase()+'&limit=50']};
  if(venue==='Poloniex Spot')return {venue,pair,format:'poloniex',urls:[
   'https://api.poloniex.com/markets/'+symbol+'_'+quoted+'/orderBook?limit=50']};
  if(venue==='Bitstamp Spot')return {venue,pair,format:'bitstamp',urls:[
@@ -4045,7 +4069,7 @@ function cryptoBookEntry(id,venue){
  if(id==='ore'&&b.mint!=='oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp')return null;
  const t=Date.parse(b.capturedAt||'');
  if(!Number.isFinite(t)||t>Date.now()+60000||Date.now()-t>3*60*60*1000)return null;
- if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot','BingX Spot','CoinEx Spot','Poloniex Spot','Bitstamp Spot'].includes(b.venue))return null;
+ if(!['Binance Spot','Gate Spot','MEXC Spot','LBank Spot','Bybit Spot','OKX Spot','KuCoin Spot','Coinbase Exchange Spot','Kraken Spot','Bitget Spot','WhiteBIT Spot','BTSE Spot','HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot','BingX Spot','CoinEx Spot','Poloniex Spot','Bitstamp Spot','WEEX Spot','Bitunix Spot','XT Spot'].includes(b.venue))return null;
  const bids=b.bids.map(r=>[Number(r[0]),Number(r[1])])
   .filter(r=>r.length===2&&r.every(x=>Number.isFinite(x)&&x>0)).sort((a,b)=>b[0]-a[0]).slice(0,50);
  const asks=b.asks.map(r=>[Number(r[0]),Number(r[1])])
