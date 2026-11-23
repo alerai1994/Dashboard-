@@ -1257,6 +1257,8 @@ def load_depth(cid, source, previous):
         return cid, venue, data
     except (OSError, ValueError, TypeError, KeyError) as exc:
         label = "HTTP" + str(exc.code) if hasattr(exc, "code") else type(exc).__name__
+        if cid == "icx" and venue == "LATOKEN Spot":
+            print("FOCUSED ICX LATOKEN depth rejected:", str(exc)[:180], flush=True)
         with _depth_diag_lock:
             _depth_errors[(venue, label)] += 1
         return cid, venue, preserve_recent(previous, cid, source,
