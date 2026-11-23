@@ -299,6 +299,10 @@ def source_valid(row, symbol, coin_id, ts):
         row.get("pair") not in {symbol + "/" + q for q in QUOTE_PRIORITY}):
         return False
     try:
+        if row.get("venue") == "Bitunix Spot":
+            value = float(row.get("precision", 0))
+            if not 0 < value < 1e15:
+                return False
         age = ts - float(row["verifiedAt"])
         return 0 <= age < SOURCE_TTL
     except (ValueError, TypeError, KeyError):
@@ -402,6 +406,25 @@ def fresh_exchange_millis(value, limit_seconds=600):
         return False
 
 
+def bitunix_precision(payload, symbol, quote):
+    """Return only an exchange-advertised Spot precision, never a guessed one."""
+    if not isinstance(payload, dict) or str(payload.get("code")) != "0":
+        return None
+    for market in payload.get("data") or []:
+        if (isinstance(market, dict) and
+            str(market.get("base", "")).upper() == symbol and
+            str(market.get("quote", "")).upper() == quote and
+            str(market.get("isOpen", "")).lower() in ("1", "true") and
+            str(market.get("isShow", "1")).lower() in ("1", "true")):
+            for value in market.get("precisions") or []:
+                try:
+                    if 0 < float(value) < 1e15:
+                        return str(value)
+                except (ValueError, TypeError, OverflowError):
+                    continue
+    return None
+
+
 def exchange_market_valid(venue, payload, symbol, quote='USDT'):
     if venue == "WEEX Spot":
         return (isinstance(payload, dict) and isinstance(payload.get("symbols"), list)
@@ -413,16 +436,7 @@ def exchange_market_valid(venue, payload, symbol, quote='USDT'):
                         and m.get("enableTrade") is True
                         for m in payload["symbols"]))
     if venue == "Bitunix Spot":
-        return (isinstance(payload, dict) and str(payload.get("code")) == "0"
-                and isinstance(payload.get("data"), list)
-                and any(isinstance(m, dict)
-                        and str(m.get("base", "")).upper() == symbol
-                        and str(m.get("quote", "")).upper() == quote
-                        and str(m.get("isOpen", "")).lower() in ("1", "true")
-                        and str(m.get("isShow", "1")).lower() in ("1", "true")
-                        and any(float(x) > 0 for x in m.get("precisions", [])
-                                if str(x).replace(".", "", 1).isdigit())
-                        for m in payload["data"]))
+        return bitunix_precision(payload, symbol, quote) is not None
     if venue == "XT Spot":
         rows = payload.get("result") if isinstance(payload, dict) else None
         rows = rows.get("symbols") if isinstance(rows, dict) else None
@@ -747,11 +761,14 @@ def discover_one(cid, symbol, coin_id, ts):
                 try:
                     market = get_spot_metadata(venue, symbol, quoted)
                     if exchange_market_valid(venue, market, symbol, quoted):
-                        sources.append({
+                        mapping = {
                             "venue": venue, "pair": symbol + "/" + quoted,
                             "symbol": symbol, "coingeckoId": coin_id,
                             "verifiedAt": ts,
-                        })
+                        }
+                        if venue == "Bitunix Spot":
+                            mapping["precision"] = bitunix_precision(market, symbol, quoted)
+                        sources.append(mapping)
                         break  # Prefer USDT > USDC > USD within this venue.
                 except (OSError, ValueError, TypeError, KeyError):
                     continue
@@ -828,16 +845,19 @@ def verify_bulk_pair(cid, symbol, coin_id, quoted, venue, ts):
     try:
         meta = get_spot_metadata(venue, symbol, quoted)
         if exchange_market_valid(venue, meta, symbol, quoted):
-            return cid, {
+            mapping = {
                 "venue": venue, "pair": symbol + "/" + quoted,
                 "symbol": symbol, "coingeckoId": coin_id, "verifiedAt": ts
             }
+            if venue == "Bitunix Spot":
+                mapping["precision"] = bitunix_precision(meta, symbol, quoted)
+            return cid, mapping
     except (OSError, ValueError, TypeError, KeyError):
         pass
     return cid, None
 
 
-def depth_url(venue, symbol, quote='USDT'):
+def depth_url(venue, symbol, quote='USDT', precision=None):
     if venue == "WEEX Spot":
         return "https://api-spot.weex.com/api/v3/market/depth?symbol=" + symbol + quote + "&limit=200"
     if venue == "XT Spot":
@@ -846,6 +866,13 @@ def depth_url(venue, symbol, quote='USDT'):
     if venue == "Bitunix Spot":
         # Precision MUST come from the venue's own live public Spot catalog.
         # An invented precision could return an aggregated or invalid book.
+        if precision is not None:
+            try:
+                if 0 < float(precision) < 1e15:
+                    return ("https://openapi.bitunix.com/api/spot/v1/market/depth?symbol=" +
+                            symbol + quote + "&precision=" + quote_url(str(precision), safe=""))
+            except (ValueError, TypeError, OverflowError):
+                pass
         market = shared_spot_markets(venue)
         if not isinstance(market, dict) or str(market.get("code")) != "0":
             raise ValueError("Bitunix public Spot catalog unavailable")
@@ -1097,7 +1124,7 @@ def load_depth(cid, source, previous):
     venue, symbol = source["venue"], source["symbol"]
     try:
         quote_currency = source["pair"].split("/")[1]
-        raw = base.fetch(depth_url(venue, symbol, quote_currency))
+        raw = base.fetch(depth_url(venue, symbol, quote_currency, source.get("precision")))
         bids, asks = base.checked(normalize_exchange_depth(venue, raw), "Binance")
         data = {
             "id": cid, "venue": venue, "pair": source["pair"],
@@ -1125,6 +1152,12 @@ def check_fixture():
     assert not exchange_market_valid("WEEX Spot", {"symbols": [{
         "symbol":"VRAUSDT","baseAsset":"OTHER","quoteAsset":"USDT",
         "status":"TRADING","enableTrade":True}]}, "VRA")
+    assert bitunix_precision({"code":0,"data":[{
+        "base":"BTC","quote":"USDT","isOpen":"1",
+        "precisions":["0.0001"]}]}, "BTC", "USDT") == "0.0001"
+    assert not bitunix_precision({"code":0,"data":[{
+        "base":"BTC","quote":"USDT","isOpen":"0",
+        "precisions":["0.0001"]}]}, "BTC", "USDT")
     assert exchange_market_valid("Bitunix Spot", {"code":0,"data":[{
         "id":"vra_usdt","base":"VRA","quote":"USDT","isOpen":"1",
         "precisions":["0.0001"]}]}, "VRA")
