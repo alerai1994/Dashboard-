@@ -4734,7 +4734,6 @@ function orderBookPage(){
  '<div class="ob-coin-list" id="orderBookAssetList">'+orderBookAssetList()+'</div></aside>'+
  '<section class="ob-detail panel" aria-label="Livelli BID e ASK della crypto selezionata">'+
  '<div class="ob-content" id="orderBookContent" aria-live="off">'+orderBookDisplay()+'</div>'+
- '<p class="ob-footnote">Tutte le '+ORDER_BOOK_COINS.length+' criptovalute sono selezionabili su browser desktop e mobile. BID, ASK, spread e profondità provengono da coppie verificate; i book Spot dei singoli exchange non vengono mai sommati. Bitpanda Fusion, se configurato tramite API privata, è un broker con liquidità aggregata mostrato separatamente, non un singolo exchange. Controlla l’orario del book: può essere LIVE (WebSocket), aggiornato tramite REST o uno snapshot non più attuale. I token privi di un mercato negoziabile verificato rimangono visibili, ma non mostrano BID/ASK simulati. La presenza di un mercato non garantisce l’accesso al trading dalla tua giurisdizione; Vertex è un visualizzatore, non esegue ordini.</p>'+
  '</section></div>';
 }
 function orderBookNumber(v,price=false){
