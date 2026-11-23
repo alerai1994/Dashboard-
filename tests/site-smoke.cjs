@@ -61,7 +61,7 @@ assert(source.includes('period.ms<=86400000'), 'Recent 1D crypto graphs must pri
 
 assert(source.includes('setInterval(()=>{if(state.dialogId)pollFocusedCryptoQuote()},60000)'), 'Focused crypto updates should continue while a chart is open');
 assert(source.includes('if(state.dialogId)pollFocusedCryptoQuote()'), 'Focused updates should resume after reconnect');
-assert(html.includes('script.js?v=20261123-orderbook-nodefi-v38'), 'Browser script version must change for every operating system');
+assert(html.includes('script.js?v=20261124-verified-four-v39'), 'Browser script version must change for every operating system');
 
 assert(source.includes("'HTX Spot','BitMart Spot','Bitrue Spot','Crypto.com Spot','Gemini Spot','BingX Spot','CoinEx Spot','Poloniex Spot','Bitstamp Spot','WEEX Spot','Bitunix Spot','XT Spot','Bitpanda Fusion'].includes(venue)"),
  'Gemini book must be selectable only as an independently verified live Spot source');
@@ -158,7 +158,7 @@ assert(source.includes('return [...samples,[Math.floor(ms/1000),price,null]]'),
 assert(source.includes("if(period==='1D')"), '1D ETF graph must not mix adjacent trading sessions');
 assert(source.includes('String(latest.symbol).toUpperCase()!==String(fund.symbol'),
  'ETF graph must never mix prices from different exchanges');
-assert(html.includes('script.js?v=20261123-orderbook-nodefi-v38'),
+assert(html.includes('script.js?v=20261124-verified-four-v39'),
  'Updated ETF graph synchronizer must bypass cached browser scripts');
 
 assert(source.includes("setInterval(()=>{if(state.page==='etf'&&!document.hidden)loadCryptoEtfHistory()},60000)"),
@@ -169,8 +169,8 @@ assert(source.includes('crypto-etf-refresh-state')&&source.includes('Mercato chi
  'ETF quote status must distinguish weekend closure from live market quotes');
 assert(source.includes('crypto-etf-chart-refresh'),'ETF charts must expose latest exchange trade time');
 assert(css.includes('.crypto-etf-market-note .crypto-etf-refresh-state'), 'ETF auto status must render on desktop and mobile');
-assert(html.includes('style.css?v=20261123-orderbook-nodefi-v38'), 'ETF status style must bypass device caches');
-assert(html.includes('script.js?v=20261123-orderbook-nodefi-v38'),'ETF refresh code must bypass mobile/desktop browser caches');
+assert(html.includes('style.css?v=20261124-verified-four-v39'), 'ETF status style must bypass device caches');
+assert(html.includes('script.js?v=20261124-verified-four-v39'),'ETF refresh code must bypass mobile/desktop browser caches');
 assert(source.includes('function cryptoEtfVolumeChart(product,period,samples)'), 'ETF chart must expose share-volume bars');
 assert(source.includes('<rect class="etf-volume-rect"'), 'ETF volume bars must use flat 2D rectangles');
 assert(source.includes("return '<g class=\"etf-volume-bar\">'"), 'ETF bar groups must have one neutral class');
@@ -180,7 +180,7 @@ assert(css.includes('fill:#ffffff!important;')&&css.includes('fill-opacity:1!imp
 assert(!source.includes('etf-volume-side')&&!source.includes('etf-volume-top'), 'ETF chart must never render 3D faces');
 assert(css.includes('.etf-volume-bar .etf-volume-rect'), 'Flat ETF bar style must be defined');
 assert(!css.includes('.etf-volume-bar .etf-volume-side'), 'Obsolete 3D ETF side styles must be removed');
-assert(html.includes('script.js?v=20261123-orderbook-nodefi-v38')&&html.includes('style.css?v=20261123-orderbook-nodefi-v38'),
+assert(html.includes('script.js?v=20261124-verified-four-v39')&&html.includes('style.css?v=20261124-verified-four-v39'),
  'All platforms must receive the new flat ETF volumes chart assets');
 assert(source.includes("p.length>=2"), 'ETF chart must keep backward compatibility with price-only data');
 assert(source.includes("p.length>=3"), 'ETF volumes require verified volume rows, not synthetic values');
@@ -189,8 +189,8 @@ assert(source.includes('cryptoEtfVolumeChart(product,period,samples)'), 'ETF vol
 assert(css.includes('.crypto-etf-chart svg.etf-volume-svg'), 'ETF volume chart must resize on mobile');
 assert(css.includes('fill:#ffffff!important;')&&!css.includes('.etf-volume-bar.down{'),
  'ETF volume bars must stay solid white with no green/red trend styling');
-assert(html.includes('style.css?v=20261123-orderbook-nodefi-v38')&&
- html.includes('script.js?v=20261123-orderbook-nodefi-v38'),
+assert(html.includes('style.css?v=20261124-verified-four-v39')&&
+ html.includes('script.js?v=20261124-verified-four-v39'),
  'ETF volume resources must be refreshed across operating systems');
 
 assert(source.includes('async function pollCatalogPrices()'), 'Crypto catalog needs direct periodic quotes');
@@ -198,14 +198,14 @@ assert(source.includes('include_last_updated_at=true'), 'Provider timestamps are
 assert(source.includes('stamp<now-15*60000'), 'Stale catalog quotes must never look live');
 assert(source.includes('previousTime>=stamp'), 'Catalog poll must not overwrite newer market prices');
 assert(source.includes('setInterval(pollCatalogPrices,120000)'), 'Catalog must refresh without manual reload');
-assert(html.includes('script.js?v=20261123-orderbook-nodefi-v38'),
+assert(html.includes('script.js?v=20261124-verified-four-v39'),
  'All platforms must load the latest catalog polling script');
 
 assert(source.includes('map-pin')&&source.includes('data-trend='), 'Map pins must carry the regional trend');
 assert(source.includes('el.dataset.trend=trend(avg)'), 'Map pins must update with incoming region data');
 assert(css.includes('#worldMap .map-stage button.map-pin[data-trend="up"]'), 'Positive map pins must be green');
 assert(css.includes('#worldMap .map-stage button.map-pin[data-trend="down"]'), 'Negative map pins must be red');
-assert(html.includes('style.css?v=20261123-orderbook-nodefi-v38'), 'New map pin colors must bypass cached desktop/mobile CSS');
+assert(html.includes('style.css?v=20261124-verified-four-v39'), 'New map pin colors must bypass cached desktop/mobile CSS');
 
 assert(!source.includes('function cryptoRowAlertMarkup('),
  'Removed crypto arrow badge renderer must never return');
@@ -225,13 +225,13 @@ assert(!source.includes("const lunaStart=group.ids.indexOf('luna')"),
  'Price flashing must no longer be limited to LUNA and subsequent rows');
 assert(css.includes('.asset-price.crypto-threshold-flash'),
  'The targeted price blinking style must be available');
-assert(html.includes('20261123-orderbook-nodefi-v38'),
+assert(html.includes('20261124-verified-four-v39'),
  'All browsers should load the versioned price blinking assets');
 assert(css.includes('cryptoThresholdPriceBlink'),
  'Triggered UPPER/LOW prices must blink on desktop and mobile');
 assert(css.includes('.crypto-row-alert{display:none!important}'),
  'Even stale cached rows must hide the arrow badges');
-assert(html.includes('20261123-orderbook-nodefi-v38'),
+assert(html.includes('20261124-verified-four-v39'),
  'Updated JavaScript and styles must use fresh cache-busting URLs');
 assert(!source.includes("(alertRow?cryptoRowAlertMarkup(id):'')"),
  'Global crypto rows must not show the old up/down monitoring indicator');
@@ -747,7 +747,7 @@ const books=JSON.parse(read('crypto-orderbooks-data.js').replace(/^window\.__VER
 assert([42,288].includes(books.totalAssets),'Initial seed or full 288 book snapshot expected');
 assert(source.includes('verifiedMarkets')&&source.includes('loadAllCryptoBooks(serial,coin)'),
  'Extended orderbook must use verified server snapshots before browser discovery');
-assert(html.includes('crypto-orderbooks-data.js?v=20261123-orderbook-nodefi-v38'),
+assert(html.includes('crypto-orderbooks-data.js?v=20261124-verified-four-v39'),
  'Browsers and installed PWAs need a fresh snapshot URL');
 assert.equal(Object.keys(books.books).length,books.available);
 assert(books.available<=books.totalAssets&&books.available>=0,'Snapshot availability must match actual verified books');
@@ -807,6 +807,41 @@ assert(workspaceBookCode.includes("<span>Totale ('+esc(quoteCurrency)+')</span>"
  !workspaceBookCode.includes('<span>Totale (USDT)</span>')&&
  workspaceBookCode.includes("'Coppia non verificata'"),
  'Workspace total must use the actual pair quote and never invent USDT for unknown pairs');
+// Four requested assets must never display a matching ticker belonging to
+// another project or the old, unverified VRA Binance orderbook.
+assert(source.includes("const binance=id==='vra'?null:STREAM_PAIRS[id]")&&
+ source.includes("if(['vra','tai','kmd','icx'].includes(id))")&&
+ source.includes("src=orderBookSource(coin);"),
+ 'ICON, KMD, TARS AI and VRA must prefer verified Spot depth and read the server backup');
+const focusedEntryCode=source.slice(source.indexOf('function cryptoBookEntry(id,venue){'),
+ source.indexOf('function useCryptoBookEntry(id,serial){'));
+assert(focusedEntryCode.includes("if(a.extended||id==='vra'||id==='tai')"),
+ 'Legacy TAI and VRA must also have identity proof like KMD and ICX');
+const nowSec=Math.floor(Date.now()/1000);
+const proofSpecs={
+ icx:['ICX','icon',true],
+ kmd:['KMD','komodo',true],
+ tai:['TAI','tars-protocol',false],
+ vra:['VRA','verasity',false]
+};
+for(const [coin,[symbol,geckoId,extended]] of Object.entries(proofSpecs)){
+ const venue=coin==='kmd'?'XT Spot':coin==='icx'?'Bitget Spot':
+  coin==='tai'?'KuCoin Spot':'MEXC Spot';
+ const market={venue,pair:symbol+'/USDT',symbol,
+  coingeckoId:geckoId,verifiedAt:nowSec-60};
+ const book={id:coin,venue,pair:symbol+'/USDT',unit:symbol,
+  bids:[[1,3]],asks:[[1.01,2]],capturedAt:new Date().toISOString()};
+ const bundle={books:{[coin]:book},marketSources:{[coin]:[market]}};
+ const assets={[coin]:{group:'crypto',symbol:symbol+'-USD',
+  coingeckoId:geckoId,extended}};
+ const entry=new Function('cryptoBookBundle','ASSET_BY_ID',focusedEntryCode+
+  ';return cryptoBookEntry;')(()=>bundle,assets);
+ assert(entry(coin)&&entry(coin).venue===venue,
+  coin+' must accept fresh real depth when the exact asset ID is verified');
+ bundle.marketSources[coin][0]={...market,coingeckoId:'not-'+geckoId};
+ assert.equal(entry(coin),null,
+  coin+' must reject same-symbol Spot depth of an unrelated asset');
+}
 const bookHtml=app.PAGE_RENDERERS.orderbook();
 assert(!bookHtml.includes('id="orderBookVenueSelect"')&&
  !bookHtml.includes('id="orderBookVenueToolbar"')&&
