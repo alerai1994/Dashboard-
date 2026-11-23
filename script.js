@@ -9702,6 +9702,12 @@ function startVertexApp(){
    if(!orderBookIsStreaming()&&!orderBookIsFastPolling())refreshOrderBook();
   }
  },5000);
+ // Keep the 288-asset catalog current even while the selected pair streams.
+ // Refresh authenticated, venue-specific snapshots without changing live levels.
+ setInterval(()=>{
+  if(state.page==='orderbook'&&!document.hidden&&navigator.onLine!==false)
+   loadAllCryptoBooks(orderBookState.serial,orderBookState.id).catch(()=>{});
+ },2*60000);
  try{render()}finally{dismissVertexBoot()}
  // Repaint live numbers and canvas labels when the user's saved font finishes loading.
  // Without this, a cached chart can retain the fallback font until manually refreshed.
