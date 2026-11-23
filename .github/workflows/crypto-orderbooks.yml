@@ -1,4 +1,4 @@
-name: Vertex Crypto Verified Spot Order Books
+name: Vertex Crypto Verified Order Books
 
 on:
   push:
@@ -7,6 +7,7 @@ on:
       - '.github/scripts/crypto-orderbooks.py'
       - '.github/scripts/crypto-orderbooks-expanded.py'
       - '.github/scripts/crypto-orderbooks-multisource.py'
+      - '.github/scripts/crypto-orderbooks-bitpanda.py'
       - '.github/workflows/crypto-orderbooks.yml'
       - 'crypto-extended.js'
   schedule:
@@ -23,20 +24,25 @@ concurrency:
 
 jobs:
   verified-orderbooks:
-    name: Verify 288 Spot identities and refresh real BID/ASK snapshots
+    name: Verify 288 catalog identities and refresh real venue-specific BID/ASK
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - name: Validate Python collectors
         run: |
-          python3 -m py_compile .github/scripts/crypto-orderbooks.py .github/scripts/crypto-orderbooks-expanded.py .github/scripts/crypto-orderbooks-multisource.py
+          python3 -m py_compile .github/scripts/crypto-orderbooks.py .github/scripts/crypto-orderbooks-expanded.py .github/scripts/crypto-orderbooks-multisource.py .github/scripts/crypto-orderbooks-bitpanda.py
           python3 .github/scripts/crypto-orderbooks-expanded.py --selftest
           python3 .github/scripts/crypto-orderbooks-multisource.py --selftest
+          python3 .github/scripts/crypto-orderbooks-bitpanda.py --selftest
       - name: Collect verified Spot books (base 42 then expanded 288 then multi-venue)
         run: |
           python3 .github/scripts/crypto-orderbooks-expanded.py
           python3 .github/scripts/crypto-orderbooks-multisource.py
+      - name: Optional Bitpanda Fusion aggregated orderbooks (private read-only API)
+        env:
+          BITPANDA_FUSION_API_KEY: ${{ secrets.BITPANDA_FUSION_API_KEY }}
+        run: python3 .github/scripts/crypto-orderbooks-bitpanda.py
       - name: Validate authentic snapshots without fabricating missing books
         shell: bash
         run: |
