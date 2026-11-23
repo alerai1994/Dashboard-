@@ -3994,7 +3994,16 @@ function orderBookSource(id){
   const selected=orderBookVerifiedVenues(id).find(row=>row.venue===choice);
   if(selected)return orderBookVenueDescriptor(selected);
  }
- const binance=STREAM_PAIRS[id];
+ // Prefer the exact asset's independently verified Spot market for
+ // ICON, Komodo, TARS AI and Verasity, not a hard-coded Binance pair.
+ if(['vra','tai','kmd','icx'].includes(id)){
+  const verified=cryptoBookEntry(id);
+  const preferred=verified&&orderBookVenueDescriptor({
+   venue:verified.venue,pair:verified.pair,precision:verified.precision
+  });
+  if(preferred)return preferred;
+ }
+ const binance=id==='vra'?null:STREAM_PAIRS[id];
  if(binance){
   const pair=binance.toUpperCase();
   return {venue:'Binance Spot',pair,urls:[
@@ -4099,13 +4108,17 @@ function cryptoBookEntry(id,venue){
  const symbol=id==='ton'?'GRAM':a.symbol.replace('-USD','');
  if(b.unit!==symbol||!/^[A-Z0-9]{1,20}\/(USDT|USDC|USD|EUR|BTC|ETH)$/.test(String(b.pair||''))||
    b.pair.split('/')[0]!==symbol||!Array.isArray(b.bids)||!Array.isArray(b.asks))return null;
- if(a.extended){
-  const listings=p?.marketSources?.[id]||[];
-  const verified=listings.find(m=>m?.venue===b.venue&&m.pair===b.pair&&
-   m.coingeckoId===a.coingeckoId&&Date.now()/1000-Number(m.verifiedAt)<7*86400)||
-   (p?.verifiedMarkets?.[id]?.venue===b.venue?p.verifiedMarkets[id]:null);
-  if(!verified||verified.coingeckoId!==a.coingeckoId||
-    verified.symbol!==symbol||verified.pair!==b.pair)return null;
+ // The original 42-coin collector checked the symbol but not the exact
+ // asset identity; extend CoinGecko-ID proof to Verasity and TARS AI.
+ if(a.extended||id==='vra'||id==='tai'){
+  const listings=p?.marketSources?.[id]||[],fallback=p?.verifiedMarkets?.[id];
+  const fresh=m=>m?.venue===b.venue&&m.pair===b.pair&&
+   m.symbol===symbol&&m.coingeckoId===a.coingeckoId&&
+   Number(m.verifiedAt)>0&&Date.now()/1000-Number(m.verifiedAt)>=-60&&
+   Date.now()/1000-Number(m.verifiedAt)<7*86400;
+  const verified=(Array.isArray(listings)?listings:[]).find(fresh)||
+   (fresh(fallback)?fallback:null);
+  if(!verified)return null;
  }
  if(id==='ore'&&b.mint!=='oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp')return null;
  const t=Date.parse(b.capturedAt||'');
@@ -5364,11 +5377,8 @@ async function refreshOrderBook(force=false){
   updateOrderBookAssetList();
   if(src)startOrderBookLive(true);
  }
- if(!src){
-  orderBookState.error='Nessuna coppia Spot verificata, oppure la verifica con la fonte è temporaneamente non raggiungibile.';
-  orderBookState.data=null;orderBookState.busy=false;paintOrderBook();return;
- }
- // The published all-crypto backup currently contains the original 42 only.
+ // Fetch the verified multi-exchange backup BEFORE refusing a missing
+ // browser source; VRA/TAI must not be blocked by a discontinued listing.
  let backupFailure='';
  if(!ASSET_BY_ID[coin]?.extended){
   try{
@@ -5379,6 +5389,13 @@ async function refreshOrderBook(force=false){
     return;
    }
   }catch(err){backupFailure=err&&err.message?err.message:'Snapshot non raggiungibile';}
+  if(serial!==orderBookState.serial)return;
+  src=orderBookSource(coin);
+ }
+ if(!src){
+  orderBookState.error=backupFailure||
+   'Nessuna coppia Spot verificata, oppure la verifica con la fonte è temporaneamente non raggiungibile.';
+  orderBookState.data=null;orderBookState.busy=false;paintOrderBook();return;
  }
  if(serial!==orderBookState.serial)return;
  // Preserve existing dedicated ORE backup while the new 42-book feed starts.
