@@ -3996,7 +3996,10 @@ function orderBookSource(id){
  const choice=id===orderBookState.id?orderBookState.venueChoice:'';
  if(choice){
   const selected=orderBookVerifiedVenues(id).find(row=>row.venue===choice);
-  if(selected)return orderBookVenueDescriptor(selected);
+  if(selected){
+   const descriptor=orderBookVenueDescriptor(selected);
+   if(descriptor&&(descriptor.urls?.length||cryptoBookEntry(id,choice)))return descriptor;
+  }
  }
  // Prefer the exact asset's independently verified Spot market for
  // ICON, Komodo, TARS AI and Verasity, not a hard-coded Binance pair.
@@ -4047,7 +4050,9 @@ function orderBookSource(id){
   const extra=listings.find(row=>row?.coingeckoId===asset?.coingeckoId&&
    Number(row.verifiedAt)>0&&Date.now()/1000-Number(row.verifiedAt)<7*86400);
   const source=orderBookVenueDescriptor(extra);
-  if(source)return source;
+  // LATOKEN and private broker fallbacks do not have a browser-safe public
+  // depth URL. A verified pair alone is not a verified order book.
+  if(source&&(source.urls?.length||cryptoBookEntry(id,source.venue)))return source;
  }
  const mapped=orderBookDiscoveredSources.get(id);
  return mapped?.source&&Date.now()-mapped.checkedAt<2*60*60*1000?mapped.source:null;
@@ -4274,7 +4279,8 @@ function orderBookAssetList(){
   const age=book?Math.max(0,Math.floor((Date.now()-book.time)/60000)):null;
   const spread=book?orderBookSpreadText(book.bids[0][0],book.asks[0][0]):null;
   const price=book?'<span class="ob-coin-prices"><span class="color-up" title="Miglior prezzo BID">BID '+orderBookNumber(book.bids[0][0],true)+'</span><span class="color-down" title="Miglior prezzo ASK">ASK '+orderBookNumber(book.asks[0][0],true)+'</span>'+(spread?'<span class="ob-coin-spread" title="Spread BID/ASK">SPREAD '+spread+'</span>':'')+'</span>':
-    '<span class="ob-coin-unavailable">'+(src?'Book in attesa · '+esc(src.venue):'Mercato Spot non verificato')+'</span>';
+    '<span class="ob-coin-unavailable">'+(a.id==='icx'&&!src?
+      'ICX · book Spot non verificato':src?'Book in attesa · '+esc(src.venue):'Mercato Spot non verificato')+'</span>';
   return '<button class="ob-coin'+(selected?' is-selected':'')+'" data-order-book-asset="'+esc(a.id)+'" type="button" aria-pressed="'+selected+'">'+
    '<span class="ob-coin-logo">'+assetLogo(a)+'</span><span class="ob-coin-label"><strong>'+esc(a.short||a.name)+'</strong><small>'+esc(a.id==='ton'?'TON → GRAM':a.symbol.replace('-USD',''))+(book?' · '+esc(book.venue)+(age>30?' · '+age+' min':''):'')+'</small>'+price+'</span>'+
    '<span class="ob-coin-venue" title="'+esc(book?book.venue:(src?src.venue+' · in attesa':'Coppia non verificata'))+'">'+(book?'●':'—')+'</span></button>';
@@ -4822,6 +4828,12 @@ function orderBookPressureBar(bids,asks,quoteCurrency='USDT'){
 }
 function orderBookDisplay(){
  const src=orderBookActiveSource(orderBookState.id);
+ if(!src&&orderBookState.id==='icx'){
+  const message=orderBookState.error||'Nessun order book Spot ICX con livelli BID/ASK verificati e aggiornati. La rete ICON è in migrazione a SODA (scadenza 31 dicembre 2026). SODA è un asset distinto: non vengono mostrate le sue quotazioni al posto di ICX.';
+  return '<div class="ob-status" role="status"><strong>'+
+   (orderBookState.busy?'Verifica mercati ICON (ICX) in corso…':'ICON (ICX) · book Spot non verificato')+
+   '</strong><p>'+esc(message)+'</p></div>';
+ }
  if(!src)return '<div class="ob-status"><strong>'+(orderBookState.busy?'Verifica coppia Spot in corso…':'Order book Spot non disponibile')+'</strong><p>'+esc(orderBookState.error||'Nessuna coppia Spot verificata per questa crypto. Non vengono mostrati ordini di un token omonimo o dati stimati.')+'</p></div>';
  const book=orderBookState.data,stale=book&&Date.now()-orderBookState.updatedAt>30000;
  if(!book)return '<div class="ob-status"><strong>'+(orderBookState.busy?'Caricamento degli ordini reali…':'Dati non disponibili')+'</strong>'+
