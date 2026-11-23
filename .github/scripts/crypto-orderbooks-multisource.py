@@ -34,7 +34,7 @@ OUT_JS = Path("crypto-orderbooks-data.js")
 SOURCE_TTL = 7 * 86400
 BOOK_TTL = 25 * 60
 SCAN_INTERVAL = 2 * 3600
-SCAN_BATCH = 32
+SCAN_BATCH = 48
 BOOK_BATCH = 650
 # Prioritize assets shown without books in the mobile/desktop catalog.
 # Verification still requires exact CoinGecko ID AND an exchange-listed pair.
@@ -1749,6 +1749,8 @@ def run():
 
     candidates = [r for r in eligible if elapsed(r[0]) >= SCAN_INTERVAL]
     candidates.sort(key=lambda r: (
+        # Always revisit every still-unavailable asset first, rather than
+        # spending most of the discovery budget on books we already have.
         0 if r[0] not in default_books else 1,
         0 if r[0] not in sources else 1,
         PRIORITY.index(r[0]) if r[0] in PRIORITY else len(PRIORITY),
@@ -1967,6 +1969,13 @@ def run():
     OUT_JSON.write_text(compact + "\n", encoding="utf-8")
     OUT_JS.write_text("window.__VERTEX_CRYPTO_BOOKS__ = " + compact + ";\n",
                       encoding="utf-8")
+    # Log the exact remaining assets for support/debugging. Do not claim a
+    # book exists for a token that has no active identity-verified Spot depth.
+    waiting = [(cid, registry[cid][0],
+                len(sources.get(cid, [])),
+                int(ts - float(checked.get(cid, 0))) if cid in checked else None)
+               for cid in registry if cid not in default_books]
+    print("ORDERBOOK_UNAVAILABLE_ASSETS", json.dumps(waiting, separators=(",", ":")))
     print("Verified Spot multi-venue:", len(default_books), "/", len(registry),
           "crypto,", sum(len(v) for v in venue_books.values()),
           "source-specific books,", len(selected), "new identities scanned")
