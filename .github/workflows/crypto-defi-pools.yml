@@ -1,0 +1,86 @@
+name: Vertex Verified DeFi Pool Liquidity
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/crypto-defi-pools.py'
+      - '.github/workflows/crypto-defi-pools.yml'
+      - 'crypto-extended.js'
+  schedule:
+    # UTC. DEX data is a sampled market snapshot, not a live orderbook.
+    - cron: '22,52 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vertex-defi-pool-indexer
+  cancel-in-progress: false
+
+jobs:
+  pools:
+    name: Check exact token contracts and public AMM pool data
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test DeFi pool identity and non-orderbook validation
+        run: |
+          python3 -m py_compile .github/scripts/crypto-defi-pools.py
+          python3 .github/scripts/crypto-defi-pools.py --selftest
+      - name: Collect real PancakeSwap, Meteora and Raydium AMM liquidity
+        run: |
+          python3 .github/scripts/crypto-defi-pools.py
+      - name: Validate cross-platform data bundle
+        run: |
+          python3 - <<'PY'
+          import json
+          from datetime import datetime, timezone
+          from pathlib import Path
+          data=json.loads(Path('crypto-defi-pools.json').read_text(encoding='utf-8'))
+          assert data['totalAssets']==288
+          assert data['coverage']['catalogAssets']==288
+          assert data['coverage']['assetsWithPools']==len(data['pools'])
+          groups={'pancake_v1','pancake_v2','pancake_v3','pancake_v4',
+                  'pancake_other','meteora','raydium'}
+          count=0
+          for cid,rows in data['pools'].items():
+              assert cid in data['contracts'] and isinstance(rows,list)
+              for p in rows:
+                  count+=1
+                  assert p['group'] in groups
+                  assert p['chain'] in {'bsc','ethereum','base','solana'}
+                  assert data['contracts'][cid][p['chain']].lower()==p['tokenAddress'].lower()
+                  assert float(p['liquidityUsd'])>0
+                  assert p['source']=='DEX Screener'
+                  assert 'bids' not in p and 'asks' not in p
+                  assert p['url'].startswith('https://dexscreener.com/')
+                  assert 0<=(datetime.now(timezone.utc)-
+                      datetime.fromisoformat(p['capturedAt'])).total_seconds()<7200
+          assert count==data['coverage']['verifiedPoolSnapshots']
+          wrapper=Path('crypto-defi-pools-data.js').read_text(encoding='utf-8').strip()
+          assert wrapper.startswith('window.__VERTEX_DEFI_POOLS__ = ')
+          assert json.loads(wrapper.removeprefix('window.__VERTEX_DEFI_POOLS__ = ').removesuffix(';'))==data
+          print('VALIDATED',len(data['pools']),'assets and',count,'real AMM pool observations')
+          PY
+      - name: Publish only validated DeFi data
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p "$RUNNER_TEMP/vertex-defi"
+          cp crypto-defi-pools.json crypto-defi-pools-data.js "$RUNNER_TEMP/vertex-defi/"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            cp "$RUNNER_TEMP/vertex-defi/crypto-defi-pools.json" crypto-defi-pools.json
+            cp "$RUNNER_TEMP/vertex-defi/crypto-defi-pools-data.js" crypto-defi-pools-data.js
+            git add crypto-defi-pools.json crypto-defi-pools-data.js
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -m "data: verified DeFi pool snapshots [skip ci]"
+            if git push origin HEAD:main; then exit 0; fi
+            sleep 3
+          done
+          exit 1
