@@ -84,7 +84,7 @@ QUOTE_PRIORITY = ("USDT", "USDC", "USD", "EUR", "BTC", "ETH")
 # must STILL report an active Spot instrument for the exact base/quote before
 # its live BID/ASK depth is accepted. Never infer order levels from prices.
 CURATED_SPOT = {
-    "vra": ("VRA", "verasity", (("CoinEx Spot", "USDT"), ("Gate Spot", "USDT"), ("MEXC Spot", "USDT"), ("LBank Spot", "USDT"), ("HTX Spot", "USDT"), ("BitMart Spot", "USDT"), ("Bitrue Spot", "USDT"), ("Crypto.com Spot", "USDT"))),
+    "vra": ("VRA", "verasity", (("MEXC Spot", "USDT"), ("CoinEx Spot", "USDT"), ("Gate Spot", "USDT"), ("LBank Spot", "USDT"), ("HTX Spot", "USDT"), ("BitMart Spot", "USDT"), ("Bitrue Spot", "USDT"), ("Crypto.com Spot", "USDT"))),
     "tai": ("TAI", "tars-protocol", (("KuCoin Spot", "USDT"), ("MEXC Spot", "USDT"), ("Gate Spot", "USDT"))),
     "xmr": ("XMR", "monero", (("Kraken Spot", "USD"), ("Gate Spot", "USDT"))),
     "paxg": ("PAXG", "pax-gold", (("Kraken Spot", "USD"), ("Binance Spot", "USDT"))),
@@ -188,7 +188,7 @@ CURATED_SPOT = {
     "rvn": ("RVN", "ravencoin", (("Binance Spot", "USDT"), ("Kraken Spot", "USD"))),
     "sc": ("SC", "siacoin", (("Kraken Spot", "USD"), ("Binance Spot", "USDT"))),
     "zrx": ("ZRX", "0x", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
-    "kmd": ("KMD", "komodo", (("Gate Spot", "USDT"), ("MEXC Spot", "USDT"), ("HTX Spot", "USDT"), ("BitMart Spot", "USDT"), ("Bitrue Spot", "USDT"), ("Crypto.com Spot", "USDT"))),
+    "kmd": ("KMD", "komodo", (("XT Spot", "USDT"), ("Gate Spot", "USDT"), ("MEXC Spot", "USDT"), ("HTX Spot", "USDT"), ("BitMart Spot", "USDT"), ("Bitrue Spot", "USDT"), ("Crypto.com Spot", "USDT"))),
     "icx": ("ICX", "icon", (("Bitget Spot", "USDT"), ("Binance Spot", "USDT"), ("Gate Spot", "USDT"), ("HTX Spot", "USDT"), ("BitMart Spot", "USDT"), ("Bitrue Spot", "USDT"), ("Crypto.com Spot", "USDT"))),
     "ong": ("ONG", "ong", (("Binance Spot", "USDT"), ("Gate Spot", "USDT"))),
     "ont": ("ONT", "ontology", (("Binance Spot", "USDT"), ("Gate Spot", "USDT"))),
@@ -307,6 +307,30 @@ def source_valid(row, symbol, coin_id, ts):
         return 0 <= age < SOURCE_TTL
     except (ValueError, TypeError, KeyError):
         return False
+
+
+# These four coins require a current Spot market identity proof even when
+# the legacy 42-coin collector has already returned a depth snapshot.
+# The legacy collector alone checked the symbol, not its CoinGecko identity.
+FOCUSED_BOOK_IDS = ("icx", "kmd", "tai", "vra")
+
+
+def focused_book_has_identity(cid, book, sources, registry, ts):
+    if cid not in FOCUSED_BOOK_IDS:
+        return True
+    if not isinstance(book, dict) or cid not in registry:
+        return False
+    symbol, coin_id, _ = registry[cid]
+    if (book.get("id") != cid or book.get("unit") != symbol or
+        book.get("pair", "").split("/")[0] != symbol or
+        not 0 <= ts - stamp(book.get("capturedAt")) < BOOK_TTL):
+        return False
+    return any(
+        source_valid(row, symbol, coin_id, ts) and
+        row["venue"] == book.get("venue") and
+        row["pair"] == book.get("pair")
+        for row in sources.get(cid, [])
+    )
 
 
 def candidate_tickers(rows, symbol):
@@ -1320,6 +1344,25 @@ def check_fixture():
             raise AssertionError("stale book accepted")
     assert catalog_with_ids()["vra"][1] == "verasity"
     assert catalog_with_ids()["tai"][1] == "tars-protocol"
+    assert catalog_with_ids()["kmd"][:2] == ("KMD", "komodo")
+    assert catalog_with_ids()["icx"][:2] == ("ICX", "icon")
+    assert "XT Spot" in [venue for venue, _ in CURATED_SPOT["kmd"][2]]
+    assert all(CURATED_SPOT[cid][:2] == catalog_with_ids()[cid][:2]
+               for cid in FOCUSED_BOOK_IDS)
+    correct = {"id": "tai", "venue": "KuCoin Spot", "unit": "TAI",
+               "pair": "TAI/USDT",
+               "capturedAt": datetime.fromtimestamp(1100).isoformat() + "+00:00"}
+    verified = {"venue": "KuCoin Spot", "symbol": "TAI", "pair": "TAI/USDT",
+                "coingeckoId": "tars-protocol", "verifiedAt": 1000}
+    assert focused_book_has_identity("tai", correct, {"tai": [verified]},
+                                     catalog_with_ids(), 1100)
+    assert not focused_book_has_identity("tai", {**correct, "unit": "OTHER"},
+                                         {"tai": [verified]}, catalog_with_ids(), 1100)
+    assert not focused_book_has_identity("tai", correct, {"tai": [
+        {**verified, "coingeckoId": "another-tai"}]},
+        catalog_with_ids(), 1100)
+    assert not focused_book_has_identity("tai", correct, {"tai": [verified]},
+                                         catalog_with_ids(), 1100 + BOOK_TTL + 1)
     assert exchange_market_valid("LBank Spot", {"result": True, "error_code": 0,
         "data": ["vra_usdt", "tai_usdt"]}, "TAI", "USDT")
     assert not exchange_market_valid("LBank Spot", {"result": True, "error_code": 0,
@@ -1570,6 +1613,17 @@ def run():
             QUOTE_PRIORITY.index(existing["pair"].split("/")[1])):
             records[mapping["venue"]] = mapping
         sources[cid] = list(records.values())
+    # A depth snapshot from the initial 42-coin collector is NOT sufficient
+    # evidence for the four requested assets. Remove unproven, old or wrong
+    # same-symbol books before selecting a primary exchange.
+    for cid in FOCUSED_BOOK_IDS:
+        book = default_books.get(cid)
+        if book and not focused_book_has_identity(cid, book, sources, registry, ts):
+            default_books.pop(cid, None)
+            venues = venue_books.get(cid, {})
+            venues.pop(book.get("venue"), None)
+            if not venues:
+                venue_books.pop(cid, None)
     print("Curated Spot metadata checks:", curated_checked, "verified", len(curated))
 
     # Each run scans four public ticker pages of one exchange, rotating venues.
