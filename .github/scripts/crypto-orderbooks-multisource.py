@@ -84,7 +84,7 @@ QUOTE_PRIORITY = ("USDT", "USDC", "USD", "EUR", "BTC", "ETH")
 # must STILL report an active Spot instrument for the exact base/quote before
 # its live BID/ASK depth is accepted. Never infer order levels from prices.
 CURATED_SPOT = {
-    "vra": ("VRA", "verasity", (("MEXC Spot", "USDT"), ("CoinEx Spot", "USDT"), ("Gate Spot", "USDT"), ("LBank Spot", "USDT"), ("HTX Spot", "USDT"), ("BitMart Spot", "USDT"), ("Bitrue Spot", "USDT"), ("Crypto.com Spot", "USDT"))),
+    "vra": ("VRA", "verasity", (("WEEX Spot", "USDT"), ("MEXC Spot", "USDT"), ("CoinEx Spot", "USDT"), ("Gate Spot", "USDT"), ("LBank Spot", "USDT"), ("HTX Spot", "USDT"), ("BitMart Spot", "USDT"), ("Bitrue Spot", "USDT"), ("Crypto.com Spot", "USDT"), ("XT Spot", "USDT"), ("Poloniex Spot", "USDT"))),
     "tai": ("TAI", "tars-protocol", (("KuCoin Spot", "USDT"), ("MEXC Spot", "USDT"), ("Gate Spot", "USDT"))),
     "xmr": ("XMR", "monero", (("Kraken Spot", "USD"), ("Gate Spot", "USDT"))),
     "paxg": ("PAXG", "pax-gold", (("Kraken Spot", "USD"), ("Binance Spot", "USDT"))),
@@ -189,7 +189,7 @@ CURATED_SPOT = {
     "sc": ("SC", "siacoin", (("Kraken Spot", "USD"), ("Binance Spot", "USDT"))),
     "zrx": ("ZRX", "0x", (("Coinbase Exchange Spot", "USD"), ("Binance Spot", "USDT"))),
     "kmd": ("KMD", "komodo", (("XT Spot", "USDT"), ("Gate Spot", "USDT"), ("MEXC Spot", "USDT"), ("HTX Spot", "USDT"), ("BitMart Spot", "USDT"), ("Bitrue Spot", "USDT"), ("Crypto.com Spot", "USDT"))),
-    "icx": ("ICX", "icon", (("Bitget Spot", "USDT"), ("Binance Spot", "USDT"), ("Gate Spot", "USDT"), ("HTX Spot", "USDT"), ("BitMart Spot", "USDT"), ("Bitrue Spot", "USDT"), ("Crypto.com Spot", "USDT"))),
+    "icx": ("ICX", "icon", (("Gate Spot", "USDT"), ("KuCoin Spot", "USDT"), ("Bitget Spot", "USDT"), ("MEXC Spot", "USDT"), ("CoinEx Spot", "USDT"), ("XT Spot", "USDT"), ("HTX Spot", "USDT"), ("BitMart Spot", "USDT"), ("Bitrue Spot", "USDT"), ("Crypto.com Spot", "USDT"))),
     "ong": ("ONG", "ong", (("Binance Spot", "USDT"), ("Gate Spot", "USDT"))),
     "ont": ("ONT", "ontology", (("Binance Spot", "USDT"), ("Gate Spot", "USDT"))),
     "hnt": ("HNT", "helium", (("Coinbase Exchange Spot", "USD"), ("Kraken Spot", "USD"))),
@@ -868,7 +868,12 @@ def bulk_exchange_candidates(tickers, registry):
 def verify_bulk_pair(cid, symbol, coin_id, quoted, venue, ts):
     try:
         meta = get_spot_metadata(venue, symbol, quoted)
-        if exchange_market_valid(venue, meta, symbol, quoted):
+        tradable = exchange_market_valid(venue, meta, symbol, quoted)
+        if cid in ("icx", "vra"):
+            print("FOCUSED SPOT metadata", symbol, venue, quoted,
+                  "ACTIVE" if tradable else "NOT ACTIVE",
+                  flush=True)
+        if tradable:
             mapping = {
                 "venue": venue, "pair": symbol + "/" + quoted,
                 "symbol": symbol, "coingeckoId": coin_id, "verifiedAt": ts
@@ -876,8 +881,10 @@ def verify_bulk_pair(cid, symbol, coin_id, quoted, venue, ts):
             if venue == "Bitunix Spot":
                 mapping["precision"] = bitunix_precision(meta, symbol, quoted)
             return cid, mapping
-    except (OSError, ValueError, TypeError, KeyError):
-        pass
+    except (OSError, ValueError, TypeError, KeyError) as exc:
+        if cid in ("icx", "vra"):
+            print("FOCUSED SPOT metadata", symbol, venue, quoted,
+                  "SOURCE ERROR", type(exc).__name__, flush=True)
     return cid, None
 
 
@@ -1347,6 +1354,10 @@ def check_fixture():
     assert catalog_with_ids()["kmd"][:2] == ("KMD", "komodo")
     assert catalog_with_ids()["icx"][:2] == ("ICX", "icon")
     assert "XT Spot" in [venue for venue, _ in CURATED_SPOT["kmd"][2]]
+    assert "WEEX Spot" in [venue for venue, _ in CURATED_SPOT["vra"][2]]
+    assert "KuCoin Spot" in [venue for venue, _ in CURATED_SPOT["icx"][2]]
+    assert "Binance Spot" not in [venue for venue, _ in CURATED_SPOT["icx"][2]]
+
     assert all(CURATED_SPOT[cid][:2] == catalog_with_ids()[cid][:2]
                for cid in FOCUSED_BOOK_IDS)
     correct = {"id": "tai", "venue": "KuCoin Spot", "unit": "TAI",
