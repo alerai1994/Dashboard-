@@ -1,0 +1,88 @@
+name: Vertex Crypto Verified Spot Order Books
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/crypto-orderbooks.py'
+      - '.github/scripts/crypto-orderbooks-expanded.py'
+      - '.github/scripts/crypto-orderbooks-multisource.py'
+      - '.github/workflows/crypto-orderbooks.yml'
+      - 'crypto-extended.js'
+  schedule:
+    # GitHub Actions schedules are UTC and can be delayed by the provider.
+    - cron: '13,43 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vertex-crypto-orderbooks
+  cancel-in-progress: false
+
+jobs:
+  verified-orderbooks:
+    name: Verify 288 Spot identities and refresh real BID/ASK snapshots
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Python collectors
+        run: |
+          python3 -m py_compile .github/scripts/crypto-orderbooks.py .github/scripts/crypto-orderbooks-expanded.py .github/scripts/crypto-orderbooks-multisource.py
+          python3 .github/scripts/crypto-orderbooks-expanded.py --selftest
+          python3 .github/scripts/crypto-orderbooks-multisource.py --selftest
+      - name: Collect verified Spot books (base 42 then expanded 288 then multi-venue)
+        run: |
+          python3 .github/scripts/crypto-orderbooks-expanded.py
+          python3 .github/scripts/crypto-orderbooks-multisource.py
+      - name: Validate authentic snapshots without fabricating missing books
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from datetime import datetime, timezone
+          from pathlib import Path
+          path=Path('crypto-orderbooks.json')
+          payload=json.loads(path.read_text(encoding='utf-8'))
+          assert payload['totalAssets']==288
+          assert payload['coverage']['catalogAssets']==288
+          books=payload.get('books',{})
+          assert isinstance(books,dict) and 0<len(books)<=288
+          assert payload.get('available')==len(books)
+          for cid,book in books.items():
+              assert book['id']==cid, cid
+              assert book['venue'] and book['pair'] and book['unit'], cid
+              assert book['pair'].split('/')[0]==book['unit'], cid
+              bid=[float(r[0]) for r in book['bids']]
+              ask=[float(r[0]) for r in book['asks']]
+              assert bid and ask and max(bid)<min(ask), cid
+              assert all(float(r[1])>0 for r in book['bids']+book['asks']), cid
+              when=datetime.fromisoformat(book['capturedAt'].replace('Z','+00:00'))
+              assert when.tzinfo and (datetime.now(timezone.utc)-when).total_seconds()<10800, cid
+          js=Path('crypto-orderbooks-data.js').read_text(encoding='utf-8').strip()
+          assert js.startswith('window.__VERTEX_CRYPTO_BOOKS__ = ')
+          assert json.loads(js.removeprefix('window.__VERTEX_CRYPTO_BOOKS__ = ').removesuffix(';'))==payload
+          print(f"VALIDATED {len(books)}/288 real venue-specific Spot order books")
+          PY
+      - name: Publish the refreshed JSON and universal JS browser fallback
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Stage only the two validated snapshots; never overwrite manual source edits.
+          mkdir -p "$RUNNER_TEMP/vertex-books"
+          cp crypto-orderbooks.json crypto-orderbooks-data.js "$RUNNER_TEMP/vertex-books/"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            cp "$RUNNER_TEMP/vertex-books/crypto-orderbooks.json" crypto-orderbooks.json
+            cp "$RUNNER_TEMP/vertex-books/crypto-orderbooks-data.js" crypto-orderbooks-data.js
+            git add crypto-orderbooks.json crypto-orderbooks-data.js
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -m "data: refresh 288 crypto Spot order books [skip ci]"
+            if git push origin HEAD:main; then exit 0; fi
+            sleep 3
+          done
+          exit 1
