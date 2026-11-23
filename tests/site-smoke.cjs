@@ -811,7 +811,7 @@ assert(workspaceBookCode.includes("<span>Totale ('+esc(quoteCurrency)+')</span>"
 const bookHtml=app.PAGE_RENDERERS.orderbook();
 assert(bookHtml.includes('id="orderBookVenueSelect"')&&
  bookHtml.includes('id="orderBookVenueToolbar"')&&
- bookHtml.includes('Fonte Spot · Exchange'),
+ bookHtml.includes('Fonte Order Book · Spot / Fusion'),
  'Order Book must expose a verified exchange selector on desktop and mobile');
 assert(['all','ready','waiting'].every(filter=>bookHtml.includes('data-order-book-filter="'+filter+'"'))&&
  !bookHtml.includes('data-order-book-expand=')&&
