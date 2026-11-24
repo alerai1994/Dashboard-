@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Assistente mercati · Vertex</title>
+<style>
+:root{color-scheme:dark;--bg:#121e23;--panel:#1d3037;--ink:#eff6f5;--line:#547078;--accent:#a3dcdb}
+@media(prefers-color-scheme:light){:root{color-scheme:light;--bg:#f5f8f8;--panel:white;--ink:#183238;--line:#80999c;--accent:#0e6767}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:1rem/1.55 system-ui,sans-serif}main{max-width:48rem;margin:0 auto;padding:clamp(1rem,4vw,3rem)}header{display:flex;justify-content:space-between;align-items:center}a,strong{color:var(--accent)}h1{font-size:clamp(2rem,5vw,3rem);line-height:1.12}article{border-left:2px solid var(--line);padding-left:1rem;margin:1.25rem 0}article p{white-space:pre-wrap;overflow-wrap:anywhere;margin:.3rem 0}textarea,button{background:var(--panel);color:inherit;border:1px solid var(--line);border-radius:.6rem;padding:.65rem .9rem;font:inherit}button{cursor:pointer}button:disabled{opacity:.55}label,textarea,small{display:block}textarea{width:100%;margin:.45rem 0;resize:vertical}small{margin-bottom:1rem}#send{background:var(--accent);color:var(--bg);font-weight:bold}
+main{padding-bottom:4rem}.lightbar{position:fixed;bottom:0;left:0;right:0;height:6px;z-index:5;background:linear-gradient(90deg,#6c63ff,#00cfff,#00e29c,#ffd24f,#ff578e,#6c63ff);background-size:200% 100%;box-shadow:0 -2px 15px #9878ff95;pointer-events:none;animation:flow 7s linear infinite}body:has(#chat[data-voice="on"]) .lightbar,body:has(#send:disabled) .lightbar{height:9px;box-shadow:0 -4px 24px #25cfffaa;animation-duration:2s}@keyframes flow{to{background-position:200% 0}}@media(prefers-reduced-motion:reduce){.lightbar{animation:none}}#mic[aria-pressed=true]{outline:2px solid var(--accent)}
+</style></head><body><main>
+<header><a href="./index.html">← Dashboard Vertex</a><button id="reset">Nuova chat</button></header>
+<h1>Assistente mercati</h1><p>Parla con Vertex di azioni, indici, ETF, obbligazioni, valute, materie prime e cripto. Per un’analisi attuale, includi la quotazione e la data.</p>
+<section id="log" role="log" aria-label="Conversazione"></section>
+<form id="chat"><label for="question">La tua domanda</label><textarea id="question" rows="3" maxlength="2000" placeholder="Che differenza c’è tra un BTP e un ETF obbligazionario?" required></textarea>
+<small>La prima dettatura scarica anche il modello vocale. Audio e trascrizione restano sul dispositivo. Al primo invio il browser scarica il modello (circa 512 MB) e i componenti necessari. Le domande vengono elaborate sul dispositivo. La conversazione si azzera quando chiudi la pagina.</small>
+<button id="mic" type="button" aria-pressed="false">🎙 Microfono</button> <button id="send">Invia domanda</button> <button type="button" id="stop" hidden>Annulla</button><p id="status" role="status"></p></form></main>
+<div class="lightbar" aria-hidden="true"></div>
+<script type="text/plain" id="voice-engine">let transcriber;
+self.onmessage = async ({data: samples}) => {
+  try {
+    if (!transcriber) {
+      const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2/dist/transformers.min.js');
+      env.allowLocalModels = false;
+      env.backends.onnx.wasm.numThreads = 1;
+      transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny', {device:'wasm', dtype:'q8'});
+    }
+    const result = await transcriber(samples, {language:'italian', task:'transcribe'});
+    self.postMessage({text:result.text.trim()});
+  } catch {
+    self.postMessage({error:'Trascrizione non riuscita. Controlla la connessione per il primo download o scrivi la domanda.'});
+  }
+};</script>
+<script type="text/plain" id="engine">let model;
+self.onmessage = async ({data: turns}) => {
+  try {
+    if (!model) {
+      const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2/dist/transformers.min.js');
+      env.allowLocalModels = false;
+      env.backends.onnx.wasm.numThreads = 1;
+      model = await pipeline('text-generation', 'onnx-community/Qwen2.5-0.5B-Instruct', {
+        device: 'wasm', dtype: 'q8',
+        progress_callback(event) {
+          if (event.status === 'progress' && event.file.endsWith('.onnx')) {
+            self.postMessage({status: 'Caricamento modello · ' + Math.round(event.progress) + '%'});
+          }
+        }
+      });
+    }
+    self.postMessage({status: 'Vertex sta elaborando la domanda sul dispositivo…'});
+    const result = await model(turns, {max_new_tokens: 300, do_sample: false, return_full_text: false});
+    const generated = result[0].generated_text;
+    const answer = typeof generated === 'string' ? generated : generated.at(-1)?.content;
+    if (!answer?.trim()) throw Error('empty');
+    self.postMessage({answer: answer.trim()});
+  } catch {
+    self.postMessage({error: 'Elaborazione interrotta. Verifica la connessione per il primo download e la memoria disponibile, poi riprova.'});
+  }
+};</script><script>const el = id => document.getElementById(id);
+const form = el('chat'), input = el('question'), log = el('log'), statusLine = el('status');
+let worker, question;
+const history = [];
+const mic = el('mic');
+let recording = null, voiceWorker = null;
+function releaseAudio(session) {
+  session.processor?.disconnect();
+  session.source?.disconnect();
+  session.stream?.getTracks().forEach(track => track.stop());
+  if (session.ctx && session.ctx.state !== 'closed') session.ctx.close().catch(() => {});
+}
+function endVoice() {
+  const session = recording;
+  recording = null;
+  if (session) releaseAudio(session);
+  mic.textContent = '🎙 Microfono';
+  mic.setAttribute('aria-pressed','false');
+  mic.disabled = false;
+  input.readOnly = false;
+  el('send').disabled = false;
+  el('chat').dataset.voice = 'off';
+}
+function finishRecording() {
+  const session = recording;
+  if (!session || session.phase !== 'listening') return;
+  session.phase = 'transcribing';
+  releaseAudio(session);
+  if (!session.length) { endVoice(); statusLine.textContent = 'Nessun audio registrato.'; return; }
+  mic.disabled = true;
+  statusLine.textContent = 'Trascrizione sul dispositivo… Al primo utilizzo scarico il modello vocale.';
+  try {
+    const samples = new Float32Array(session.length);
+    let offset = 0;
+    for (const block of session.blocks) { samples.set(block, offset); offset += block.length; }
+    if (!voiceWorker) {
+      const url = URL.createObjectURL(new Blob([el('voice-engine').textContent], {type:'text/javascript'}));
+      try { voiceWorker = new Worker(url, {type:'module'}); } finally { URL.revokeObjectURL(url); }
+    }
+    voiceWorker.onmessage = ({data}) => {
+      if (recording !== session) return;
+      if (data.text) input.value = [input.value.trim(), data.text].filter(Boolean).join(' ').slice(0,input.maxLength);
+      endVoice();
+      statusLine.textContent = data.error || (data.text ? 'Dettatura pronta. Puoi correggere il testo o inviarlo.' : 'Nessuna parola riconosciuta.');
+      input.focus();
+    };
+    voiceWorker.onerror = () => {
+      if (recording !== session) return;
+      voiceWorker.terminate(); voiceWorker = null;
+      endVoice(); statusLine.textContent = 'Motore vocale non disponibile. Puoi scrivere la domanda.';
+    };
+    voiceWorker.postMessage(samples, [samples.buffer]);
+  } catch { endVoice(); statusLine.textContent = 'Trascrizione non disponibile.'; }
+}
+mic.onclick = async () => {
+  if (question) return;
+  if (recording) { finishRecording(); return; }
+  const session = {phase:'request', blocks:[], length:0};
+  recording = session;
+  mic.disabled = true;
+  input.readOnly = true;
+  el('send').disabled = true;
+  statusLine.textContent = 'Consenti l’accesso al microfono per dettare.';
+  try {
+    const Audio = window.AudioContext || window.webkitAudioContext;
+    session.ctx = new Audio({sampleRate:16000});
+    await session.ctx.resume();
+    if (recording !== session) return;
+    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    if (recording !== session) { stream.getTracks().forEach(track => track.stop()); return; }
+    session.stream = stream;
+    session.source = session.ctx.createMediaStreamSource(stream);
+    session.processor = session.ctx.createScriptProcessor(4096,1,1);
+    session.processor.onaudioprocess = event => {
+      if (session.phase !== 'listening') return;
+      const part = event.inputBuffer.getChannelData(0).slice(0, 480000 - session.length);
+      session.blocks.push(part);
+      session.length += part.length;
+      if (session.length >= 480000) finishRecording();
+    };
+    session.source.connect(session.processor);
+    session.processor.connect(session.ctx.destination);
+    session.phase = 'listening';
+    mic.disabled = false;
+    mic.textContent = '■ Termina dettatura';
+    mic.setAttribute('aria-pressed','true');
+    el('chat').dataset.voice = 'on';
+    statusLine.textContent = 'In ascolto · fino a 30 secondi. Premi Termina dettatura quando hai finito.';
+  } catch (error) {
+    if (recording !== session) return;
+    endVoice();
+    statusLine.textContent = error.name === 'NotAllowedError' ? 'Accesso al microfono negato. Puoi abilitarlo nelle impostazioni del sito o scrivere la domanda.' : 'Microfono non disponibile. Puoi scrivere la domanda.';
+  }
+};
+function cancelVoice() {
+  if (voiceWorker) { voiceWorker.terminate(); voiceWorker = null; }
+  if (recording) endVoice();
+}
+window.addEventListener('pagehide', cancelVoice);
+
+function idle() {
+  mic.disabled = false;
+  question = '';
+  input.readOnly = false;
+  el('send').disabled = false;
+  el('stop').hidden = true;
+}
+function stop() {
+  if (worker) worker.terminate();
+  worker = null;
+  idle();
+}
+function bubble(label, value) {
+  const article = document.createElement('article');
+  const name = document.createElement('strong'), body = document.createElement('p');
+  name.textContent = label;
+  body.textContent = value;
+  article.append(name, body);
+  log.append(article);
+}
+el('stop').onclick = () => { stop(); statusLine.textContent = 'Operazione annullata.'; };
+el('reset').onclick = () => {
+  stop();
+  cancelVoice();
+  history.length = 0;
+  log.replaceChildren();
+  input.value = '';
+  statusLine.textContent = '';
+  input.focus();
+};
+form.onsubmit = event => {
+  event.preventDefault();
+  if (recording || question || !input.value.trim()) return;
+  question = input.value.trim();
+  mic.disabled = true;
+  input.readOnly = true;
+  el('send').disabled = true;
+  el('stop').hidden = false;
+  statusLine.textContent = 'Preparazione del modello locale…';
+  try {
+    if (!worker) {
+      const url = URL.createObjectURL(new Blob([el('engine').textContent], {type:'text/javascript'}));
+      try { worker = new Worker(url, {type:'module'}); } finally { URL.revokeObjectURL(url); }
+      worker.onerror = () => { stop(); statusLine.textContent = 'Il motore locale non si è avviato. Riprova con un browser aggiornato.'; };
+      worker.onmessage = ({data}) => {
+        if (data.status) { statusLine.textContent = data.status; return; }
+        if (data.error) { stop(); statusLine.textContent = data.error; return; }
+        bubble('Tu', question);
+        bubble('Vertex', data.answer);
+        history.push({role:'user', content:question}, {role:'assistant', content:data.answer});
+        if (history.length > 8) history.splice(0,2);
+        statusLine.textContent = '';
+        input.value = '';
+        idle();
+        input.focus();
+      };
+    }
+    const prompt = 'Sei Vertex, assistente personale sui mercati finanziari. Rispondi in italiano in modo chiaro e conciso. Tratta azioni, ETF, indici, obbligazioni, forex, materie prime, crypto e macroeconomia. Non disponi di dati live o notizie recenti. Per analisi attuali chiedi prezzo, data e fonte. Non inventare dati o fonti. Distingui esempi, fatti e ipotesi.';
+    worker.postMessage([{role:'system',content:prompt}, ...history, {role:'user',content:question}]);
+  } catch {
+    stop();
+    statusLine.textContent = 'Avvio non riuscito. Riprova in un browser aggiornato.';
+  }
+};</script></body></html>
