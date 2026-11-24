@@ -12,7 +12,7 @@ main{padding-bottom:4rem}.lightbar{position:fixed;bottom:0;left:0;right:0;height
 <section id="log" role="log" aria-label="Conversazione"></section>
 <form id="chat"><label for="question">La tua domanda</label><textarea id="question" rows="3" placeholder="Che differenza c’è tra un BTP e un ETF obbligazionario?" required></textarea>
 <small>La prima dettatura scarica anche il modello vocale. Audio e trascrizione restano sul dispositivo. Al primo invio il browser scarica il modello (circa 512 MB) e i componenti necessari. Le domande vengono elaborate sul dispositivo. La conversazione si azzera quando chiudi la pagina.</small>
-<div id="playback" hidden><label for="voice-original">Riascolta la tua ultima dettatura</label><audio id="voice-original" controls></audio></div>
+<div id="playback" hidden><label for="voice-original">Riascolta la tua ultima dettatura</label><audio id="voice-original" controls></audio><details id="raw-dictation" hidden><summary>Trascrizione originale</summary><p id="raw-words"></p></details></div>
 <button id="mic" type="button" aria-pressed="false">🎙 Microfono</button> <button id="send">Invia domanda</button> <button type="button" id="stop" hidden>Annulla</button><p id="status" role="status"></p></form></main>
 <div class="lightbar" aria-hidden="true"></div>
 <svg id="voice-wave" aria-hidden="true" viewBox="0 0 600 84" preserveAspectRatio="none">
@@ -337,6 +337,9 @@ function endVoice() {
 }
 let recordingUrl;
 function clearPlayback() {
+  el('raw-dictation').hidden = true;
+  el('raw-dictation').open = false;
+  el('raw-words').textContent = '';
   if (!recordingUrl) return;
   const player = el('voice-original');
   player.pause();
@@ -363,6 +366,30 @@ function offerPlayback(samples, sampleRate) {
   el('voice-original').src = recordingUrl;
   el('playback').hidden = false;
 }
+function correctItalianDictation(text) {
+  const terms = [
+    [/\bperch[eè](?![\p{L}])/giu, 'perché'],
+    [/\bqual['’]\s*[eè](?![\p{L}])/giu, 'qual è'],
+    [/\bqual e(?=\s+(?:il|la|lo|un|una)\b)/giu, 'qual è'],
+    [/\bpo['’]\s*/giu, match => match.replace("'", '’')],
+    [/\bun po(?=\s|[.,;:!?]|$)/giu, 'un po’'],
+    [/\bbit[\s-]?coin\b/gi, 'Bitcoin'],
+    [/\bethereum\b/gi, 'Ethereum'],
+    [/\bsolana\b/gi, 'Solana'],
+    [/\bnasdaq\b/gi, 'Nasdaq'],
+    [/\b(?:e\s+t\s+f|etf)\b/gi, 'ETF'],
+    [/\b(?:b\s+t\s+p|btp)\b/gi, 'BTP'],
+    [/\b(?:b\s+c\s+e|bce)\b/gi, 'BCE']
+  ];
+  let corrected = text.trim();
+  for (const [pattern, replacement] of terms) corrected = corrected.replace(pattern, replacement);
+  corrected = corrected.replace(/^(\p{Ll})/u, letter => letter.toLocaleUpperCase('it'));
+  if (/^(?:qual[ei]?|quanto|quanta|quanti|quante|perché|come|quando|dove|chi|cosa|che cosa)\s/iu.test(corrected)) {
+    if (!/[!?…]$/.test(corrected)) corrected = corrected.replace(/\.?$/, '?');
+  }
+  return corrected;
+}
+
 function finishRecording() {
   const session = recording;
   if (!session || session.phase !== 'listening') return;
@@ -384,10 +411,13 @@ function finishRecording() {
       if (recording !== session) return;
       if (data.text) {
         const separator = input.value && !/\s$/.test(input.value) ? ' ' : '';
-        input.value += separator + data.text;
+        const corrected = correctItalianDictation(data.text);
+        input.value += separator + corrected;
+        el('raw-words').textContent = data.text;
+        el('raw-dictation').hidden = corrected === data.text;
       }
       endVoice();
-      statusLine.textContent = data.error || (data.text ? 'Dettatura pronta. Puoi correggere il testo o inviarlo.' : 'Nessuna parola riconosciuta.');
+      statusLine.textContent = data.error || (data.text ? 'Trascrizione pronta. Rileggila e premi Invia domanda.' : 'Nessuna parola riconosciuta.');
       input.focus();
     };
     voiceWorker.onerror = () => {
