@@ -6,6 +6,19 @@
 <meta name="theme-color" content="#07111d">
 <meta name="description" content="Vertex Global — dashboard dei mercati mondiali con mappa interattiva, indici, Forex, crypto e strumenti di analisi.">
 <title>Vertex · Global Markets</title>
+<style>
+html.from-assistant #vertexBootScreen,
+html.from-assistant #pageContainer > .startup-loader { display:none !important }
+</style>
+<script>
+(() => {
+  const url = new URL(location.href);
+  if (url.searchParams.get('from') !== 'assistant') return;
+  document.documentElement.classList.add('from-assistant');
+  url.searchParams.delete('from');
+  try { history.replaceState(history.state, '', url.href); } catch {}
+})();
+</script>
 <link rel="icon" href="icons/vertex-original-192.png">
 <link rel="apple-touch-icon" href="icons/vertex-original-192.png">
 <link rel="manifest" href="manifest-vertex-original.webmanifest?v=20261103-device-widgets">
