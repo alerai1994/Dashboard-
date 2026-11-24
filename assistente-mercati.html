@@ -1295,6 +1295,75 @@ function stop() {
 }
 let speakingAnswer=false,speechGeneration=0,speechTimer=0,activeUtterance=null,lastSpokenAnswer='';
 let speechPrimed=false,speechPrimer=null,availableSpeechVoices=[];
+let speechAudioContext=null,speechAudioSource=null,speechAudioElement=null,speechAudioUrl=null,localSpeechWorker=null;
+function unlockSpeechAudio(){
+  try{
+    const Audio=window.AudioContext||window.webkitAudioContext;
+    if(!Audio)return;
+    if(!speechAudioContext||speechAudioContext.state==='closed')speechAudioContext=new Audio();
+    const ctx=speechAudioContext;
+    if(ctx.state!=='running')ctx.resume().catch(()=>{});
+    const buffer=ctx.createBuffer(1,1,ctx.sampleRate),source=ctx.createBufferSource();
+    source.buffer=buffer;source.connect(ctx.destination);source.start();
+  }catch{}
+}
+function stopLocalSpeech(){
+  if(localSpeechWorker){localSpeechWorker.terminate();localSpeechWorker=null;}
+  if(speechAudioSource){try{speechAudioSource.stop();speechAudioSource.disconnect();}catch{}speechAudioSource=null;}
+  if(speechAudioElement){speechAudioElement.onended=speechAudioElement.onerror=null;speechAudioElement.pause();speechAudioElement.removeAttribute('src');speechAudioElement=null;}
+  if(speechAudioUrl){URL.revokeObjectURL(speechAudioUrl);speechAudioUrl=null;}
+}
+function localSpeechBlob(text,generation){
+  return new Promise((resolve,reject)=>{
+    if(generation!==speechGeneration){reject(Error('Annullato'));return;}
+    try{
+      if(!localSpeechWorker){
+        const code="let engine;self.onmessage=async({data})=>{try{engine=engine||await import('https://cdn.jsdelivr.net/npm/@diffusionstudio/vits-web@1.0.3/+esm');const wav=await engine.predict({text:data.text,voiceId:'it_IT-riccardo-x_low'},p=>{if(p.total)self.postMessage({progress:Math.round(p.loaded*100/p.total)})});self.postMessage({wav});}catch(e){self.postMessage({error:String(e.message||e)})}};";
+        const url=URL.createObjectURL(new Blob([code],{type:'text/javascript'}));
+        try{localSpeechWorker=new Worker(url,{type:'module'});}finally{URL.revokeObjectURL(url);}
+      }
+      const engine=localSpeechWorker;
+      engine.onmessage=({data})=>{
+        if(generation!==speechGeneration){reject(Error('Annullato'));return;}
+        if(typeof data.progress==='number'){statusLine.textContent='Preparazione voce italiana · '+data.progress+'%';return;}
+        if(data.wav instanceof Blob&&data.wav.size>44)resolve(data.wav);
+        else reject(Error(data.error||'Audio non disponibile'));
+      };
+      engine.onerror=()=>reject(Error('Motore vocale locale non disponibile'));
+      engine.postMessage({text});
+    }catch(error){reject(error);}
+  });
+}
+async function playLocalSpeech(blob,generation){
+  if(generation!==speechGeneration)return;
+  const ctx=speechAudioContext;
+  if(ctx){
+    try{
+      if(ctx.state!=='running')await Promise.race([ctx.resume(),new Promise(r=>setTimeout(r,800))]);
+      if(generation!==speechGeneration)return;
+      if(ctx.state==='running'){
+        const audio=await ctx.decodeAudioData(await blob.arrayBuffer());
+        if(generation!==speechGeneration)return;
+        await new Promise((resolve,reject)=>{
+          const source=ctx.createBufferSource();speechAudioSource=source;source.buffer=audio;source.connect(ctx.destination);
+          source.onended=()=>{if(speechAudioSource===source)speechAudioSource=null;try{source.disconnect();}catch{}resolve();};
+          try{source.start();}catch(e){reject(e);}
+        });
+        return;
+      }
+    }catch{if(generation!==speechGeneration)return;}
+  }
+  if(generation!==speechGeneration)return;
+  await new Promise((resolve,reject)=>{
+    const audio=new window.Audio();speechAudioElement=audio;
+    const url=URL.createObjectURL(blob);speechAudioUrl=url;
+    function cleanup(){audio.onended=audio.onerror=null;if(speechAudioElement===audio)speechAudioElement=null;if(speechAudioUrl===url){URL.revokeObjectURL(url);speechAudioUrl=null;}}
+    audio.onended=()=>{cleanup();resolve();};
+    audio.onerror=()=>{cleanup();reject(Error('Riproduzione non disponibile'));};
+    audio.src=url;
+    audio.play().catch(e=>{cleanup();reject(e);});
+  });
+}
 function refreshSpeechVoices(){
   try{availableSpeechVoices=window.speechSynthesis?.getVoices()||[];}catch{availableSpeechVoices=[];}
 }
@@ -1303,6 +1372,7 @@ try{window.speechSynthesis?.addEventListener('voiceschanged',refreshSpeechVoices
 function prepareSpeechFromGesture(){
   // Some mobile browsers only initialize the speech engine during a tap.
   // Prime silently BEFORE starting microphone capture, without a spoken greeting.
+  unlockSpeechAudio();
   const synth=window.speechSynthesis;
   if(!synth||typeof window.SpeechSynthesisUtterance!=='function')return;
   try{
@@ -1321,6 +1391,7 @@ function cancelSpeech(){
   speakingAnswer=false;
   activeUtterance=null;
   speechPrimer=null;
+  stopLocalSpeech();
   try{window.speechSynthesis?.cancel();}catch{}
 }
 function speechChunks(value){
@@ -1347,14 +1418,11 @@ function speakAnswer(answer){
   const retry=el('speak-retry'),stopButton=el('stop');
   retry.hidden=true;
   const synth=window.speechSynthesis;
-  if(!synth||typeof window.SpeechSynthesisUtterance!=='function'){
-    statusLine.textContent='Risposta scritta disponibile. La sintesi vocale non è supportata da questo browser.';
-    return;
-  }
+  const nativeSupported=!!synth&&typeof window.SpeechSynthesisUtterance==='function';
   const chunks=speechChunks(lastSpokenAnswer);
   if(!chunks.length)return;
   const generation=speechGeneration;
-  let index=0,attempt=0;
+  let index=0,attempt=0,useLocal=!nativeSupported;
   speakingAnswer=true;
   mic.disabled=true;
   el('send').disabled=true;
@@ -1368,9 +1436,25 @@ function speakAnswer(answer){
     retry.hidden=!failed;
     statusLine.textContent=failed?'Risposta disponibile. Tocca Ascolta risposta per avviare la voce.':'';
   }
+  async function localNext(){
+    if(generation!==speechGeneration)return;
+    if(index>=chunks.length){finish(false);return;}
+    statusLine.textContent='Preparazione della voce italiana di Vertex…';
+    clearTimeout(speechTimer);
+    speechTimer=setTimeout(()=>finish(true),120000);
+    try{
+      const blob=await localSpeechBlob(chunks[index],generation);
+      if(generation!==speechGeneration)return;
+      statusLine.textContent='Vertex sta rispondendo…';
+      await playLocalSpeech(blob,generation);
+      if(generation!==speechGeneration)return;
+      clearTimeout(speechTimer);index++;attempt=0;next();
+    }catch{finish(true);}
+  }
   function next(){
     if(generation!==speechGeneration)return;
     if(index>=chunks.length){finish(false);return;}
+    if(useLocal){localNext();return;}
     try{
       const u=new SpeechSynthesisUtterance(chunks[index]);
       activeUtterance=u;
@@ -1396,17 +1480,17 @@ function speakAnswer(answer){
         if(attempt++===0){
           try{synth.cancel();synth.resume();}catch{}
           speechTimer=setTimeout(next,150);
-        }else finish(true);
+        }else {useLocal=true;next();}
       }
       u.onerror=retryChunk;
       speechTimer=setTimeout(retryChunk,8000);
       if(synth.paused)synth.resume();
       synth.speak(u);
-    }catch{finish(true);}
+    }catch{useLocal=true;next();}
   }
   next();
 }
-el('speak-retry').onclick=()=>{if(!recording&&!question&&!speakingAnswer&&lastSpokenAnswer){refreshSpeechVoices();speakAnswer(lastSpokenAnswer);}};
+el('speak-retry').onclick=()=>{if(!recording&&!question&&!speakingAnswer&&lastSpokenAnswer){unlockSpeechAudio();refreshSpeechVoices();speakAnswer(lastSpokenAnswer);}};
 function bubble(label, value) {
   const article = document.createElement('article');
   const name = document.createElement('strong'), body = document.createElement('p');
@@ -1441,15 +1525,13 @@ el('clear-memory').onclick=async()=>{
 };
 function acceptAnswer(answer) {
   if(!question)return;
-  const readAloud=voiceQuestion;
   bubble('Tu', question);
   bubble('Vertex', answer);
   rememberExchange(question,answer);
   statusLine.textContent = '';
   input.value = '';
   idle();
-  if(readAloud)speakAnswer(answer);
-  else input.focus();
+  speakAnswer(answer);
 }
 let cryptoUpdateController=null;
 function cryptoUpdateIntent(text){
@@ -1587,7 +1669,7 @@ async function submitQuestion(fromVoice=false){
     statusLine.textContent = 'Avvio non riuscito. Riprova in un browser aggiornato.';
   }
 }
-form.onsubmit=event=>{event.preventDefault();submitQuestion(false);};
+form.onsubmit=event=>{event.preventDefault();if(!recording&&!question&&!speakingAnswer&&input.value.trim())prepareSpeechFromGesture();submitQuestion(false);};
 mic.disabled=true;el('send').disabled=true;
 memoryStatus();
 restoreMemory().finally(()=>{
