@@ -431,6 +431,81 @@ function correctItalianDictation(text) {
   return corrected;
 }
 
+function joinedAudio(session) {
+  const audio = new Float32Array(session.length);
+  let offset = 0;
+  for (const part of session.blocks) {
+    audio.set(part, offset);
+    offset += part.length;
+  }
+  return audio;
+}
+
+// Whisper takes 16 kHz PCM; capture at the browser's hardware rate.
+function speechSamples(audio, rate) {
+  if (rate === 16000) return audio;
+  const ratio = rate / 16000;
+  const output = new Float32Array(Math.floor(audio.length / ratio));
+  for (let i = 0; i < output.length; i++) {
+    const start = Math.floor(i * ratio);
+    const end = Math.max(start + 1, Math.floor((i + 1) * ratio));
+    let sum = 0;
+    for (let j = start; j < end; j++) sum += audio[j];
+    output[i] = sum / (end - start);
+  }
+  return output;
+}
+
+function transcribeSoFar(session) {
+  const final = session.phase === 'transcribing';
+  const rate = session.ctx.sampleRate;
+  if (recording !== session || session.pending) return;
+  if (!final && session.length - session.lastSent < rate * 2) return;
+  session.pending = true;
+  session.lastSent = session.length;
+  function fail(message) {
+    input.value = session.original;
+    voiceWorker?.terminate();
+    voiceWorker = null;
+    endVoice();
+    statusLine.textContent = message;
+  }
+  try {
+    if (!voiceWorker) {
+      const url = URL.createObjectURL(new Blob([el('voice-engine').textContent], {type:'text/javascript'}));
+      try { voiceWorker = new Worker(url, {type:'module'}); } finally { URL.revokeObjectURL(url); }
+    }
+    voiceWorker.onmessage = ({data}) => {
+      if (recording !== session) return;
+      session.pending = false;
+      if (data.error) { fail(data.error); return; }
+      const complete = session.phase === 'transcribing' && session.lastSent === session.length;
+      if (data.text || complete) {
+        const corrected = data.text ? correctItalianDictation(data.text) : '';
+        const space = corrected && session.original && !/\s$/.test(session.original) ? ' ' : '';
+        input.value = session.original + space + corrected;
+        input.scrollTop = input.scrollHeight;
+        if (complete) {
+          el('raw-words').textContent = data.text || '';
+          el('raw-dictation').hidden = !data.text || corrected === data.text;
+        }
+      }
+      if (complete) {
+        endVoice();
+        statusLine.textContent = data.notice || (data.text ? 'Trascrizione pronta. Rileggila e premi Invia domanda.' : 'Nessuna parola riconosciuta.');
+        input.focus();
+      } else {
+        transcribeSoFar(session);
+      }
+    };
+    voiceWorker.onerror = () => {
+      if (recording === session) fail('Motore vocale non disponibile. Puoi scrivere la domanda.');
+    };
+    const samples = speechSamples(joinedAudio(session), rate);
+    voiceWorker.postMessage(samples, [samples.buffer]);
+  } catch { fail('Trascrizione non disponibile. Puoi scrivere la domanda.'); }
+}
+
 function finishRecording() {
   const session = recording;
   if (!session || session.phase !== 'listening') return;
@@ -438,41 +513,14 @@ function finishRecording() {
   releaseAudio(session);
   if (!session.length) { endVoice(); statusLine.textContent = 'Nessun audio registrato.'; return; }
   mic.disabled = true;
-  statusLine.textContent = 'Trascrizione sul dispositivo… Al primo utilizzo scarico il modello vocale.';
-  try {
-    const samples = new Float32Array(session.length);
-    let offset = 0;
-    for (const block of session.blocks) { samples.set(block, offset); offset += block.length; }
-    offerPlayback(samples, session.ctx.sampleRate);
-    if (!voiceWorker) {
-      const url = URL.createObjectURL(new Blob([el('voice-engine').textContent], {type:'text/javascript'}));
-      try { voiceWorker = new Worker(url, {type:'module'}); } finally { URL.revokeObjectURL(url); }
-    }
-    voiceWorker.onmessage = ({data}) => {
-      if (recording !== session) return;
-      if (data.text) {
-        const separator = input.value && !/\s$/.test(input.value) ? ' ' : '';
-        const corrected = correctItalianDictation(data.text);
-        input.value += separator + corrected;
-        el('raw-words').textContent = data.text;
-        el('raw-dictation').hidden = corrected === data.text;
-      }
-      endVoice();
-      statusLine.textContent = data.error || data.notice || (data.text ? 'Trascrizione pronta. Rileggila e premi Invia domanda.' : 'Nessuna parola riconosciuta.');
-      input.focus();
-    };
-    voiceWorker.onerror = () => {
-      if (recording !== session) return;
-      voiceWorker.terminate(); voiceWorker = null;
-      endVoice(); statusLine.textContent = 'Motore vocale non disponibile. Puoi scrivere la domanda.';
-    };
-    voiceWorker.postMessage(samples, [samples.buffer]);
-  } catch { endVoice(); statusLine.textContent = 'Trascrizione non disponibile.'; }
+  statusLine.textContent = 'Completo la trascrizione…';
+  offerPlayback(joinedAudio(session), session.ctx.sampleRate);
+  transcribeSoFar(session);
 }
 mic.onclick = async () => {
   if (question) return;
   if (recording) { finishRecording(); return; }
-  const session = {phase:'request', blocks:[], length:0};
+  const session = {phase:'request', blocks:[], length:0, lastSent:0, pending:false, original:input.value};
   recording = session;
   mic.disabled = true;
   input.readOnly = true;
@@ -480,7 +528,7 @@ mic.onclick = async () => {
   statusLine.textContent = 'Consenti l’accesso al microfono per dettare.';
   try {
     const Audio = window.AudioContext || window.webkitAudioContext;
-    session.ctx = new Audio({sampleRate:16000});
+    session.ctx = new Audio();
     await session.ctx.resume();
     if (recording !== session) return;
     const stream = await navigator.mediaDevices.getUserMedia({audio:true});
@@ -490,11 +538,12 @@ mic.onclick = async () => {
     session.processor = session.ctx.createScriptProcessor(4096,1,1);
     session.processor.onaudioprocess = event => {
       if (session.phase !== 'listening') return;
-      const part = event.inputBuffer.getChannelData(0).slice(0, 480000 - session.length);
+      const part = event.inputBuffer.getChannelData(0).slice(0, session.ctx.sampleRate * 30 - session.length);
       updateWave(part);
       session.blocks.push(part);
       session.length += part.length;
-      if (session.length >= 480000) finishRecording();
+      if (session.length >= session.ctx.sampleRate * 30) finishRecording();
+      else transcribeSoFar(session);
     };
     session.source.connect(session.processor);
     session.processor.connect(session.ctx.destination);
@@ -504,7 +553,7 @@ mic.onclick = async () => {
     mic.textContent = '■ Termina dettatura';
     mic.setAttribute('aria-pressed','true');
     el('chat').dataset.voice = 'on';
-    statusLine.textContent = 'In ascolto · fino a 30 secondi. Premi Termina dettatura quando hai finito.';
+    statusLine.textContent = 'In ascolto · il testo compare durante la dettatura. Al primo uso attendi il download del modello. Limite: 30 secondi.';
   } catch (error) {
     if (recording !== session) return;
     endVoice();
