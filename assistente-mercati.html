@@ -407,22 +407,107 @@ function offerPlayback(samples, sampleRate) {
   el('voice-original').src = recordingUrl;
   el('playback').hidden = false;
 }
+// Normalize recognized market terms in both partial and final Italian dictation.
+const voiceVocabulary = [["Bitcoin","bit coin","bit-coin"],
+  ["Ethereum","eterium","ethereum"],
+  ["Solana"],
+  ["Injective","injectiv"],
+  ["Raydium"],
+  ["Terra Luna Classic"],
+  ["Chainlink","chain link"],
+  ["Polkadot","polka dot"],
+  ["Avalanche"],
+  ["Dogecoin","doge coin"],
+  ["Litecoin","lite coin"],
+  ["stablecoin","stable coin"],
+  ["staking"],
+  ["blockchain","block chain"],
+  ["DeFi","de fi"],
+  ["on-chain","on chain"],
+  ["halving"],
+  ["BTC","bi ti ci","b t c"],
+  ["ETH","e t h"],
+  ["INJ","i n j"],
+  ["USDC","u s d c","u esse di ci"],
+  ["USDT","u s d t","u esse di ti"],
+  ["LUNC","l u n c"],
+  ["Nasdaq"],
+  ["Nasdaq 100","nasdaq cento"],
+  ["S&P 500","s and p 500","esse e pi cinquecento","s e p 500","standard and poor's 500"],
+  ["FTSE MIB","futsi mib","footse mib"],
+  ["Dow Jones","dow jones"],
+  ["Euro Stoxx 50","eurostoxx 50","euro stoxx cinquanta"],
+  ["MSCI World","m s c i world"],
+  ["Nikkei 225","nikkei duecentoventicinque"],
+  ["DAX"],
+  ["NVIDIA","envidia"],
+  ["Microsoft"],
+  ["Tesla"],
+  ["Intesa Sanpaolo","intesa san paolo"],
+  ["UniCredit","uni credit"],
+  ["Berkshire Hathaway"],
+  ["JPMorgan","j p morgan"],
+  ["ETF","e t f","e ti effe"],
+  ["ETC","e t c","e ti ci"],
+  ["BTP","b t p","bi ti pi"],
+  ["Bund"],
+  ["Treasury"],
+  ["Euribor","euri bor"],
+  ["BCE","b c e","bi ci e"],
+  ["Federal Reserve"],
+  ["FOMC","f o m c"],
+  ["PIL","p i l"],
+  ["ISIN","i s i n"],
+  ["OPEC","o p e c"],
+  ["Brent"],
+  ["WTI","w t i"],
+  ["Forex","foreign exchange"],
+  ["EUR/USD","eur usd","cambio euro dollaro"],
+  ["USD/JPY","usd jpy"],
+  ["GBP/USD","gbp usd"],
+  ["RSI","r s i","erre esse i"],
+  ["Stochastic RSI","stochastic rsi","rsi stocastico","stocastico rsi","stocastico erre esse i"],
+  ["MACD","m a c d","emme a ci di","mac di"],
+  ["VWAP","v w a p"],
+  ["Bande di Bollinger","bande di bolinger"],
+  ["Fibonacci"],
+  ["stop loss","stop-loss","stoploss"],
+  ["take profit","take-profit"],
+  ["drawdown","draw down"],
+  ["breakout","break out"],
+  ["pullback","pull back"],
+  ["backtesting","back testing"],
+  ["order book","orderbook"],
+  ["bid-ask","bid ask"],
+  ["market cap","marketcap"],
+  ["cash flow","cashflow"],
+  ["EBITDA","e b i t d a"],
+  ["dividend yield"],
+  ["quantitative easing"],
+  ["basis point"],
+  ["basis points"]];
+const voiceAliases = new Map();
+for (const [term, ...aliases] of voiceVocabulary) {
+  for (const spelling of [term, ...aliases]) voiceAliases.set(spelling.toLowerCase(), term);
+}
+const voiceAlternatives = [...voiceAliases.keys()].sort((a,b) => b.length - a.length)
+  .map(alias => alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replaceAll(' ', '\\s+'));
+const marketTermPattern = new RegExp('(?<![\\p{L}\\p{N}])(?:' + voiceAlternatives.join('|') + ')(?![\\p{L}\\p{N}])','giu');
+
+function normalizeMarketTerms(text) {
+  return text.replace(marketTermPattern, match => voiceAliases.get(match.toLowerCase().replace(/\s+/g,' ')))
+    .replace(/\b(token|cripto|criptovaluta) ore\b/gi, (_, kind) => kind + ' ORE');
+}
+
 function correctItalianDictation(text) {
   const terms = [
     [/\bperch[eè](?![\p{L}])/giu, 'perché'],
     [/\bqual['’]\s*[eè](?![\p{L}])/giu, 'qual è'],
     [/\bqual e(?=\s+(?:il|la|lo|un|una)\b)/giu, 'qual è'],
     [/\bpo['’]\s*/giu, match => match.replace("'", '’')],
-    [/\bun po(?=\s|[.,;:!?]|$)/giu, 'un po’'],
-    [/\bbit[\s-]?coin\b/gi, 'Bitcoin'],
-    [/\bethereum\b/gi, 'Ethereum'],
-    [/\bsolana\b/gi, 'Solana'],
-    [/\bnasdaq\b/gi, 'Nasdaq'],
-    [/\b(?:e\s+t\s+f|etf)\b/gi, 'ETF'],
-    [/\b(?:b\s+t\s+p|btp)\b/gi, 'BTP'],
-    [/\b(?:b\s+c\s+e|bce)\b/gi, 'BCE']
+    [/\bun po(?=\s|[.,;:!?]|$)/giu, 'un po’']
   ];
-  let corrected = text.trim();
+  let corrected = normalizeMarketTerms(text.trim());
   for (const [pattern, replacement] of terms) corrected = corrected.replace(pattern, replacement);
   corrected = corrected.replace(/^(\p{Ll})/u, letter => letter.toLocaleUpperCase('it'));
   if (/^(?:qual[ei]?|quanto|quanta|quanti|quante|perché|come|quando|dove|chi|cosa|che cosa)\s/iu.test(corrected)) {
