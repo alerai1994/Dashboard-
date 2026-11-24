@@ -6,21 +6,9 @@
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:1rem/1.55 system-ui,sans-serif}main{max-width:48rem;margin:0 auto;padding:clamp(1rem,4vw,3rem)}header{display:flex;justify-content:space-between;align-items:center}a,strong{color:var(--accent)}h1{font-size:clamp(2rem,5vw,3rem);line-height:1.12}article{border-left:2px solid var(--line);padding-left:1rem;margin:1.25rem 0}article p{white-space:pre-wrap;overflow-wrap:anywhere;margin:.3rem 0}textarea,button{background:var(--panel);color:inherit;border:1px solid var(--line);border-radius:.6rem;padding:.65rem .9rem;font:inherit}button{cursor:pointer}button:disabled{opacity:.55}label,textarea,small{display:block}textarea{width:100%;margin:.45rem 0;resize:vertical}small{margin-bottom:1rem}#send{background:var(--accent);color:var(--bg);font-weight:bold}
 main{padding-bottom:4rem}.lightbar{position:fixed;bottom:0;left:0;right:0;height:6px;z-index:5;background:linear-gradient(90deg,#6c63ff,#00cfff,#00e29c,#ffd24f,#ff578e,#6c63ff);background-size:200% 100%;box-shadow:0 -2px 15px #9878ff95;pointer-events:none;animation:flow 7s linear infinite}body:has(#chat[data-voice="on"]) .lightbar,body:has(#send:disabled) .lightbar{height:9px;box-shadow:0 -4px 24px #25cfffaa;animation-duration:2s}@keyframes flow{to{background-position:200% 0}}@media(prefers-reduced-motion:reduce){.lightbar{animation:none}}#mic[aria-pressed=true]{outline:2px solid var(--accent)}
 #voice-wave{position:fixed;bottom:0;left:0;width:100%;height:84px;z-index:6;pointer-events:none;overflow:visible;display:none;filter:drop-shadow(0 0 5px #6ecaff)}#voice-wave.speaking{display:block}.lightbar:has(+ #voice-wave.speaking){opacity:0}
-#market-ideas{margin:1.5rem 0}#market-ideas h2{font-size:1.2rem;margin:0 0 .65rem}#idea-market{font:inherit;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:.5rem;padding:.4rem .65rem;margin:.25rem 0 .65rem}.idea-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr));gap:.6rem;margin-bottom:.5rem}.idea{text-align:left}.idea span{display:block;margin-top:.25rem}.idea:hover,.idea:focus-visible{border-color:var(--accent)}
-.idea-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,10rem),1fr));gap:.7rem;margin-bottom:.8rem}.idea-filters label[hidden]{display:none}.idea-filters select,.idea-filters input,.idea-filters #idea-market{box-sizing:border-box;width:100%;font:inherit;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:.5rem;padding:.5rem;margin:.2rem 0 0}
 </style></head><body><main>
 <header><a href="./index.html">← Dashboard Vertex</a><button id="reset">Nuova chat</button></header>
 <h1>Assistente mercati</h1><p>Parla con Vertex di azioni, indici, ETF, obbligazioni, valute, materie prime e cripto. Per un’analisi attuale, includi la quotazione e la data.</p>
-<section id="market-ideas" aria-labelledby="ideas-title">
-<h2 id="ideas-title">Domande sui mercati</h2><div class="idea-filters">
-<label>Mercato<select id="idea-market"></select></label>
-<label>Strumento<input id="idea-asset" list="idea-assets" maxlength="100"><datalist id="idea-assets"></datalist></label>
-<label>Argomento<select id="idea-topic"></select></label>
-<label id="period-field">Periodo<select id="idea-period"></select></label></div>
-<div class="idea-grid" id="idea-results"></div>
-<small>Seleziona una domanda per modificarla prima dell’invio, oppure scrivi o detta la tua.</small>
-</section>
-<details><summary>Domande con risposta ed esempi</summary><div id="quick-list"></div></details>
 <section id="log" role="log" aria-label="Conversazione"></section>
 <form id="chat"><label for="question">La tua domanda</label><textarea id="question" rows="3" placeholder="Che differenza c’è tra un BTP e un ETF obbligazionario?" required></textarea>
 <small>La prima dettatura scarica anche il modello vocale. Audio e trascrizione restano sul dispositivo. Al primo invio il browser scarica il modello (circa 512 MB) e i componenti necessari. Le domande vengono elaborate sul dispositivo. La conversazione si azzera quando chiudi la pagina.</small>
@@ -235,39 +223,6 @@ const topics = {
     "Quali tre numeri dovrei capire per iniziare a seguire {s}?"
   ]
 };
-const periods = [
-  [
-    "7 giorni",
-    "negli ultimi sette giorni",
-    "nei prossimi sette giorni"
-  ],
-  [
-    "1 mese",
-    "nell’ultimo mese",
-    "nel prossimo mese"
-  ],
-  [
-    "3 mesi",
-    "negli ultimi tre mesi",
-    "nei prossimi tre mesi"
-  ],
-  [
-    "6 mesi",
-    "negli ultimi sei mesi",
-    "nei prossimi sei mesi"
-  ],
-  [
-    "1 anno",
-    "nell’ultimo anno",
-    "nel prossimo anno"
-  ],
-  [
-    "5 anni",
-    "negli ultimi cinque anni",
-    "nei prossimi cinque anni"
-  ]
-];
-const market = el('idea-market'), asset = el('idea-asset'), topic = el('idea-topic'), period = el('idea-period');
 const quickAnswers = [
   [
     "Come calcolo il rendimento percentuale?",
@@ -298,53 +253,29 @@ function questionKey(value) {
   return value.toLocaleLowerCase('it').replace(/[’']/g,' ').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
 }
 const answerIndex = new Map(quickAnswers.map(([q,a]) => [questionKey(q),a]));
-const quickList = el('quick-list');
-for (const [q,a] of quickAnswers) {
-  const item = document.createElement('details');
-  const title = document.createElement('summary');
-  const body = document.createElement('p');
-  title.textContent = q;
-  body.textContent = a;
-  item.append(title,body);
-  quickList.append(item);
+function marketContext(question) {
+  const words = new Set(questionKey(question).split(' ').filter(word => word.length > 3));
+  const candidates = [...Object.entries(topics)];
+  for (const [market, [assets, examples]] of Object.entries(markets)) {
+    candidates.push([[market, ...assets].join(' '), examples]);
+  }
+  let best = '', bestScore = 0;
+  for (const [label, examples] of candidates) {
+    for (const example of examples) {
+      const keywords = new Set(questionKey(example).split(' '));
+      const labels = new Set(questionKey(label).split(' '));
+      let score = 0;
+      for (const word of words) {
+        if (labels.has(word)) score += 2;
+        if (keywords.has(word)) score++;
+      }
+      if (score > bestScore) { bestScore = score; best = example; }
+    }
+  }
+  if (bestScore < 2) return '';
+  const hint = best.replace(/\{s\}/g, 'lo strumento indicato').replace(/\{[pf]\}/g, 'nel periodo indicato');
+  return ' Spunto interno facoltativo: ' + hint + ' Rispondi alla domanda originale senza elencare esempi di domande o filtri.';
 }
-const specific = 'Approfondimenti sul mercato';
-function options(control, values) {
-  control.replaceChildren(...values.map(value => new Option(value,value)));
-}
-function showIdeas() {
-  const [assets, details] = markets[market.value];
-  const templates = topic.value === specific ? details : topics[topic.value];
-  const [,past,future] = periods[period.selectedIndex];
-  el('period-field').hidden = !templates.some(text => /\{[pf]\}/.test(text));
-  const name = asset.value.trim() || assets[0];
-  el('idea-results').replaceChildren(...templates.map(template => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'idea';
-    button.textContent = template.replace(/\{([spf])\}/g, (_, key) => ({s:name,p:past,f:future})[key]);
-    button.onclick = () => {
-      if (input.readOnly) return;
-      input.value = button.textContent;
-      input.focus();
-      input.setSelectionRange(input.value.length,input.value.length);
-    };
-    return button;
-  }));
-}
-function changeMarket() {
-  const [assets] = markets[market.value];
-  options(el('idea-assets'),assets);
-  asset.value = assets[0];
-  showIdeas();
-}
-options(market,Object.keys(markets));
-options(topic,[...Object.keys(topics),specific]);
-options(period,periods.map(row => row[0]));
-period.selectedIndex = 1;
-market.onchange = changeMarket;
-topic.onchange = period.onchange = asset.oninput = showIdeas;
-changeMarket();
 const mic = el('mic');
 let recording = null, voiceWorker = null;
 const voiceWave = document.getElementById('voice-wave');
@@ -582,7 +513,7 @@ form.onsubmit = event => {
       };
     }
     const prompt = 'Sei Vertex, assistente personale sui mercati finanziari. Rispondi in italiano in modo chiaro e conciso. Tratta azioni, ETF, indici, obbligazioni, forex, materie prime, crypto e macroeconomia. Non disponi di dati live o notizie recenti. Per analisi attuali chiedi prezzo, data e fonte. Non inventare dati o fonti. Per l’andamento usa il periodo richiesto. Se mancano i dati chiedi valori iniziali e finali, date e valuta; per un confronto usa lo stesso periodo. Per le previsioni illustra scenari rialzista, centrale e ribassista, con ipotesi, fattori da osservare e condizioni che li smentirebbero. Evita target e probabilità privi di dati. Rispondi prima alla domanda precisa, poi spiega il ragionamento. Se utile includi formula e un esempio numerico esplicitamente ipotetico. Mantieni nomi e cifre indicati dall’utente; se un nome dettato è ambiguo chiedi conferma. Distingui esempi, fatti e ipotesi.';
-    worker.postMessage([{role:'system',content:prompt}, ...history, {role:'user',content:question}]);
+    worker.postMessage([{role:'system',content:prompt + marketContext(question)}, ...history, {role:'user',content:question}]);
   } catch {
     stop();
     statusLine.textContent = 'Avvio non riuscito. Riprova in un browser aggiornato.';
