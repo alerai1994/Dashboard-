@@ -41,10 +41,10 @@
 })();</script><title>Assistente mercati · Vertex</title>
 <style>
 :root{color-scheme:light;--bg:#f5f8f8;--panel:white;--ink:#183238;--line:#80999c;--accent:#0e6767;background:var(--bg)}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:1rem/1.55 system-ui,sans-serif}main{max-width:48rem;margin:0 auto;padding:clamp(1rem,4vw,3rem)}header{display:flex;justify-content:flex-start;padding-top:clamp(1rem,4vw,3rem);padding-left:max(.5rem,env(safe-area-inset-left,0px))}header+main{padding-top:0}a,strong{color:var(--accent)}h1{font-size:clamp(2rem,5vw,3rem);line-height:1.12}article{border-left:2px solid var(--line);padding-left:1rem;margin:1.25rem 0}article p{white-space:pre-wrap;overflow-wrap:anywhere;margin:.3rem 0}textarea,button{background:var(--panel);color:inherit;border:1px solid var(--line);border-radius:.6rem;padding:.65rem .9rem;font:inherit}button{cursor:pointer}button:disabled{opacity:.55}label,textarea,small{display:block}textarea{width:100%;margin:.45rem 0;resize:vertical}small{margin-bottom:1rem}#send{background:var(--accent);color:var(--bg);font-weight:bold}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:1rem/1.55 system-ui,sans-serif}main{max-width:48rem;margin:0 auto;padding:clamp(1rem,4vw,3rem)}header{display:flex;justify-content:flex-start;padding-top:clamp(1rem,4vw,3rem);padding-left:max(.5rem,env(safe-area-inset-left,0px));padding-right:max(.5rem,env(safe-area-inset-right,0px));align-items:center}#close-assistant{margin-left:auto;display:grid;place-items:center;width:44px;height:44px;text-decoration:none;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:.6rem;font:1.7rem/1 system-ui}#close-assistant:focus-visible{outline:2px solid var(--accent);outline-offset:2px}header+main{padding-top:0}a,strong{color:var(--accent)}h1{font-size:clamp(2rem,5vw,3rem);line-height:1.12}article{border-left:2px solid var(--line);padding-left:1rem;margin:1.25rem 0}article p{white-space:pre-wrap;overflow-wrap:anywhere;margin:.3rem 0}textarea,button{background:var(--panel);color:inherit;border:1px solid var(--line);border-radius:.6rem;padding:.65rem .9rem;font:inherit}button{cursor:pointer}button:disabled{opacity:.55}label,textarea,small{display:block}textarea{width:100%;margin:.45rem 0;resize:vertical}small{margin-bottom:1rem}#send{background:var(--accent);color:var(--bg);font-weight:bold}
 main{padding-bottom:4rem}.lightbar{position:fixed;bottom:0;left:0;right:0;height:6px;z-index:5;background:linear-gradient(90deg,#6c63ff,#00cfff,#00e29c,#ffd24f,#ff578e,#6c63ff);background-size:200% 100%;box-shadow:0 -2px 15px #9878ff95;pointer-events:none;animation:flow 7s linear infinite}body:has(#chat[data-voice="on"]) .lightbar,body:has(#send:disabled) .lightbar{height:9px;box-shadow:0 -4px 24px #25cfffaa;animation-duration:2s}@keyframes flow{to{background-position:200% 0}}@media(prefers-reduced-motion:reduce){.lightbar{animation:none}}#mic[aria-pressed=true]{outline:2px solid var(--accent)}
 #voice-wave{position:fixed;bottom:0;left:0;width:100%;height:clamp(78px,14vh,138px);box-sizing:content-box;padding-bottom:env(safe-area-inset-bottom,0px);z-index:6;pointer-events:none;display:none;background:transparent}#voice-wave.speaking{display:block}.voice-halo{filter:blur(3px);opacity:.7}body.voice-listening .lightbar{visibility:hidden}body.voice-listening main{padding-bottom:calc(clamp(78px,14vh,138px) + env(safe-area-inset-bottom,0px) + 1.5rem)}
-</style></head><body><header><button id="reset">Nuova chat</button></header>
+</style></head><body><header><button id="reset">Nuova chat</button><a id="close-assistant" href="./index.html" aria-label="Chiudi assistente vocale" title="Chiudi assistente vocale">×</a></header>
 <main>
 <h1>Assistente mercati</h1><p>Parla con Vertex di azioni, indici, ETF, obbligazioni, valute, materie prime e cripto. Per un’analisi attuale, includi la quotazione e la data.</p>
 <section id="log" role="log" aria-label="Conversazione"></section>
@@ -727,6 +727,11 @@ function cancelVoice() {
   if (recording) endVoice();
 }
 window.addEventListener('pagehide', cancelVoice);
+el('close-assistant').addEventListener('click', event => {
+  if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+  cancelVoice();
+  stop();
+});
 
 function idle() {
   mic.disabled = false;
