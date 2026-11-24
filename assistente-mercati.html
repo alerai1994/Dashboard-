@@ -141,11 +141,10 @@ function ensureVoiceModel(preferSmall){
   if(transcriber)return Promise.resolve(transcriber);
   if(!modelLoading){
     modelLoading=(async()=>{
-      try{await loadVoiceModel(preferSmall?'small':'base');}
+      try{await loadVoiceModel('base');}
       catch(error){
-        if(!preferSmall)throw error;
-        self.postMessage({status:'Preparazione del modello vocale compatibile…'});
-        await loadVoiceModel('base');
+        self.postMessage({status:'Preparazione del modello vocale leggero…'});
+        await loadVoiceModel('tiny');
       }
       return transcriber;
     })().finally(()=>{modelLoading=null;});
@@ -206,11 +205,11 @@ self.onmessage = async ({data}) => {
     let result;
     try { result=await decodeVoice(clip,final); }
     catch(error) {
-      if(modelName!=='small')throw error;
+      if(modelName==='tiny')throw error;
       try { await transcriber.dispose(); } catch {}
       transcriber=null;
       self.postMessage({status:'Passaggio al modello vocale compatibile…'});
-      await loadVoiceModel('base');
+      await loadVoiceModel('tiny');
       result=await decodeVoice(clip,final);
     }
     let text=cleanDictation(result.text||'');
@@ -987,28 +986,31 @@ function joinedAudio(session) {
 
 // Whisper takes 16 kHz PCM; capture at the browser's hardware rate.
 // Measure pause duration in captured audio, independently of timers and model speed.
-function pauseEndsPhrase(session, rms, count) {
-  const seconds = count / session.ctx.sampleRate;
-  // Include loud frames too: the old estimate could never learn a room louder than its initial gate.
+function pauseEndsPhrase(session,rms,count){
+  const seconds=count/session.ctx.sampleRate;
+  if(!Number.isFinite(rms))rms=0;
   session.levelHistory.push(rms);
-  const windowSize = Math.ceil(3 / seconds);
-  if (session.levelHistory.length > windowSize) session.levelHistory.shift();
-  const sorted = [...session.levelHistory].sort((a,b) => a - b);
-  const floor = sorted[Math.floor((sorted.length - 1) * 0.12)];
-  const upper=sorted[Math.floor((sorted.length-1)*0.9)];
-  if(session.speechSeconds>0.25 && rms>=Math.max(0.00025,upper*0.55)){
-    session.voiceReference=Math.max(rms,(session.voiceReference||0)*0.98);
+  const windowSize=Math.max(1,Math.ceil(2/seconds));
+  if(session.levelHistory.length>windowSize)session.levelHistory.shift();
+  const sorted=[...session.levelHistory].sort((a,b)=>a-b);
+  const floor=sorted[Math.floor((sorted.length-1)*.15)];
+  // Keep the noise floor separate from the speech reference.
+  if(!session.speechStarted){
+    session.noiseFloor=session.noiseFloor===undefined?Math.min(floor,.004):
+      Math.min(.03,session.noiseFloor*.98+Math.min(floor,session.noiseFloor*1.2+.0001)*.02);
   }
-  const adaptive=Math.max(0.00025,floor*1.32);
-  const ceiling=session.voiceReference?Math.max(0.00025,session.voiceReference*0.35):Math.max(0.00035,upper*0.65);
-  const gate=sorted.length*seconds>=0.7?Math.max(0.00025,Math.min(adaptive,ceiling)):0.00035;
-  if (rms >= gate) {
-    session.speechSeconds += seconds;
-    session.pauseSeconds = 0;
-  } else {
-    session.pauseSeconds += seconds;
+  const noise=session.noiseFloor||.0001;
+  const reference=session.voiceReference||0;
+  const gate=Math.max(.00035,noise*1.7,reference*.075);
+  if(rms>gate){
+    session.voiceReference=Math.max(rms,reference);
+    session.speechSeconds+=seconds;
+    session.pauseSeconds=0;
+    if(session.speechSeconds>=.12)session.speechStarted=true;
+  }else{
+    session.pauseSeconds+=seconds;
   }
-  return session.pauseLimit > 0 && session.speechSeconds >= 0.25 && session.pauseSeconds >= session.pauseLimit;
+  return session.speechStarted&&session.speechSeconds>=.25&&session.pauseLimit>0&&session.pauseSeconds>=session.pauseLimit;
 }
 
 // Start model initialization as soon as microphone permission is granted,
@@ -1043,7 +1045,7 @@ function voicePartialInterval(session){
 }
 function transcribeSoFar(session) {
   const final = session.phase === 'transcribing';
-  const rate = session.ctx.sampleRate;
+  const rate = session.sampleRate||session.ctx.sampleRate;
   if (recording !== session || session.pending) return;
   const interval = voicePartialInterval(session);
   if (!final && (session.speechSeconds < 0.10 || session.length - session.lastSent < rate * interval)) return;
@@ -1071,7 +1073,7 @@ function transcribeSoFar(session) {
           statusLine.textContent='Riconoscimento in recupero: continua a parlare.';
           return;
         }
-        if(!sentFinal&&!session.finalRetry){
+        if(!session.finalRetry){
           session.finalRetry=true;
           voiceWorker?.terminate();voiceWorker=null;
           transcribeSoFar(session);return;
@@ -1100,7 +1102,12 @@ function transcribeSoFar(session) {
       }
     };
     voiceWorker.onerror = () => {
-      if (recording === session) fail('Motore vocale non disponibile. Puoi scrivere la domanda.');
+      if(recording!==session)return;
+      clearTimeout(session.watchdog);session.pending=false;
+      if(!session.workerRetry){
+        session.workerRetry=true;voiceWorker?.terminate();voiceWorker=null;
+        session.lastSent=0;transcribeSoFar(session);
+      }else fail('Motore vocale non disponibile. Puoi scrivere la domanda.');
     };
     const samples = joinedAudio(session);
     session.watchdog=setTimeout(()=>{
@@ -1171,16 +1178,22 @@ mic.onclick = async () => {
     const Audio = window.AudioContext || window.webkitAudioContext;
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia || !Audio) throw Object.assign(new Error('Microfono non disponibile'),{name:'UnsupportedAudio'});
     session.ctx = new Audio();
-    await session.ctx.resume();
+    session.sampleRate=session.ctx.sampleRate;
+    const resumePromise=session.ctx.resume().catch(()=>{});
     if (recording !== session) return;
-    const stream = await navigator.mediaDevices.getUserMedia({audio:{channelCount:{ideal:1}, sampleRate:{ideal:48000}, echoCancellation:{ideal:true}, noiseSuppression:{ideal:true}, autoGainControl:{ideal:true}}});
+    let stream;
+    try{stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:{ideal:1},echoCancellation:{ideal:true},noiseSuppression:{ideal:true},autoGainControl:{ideal:true}}});}
+    catch(error){
+      if(!['OverconstrainedError','NotSupportedError','TypeError'].includes(error.name))throw error;
+      stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    }
     if (recording !== session) { stream.getTracks().forEach(track => track.stop()); return; }
     session.stream = stream;
     warmVoice(session);
     session.source = session.ctx.createMediaStreamSource(stream);
     const onSamples = samples => {
       if (recording!==session || session.phase !== 'listening' || !samples?.length) return;
-      const part = samples.slice(0, session.ctx.sampleRate * 30 - session.length);
+      const part = samples.slice(0, session.sampleRate * 30 - session.length);
       if(!part.length)return;
       const rms = updateWave(part);
       session.blocks.push(part);
@@ -1202,7 +1215,9 @@ mic.onclick = async () => {
     session.mute.gain.value=0;
     session.processor.connect(session.mute);
     session.mute.connect(session.ctx.destination);
-    await session.ctx.resume();
+    await Promise.race([resumePromise,new Promise(resolve=>setTimeout(resolve,1000))]);
+    await Promise.race([session.ctx.resume(),new Promise(resolve=>setTimeout(resolve,2000))]);
+    if(session.ctx.state!=='running')throw Object.assign(Error('Audio sospeso'),{name:'AudioSuspended'});
     if(recording!==session)return;
     session.phase = 'listening';
     startWave(session);
@@ -1240,7 +1255,7 @@ mic.onclick = async () => {
   } catch (error) {
     if (recording !== session) return;
     endVoice();
-    const messages={NotAllowedError:'Accesso al microfono negato. Controlla i permessi del browser e del sistema.',NotFoundError:'Nessun microfono rilevato. Collega o seleziona un microfono.',NotReadableError:'Microfono occupato o non accessibile. Chiudi altre app audio e riprova.',UnsupportedAudio:'La dettatura locale richiede HTTPS e un browser con Web Audio e accesso al microfono.'};
+    const messages={NotAllowedError:'Accesso al microfono negato. Controlla i permessi del browser e del sistema.',NotFoundError:'Nessun microfono rilevato. Collega o seleziona un microfono.',NotReadableError:'Microfono occupato o non accessibile. Chiudi altre app audio e riprova.',AudioSuspended:'Il browser ha sospeso il microfono. Tocca nuovamente Microfono per riattivarlo.',UnsupportedAudio:'La dettatura locale richiede HTTPS e un browser con Web Audio e accesso al microfono.'};
     statusLine.textContent=(messages[error.name]||'Microfono non disponibile. Riprova in un browser aggiornato.')+' Puoi anche usare la dettatura della tastiera.';
   }
 };
@@ -1326,7 +1341,8 @@ function italianSpeechVoice(voices){
     italian.find(v=>v.localService)||italian.find(v=>/^it[-_]IT$/i.test(v.lang))||italian[0]||null;
 }
 function speakAnswer(answer){
-  cancelSpeech();
+  if(speakingAnswer)cancelSpeech();
+  else {speechGeneration++;clearTimeout(speechTimer);}
   lastSpokenAnswer=String(answer||'').trim();
   const retry=el('speak-retry'),stopButton=el('stop');
   retry.hidden=true;
@@ -1364,13 +1380,13 @@ function speakAnswer(answer){
       // If the selected system voice fails, let the browser choose an Italian voice.
       if(voice&&attempt===0)u.voice=voice;
       u.onstart=()=>{
-        if(generation!==speechGeneration)return;
+        if(generation!==speechGeneration||activeUtterance!==u)return;
         clearTimeout(speechTimer);
-        speechTimer=setTimeout(()=>finish(true),45000);
+        speechTimer=setTimeout(retryChunk,45000);
       };
       u.onend=()=>{
-        if(generation!==speechGeneration)return;
-        clearTimeout(speechTimer);activeUtterance=null;index++;attempt=0;next();
+        if(generation!==speechGeneration||activeUtterance!==u)return;
+        clearTimeout(speechTimer);activeUtterance=null;index++;attempt=0;speechTimer=setTimeout(next,50);
       };
       function retryChunk(){
         if(generation!==speechGeneration||activeUtterance!==u)return;
@@ -1384,7 +1400,7 @@ function speakAnswer(answer){
       }
       u.onerror=retryChunk;
       speechTimer=setTimeout(retryChunk,8000);
-      synth.resume();
+      if(synth.paused)synth.resume();
       synth.speak(u);
     }catch{finish(true);}
   }
@@ -1559,7 +1575,7 @@ async function submitQuestion(fromVoice=false){
       worker.onmessage = ({data}) => {
         if (data.status) { statusLine.textContent = data.status; return; }
         if (data.error) { stop(); statusLine.textContent = data.error; return; }
-        acceptAnswer(data.answer);
+        if(question&&typeof data.answer==='string'&&data.answer.trim())acceptAnswer(data.answer);
       };
     }
     const prompt = 'Sei Vertex, assistente personale sui mercati finanziari. Comprendi anche domande informali, sinonimi, sigle e richieste successive riferite alla conversazione. Quando una domanda contiene più punti rispondi a ciascuno; non confondere il nome di un asset con un indicatore o un altro token. Se una domanda non riguarda la finanza rispondi brevemente se conosci la risposta e ammetti i tuoi limiti. Rispondi in italiano in modo chiaro e conciso. Tratta azioni, ETF, indici, obbligazioni, forex, materie prime, crypto e macroeconomia. Non disponi di dati live o notizie recenti. Per analisi attuali chiedi prezzo, data e fonte. Non inventare dati o fonti. Per l’andamento usa il periodo richiesto. Se mancano i dati chiedi valori iniziali e finali, date e valuta; per un confronto usa lo stesso periodo. Per le previsioni illustra scenari rialzista, centrale e ribassista, con ipotesi, fattori da osservare e condizioni che li smentirebbero. Evita target e probabilità privi di dati. Rispondi prima alla domanda precisa, poi spiega il ragionamento. Se utile includi formula e un esempio numerico esplicitamente ipotetico. Mantieni nomi e cifre indicati dall’utente; se un nome dettato è ambiguo chiedi conferma. Distingui esempi, fatti e ipotesi.';
