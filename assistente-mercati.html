@@ -25,17 +25,58 @@ main{padding-bottom:4rem}.lightbar{position:fixed;bottom:0;left:0;right:0;height
   const musicTag = /\[\s*(?:musica|music)\s*\]|\(\s*(?:musica|music)\s*\)/gi;
   return text.replace(musicTag, '').trim();
 }
+// The recorder supplies mono PCM at 16 kHz. Keep a margin around audible speech.
+function audibleSegment(samples) {
+  const frame = 320;
+  let first = -1, last = 0, activeFrames = 0;
+  for (let start = 0; start < samples.length; start += frame) {
+    const end = Math.min(start + frame, samples.length);
+    let energy = 0;
+    for (let i = start; i < end; i++) energy += samples[i] * samples[i];
+    if (energy < (end - start) * 0.000001) continue;
+    if (first === -1) first = start;
+    last = end;
+    activeFrames++;
+  }
+  if (activeFrames < 5) return null;
+  return samples.subarray(Math.max(0, first - 4800), Math.min(samples.length, last + 4800));
+}
+
+function hasRecognitionLoop(text) {
+  const words = text.toLocaleLowerCase('it').match(/[\p{L}\p{N}]+/gu) || [];
+  // Ignore occasional repetitions and false starts in natural speech.
+  for (let start = 0; start < words.length; start++) {
+    const maxSize = Math.min(24, Math.floor((words.length - start) / 4));
+    for (let size = 1; size <= maxSize; size++) {
+      const limit = Math.max(12, size * 4);
+      if (start + limit > words.length) continue;
+      let length = size;
+      while (length < limit && words[start + length] === words[start + length % size]) length++;
+      if (length === limit) return true;
+    }
+  }
+  return false;
+}
 let transcriber;
 self.onmessage = async ({data: samples}) => {
   try {
+    const clip = audibleSegment(samples);
+    if (!clip) {
+      self.postMessage({text:'', notice:'Audio troppo debole o silenzioso. Avvicina il microfono e riprova.'});
+      return;
+    }
     if (!transcriber) {
       const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2/dist/transformers.min.js');
       env.allowLocalModels = false;
       env.backends.onnx.wasm.numThreads = 1;
       transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-base', {device:'wasm', dtype:'q8'});
     }
-    const result = await transcriber(samples, {language:'italian', task:'transcribe', do_sample:false});
+    const result = await transcriber(clip, {language:'italian', task:'transcribe', do_sample:false});
     const text = cleanDictation(result.text);
+    if (hasRecognitionLoop(text)) {
+      self.postMessage({text:'', notice:'La dettatura ha prodotto una frase ripetuta. Riascolta l’audio o ripeti la domanda.'});
+      return;
+    }
     self.postMessage({text: /[\p{L}\p{N}]/u.test(text) ? text : ''});
   } catch {
     self.postMessage({error:'Trascrizione non riuscita. Controlla la connessione per il primo download o scrivi la domanda.'});
@@ -417,7 +458,7 @@ function finishRecording() {
         el('raw-dictation').hidden = corrected === data.text;
       }
       endVoice();
-      statusLine.textContent = data.error || (data.text ? 'Trascrizione pronta. Rileggila e premi Invia domanda.' : 'Nessuna parola riconosciuta.');
+      statusLine.textContent = data.error || data.notice || (data.text ? 'Trascrizione pronta. Rileggila e premi Invia domanda.' : 'Nessuna parola riconosciuta.');
       input.focus();
     };
     voiceWorker.onerror = () => {
