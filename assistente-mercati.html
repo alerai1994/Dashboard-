@@ -7,15 +7,18 @@
 main{padding-bottom:4rem}.lightbar{position:fixed;bottom:0;left:0;right:0;height:6px;z-index:5;background:linear-gradient(90deg,#6c63ff,#00cfff,#00e29c,#ffd24f,#ff578e,#6c63ff);background-size:200% 100%;box-shadow:0 -2px 15px #9878ff95;pointer-events:none;animation:flow 7s linear infinite}body:has(#chat[data-voice="on"]) .lightbar,body:has(#send:disabled) .lightbar{height:9px;box-shadow:0 -4px 24px #25cfffaa;animation-duration:2s}@keyframes flow{to{background-position:200% 0}}@media(prefers-reduced-motion:reduce){.lightbar{animation:none}}#mic[aria-pressed=true]{outline:2px solid var(--accent)}
 #voice-wave{position:fixed;bottom:0;left:0;width:100%;height:84px;z-index:6;pointer-events:none;overflow:visible;display:none;filter:drop-shadow(0 0 5px #6ecaff)}#voice-wave.speaking{display:block}.lightbar:has(+ #voice-wave.speaking){opacity:0}
 #market-ideas{margin:1.5rem 0}#market-ideas h2{font-size:1.2rem;margin:0 0 .65rem}#idea-market{font:inherit;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:.5rem;padding:.4rem .65rem;margin:.25rem 0 .65rem}.idea-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr));gap:.6rem;margin-bottom:.5rem}.idea{text-align:left}.idea span{display:block;margin-top:.25rem}.idea:hover,.idea:focus-visible{border-color:var(--accent)}
+.idea-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,10rem),1fr));gap:.7rem;margin-bottom:.8rem}.idea-filters label[hidden]{display:none}.idea-filters select,.idea-filters input,.idea-filters #idea-market{box-sizing:border-box;width:100%;font:inherit;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:.5rem;padding:.5rem;margin:.2rem 0 0}
 </style></head><body><main>
 <header><a href="./index.html">← Dashboard Vertex</a><button id="reset">Nuova chat</button></header>
 <h1>Assistente mercati</h1><p>Parla con Vertex di azioni, indici, ETF, obbligazioni, valute, materie prime e cripto. Per un’analisi attuale, includi la quotazione e la data.</p>
 <section id="market-ideas" aria-labelledby="ideas-title">
-<h2 id="ideas-title">Domande sui mercati</h2>
-<label for="idea-market">Scegli un mercato</label>
-<select id="idea-market"><option>Cripto</option><option>Azioni e indici</option><option>ETF</option><option>Obbligazioni</option><option>Valute</option><option>Materie prime</option></select>
-<div class="idea-grid"><button type="button" class="idea"><strong>Andamento</strong><span>Come si sono mossi Bitcoin, Ethereum e Solana negli ultimi sette giorni?</span></button><button type="button" class="idea"><strong>Previsioni</strong><span>Quali scenari sono plausibili per Bitcoin nel prossimo mese e quali segnali li confermerebbero?</span></button></div>
-<small>Seleziona una domanda per modificarla o aggiungere i tuoi dati prima di inviarla.</small>
+<h2 id="ideas-title">Domande sui mercati</h2><div class="idea-filters">
+<label>Mercato<select id="idea-market"></select></label>
+<label>Strumento<input id="idea-asset" list="idea-assets" maxlength="100"><datalist id="idea-assets"></datalist></label>
+<label>Argomento<select id="idea-topic"></select></label>
+<label id="period-field">Periodo<select id="idea-period"></select></label></div>
+<div class="idea-grid" id="idea-results"></div>
+<small>Seleziona una domanda per modificarla prima dell’invio, oppure scrivi o detta la tua.</small>
 </section>
 <section id="log" role="log" aria-label="Conversazione"></section>
 <form id="chat"><label for="question">La tua domanda</label><textarea id="question" rows="3" maxlength="2000" placeholder="Che differenza c’è tra un BTP e un ETF obbligazionario?" required></textarea>
@@ -77,47 +80,225 @@ self.onmessage = async ({data: turns}) => {
 const form = el('chat'), input = el('question'), log = el('log'), statusLine = el('status');
 let worker, question;
 const history = [];
-const ideasByMarket = {
+const markets = {
   "Cripto": [
-    "Come si sono mossi Bitcoin, Ethereum e Solana negli ultimi sette giorni?",
-    "Quali scenari sono plausibili per Bitcoin nel prossimo mese e quali segnali li confermerebbero?"
+    [
+      "Bitcoin",
+      "Ethereum",
+      "Solana",
+      "Injective",
+      "ORE",
+      "USDC",
+      "Luna Classic"
+    ],
+    [
+      "Come posso verificare emissioni, burn e concentrazione dei token per {s}?",
+      "Quali dati on-chain aiutano a distinguere attività reale e speculazione per {s}?",
+      "Come verifico se {s} offre staking nativo e da dove provengono le ricompense?"
+    ]
   ],
-  "Azioni e indici": [
-    "Come si confrontano Nasdaq e FTSE MIB nell’ultimo mese?",
-    "Come potrebbero reagire i titoli tecnologici nel prossimo trimestre se i tassi restassero alti?"
+  "Azioni": [
+    [
+      "Apple",
+      "Nvidia",
+      "Eni",
+      "Intesa Sanpaolo",
+      "Tesla"
+    ],
+    [
+      "Come leggo ricavi, margini e flusso di cassa di {s} nell’ultima trimestrale?",
+      "Quali concorrenti sono adatti per confrontare i multipli di {s}?",
+      "Come distinguo l’effetto degli utili da quello dei riacquisti di azioni per {s}?"
+    ]
+  ],
+  "Indici": [
+    [
+      "S&P 500",
+      "Nasdaq 100",
+      "FTSE MIB",
+      "DAX",
+      "MSCI World"
+    ],
+    [
+      "Quanto dipende {s} dai titoli con il peso maggiore?",
+      "Come cambierebbe la lettura di {s} confrontando l’indice di prezzo con quello a rendimento totale?"
+    ]
   ],
   "ETF": [
-    "Come si confrontano i rendimenti di due ETF globali nell’ultimo anno, dividendi inclusi?",
-    "Come potrebbe comportarsi un ETF azionario globale nei prossimi sei mesi se il dollaro si indebolisse?"
+    [
+      "ETF MSCI World",
+      "ETF S&P 500",
+      "ETF obbligazionario in euro",
+      "ETF mercati emergenti"
+    ],
+    [
+      "Quali dati del KID devo controllare per confrontare due fondi della categoria {s}?",
+      "Come distinguere TER, tracking difference e spread nella valutazione di {s}?",
+      "Per {s}, che differenza fa scegliere una classe ad accumulazione o a distribuzione?"
+    ]
   ],
   "Obbligazioni": [
-    "Come è cambiato il rendimento del BTP decennale nell’ultimo mese?",
-    "Quali scenari si aprono per i prezzi dei BTP se la BCE taglia i tassi o li mantiene fermi?"
+    [
+      "BTP decennale",
+      "Bund tedesco",
+      "Treasury USA",
+      "obbligazioni high yield"
+    ],
+    [
+      "Come distinguo cedola, prezzo e rendimento a scadenza per {s}?",
+      "Come stimo l’effetto di un aumento dei tassi di un punto percentuale su {s} usando la duration?"
+    ]
   ],
   "Valute": [
-    "Qual è stato l’andamento di EUR/USD nelle ultime quattro settimane?",
-    "Quali fattori potrebbero rafforzare o indebolire l’euro rispetto al dollaro nel prossimo trimestre?"
+    [
+      "EUR/USD",
+      "GBP/USD",
+      "USD/JPY",
+      "USD/CHF"
+    ],
+    [
+      "Come incidono le differenze fra i tassi delle due banche centrali su {s}?",
+      "Come calcolo il valore di un pip per {s} nella valuta del mio conto?"
+    ]
   ],
   "Materie prime": [
-    "Come si sono mossi oro e petrolio Brent nell’ultimo mese?",
-    "Quali scenari potrebbero spingere il prezzo del petrolio al rialzo o al ribasso nei prossimi tre mesi?"
+    [
+      "oro",
+      "argento",
+      "petrolio Brent",
+      "gas naturale",
+      "rame"
+    ],
+    [
+      "Quali dati di domanda, offerta e scorte aiutano a interpretare il prezzo di {s}?",
+      "Per {s}, perché il rendimento di un future può differire dalla variazione del prezzo spot?"
+    ]
+  ],
+  "Derivati": [
+    [
+      "future sul Nasdaq",
+      "opzioni sul FTSE MIB",
+      "future sul Brent",
+      "perpetual su Bitcoin"
+    ],
+    [
+      "Per {s}, come distinguo valore nozionale, capitale impiegato e perdita potenziale?",
+      "Quali dettagli del contratto di {s} devo controllare prima di simulare un’operazione?"
+    ]
   ]
 };
-const marketPicker = el('idea-market');
-const ideaButtons = document.querySelectorAll('#market-ideas .idea');
-marketPicker.onchange = () => {
-  ideaButtons.forEach((button, index) => {
-    button.querySelector('span').textContent = ideasByMarket[marketPicker.value][index];
-  });
+const topics = {
+  "Andamento": [
+    "Qual è stata la direzione prevalente per {s} {p} e quanto è cambiato il prezzo in percentuale?",
+    "Per {s}, quali sono stati il massimo, il minimo e il calo più ampio {p}?",
+    "Per {s}, il movimento {p} è stato graduale o concentrato in poche sedute?"
+  ],
+  "Previsioni": [
+    "Quali scenari rialzista, centrale e ribassista sono plausibili per {s} {f}?",
+    "Quali segnali renderebbero meno credibile uno scenario rialzista per {s} {f}?",
+    "Quali eventi potrebbero cambiare le prospettive di {s} {f}?"
+  ],
+  "Confronti": [
+    "Quale riferimento useresti per confrontare la performance di {s} {p}, e perché?",
+    "Come confronto il rendimento di {s} con quello di un’alternativa nella stessa valuta {p}?"
+  ],
+  "Analisi tecnica": [
+    "Cosa suggerisce il confronto tra prezzo e medie mobili per {s} {p}?",
+    "Per {s}, come interpreto RSI, Stochastic RSI e MACD quando danno indicazioni diverse?",
+    "Quali dati servono per verificare un possibile breakout su {s}?"
+  ],
+  "Rischio": [
+    "Per {s}, quanto pesa il rischio di liquidità rispetto a quello di prezzo?",
+    "Come misuro volatilità e drawdown di {s} {p}?",
+    "Come cambierebbe il risultato di una posizione su {s} con un movimento avverso del 5%?"
+  ],
+  "Macroeconomia": [
+    "Come potrebbe reagire {s} a un’inflazione superiore alle attese {f}?",
+    "Quali decisioni delle banche centrali potrebbero influenzare {s} {f}?"
+  ],
+  "Notizie e dati": [
+    "Come verifico se una notizia ha davvero inciso su {s} {p}?",
+    "Quali fonti, date e unità di misura servono per controllare i dati di {s}?"
+  ],
+  "Portafoglio e costi": [
+    "Come valuto il contributo di un’esposizione a {s} al rischio complessivo del portafoglio?",
+    "Come calcolo il risultato di un’operazione su {s} dopo commissioni e spread?"
+  ],
+  "Basi": [
+    "Come funziona {s}? Spiegamelo con un esempio semplice.",
+    "Quali tre numeri dovrei capire per iniziare a seguire {s}?"
+  ]
 };
-ideaButtons.forEach(button => {
-  button.onclick = () => {
-    if (input.readOnly) return;
-    input.value = button.querySelector('span').textContent;
-    input.focus();
-    input.setSelectionRange(input.value.length, input.value.length);
-  };
-});
+const periods = [
+  [
+    "7 giorni",
+    "negli ultimi sette giorni",
+    "nei prossimi sette giorni"
+  ],
+  [
+    "1 mese",
+    "nell’ultimo mese",
+    "nel prossimo mese"
+  ],
+  [
+    "3 mesi",
+    "negli ultimi tre mesi",
+    "nei prossimi tre mesi"
+  ],
+  [
+    "6 mesi",
+    "negli ultimi sei mesi",
+    "nei prossimi sei mesi"
+  ],
+  [
+    "1 anno",
+    "nell’ultimo anno",
+    "nel prossimo anno"
+  ],
+  [
+    "5 anni",
+    "negli ultimi cinque anni",
+    "nei prossimi cinque anni"
+  ]
+];
+const market = el('idea-market'), asset = el('idea-asset'), topic = el('idea-topic'), period = el('idea-period');
+const specific = 'Approfondimenti sul mercato';
+function options(control, values) {
+  control.replaceChildren(...values.map(value => new Option(value,value)));
+}
+function showIdeas() {
+  const [assets, details] = markets[market.value];
+  const templates = topic.value === specific ? details : topics[topic.value];
+  const [,past,future] = periods[period.selectedIndex];
+  el('period-field').hidden = !templates.some(text => /\{[pf]\}/.test(text));
+  const name = asset.value.trim() || assets[0];
+  el('idea-results').replaceChildren(...templates.map(template => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'idea';
+    button.textContent = template.replace(/\{([spf])\}/g, (_, key) => ({s:name,p:past,f:future})[key]);
+    button.onclick = () => {
+      if (input.readOnly) return;
+      input.value = button.textContent;
+      input.focus();
+      input.setSelectionRange(input.value.length,input.value.length);
+    };
+    return button;
+  }));
+}
+function changeMarket() {
+  const [assets] = markets[market.value];
+  options(el('idea-assets'),assets);
+  asset.value = assets[0];
+  showIdeas();
+}
+options(market,Object.keys(markets));
+options(topic,[...Object.keys(topics),specific]);
+options(period,periods.map(row => row[0]));
+period.selectedIndex = 1;
+market.onchange = changeMarket;
+topic.onchange = period.onchange = asset.oninput = showIdeas;
+changeMarket();
 const mic = el('mic');
 let recording = null, voiceWorker = null;
 const voiceWave = document.getElementById('voice-wave');
