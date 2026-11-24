@@ -1,7 +1,46 @@
 <!doctype html>
-<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="only light"><meta name="theme-color" content="#f5f8f8"><title>Assistente mercati · Vertex</title>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><meta name="theme-color" content="#f5f8f8"><script>(() => {
+  // Palette values match the dashboard's background, panel, border, text and brand.
+  const palettes = {
+    light: ["light","#edf1f0","#f3f5f2","#c2cfcb","#1f2427","#457384"],
+    dark: ["dark","#18252e","#23343e","#3b515b","#e9edf0","#89b3c5"],
+    ocean: ["dark","#071923","#0d2a38","#2d5a6d","#eafaff","#40c9f5"],
+    emerald: ["dark","#091813","#10291f","#315a48","#effff7","#5be0b4"],
+    violet: ["dark","#130f1c","#211b30","#544368","#f9f1ff","#c395ff"],
+    sand: ["light","#f7f2e9","#fffcf8","#dbc7ad","#372c26","#a85d2a"],
+    ice: ["light","#eff9fc","#fbfeff","#c1dce6","#173b4b","#087a9b"],
+    sunset: ["dark","#24161b","#35232b","#785463","#fff3ee","#ff9b72"],
+    graphite: ["dark","#151819","#24292b","#526065","#f3f5f3","#e7b76a"],
+    ruby: ["dark","#230f1a","#3a1e2d","#815066","#fff0f5","#ff91b2"]
+  };
+  const prefix = 'vertex-global-v2-';
+  const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
+  function readPreference(key) {
+    try { return JSON.parse(localStorage.getItem(prefix + key)); }
+    catch { return null; }
+  }
+  function applyTheme() {
+    const mode = readPreference('themeMode') ?? readPreference('theme');
+    const selected = mode === 'auto' ? (systemDark.matches ? 'dark' : 'light') : mode;
+    const key = Object.prototype.hasOwnProperty.call(palettes, selected) ? selected : 'dark';
+    const [scheme, background, panel, line, ink, accent] = palettes[key];
+    const root = document.documentElement;
+    root.dataset.vertexActiveTheme = key;
+    root.style.colorScheme = scheme;
+    const values = {'--bg':background,'--panel':panel,'--line':line,'--ink':ink,'--accent':accent};
+    for (const [name,value] of Object.entries(values)) root.style.setProperty(name,value);
+    document.querySelector('meta[name="theme-color"]').content = background;
+  }
+  applyTheme();
+  window.addEventListener('storage', event => {
+    if (event.key === null || event.key === prefix + 'themeMode' || event.key === prefix + 'theme') applyTheme();
+  });
+  window.addEventListener('pageshow', applyTheme);
+  if (systemDark.addEventListener) systemDark.addEventListener('change', applyTheme);
+  else systemDark.addListener(applyTheme);
+})();</script><title>Assistente mercati · Vertex</title>
 <style>
-:root{color-scheme:only light;--bg:#f5f8f8;--panel:white;--ink:#183238;--line:#80999c;--accent:#0e6767;background:var(--bg)}
+:root{color-scheme:light;--bg:#f5f8f8;--panel:white;--ink:#183238;--line:#80999c;--accent:#0e6767;background:var(--bg)}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:1rem/1.55 system-ui,sans-serif}main{max-width:48rem;margin:0 auto;padding:clamp(1rem,4vw,3rem)}header{display:flex;justify-content:space-between;align-items:center}a,strong{color:var(--accent)}h1{font-size:clamp(2rem,5vw,3rem);line-height:1.12}article{border-left:2px solid var(--line);padding-left:1rem;margin:1.25rem 0}article p{white-space:pre-wrap;overflow-wrap:anywhere;margin:.3rem 0}textarea,button{background:var(--panel);color:inherit;border:1px solid var(--line);border-radius:.6rem;padding:.65rem .9rem;font:inherit}button{cursor:pointer}button:disabled{opacity:.55}label,textarea,small{display:block}textarea{width:100%;margin:.45rem 0;resize:vertical}small{margin-bottom:1rem}#send{background:var(--accent);color:var(--bg);font-weight:bold}
 main{padding-bottom:4rem}.lightbar{position:fixed;bottom:0;left:0;right:0;height:6px;z-index:5;background:linear-gradient(90deg,#6c63ff,#00cfff,#00e29c,#ffd24f,#ff578e,#6c63ff);background-size:200% 100%;box-shadow:0 -2px 15px #9878ff95;pointer-events:none;animation:flow 7s linear infinite}body:has(#chat[data-voice="on"]) .lightbar,body:has(#send:disabled) .lightbar{height:9px;box-shadow:0 -4px 24px #25cfffaa;animation-duration:2s}@keyframes flow{to{background-position:200% 0}}@media(prefers-reduced-motion:reduce){.lightbar{animation:none}}#mic[aria-pressed=true]{outline:2px solid var(--accent)}
 #voice-wave{position:fixed;bottom:0;left:0;width:100%;height:clamp(78px,14vh,138px);box-sizing:content-box;padding-bottom:env(safe-area-inset-bottom,0px);z-index:6;pointer-events:none;display:none;background:transparent}#voice-wave.speaking{display:block}.voice-halo{filter:blur(3px);opacity:.7}body.voice-listening .lightbar{visibility:hidden}body.voice-listening main{padding-bottom:calc(clamp(78px,14vh,138px) + env(safe-area-inset-bottom,0px) + 1.5rem)}
