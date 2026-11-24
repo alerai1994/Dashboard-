@@ -1,20 +1,103 @@
 <!doctype html>
-<html lang="it">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ChatGPT · Mercati | Vertex</title>
-  <style>
-    :root { color-scheme: light dark; font: 1rem/1.5 system-ui, sans-serif; }
-    main { max-width: 42rem; margin: 12vh auto; padding: 1.5rem; }
-    h1 { margin-bottom: .25rem; }
-    .open { display: inline-block; padding: .7rem 1.2rem; background: #145c61; color: white; border-radius: .6rem; text-decoration: none; }
-  </style>
-</head>
-<body><main>
-  <a href="./index.html">← Dashboard Vertex</a>
-  <h1>ChatGPT per i mercati</h1>
-  <p>Apri ChatGPT e fai la tua domanda su azioni, ETF, valute, obbligazioni, materie prime o criptovalute.</p>
-  <a class="open" href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer">Apri ChatGPT ↗</a>
-</main></body>
-</html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Il mio assistente · Vertex</title>
+<style>
+:root{color-scheme:dark;--bg:#121e23;--panel:#1d3037;--ink:#eff6f5;--line:#547078;--accent:#a3dcdb}
+@media(prefers-color-scheme:light){:root{color-scheme:light;--bg:#f5f8f8;--panel:white;--ink:#183238;--line:#80999c;--accent:#0e6767}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:1rem/1.55 system-ui,sans-serif}main{max-width:48rem;margin:0 auto;padding:clamp(1rem,4vw,3rem)}header{display:flex;justify-content:space-between;align-items:center}a,strong{color:var(--accent)}h1{font-size:clamp(2rem,5vw,3rem);line-height:1.12}article{border-left:2px solid var(--line);padding-left:1rem;margin:1.25rem 0}article p{white-space:pre-wrap;overflow-wrap:anywhere;margin:.3rem 0}textarea,button{background:var(--panel);color:inherit;border:1px solid var(--line);border-radius:.6rem;padding:.65rem .9rem;font:inherit}button{cursor:pointer}button:disabled{opacity:.55}label,textarea,small{display:block}textarea{width:100%;margin:.45rem 0;resize:vertical}small{margin-bottom:1rem}#send{background:var(--accent);color:var(--bg);font-weight:bold}
+</style></head><body><main>
+<header><a href="./index.html">← Dashboard Vertex</a><button id="reset">Nuova chat</button></header>
+<h1>Il mio assistente</h1><p>Chiedi a Vertex di spiegarti un mercato, confrontare due strumenti o interpretare i dati che inserisci. Per un’analisi attuale, includi la quotazione e la data.</p>
+<section id="log" role="log" aria-label="Conversazione"></section>
+<form id="chat"><label for="question">La tua domanda</label><textarea id="question" rows="3" maxlength="2000" placeholder="Che differenza c’è tra un BTP e un ETF obbligazionario?" required></textarea>
+<small>Al primo invio il browser scarica il modello (circa 512 MB) e i componenti necessari. Le domande vengono elaborate sul dispositivo. La conversazione si azzera quando chiudi la pagina.</small>
+<button id="send">Invia domanda</button> <button type="button" id="stop" hidden>Annulla</button><p id="status" role="status"></p></form></main>
+<script type="text/plain" id="engine">let model;
+self.onmessage = async ({data: turns}) => {
+  try {
+    if (!model) {
+      const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2/dist/transformers.min.js');
+      env.allowLocalModels = false;
+      env.backends.onnx.wasm.numThreads = 1;
+      model = await pipeline('text-generation', 'onnx-community/Qwen2.5-0.5B-Instruct', {
+        device: 'wasm', dtype: 'q8',
+        progress_callback(event) {
+          if (event.status === 'progress' && event.file.endsWith('.onnx')) {
+            self.postMessage({status: 'Caricamento modello · ' + Math.round(event.progress) + '%'});
+          }
+        }
+      });
+    }
+    self.postMessage({status: 'Vertex sta elaborando la domanda sul dispositivo…'});
+    const result = await model(turns, {max_new_tokens: 300, do_sample: false, return_full_text: false});
+    const generated = result[0].generated_text;
+    const answer = typeof generated === 'string' ? generated : generated.at(-1)?.content;
+    if (!answer?.trim()) throw Error('empty');
+    self.postMessage({answer: answer.trim()});
+  } catch {
+    self.postMessage({error: 'Elaborazione interrotta. Verifica la connessione per il primo download e la memoria disponibile, poi riprova.'});
+  }
+};</script><script>const el = id => document.getElementById(id);
+const form = el('chat'), input = el('question'), log = el('log'), statusLine = el('status');
+let worker, question;
+const history = [];
+function idle() {
+  question = '';
+  input.readOnly = false;
+  el('send').disabled = false;
+  el('stop').hidden = true;
+}
+function stop() {
+  if (worker) worker.terminate();
+  worker = null;
+  idle();
+}
+function bubble(label, value) {
+  const article = document.createElement('article');
+  const name = document.createElement('strong'), body = document.createElement('p');
+  name.textContent = label;
+  body.textContent = value;
+  article.append(name, body);
+  log.append(article);
+}
+el('stop').onclick = () => { stop(); statusLine.textContent = 'Operazione annullata.'; };
+el('reset').onclick = () => {
+  stop();
+  history.length = 0;
+  log.replaceChildren();
+  input.value = '';
+  statusLine.textContent = '';
+  input.focus();
+};
+form.onsubmit = event => {
+  event.preventDefault();
+  if (question || !input.value.trim()) return;
+  question = input.value.trim();
+  input.readOnly = true;
+  el('send').disabled = true;
+  el('stop').hidden = false;
+  statusLine.textContent = 'Preparazione del modello locale…';
+  try {
+    if (!worker) {
+      const url = URL.createObjectURL(new Blob([el('engine').textContent], {type:'text/javascript'}));
+      try { worker = new Worker(url, {type:'module'}); } finally { URL.revokeObjectURL(url); }
+      worker.onerror = () => { stop(); statusLine.textContent = 'Il motore locale non si è avviato. Riprova con un browser aggiornato.'; };
+      worker.onmessage = ({data}) => {
+        if (data.status) { statusLine.textContent = data.status; return; }
+        if (data.error) { stop(); statusLine.textContent = data.error; return; }
+        bubble('Tu', question);
+        bubble('Vertex', data.answer);
+        history.push({role:'user', content:question}, {role:'assistant', content:data.answer});
+        if (history.length > 8) history.splice(0,2);
+        statusLine.textContent = '';
+        input.value = '';
+        idle();
+        input.focus();
+      };
+    }
+    const prompt = 'Sei Vertex, assistente personale sui mercati finanziari. Rispondi in italiano in modo chiaro e conciso. Tratta azioni, ETF, indici, obbligazioni, forex, materie prime, crypto e macroeconomia. Non disponi di dati live o notizie recenti. Per analisi attuali chiedi prezzo, data e fonte. Non inventare dati o fonti. Distingui esempi, fatti e ipotesi.';
+    worker.postMessage([{role:'system',content:prompt}, ...history, {role:'user',content:question}]);
+  } catch {
+    stop();
+    statusLine.textContent = 'Avvio non riuscito. Riprova in un browser aggiornato.';
+  }
+};</script></body></html>
