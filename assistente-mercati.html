@@ -52,7 +52,7 @@ main{padding-bottom:4rem}.lightbar{position:fixed;bottom:0;left:0;right:0;height
 <section id="log" role="log" aria-label="Conversazione"></section>
 <form id="chat"><label for="question">La tua domanda</label><textarea id="question" rows="3" placeholder="Che differenza c’è tra un BTP e un ETF obbligazionario?" required></textarea>
 <small>La dettatura locale scarica il modello vocale al primo utilizzo e mantiene audio e trascrizione sul dispositivo. Al primo invio il browser scarica il modello (circa 512 MB) e i componenti necessari. Le domande vengono elaborate sul dispositivo. La conversazione si azzera quando chiudi la pagina.</small>
-<div id="playback" hidden><label for="voice-original">Riascolta la tua ultima dettatura</label><audio id="voice-original" controls></audio><details id="raw-dictation" hidden><summary>Trascrizione originale</summary><p id="raw-words"></p></details></div>
+
 <button id="mic" type="button" aria-pressed="false">🎙 Microfono</button> <button id="cancel-voice" type="button" hidden>Annulla dettatura</button> <button id="send">Invia domanda</button> <button type="button" id="stop" hidden>Annulla</button><p id="status" role="status"></p></form></main>
 <div class="lightbar" aria-hidden="true"></div>
 <svg id="voice-wave" aria-hidden="true" viewBox="0 0 760 144" preserveAspectRatio="none">
@@ -219,7 +219,7 @@ self.onmessage = async ({data}) => {
       }catch{}
     }
     if(hasRecognitionLoop(text)){
-      self.postMessage({text:'',notice:'La dettatura contiene ripetizioni anomale. Riascolta l’audio o ripeti la domanda.'});
+      self.postMessage({text:'',notice:'La dettatura contiene ripetizioni anomale. Ripeti la domanda.'});
       return;
     }
     self.postMessage({text:/[\p{L}\p{N}]/u.test(text)?text:''});
@@ -657,37 +657,6 @@ function endVoice() {
   el('send').disabled = false;
   el('chat').dataset.voice = 'off';
 }
-let recordingUrl;
-function clearPlayback() {
-  el('raw-dictation').hidden = true;
-  el('raw-dictation').open = false;
-  el('raw-words').textContent = '';
-  if (!recordingUrl) return;
-  const player = el('voice-original');
-  player.pause();
-  player.removeAttribute('src');
-  player.load();
-  URL.revokeObjectURL(recordingUrl);
-  recordingUrl = null;
-  el('playback').hidden = true;
-}
-function offerPlayback(samples, sampleRate) {
-  clearPlayback();
-  const buffer = new ArrayBuffer(44 + samples.length * 2);
-  const view = new DataView(buffer);
-  function tag(offset, name) {
-    for (let i = 0; i < name.length; i++) view.setUint8(offset + i,name.charCodeAt(i));
-  }
-  tag(0,'RIFF'); view.setUint32(4,buffer.byteLength - 8,true); tag(8,'WAVE');
-  tag(12,'fmt '); view.setUint32(16,16,true); view.setUint16(20,1,true);
-  view.setUint16(22,1,true); view.setUint32(24,sampleRate,true);
-  view.setUint32(28,sampleRate * 2,true); view.setUint16(32,2,true);
-  view.setUint16(34,16,true); tag(36,'data'); view.setUint32(40,samples.length * 2,true);
-  samples.forEach((value,i) => view.setInt16(44 + i * 2, Math.round(Math.max(-1,Math.min(1,value)) * 32767),true));
-  recordingUrl = URL.createObjectURL(new Blob([buffer], {type:'audio/wav'}));
-  el('voice-original').src = recordingUrl;
-  el('playback').hidden = false;
-}
 // Normalize recognized market terms in both partial and final Italian dictation.
 const voiceVocabulary = [["Bitcoin","bit coin","bit-coin"],
   ["Ethereum","eterium","ethereum"],
@@ -917,14 +886,10 @@ function transcribeSoFar(session) {
         const space = corrected && session.original && !/\s$/.test(session.original) ? ' ' : '';
         input.value = session.original + space + corrected;
         input.scrollTop = input.scrollHeight;
-        if (complete) {
-          el('raw-words').textContent = data.text || '';
-          el('raw-dictation').hidden = true;
-        }
       }
       if (complete) {
         endVoice();
-        statusLine.textContent = data.notice || (data.text ? 'Trascrizione pronta. Rileggila e premi Invia domanda.' : 'Trascrizione finale non disponibile. Verifica il testo provvisorio o riascolta l’audio.');
+        statusLine.textContent = data.notice || (data.text ? 'Trascrizione pronta. Rileggila e premi Invia domanda.' : 'Trascrizione finale non disponibile. Verifica il testo provvisorio o ripeti la domanda.');
         input.focus();
       } else {
         if(session.phase==='listening'&&data.text)statusLine.textContent='Sto trascrivendo… continua a parlare.';
@@ -985,7 +950,6 @@ function finishRecording() {
   if (!session.length) { endVoice(); statusLine.textContent = 'Nessun audio registrato.'; return; }
   mic.disabled = true;
   statusLine.textContent = 'Completo la trascrizione…';
-  try { offerPlayback(joinedAudio(session), session.ctx.sampleRate); } catch { clearPlayback(); }
   transcribeSoFar(session);
 }
 mic.onclick = async () => {
@@ -1116,7 +1080,6 @@ el('stop').onclick = () => { stop(); statusLine.textContent = 'Operazione annull
 el('reset').onclick = () => {
   stop();
   cancelVoice();
-  clearPlayback();
   history.length = 0;
   log.replaceChildren();
   input.value = '';
