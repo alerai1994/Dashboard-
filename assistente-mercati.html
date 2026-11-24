@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><meta name="theme-color" content="#f5f8f8"><script>(() => {
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light dark"><meta name="theme-color" content="#f5f8f8"><script>(() => {
   // Palette values match the dashboard's background, panel, border, text and brand.
   const palettes = {
     light: ["light","#edf1f0","#f3f5f2","#c2cfcb","#1f2427","#457384"],
@@ -44,14 +44,16 @@
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:1rem/1.55 system-ui,sans-serif}main{max-width:48rem;margin:0 auto;padding:clamp(1rem,4vw,3rem)}header{display:flex;justify-content:flex-start;padding-top:clamp(1rem,4vw,3rem);padding-left:max(.5rem,env(safe-area-inset-left,0px));padding-right:max(.5rem,env(safe-area-inset-right,0px));align-items:center}#close-assistant{margin-left:auto;display:grid;place-items:center;width:44px;height:44px;text-decoration:none;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:.6rem;font:1.7rem/1 system-ui}#close-assistant:focus-visible{outline:2px solid var(--accent);outline-offset:2px}header+main{padding-top:0}a,strong{color:var(--accent)}h1{font-size:clamp(2rem,5vw,3rem);line-height:1.12}article{border-left:2px solid var(--line);padding-left:1rem;margin:1.25rem 0}article p{white-space:pre-wrap;overflow-wrap:anywhere;margin:.3rem 0}textarea,button{background:var(--panel);color:inherit;border:1px solid var(--line);border-radius:.6rem;padding:.65rem .9rem;font:inherit}button{cursor:pointer}button:disabled{opacity:.55}label,textarea,small{display:block}textarea{width:100%;margin:.45rem 0;resize:vertical}small{margin-bottom:1rem}#send{background:var(--accent);color:var(--bg);font-weight:bold}
 main{padding-bottom:4rem}.lightbar{position:fixed;bottom:0;left:0;right:0;height:6px;z-index:5;background:linear-gradient(90deg,#6c63ff,#00cfff,#00e29c,#ffd24f,#ff578e,#6c63ff);background-size:200% 100%;box-shadow:0 -2px 15px #9878ff95;pointer-events:none;animation:flow 7s linear infinite}body:has(#chat[data-voice="on"]) .lightbar,body:has(#send:disabled) .lightbar{height:9px;box-shadow:0 -4px 24px #25cfffaa;animation-duration:2s}@keyframes flow{to{background-position:200% 0}}@media(prefers-reduced-motion:reduce){.lightbar{animation:none}}#mic[aria-pressed=true]{outline:2px solid var(--accent)}
 #voice-wave{position:fixed;bottom:0;left:0;width:100%;height:clamp(78px,14vh,138px);box-sizing:content-box;padding-bottom:env(safe-area-inset-bottom,0px);z-index:6;pointer-events:none;display:none;background:transparent}#voice-wave.speaking{display:block}.voice-halo{filter:blur(3px);opacity:.7}body.voice-listening .lightbar{visibility:hidden}body.voice-listening main{padding-bottom:calc(clamp(78px,14vh,138px) + env(safe-area-inset-bottom,0px) + 1.5rem)}
+
+#voice-options{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap;margin:.7rem 0}#voice-options label{font-size:.9rem}#voice-mode,#voice-pause{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:.6rem;min-height:44px;padding:.45rem;font:inherit;font-size:16px;max-width:100%}#mic,#cancel-voice,#send,#stop{min-height:44px;touch-action:manipulation}#voice-hint{margin:.3rem 0 .7rem}#question{font-size:16px}button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}#status{overflow-wrap:anywhere}main{padding-bottom:calc(4rem + env(safe-area-inset-bottom,0px))}@media(max-width:420px){#voice-options{display:grid;grid-template-columns:1fr}#voice-options select{width:100%}}
 </style></head><body><header><button id="reset">Nuova chat</button><a id="close-assistant" href="./index.html?from=assistant" aria-label="Chiudi assistente vocale" title="Chiudi assistente vocale">×</a></header>
 <main>
 <h1>Assistente mercati</h1><p>Parla con Vertex di azioni, indici, ETF, obbligazioni, valute, materie prime e cripto. Per un’analisi attuale, includi la quotazione e la data.</p>
 <section id="log" role="log" aria-label="Conversazione"></section>
 <form id="chat"><label for="question">La tua domanda</label><textarea id="question" rows="3" placeholder="Che differenza c’è tra un BTP e un ETF obbligazionario?" required></textarea>
-<small>La prima dettatura scarica anche il modello vocale. Audio e trascrizione restano sul dispositivo. Al primo invio il browser scarica il modello (circa 512 MB) e i componenti necessari. Le domande vengono elaborate sul dispositivo. La conversazione si azzera quando chiudi la pagina.</small>
+<small>La dettatura locale scarica il modello vocale al primo utilizzo e mantiene audio e trascrizione sul dispositivo. La modalità rapida facoltativa usa il servizio del browser, che può inviare l’audio a un server. Al primo invio il browser scarica il modello (circa 512 MB) e i componenti necessari. Le domande vengono elaborate sul dispositivo. La conversazione si azzera quando chiudi la pagina.</small>
 <div id="playback" hidden><label for="voice-original">Riascolta la tua ultima dettatura</label><audio id="voice-original" controls></audio><details id="raw-dictation" hidden><summary>Trascrizione originale</summary><p id="raw-words"></p></details></div>
-<button id="mic" type="button" aria-pressed="false">🎙 Microfono</button> <button id="send">Invia domanda</button> <button type="button" id="stop" hidden>Annulla</button><p id="status" role="status"></p></form></main>
+<div id="voice-options"><label for="voice-mode">Motore vocale</label><select id="voice-mode" aria-describedby="voice-hint"><option value="local">Privato · sul dispositivo</option><option value="browser">Rapido · servizio del browser</option></select><label for="voice-pause">Pausa automatica</label><select id="voice-pause"><option value="3">3 secondi</option><option value="5">5 secondi</option><option value="0">Solo arresto manuale</option></select></div><small id="voice-hint">Modalità privata: nessun invio dell’audio a un servizio di trascrizione.</small><button id="mic" type="button" aria-pressed="false">🎙 Microfono</button> <button id="cancel-voice" type="button" hidden>Annulla dettatura</button> <button id="send">Invia domanda</button> <button type="button" id="stop" hidden>Annulla</button><p id="status" role="status"></p></form></main>
 <div class="lightbar" aria-hidden="true"></div>
 <svg id="voice-wave" aria-hidden="true" viewBox="0 0 760 144" preserveAspectRatio="none">
   <defs>
@@ -130,7 +132,13 @@ self.onmessage = async ({data: samples}) => {
       const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2/dist/transformers.min.js');
       env.allowLocalModels = false;
       env.backends.onnx.wasm.numThreads = 1;
-      transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-base', {device:'wasm', dtype:'q8'});
+      transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-base', {
+        device:'wasm', dtype:'q8', progress_callback(event) {
+          if (event.status === 'progress' && Number.isFinite(event.progress)) {
+            self.postMessage({status:'Caricamento modello vocale · '+Math.round(event.progress)+'%'});
+          }
+        }
+      });
     }
     const result = await transcriber(clip, {language:'italian', task:'transcribe', do_sample:false});
     const text = cleanDictation(result.text);
@@ -378,7 +386,21 @@ function marketContext(question) {
   const hint = best.replace(/\{s\}/g, 'lo strumento indicato').replace(/\{[pf]\}/g, 'nel periodo indicato');
   return ' Spunto interno facoltativo: ' + hint + ' Rispondi alla domanda originale senza elencare esempi di domande o filtri.';
 }
-const mic = el('mic');
+const mic = el('mic'), voiceMode=el('voice-mode'), voicePause=el('voice-pause'), voiceHint=el('voice-hint');
+const BrowserRecognition=window.SpeechRecognition || window.webkitSpeechRecognition;
+if (!BrowserRecognition) {
+  voiceMode.options[1].disabled=true;
+  voiceMode.options[1].textContent='Rapido · non disponibile in questo browser';
+}
+voiceMode.onchange=()=>{
+  voiceHint.textContent=voiceMode.value==='browser' ?
+    'Modalità rapida: il browser o il sistema può inviare la voce a un servizio esterno. La registrazione WAV non è disponibile.' :
+    'Modalità privata: nessun invio dell’audio a un servizio di trascrizione.';
+};
+function voiceControls(active) {
+  voiceMode.disabled=active; voicePause.disabled=active;
+  el('cancel-voice').hidden=!active;
+}
 let recording = null, voiceWorker = null;
 const voiceWave = document.getElementById('voice-wave');
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -442,15 +464,27 @@ function startWave() {
 }
 function releaseAudio(session) {
   resetWave();
-  session.processor?.disconnect();
-  session.source?.disconnect();
+  clearTimeout(session.listenTimer);
+  try { session.processor?.disconnect(); } catch {}
+  try { session.source?.disconnect(); } catch {}
+  try { session.mute?.disconnect(); } catch {}
+  if (session.processor?.port) { session.processor.port.onmessage=null; session.processor.port.close(); }
   session.stream?.getTracks().forEach(track => track.stop());
   if (session.ctx && session.ctx.state !== 'closed') session.ctx.close().catch(() => {});
 }
 function endVoice() {
   const session = recording;
   recording = null;
-  if (session) releaseAudio(session);
+  if (session) {
+    clearTimeout(session.watchdog);
+    clearTimeout(session.listenTimer);
+    if (session.recognizer) {
+      session.recognizer.onresult=session.recognizer.onerror=session.recognizer.onend=session.recognizer.onstart=null;
+      try { session.recognizer.abort(); } catch {}
+    }
+    releaseAudio(session);
+  }
+  voiceControls(false);
   mic.textContent = '🎙 Microfono';
   mic.setAttribute('aria-pressed','false');
   mic.disabled = false;
@@ -494,7 +528,14 @@ const voiceVocabulary = [["Bitcoin","bit coin","bit-coin"],
   ["Ethereum","eterium","ethereum"],
   ["Solana"],
   ["Injective","injectiv"],
-  ["Raydium"],
+  ["Raydium","ray dium"],
+  ["Holochain","holo chain"],
+  ["Tars AI","tars ai"],
+  ["Verasity","vera sity"],
+  ["Bitget","bit get"],
+  ["KuCoin","ku coin"],
+  ["CoinGecko","coin gecko"],
+  ["WebSocket","web socket"],
   ["Terra Luna Classic"],
   ["Chainlink","chain link"],
   ["Polkadot","polka dot"],
@@ -639,14 +680,14 @@ function pauseEndsPhrase(session, rms, count) {
   } else {
     session.pauseSeconds += seconds;
   }
-  return session.speechSeconds >= 0.16 && session.pauseSeconds >= 2;
+  return session.pauseLimit > 0 && session.speechSeconds >= 0.25 && session.pauseSeconds >= session.pauseLimit;
 }
 
 function transcribeSoFar(session) {
   const final = session.phase === 'transcribing';
   const rate = session.ctx.sampleRate;
   if (recording !== session || session.pending) return;
-  const interval = session.lastSent ? 1.8 : 1;
+  const interval = session.lastSent ? 3 : 2;
   if (!final && (session.speechSeconds < 0.16 || session.length - session.lastSent < rate * interval)) return;
   session.pending = true;
   session.lastSent = session.length;
@@ -663,6 +704,8 @@ function transcribeSoFar(session) {
     }
     voiceWorker.onmessage = ({data}) => {
       if (recording !== session) return;
+      if (data.status) { statusLine.textContent=data.status; return; }
+      clearTimeout(session.watchdog);
       session.pending = false;
       if (data.error) { fail(data.error); return; }
       const complete = session.phase === 'transcribing' && session.lastSent === session.length;
@@ -688,6 +731,9 @@ function transcribeSoFar(session) {
       if (recording === session) fail('Motore vocale non disponibile. Puoi scrivere la domanda.');
     };
     const samples = speechSamples(joinedAudio(session), rate);
+    session.watchdog=setTimeout(()=>{
+      if(recording===session)fail('Trascrizione troppo lenta. Riprova con una frase più breve o scegli il motore rapido se disponibile.');
+    },180000);
     voiceWorker.postMessage(samples, [samples.buffer]);
   } catch { fail('Trascrizione non disponibile. Puoi scrivere la domanda.'); }
 }
@@ -705,15 +751,22 @@ function finishRecording() {
 }
 mic.onclick = async () => {
   if (question) return;
-  if (recording) { finishRecording(); return; }
-  const session = {phase:'request', blocks:[], length:0, lastSent:0, pending:false, original:input.value, levelHistory:[], speechSeconds:0, pauseSeconds:0};
+  if (recording) {
+    if(recording.recognizer){try{recording.recognizer.stop()}catch{endVoice()}}
+    else finishRecording();
+    return;
+  }
+  if(voiceMode.value==='browser'){startBrowserVoice();return;}
+  const session = {phase:'request', blocks:[], length:0, lastSent:0, pending:false, original:input.value, levelHistory:[], speechSeconds:0, pauseSeconds:0, pauseLimit:Number(voicePause.value)};
   recording = session;
+  voiceControls(true);
   mic.disabled = true;
   input.readOnly = true;
   el('send').disabled = true;
   statusLine.textContent = 'Consenti l’accesso al microfono per dettare.';
   try {
     const Audio = window.AudioContext || window.webkitAudioContext;
+    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia || !Audio) throw Object.assign(new Error('Microfono non disponibile'),{name:'UnsupportedAudio'});
     session.ctx = new Audio();
     await session.ctx.resume();
     if (recording !== session) return;
@@ -732,25 +785,85 @@ mic.onclick = async () => {
       else transcribeSoFar(session);
     };
     session.source.connect(session.processor);
-    session.processor.connect(session.ctx.destination);
+    session.mute=session.ctx.createGain();
+    session.mute.gain.value=0;
+    session.processor.connect(session.mute);
+    session.mute.connect(session.ctx.destination);
     session.phase = 'listening';
     startWave();
+    session.listenTimer=setTimeout(()=>{
+      if(recording!==session||session.phase!=='listening')return;
+      if(session.length)finishRecording();
+      else {endVoice();statusLine.textContent='Nessun audio ricevuto. Controlla il microfono e riprova.';}
+    },35000);
+    stream.getAudioTracks().forEach(track=>track.addEventListener('ended',()=>{
+      if(recording===session&&session.phase==='listening')finishRecording();
+    },{once:true}));
     mic.disabled = false;
     mic.textContent = '■ Termina dettatura';
     mic.setAttribute('aria-pressed','true');
     el('chat').dataset.voice = 'on';
-    statusLine.textContent = 'Parla: il testo compare durante la dettatura. Una pausa di 2 secondi conclude la frase. Durata massima: 30 secondi.';
+    statusLine.textContent = 'Parla: trascrizione durante la dettatura. '+(session.pauseLimit?'Pausa di '+session.pauseLimit+' secondi per terminare. ':'Arresto manuale. ')+'Durata massima: 30 secondi.';
   } catch (error) {
     if (recording !== session) return;
     endVoice();
-    statusLine.textContent = error.name === 'NotAllowedError' ? 'Accesso al microfono negato. Puoi abilitarlo nelle impostazioni del sito o scrivere la domanda.' : 'Microfono non disponibile. Puoi scrivere la domanda.';
+    const messages={NotAllowedError:'Accesso al microfono negato. Controlla i permessi del browser e del sistema.',NotFoundError:'Nessun microfono rilevato. Collega o seleziona un microfono.',NotReadableError:'Microfono occupato o non accessibile. Chiudi altre app audio e riprova.',UnsupportedAudio:'La dettatura locale richiede HTTPS e un browser con Web Audio e accesso al microfono.'};
+    statusLine.textContent=(messages[error.name]||'Microfono non disponibile. Riprova in un browser aggiornato.')+' Puoi anche usare la dettatura della tastiera.';
   }
 };
+function startBrowserVoice(){
+  if(!BrowserRecognition){statusLine.textContent='Motore rapido non disponibile. Seleziona la modalità privata o la dettatura della tastiera.';return;}
+  const session={phase:'request',original:input.value,recognizer:null,finalText:''};
+  recording=session;voiceControls(true);input.readOnly=true;el('send').disabled=true;
+  clearPlayback();
+  function finish(message){
+    if(recording!==session)return;
+    endVoice();statusLine.textContent=message;
+  }
+  try{
+    const r=new BrowserRecognition();session.recognizer=r;
+    r.lang='it-IT';r.interimResults=true;r.continuous=false;r.maxAlternatives=1;
+    mic.textContent='■ Termina dettatura';mic.setAttribute('aria-pressed','true');
+    statusLine.textContent='Consenti il microfono al servizio del browser…';
+    r.onstart=()=>{
+      if(recording!==session)return;
+      session.phase='listening';startWave();el('chat').dataset.voice='on';
+      statusLine.textContent='Parla in italiano. Il servizio del browser può terminare dopo una pausa.';
+    };
+    r.onresult=event=>{
+      if(recording!==session)return;
+      let final='',interim='';
+      for(let i=0;i<event.results.length;i++){
+        const result=event.results[i];
+        if(result.isFinal)final+=result[0].transcript+' ';
+        else interim+=result[0].transcript+' ';
+      }
+      session.finalText=final.trim();
+      const text=correctItalianDictation((final+interim).trim(),!interim);
+      input.value=session.original+(text&&session.original&&!/\s$/.test(session.original)?' ':'')+text;
+    };
+    r.onerror=event=>{
+      const messages={'not-allowed':'Permesso microfono negato.','service-not-allowed':'Servizio vocale non autorizzato.','audio-capture':'Microfono non disponibile.','network':'Servizio vocale non raggiungibile.','no-speech':'Nessuna parola rilevata.'};
+      finish((messages[event.error]||'Dettatura rapida interrotta.')+' Puoi riprovare in modalità privata.');
+    };
+    r.onend=()=>finish(session.finalText?'Trascrizione pronta. Rileggila prima di inviare.':'Dettatura terminata. Controlla il testo o riprova.');
+    session.listenTimer=setTimeout(()=>{
+      if(recording===session)finish('Tempo massimo raggiunto. Controlla il testo o riprova.');
+    },60000);
+    r.start();
+  }catch{finish('Motore rapido non disponibile. Prova la modalità privata.')}
+}
 function cancelVoice() {
   if (voiceWorker) { voiceWorker.terminate(); voiceWorker = null; }
-  if (recording) endVoice();
+  if (recording) {input.value=recording.original;endVoice();}
 }
+el('cancel-voice').onclick=()=>{cancelVoice();statusLine.textContent='Dettatura annullata.';};
 window.addEventListener('pagehide', cancelVoice);
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden&&recording&&recording.phase!=='transcribing'){
+    cancelVoice();statusLine.textContent='Dettatura interrotta quando la pagina è passata in secondo piano.';
+  }
+});
 el('close-assistant').addEventListener('click', event => {
   if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
   cancelVoice();
