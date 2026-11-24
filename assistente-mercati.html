@@ -141,12 +141,16 @@ function ensureVoiceModel(preferSmall){
   if(transcriber)return Promise.resolve(transcriber);
   if(!modelLoading){
     modelLoading=(async()=>{
-      try{await loadVoiceModel('base');}
-      catch(error){
-        self.postMessage({status:'Preparazione del modello vocale leggero…'});
-        await loadVoiceModel('tiny');
+      let lastError;
+      const choices=preferSmall?['small','base','tiny']:['base','tiny'];
+      for(const name of choices){
+        try{await loadVoiceModel(name);return transcriber;}
+        catch(error){
+          lastError=error;transcriber=null;modelName=null;
+          self.postMessage({status:'Preparazione del modello vocale compatibile…'});
+        }
       }
-      return transcriber;
+      throw lastError||Error('Modello non disponibile');
     })().finally(()=>{modelLoading=null;});
   }
   return modelLoading;
@@ -203,14 +207,20 @@ self.onmessage = async ({data}) => {
     }
     await ensureVoiceModel(preferSmall);
     let result;
-    try { result=await decodeVoice(clip,final); }
-    catch(error) {
-      if(modelName==='tiny')throw error;
-      try { await transcriber.dispose(); } catch {}
-      transcriber=null;
-      self.postMessage({status:'Passaggio al modello vocale compatibile…'});
-      await loadVoiceModel('tiny');
-      result=await decodeVoice(clip,final);
+    for(;;){
+      try{result=await decodeVoice(clip,final);break;}
+      catch(error){
+        if(modelName==='tiny')throw error;
+        const fallback=modelName==='small'?['base','tiny']:['tiny'];
+        try{await transcriber.dispose();}catch{}
+        transcriber=null;modelName=null;
+        self.postMessage({status:'Passaggio al modello vocale compatibile…'});
+        let loaded=false;
+        for(const name of fallback){
+          try{await loadVoiceModel(name);loaded=true;break;}catch{}
+        }
+        if(!loaded)throw error;
+      }
     }
     let text=cleanDictation(result.text||'');
     if(final && (!/[\p{L}\p{N}]/u.test(text)||hasRecognitionLoop(text))){
@@ -944,17 +954,37 @@ const voiceVocabulary = [["Bitcoin","bit coin","bit-coin"],
   ["quantitative easing"],
   ["basis point"],
   ["basis points"]];
-const voiceAliases = new Map();
-for (const [term, ...aliases] of voiceVocabulary) {
-  for (const spelling of [term, ...aliases]) voiceAliases.set(spelling.toLowerCase(), term);
+const extendedVoiceVocabulary=[["Solana","sol anna","sol ana"],["Bitcoin","bit coìn","bit co in"],["Ethereum","eterèum","eterio","ether eum"],["Injective","in jectiv","injective protocol","in iettive"],["Chainlink","chein link","chain linck"],["Raydium","rei dium"],["Holochain","olo chain"],["Verasity","veracity"],["CoinMarketCap","coin market cap"],["Phantom","phantom wallet"],["Binance","bi nance"],["Coinbase","coin base"],["TradingView","trading view"],["MetaMask","meta mask"],["Cardano","carda no"],["Dogecoin","doge co in"],["Shiba Inu","shiba inù"],["Hyperliquid","hyper liquid"],["Bittensor","bit tensor"],["Fetch.ai","fetch ai"],["World Liberty Financial","world liberty financial"],["USDC","u s d c","u esse di ci"],["USDT","u s d t"],["SOL","esse o elle"],["XRP","ics erre pi","x r p"],["BNB","bi enne bi","b n b"],["ADA","a d a"],["AVAX","a v a x"],["VRA","vu erre a","v r a"],["WLFI","w l f i"],["ORE","token o r e"],["EMA","e m a","e emme a"],["SMA","s m a","esse emme a"],["ATR","a t r","a ti erre"],["ADX","a d x","a di ics"],["OBV","o b v"],["DCA","d c a","di ci a"],["PAC","p a c","pi a ci"],["ATH","a t h"],["ATL","a t l"],["ROI","r o i"],["ROE","r o e"],["P/E","p e ratio"],["EPS","e p s"],["NAV","n a v"],["TER","t e r"],["AUM","a u m"],["FDV","f d v"],["CPI","c p i","ci pi i"],["PPI","p p i"],["NFP","n f p"],["FED","f e d"],["SEC","s e c"],["MiCA","m i c a"],["DAO","d a o"],["DEX","d e x"],["CEX","c e x"],["NFT","n f t","enne effe ti"],["API","a p i"],["JSON","j s o n"],["KYC","k y c"],["AML","a m l"],["proof of stake","proof of steak"],["proof of work","proof of worck"],["smart contract","smartcontract"],["liquidity pool","liquiditypool"],["impermanent loss","impermanentloss"],["yield farming","yieldfarming"],["liquid staking","liquidstaking"],["restaking","re staking"],["airdrop","air drop"],["tokenomics","token omics"],["mainnet","main net"],["testnet","test net"],["layer 2","layer two","layer due"],["rollup","roll up"],["gas fee","gasfee"],["market maker","marketmaker"],["market order","marketorder"],["limit order","limitorder"],["open interest","openinterest"],["funding rate","fundingrate"],["short squeeze","shortsqueeze"],["bull market","bullmarket"],["bear market","bearmarket"],["dollar cost averaging","dollar cost average"],["free cash flow","freecashflow"],["price action","priceaction"],["risk reward","riskreward"],["trailing stop","trailingstop"],["all-time high","all time high"],["all-time low","all time low"],["stock split","stocksplit"],["buyback","buy back"],["spread bid-ask","spread bid ask"],["Nasdaq 100","nasdaq cento"],["FTSE MIB","futsimib"],["Euro Stoxx 50","euro stoxx cinquanta"],["MSCI World","emme esse ci i world"],["S&P 500","esse e pi cinquecento"],["Wi-Fi","wi fi"],["Bluetooth","blue tooth"],["ChromeOS","chrome os"],["iPadOS","ipad os"],["macOS","mac os"],["Windows 11","windows undici"],["USB-C","u s b c"],["GitHub","git hub"],["JavaScript","java script"],["Python","pai ton"],["WebAssembly","web assembly"]];
+const voiceCryptoCatalog=[["Bitcoin","BTC"],["Ethereum","ETH"],["Solana","SOL"],["Injective","INJ"],["BNB","BNB"],["ORE","ORE"],["XRP","XRP"],["Dogecoin","DOGE"],["Cardano","ADA"],["Avalanche","AVAX"],["Chainlink","LINK"],["Polkadot","DOT"],["TRON","TRX"],["Gram (prev. Toncoin)","GRAM"],["Sui","SUI"],["Litecoin","LTC"],["Bitcoin Cash","BCH"],["Stellar","XLM"],["Hedera","HBAR"],["NEAR Protocol","NEAR"],["Aptos","APT"],["Cosmos Hub","ATOM"],["Uniswap","UNI"],["Aave","AAVE"],["Arbitrum","ARB"],["Optimism","OP"],["Shiba Inu","SHIB"],["Pepe","PEPE"],["Render","RENDER"],["Raydium","RAY"],["Terra Luna Classic","LUNC"],["Verasity","VRA"],["World Liberty Financial","WLFI"],["Holo","HOT"],["Kusama","KSM"],["Worldcoin","WLD"],["Artificial Superintelligence Alliance","FET"],["Oraichain","ORAI"],["TARS AI","TAI"],["Virtuals Protocol","VIRTUAL"],["Bittensor","TAO"],["Terra","LUNA"],["Tether","USDT"],["USDC","USDC"],["Figure Heloc","FIGR_HELOC"],["Hyperliquid","HYPE"],["Zcash","ZEC"],["Monero","XMR"],["LEO Token","LEO"],["USDS","USDS"],["WhiteBIT Coin","WBT"],["Ethena USDe","USDE"],["Dai","DAI"],["Canton","CC"],["Tether Gold","XAUT"],["USD1","USD1"],["Gram (prev. Toncoin)","GRAM"],["Ripple USD","RLUSD"],["Global Dollar","USDG"],["Rain","RAIN"],["PayPal USD","PYUSD"],["Ondo US Dollar Yield","USDY"],["Cronos","CRO"],["Quant","QNT"],["Circle USYC","USYC"],["Spiko Amundi Overnight Swap Fund (EUR)","EURSAFO"],["MemeCore","M"],["OKB","OKB"],["PAX Gold","PAXG"],["Falcon USD","USDF"],["Ethena","ENA"],["BlackRock USD Institutional Digital Liquidity Fund","BUIDL"],["Aster","ASTER"],["United Stables","U"],["Ondo","ONDO"],["Pump.fun","PUMP"],["USDD","USDD"],["Internet Computer","ICP"],["HTX DAO","HTX"],["Morpho","MORPHO"],["Sky","SKY"],["Mantle","MNT"],["BFUSD","BFUSD"],["JUST","JST"],["Bitget Token","BGB"],["USDGO","USDGO"],["Bitway","BTW"],["Ethereum Classic","ETC"],["Open USD","OUSD"],["KuCoin","KCS"],["Venice Token","VVV"],["Gate","GT"],["POL (ex-MATIC)","POL"],["Jupiter","JUP"],["Midnight","NIGHT"],["Kaspa","KAS"],["Pi Network","PI"],["Lighter","LIT"],["Algorand","ALGO"],["GHO","GHO"],["NEXO","NEXO"],["Invesco Short Duration US Government Securities Fund","USTB"],["LayerZero","ZRO"],["Beldex","BDX"],["Pearl","PEARL"],["Janus Henderson Anemoy AAA CLO Fund","JAAA"],["Filecoin","FIL"],["PancakeSwap","CAKE"],["XDC Network","XDC"],["Ether.fi","ETHFI"],["OpenEden OpenDollar","USDO"],["Stacks","STX"],["EURC","EURC"],["Dash","DASH"],["TrueUSD","TUSD"],["YLDS","YLDS"],["Pieverse","PIEVERSE"],["Spiko EU T-Bills Money Market Fund","EUTBL"],["Pyth Network","PYTH"],["A7A5","A7A5"],["​​Stable","STABLE"],["币安人生 (BinanceLife)","币安人生"],["Flare","FLR"],["VeChain","VET"],["Provenance Blockchain","HASH"],["Re Protocol reUSD","REUSD"],["Celestia","TIA"],["Curve DAO","CRV"],["Pudgy Penguins","PENGU"],["Kinesis Gold","KAU"],["SoFiUSD","SOFID"],["Aero","AERO"],["Falcon Finance","FF"],["Ondo Short-Term U.S. Government Bond Fund","OUSG"],["BitTorrent","BTT"],["Kite","KITE"],["Grass","GRASS"],["Bitcoin SV","BSV"],["SPX6900","SPX"],["apxUSD","APXUSD"],["Official Trump","TRUMP"],["Sun Token","SUN"],["Derive","DRV"],["First Digital USD","FDUSD"],["Sei","SEI"],["Akedo","AKE"],["Starknet","STRK"],["Pendle","PENDLE"],["Unibase","UB"],["Ape and Pepe","APEPE"],["Spiko Amundi Overnight Swap Fund","SAFO"],["Gnosis","GNO"],["Tezos","XTZ"],["Lido DAO","LDO"],["Olympus","OHM"],["Plasma","XPL"],["Tradable NA Rent Financing Platform SSTN","PC0000031"],["Bonk","BONK"],["Legacy Frax Dollar","FRAX"],["Beam","BEAM"],["Backpack","BP"],["Conflux","CFX"],["USX","USX"],["Ozone Chain","OZO"],["Cap","CAP"],["Kaia","KAIA"],["Decred","DCR"],["AINFT","NFT"],["Compound","COMP"],["EUR CoinVertible","EURCV"],["Midas Fasanara Global Open","MGLO"],["KOGE","KOGE"],["Monad","MON"],["Shuffle","SHFL"],["BTSE Token","BTSE"],["The Graph","GRT"],["FLOKI","FLOKI"],["Kamino","KMNO"],["Arweave","AR"],["Kinesis Silver","KAG"],["USAT","USAT"],["Zebec Network","ZBCN"],["THORChain","RUNE"],["Spiko US T-Bills Money Market Fund","USTBL"],["Ethereum Name Service","ENS"],["SpaceX (bStocks Tokenized Stock)","SPCXB"],["Geodnet","GEOD"],["JasmyCoin","JASMY"],["Tradable APAC Diversified Finance Provider SSTN","PC0000033"],["Collector Crypt","CARDS"],["Meteora","MET"],["Anvil","ANVL"],["Fluid","FLUID"],["IOTA","IOTA"],["USDai","USDAI"],["NVIDIA (bStocks Tokenized Stock)","NVDAB"],["Jito","JTO"],["Akash Network","AKT"],["Basic Attention","BAT"],["Trust Wallet","TWT"],["AUSD","AUSD"],["GUSD","GUSD"],["Zama","ZAMA"],["Convex Finance","CVX"],["GoMining Token","GOMINING"],["EigenCloud (prev. EigenLayer)","EIGEN"],["dogwifhat","WIF"],["Sonic","S"],["apyUSD","APYUSD"],["OriginTrail","TRAC"],["Bedrock","BR"],["Theta Network","THETA"],["crvUSD","CRVUSD"],["Tradable LatAm Fintech SSTN","PC0000097"],["Quack AI","Q"],["CASH","CASH"],["Circle Internet Group (bStocks Tokenized Stock)","CRCLB"],["coco","COCO"],["3Jane USD3","USD3"],["MX","MX"],["SwissBorg","BORG"],["JPYSC","JPYSC"],["Axie Infinity","AXS"],["BCGame Coin","BC"],["Decentraland","MANA"],["lium","SN51"],["Vision","VSN"],["Maple Finance","SYRUP"],["Immutable","IMX"],["Maker","MKR"],["dYdX","DYDX"],["Synthetix","SNX"],["1INCH","1INCH"],["Zilliqa","ZIL"],["MultiversX","EGLD"],["Mina Protocol","MINA"],["Oasis","ROSE"],["Chiliz","CHZ"],["Enjin Coin","ENJ"],["Sushi","SUSHI"],["yearn.finance","YFI"],["Amp","AMP"],["Casper Network","CSPR"],["Loopring","LRC"],["Ankr Network","ANKR"],["Celo","CELO"],["Blur","BLUR"],["GMX","GMX"],["WOO","WOO"],["Qtum","QTUM"],["Kyber Network Crystal","KNC"],["Osmosis","OSMO"],["eCash","XEC"],["GALA","GALA"],["Arkham","ARKM"],["Notcoin","NOT"],["Turbo","TURBO"],["Popcat","POPCAT"],["WAX","WAXP"],["COTI","COTI"],["Audius","AUDIO"],["Balancer","BAL"],["Band","BAND"],["Api3","API3"],["SKALE","SKL"],["Storj","STORJ"],["Numeraire","NMR"],["iExec RLC","RLC"],["Cartesi","CTSI"],["Dent","DENT"],["Civic","CVC"],["IoTeX","IOTX"],["Harmony","ONE"],["Ravencoin","RVN"],["Siacoin","SC"],["0x Protocol","ZRX"],["Horizen","ZEN"],["Komodo","KMD"],["ICON","ICX"],["Ontology Gas","ONG"],["Ontology","ONT"],["Helium","HNT"],["Chia","XCH"],["Nano","XNO"],["PHALA","PHA"],["Celer Network","CELR"],["Flux","FLUX"],["Kadena","KDA"]];
+const financialSpeechContext=/(?:\b(?:cripto|crypto|criptovalut[ae]|token|staking|mercat[oi]|investiment[oi]|trading|quotazion[ei]|prezz[oi]|bitcoin|ethereum|solana|injective|blockchain|exchange|borsa|azioni|indici|rendiment[oi]|indicator[ei]|etf|portafoglio|capitalizzazione|volum[ei]|liquidit[aà]|percentuale|dollar[oi]|defi|wallet|leva|notizi[ae]|aggiornament[oi])\b)/iu;
+function voiceAliasKey(value){return String(value).trim().toLocaleLowerCase('it').replace(/\s+/g,' ');}
+function createVoiceAliasMap(){
+  const map=new Map();
+  for(const [term,...aliases] of [...voiceVocabulary,...extendedVoiceVocabulary]){
+    for(const alias of aliases){
+      const key=voiceAliasKey(alias);
+      // Never replace short, ordinary words on the strength of a fuzzy match.
+      if(key&&key.length>=4&&key!==voiceAliasKey(term))map.set(key,term);
+    }
+  }
+  // Canonical names and symbols for all 288 assets, only in financial context.
+  for(const [name,symbol] of voiceCryptoCatalog){
+    const key=voiceAliasKey(name);
+    if(key.length>=5&&key.includes(' ')&&!map.has(key))map.set(key,name);
+    const ticker=voiceAliasKey(symbol);
+    if(ticker.length>=3&&!['ore','sei','gas','one','near','not','amp','ai','hot','sol','ton','etc','flow','mask','link','ray','dot','render','beam','atom','sui','ape','uni','ondo','move','zen','icp','axs','sand','mana'].includes(ticker)&&!map.has(ticker))map.set(ticker,symbol);
+  }
+  return map;
 }
-const voiceAlternatives = [...voiceAliases.keys()].sort((a,b) => b.length - a.length)
-  .map(alias => alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replaceAll(' ', '\\s+'));
-const marketTermPattern = new RegExp('(?<![\\p{L}\\p{N}])(?:' + voiceAlternatives.join('|') + ')(?![\\p{L}\\p{N}])','giu');
-
-function normalizeMarketTerms(text) {
-  return text.replace(marketTermPattern, match => voiceAliases.get(match.toLowerCase().replace(/\s+/g,' ')))
-    .replace(/\b(token|cripto|criptovaluta) ore\b/gi, (_, kind) => kind + ' ORE');
+const voiceAliases=createVoiceAliasMap();
+const voiceAlternatives=[...voiceAliases.keys()].sort((a,b)=>b.length-a.length)
+  .map(alias=>alias.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/ /g,'\\s+'));
+const marketTermPattern=new RegExp('(^|[^\\p{L}\\p{N}])('+voiceAlternatives.join('|')+')(?=$|[^\\p{L}\\p{N}])','giu');
+function normalizeMarketTerms(text){
+  const source=String(text);
+  if(!financialSpeechContext.test(source))return source;
+  return source.replace(marketTermPattern,(match,prefix,word)=>prefix+(voiceAliases.get(voiceAliasKey(word))||word))
+    .replace(/\b(token|cripto|crypto|criptovaluta)\s+ore\b/gi,(_,kind)=>kind+' ORE');
 }
 
 function correctItalianDictation(text, complete = true) {
@@ -1017,7 +1047,7 @@ function pauseEndsPhrase(session,rms,count){
  // rather than waiting for the first complete phrase.
 function preferAccurateVoice(){
   const memory=Number(navigator.deviceMemory);
-  return (!memory||memory>=4)&&(navigator.hardwareConcurrency||4)>=4;
+  return Number.isFinite(memory)&&memory>=8&&(navigator.hardwareConcurrency||2)>=6;
 }
 function getVoiceWorker(){
   if(!voiceWorker){
@@ -1082,7 +1112,7 @@ function transcribeSoFar(session) {
       }
       const complete = sentFinal && session.phase === 'transcribing' && session.lastSent === session.length;
       if (data.text?.trim()) {
-        const corrected = data.text.trim(); // Faithful dictation: do not rewrite recognized words.
+        const corrected = normalizeMarketTerms(data.text.trim()); // Only curated aliases, and only in market context.
         const space = corrected && session.original && !/\s$/.test(session.original) ? ' ' : '';
         input.value = session.original + space + corrected;
         session.lastTranscript=corrected;
