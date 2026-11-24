@@ -51,9 +51,9 @@ main{padding-bottom:4rem}.lightbar{position:fixed;bottom:0;left:0;right:0;height
 <h1>Assistente mercati</h1><p>Parla con Vertex di azioni, indici, ETF, obbligazioni, valute, materie prime e cripto. Per un’analisi attuale, includi la quotazione e la data.</p>
 <section id="log" role="log" aria-label="Conversazione"></section>
 <form id="chat"><label for="question">La tua domanda</label><textarea id="question" rows="3" placeholder="Che differenza c’è tra un BTP e un ETF obbligazionario?" required></textarea>
-<small>La dettatura locale scarica il modello vocale al primo utilizzo e mantiene audio e trascrizione sul dispositivo. Al primo invio il browser scarica il modello (circa 512 MB) e i componenti necessari. Le domande vengono elaborate sul dispositivo. La conversazione si azzera quando chiudi la pagina.</small>
+<small>La dettatura locale scarica il modello vocale al primo utilizzo e mantiene audio e trascrizione sul dispositivo. Al primo invio il browser scarica il modello (circa 512 MB) e i componenti necessari. Le domande vengono elaborate sul dispositivo. La conversazione si azzera quando chiudi la pagina. Le risposte alle domande dettate vengono lette dalla voce del dispositivo o del browser; la sintesi vocale potrebbe usare un servizio del sistema.</small>
 
-<button id="mic" type="button" aria-pressed="false">🎙 Microfono</button> <button id="cancel-voice" type="button" hidden>Annulla dettatura</button> <button id="send">Invia domanda</button> <button type="button" id="stop" hidden>Annulla</button><p id="status" role="status"></p></form></main>
+<button id="mic" type="button" aria-pressed="false">🎙 Microfono</button> <button id="cancel-voice" type="button" hidden>Annulla dettatura</button> <button id="send">Invia domanda</button> <button type="button" id="stop" hidden>Annulla</button> <button type="button" id="speak-retry" hidden>🔊 Ascolta risposta</button><p id="status" role="status"></p></form></main>
 <div class="lightbar" aria-hidden="true"></div>
 <svg id="voice-wave" aria-hidden="true" viewBox="0 0 760 144" preserveAspectRatio="none">
   <defs>
@@ -254,7 +254,7 @@ self.onmessage = async ({data: turns}) => {
   }
 };</script><script>const el = id => document.getElementById(id);
 const form = el('chat'), input = el('question'), log = el('log'), statusLine = el('status');
-let worker, question;
+let worker, question, voiceQuestion=false;
 const history = [];
 const markets = {
   "Cripto": [
@@ -889,8 +889,12 @@ function transcribeSoFar(session) {
       }
       if (complete) {
         endVoice();
-        statusLine.textContent = data.notice || (data.text ? 'Trascrizione pronta. Rileggila e premi Invia domanda.' : 'Trascrizione finale non disponibile. Verifica il testo provvisorio o ripeti la domanda.');
-        input.focus();
+        if(data.text?.trim()&&!data.notice){
+          submitQuestion(true);
+        }else{
+          statusLine.textContent=data.notice||'Trascrizione finale non disponibile. Verifica il testo provvisorio o ripeti la domanda.';
+          input.focus();
+        }
       } else {
         if(session.phase==='listening'&&data.text)statusLine.textContent='Sto trascrivendo… continua a parlare.';
         transcribeSoFar(session);
@@ -953,8 +957,10 @@ function finishRecording() {
   transcribeSoFar(session);
 }
 mic.onclick = async () => {
-  if (question) return;
+  if (question || speakingAnswer) return;
   if (recording) { finishRecording(); return; }
+  try { window.speechSynthesis?.getVoices(); } catch {}
+  el('speak-retry').hidden=true;
   const session = {phase:'request', blocks:[], length:0, lastSent:0, pending:false, original:input.value, levelHistory:[], speechSeconds:0, pauseSeconds:0, pauseLimit:4};
   recording = session;
   voiceControls(true);
@@ -1044,7 +1050,7 @@ function cancelVoice() {
   if (recording) {input.value=recording.original;endVoice();}
 }
 el('cancel-voice').onclick=()=>{cancelVoice();statusLine.textContent='Dettatura annullata.';};
-window.addEventListener('pagehide', cancelVoice);
+window.addEventListener('pagehide',()=>{cancelVoice();stop();});
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden&&recording&&recording.phase!=='transcribing'){
     cancelVoice();statusLine.textContent='Dettatura interrotta quando la pagina è passata in secondo piano.';
@@ -1059,15 +1065,98 @@ el('close-assistant').addEventListener('click', event => {
 function idle() {
   mic.disabled = false;
   question = '';
+  voiceQuestion=false;
   input.readOnly = false;
   el('send').disabled = false;
   el('stop').hidden = true;
+  el('stop').textContent='Annulla';
 }
 function stop() {
+  cancelSpeech();
+  el('speak-retry').hidden=true;
   if (worker) worker.terminate();
   worker = null;
   idle();
 }
+let speakingAnswer=false,speechGeneration=0,speechTimer=0,activeUtterance=null,lastSpokenAnswer='';
+function cancelSpeech(){
+  speechGeneration++;
+  clearTimeout(speechTimer);
+  speakingAnswer=false;
+  activeUtterance=null;
+  try{window.speechSynthesis?.cancel();}catch{}
+}
+function speechChunks(value){
+  // Keep chunks short to avoid long-utterance stalls on Chromium and mobile.
+  const words=String(value).replace(/[*#`]/g,'').trim().split(/\s+/);
+  const chunks=[];let part='';
+  for(const word of words){
+    if(part&&(part.length+word.length+1>180)){chunks.push(part);part='';}
+    part+=(part?' ':'')+word;
+    if(part.length>=65&&/[.!?;:]$/.test(word)){chunks.push(part);part='';}
+  }
+  if(part)chunks.push(part);
+  return chunks;
+}
+function italianSpeechVoice(voices){
+  const italian=voices.filter(v=>/^it(?:[-_]|$)/i.test(v.lang||''));
+  return italian.find(v=>v.localService&&/^it[-_]IT$/i.test(v.lang))||
+    italian.find(v=>v.localService)||italian.find(v=>/^it[-_]IT$/i.test(v.lang))||italian[0]||null;
+}
+function speakAnswer(answer){
+  cancelSpeech();
+  lastSpokenAnswer=String(answer||'').trim();
+  const retry=el('speak-retry'),stopButton=el('stop');
+  retry.hidden=true;
+  const synth=window.speechSynthesis;
+  if(!synth||typeof window.SpeechSynthesisUtterance!=='function'){
+    statusLine.textContent='Risposta scritta disponibile. La sintesi vocale non è supportata da questo browser.';
+    return;
+  }
+  const chunks=speechChunks(lastSpokenAnswer);
+  if(!chunks.length)return;
+  const generation=speechGeneration;
+  let index=0;
+  speakingAnswer=true;
+  mic.disabled=true;
+  el('send').disabled=true;
+  stopButton.hidden=false;
+  stopButton.textContent='Interrompi voce';
+  statusLine.textContent='Vertex sta rispondendo…';
+  function finish(failed){
+    if(generation!==speechGeneration)return;
+    cancelSpeech();
+    idle();
+    retry.hidden=!failed;
+    statusLine.textContent=failed?'Risposta disponibile. Tocca Ascolta risposta per avviare la voce.':'';
+  }
+  function next(){
+    if(generation!==speechGeneration)return;
+    if(index>=chunks.length){finish(false);return;}
+    try{
+      const u=new SpeechSynthesisUtterance(chunks[index++]);
+      activeUtterance=u;
+      u.lang='it-IT';u.rate=0.98;u.pitch=1;u.volume=1;
+      const voice=italianSpeechVoice(synth.getVoices());
+      if(voice)u.voice=voice;
+      u.onstart=()=>{
+        if(generation!==speechGeneration)return;
+        clearTimeout(speechTimer);
+        speechTimer=setTimeout(()=>finish(true),45000);
+      };
+      u.onend=()=>{
+        if(generation!==speechGeneration)return;
+        clearTimeout(speechTimer);activeUtterance=null;next();
+      };
+      u.onerror=()=>finish(true);
+      speechTimer=setTimeout(()=>finish(true),9000);
+      synth.resume();
+      synth.speak(u);
+    }catch{finish(true);}
+  }
+  next();
+}
+el('speak-retry').onclick=()=>{if(!recording&&!question&&!speakingAnswer&&lastSpokenAnswer)speakAnswer(lastSpokenAnswer);};
 function bubble(label, value) {
   const article = document.createElement('article');
   const name = document.createElement('strong'), body = document.createElement('p');
@@ -1076,17 +1165,20 @@ function bubble(label, value) {
   article.append(name, body);
   log.append(article);
 }
-el('stop').onclick = () => { stop(); statusLine.textContent = 'Operazione annullata.'; };
+el('stop').onclick = () => { const wasSpeaking=speakingAnswer;stop(); statusLine.textContent = wasSpeaking?'Risposta vocale interrotta.':'Operazione annullata.'; };
 el('reset').onclick = () => {
   stop();
   cancelVoice();
   history.length = 0;
+  lastSpokenAnswer='';
   log.replaceChildren();
   input.value = '';
   statusLine.textContent = '';
   input.focus();
 };
 function acceptAnswer(answer) {
+  if(!question)return;
+  const readAloud=voiceQuestion;
   bubble('Tu', question);
   bubble('Vertex', answer);
   history.push({role:'user', content:question}, {role:'assistant', content:answer});
@@ -1094,12 +1186,14 @@ function acceptAnswer(answer) {
   statusLine.textContent = '';
   input.value = '';
   idle();
-  input.focus();
+  if(readAloud)speakAnswer(answer);
+  else input.focus();
 }
-form.onsubmit = event => {
-  event.preventDefault();
-  if (recording || question || !input.value.trim()) return;
-  question = input.value;
+function submitQuestion(fromVoice=false){
+  if(recording||question||speakingAnswer||!input.value.trim())return;
+  voiceQuestion=fromVoice;
+  el('speak-retry').hidden=true;
+  question=input.value.trim();
   const quickAnswer = answerIndex.get(questionKey(question)) || directDefinition(question);
   if (quickAnswer) {
     acceptAnswer(quickAnswer);
@@ -1127,4 +1221,5 @@ form.onsubmit = event => {
     stop();
     statusLine.textContent = 'Avvio non riuscito. Riprova in un browser aggiornato.';
   }
-};</script></body></html>
+}
+form.onsubmit=event=>{event.preventDefault();submitQuestion(false);};</script></body></html>
