@@ -78,7 +78,7 @@ function audibleSegment(samples) {
     let energy = 0;
     const end = Math.min(samples.length, start + 320);
     for (let i = start; i < end; i++) {
-      filtered = 0.975 * (filtered + samples[i] - previous);
+      filtered = 0.990 * (filtered + samples[i] - previous);
       previous = samples[i];
       clean[i] = filtered;
       energy += filtered * filtered;
@@ -92,14 +92,14 @@ function audibleSegment(samples) {
   const speech = ordered[Math.floor((ordered.length - 1) * 0.85)];
   // A steady floor throughout the clip provides little evidence of a spoken phrase.
   const upper = ordered[Math.floor((ordered.length - 1) * 0.97)];
-  if (quiet > 0 && upper < quiet * 1.25) return null;
+  if (upper < 0.00030 || (upper < 0.0015 && quiet > 0 && upper < quiet * 1.15)) return null;
   // A clip may start mid-word. Cap the trim threshold relative to its louder frames.
-  const threshold = Math.max(0.00035, Math.min(quiet * 2, speech * 0.55));
+  const threshold = Math.max(0.00018, Math.min(quiet * 1.7, speech * 0.42));
   const first = levels.findIndex(level => level >= threshold);
   let last = levels.length - 1;
   while (last >= first && last >= 0 && levels[last] < threshold) last--;
   if (first < 0 || levels.filter(level => level >= threshold).length < 5) return null;
-  const clip = clean.subarray(Math.max(0, first * 320 - 4800), Math.min(clean.length, (last + 1) * 320 + 4800));
+  const clip = clean.subarray(Math.max(0, first * 320 - 10400), Math.min(clean.length, (last + 1) * 320 + 10400));
   const gain = Math.min(12, 0.92 / Math.max(peak, 0.0001), Math.max(1, 0.065 / Math.max(speech, threshold)));
   for (let i = 0; i < clip.length; i++) clip[i] *= gain;
   return clip;
@@ -120,8 +120,32 @@ function hasRecognitionLoop(text) {
   }
   return false;
 }
-let transcriber;
-self.onmessage = async ({data: samples}) => {
+let transcriber, modelName;
+async function loadVoiceModel(name) {
+  const {pipeline, env} = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2/dist/transformers.min.js');
+  env.allowLocalModels = false;
+  env.backends.onnx.wasm.numThreads = 1;
+  transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-'+name, {
+    device:'wasm', dtype:'q8', progress_callback(event) {
+      if (event.status === 'progress' && Number.isFinite(event.progress)) {
+        self.postMessage({status:'Preparazione riconoscimento vocale · '+Math.round(event.progress)+'%'});
+      }
+    }
+  });
+  modelName=name;
+}
+async function decodeVoice(clip, final) {
+  const options={language:'italian',task:'transcribe',do_sample:false,return_timestamps:false};
+  // Full-phrase decoding, without a financial prompt that could invent terms.
+  // Beam search is optional in the browser runtime; retry greedy if unsupported.
+  if(final) {
+    try { return await transcriber(clip,{...options,num_beams:3}); }
+    catch { /* A limited runtime may only support greedy decoding. */ }
+  }
+  return transcriber(clip,options);
+}
+self.onmessage = async ({data}) => {
+  const {samples, final, preferSmall}=data;
   try {
     const clip = audibleSegment(samples);
     if (!clip) {
@@ -129,25 +153,30 @@ self.onmessage = async ({data: samples}) => {
       return;
     }
     if (!transcriber) {
-      const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2/dist/transformers.min.js');
-      env.allowLocalModels = false;
-      env.backends.onnx.wasm.numThreads = 1;
-      transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-base', {
-        device:'wasm', dtype:'q8', progress_callback(event) {
-          if (event.status === 'progress' && Number.isFinite(event.progress)) {
-            self.postMessage({status:'Caricamento modello vocale · '+Math.round(event.progress)+'%'});
-          }
-        }
-      });
+      try { await loadVoiceModel(preferSmall?'small':'base'); }
+      catch(error) {
+        if(!preferSmall)throw error;
+        self.postMessage({status:'Preparazione del modello vocale compatibile…'});
+        await loadVoiceModel('base');
+      }
     }
-    const result = await transcriber(clip, {language:'italian', task:'transcribe', do_sample:false});
-    const text = cleanDictation(result.text);
-    if (hasRecognitionLoop(text)) {
-      self.postMessage({text:'', notice:'La dettatura ha prodotto una frase ripetuta. Riascolta l’audio o ripeti la domanda.'});
+    let result;
+    try { result=await decodeVoice(clip,final); }
+    catch(error) {
+      if(modelName!=='small')throw error;
+      try { await transcriber.dispose(); } catch {}
+      transcriber=null;
+      self.postMessage({status:'Passaggio al modello vocale compatibile…'});
+      await loadVoiceModel('base');
+      result=await decodeVoice(clip,final);
+    }
+    const text=cleanDictation(result.text||'');
+    if(hasRecognitionLoop(text)){
+      self.postMessage({text:'',notice:'La dettatura contiene ripetizioni anomale. Riascolta l’audio o ripeti la domanda.'});
       return;
     }
-    self.postMessage({text: /[\p{L}\p{N}]/u.test(text) ? text : ''});
-  } catch {
+    self.postMessage({text:/[\p{L}\p{N}]/u.test(text)?text:''});
+  }catch{
     self.postMessage({error:'Trascrizione non riuscita. Controlla la connessione per il primo download o scrivi la domanda.'});
   }
 };</script>
@@ -512,7 +541,7 @@ function offerPlayback(samples, sampleRate) {
 const voiceVocabulary = [["Bitcoin","bit coin","bit-coin"],
   ["Ethereum","eterium","ethereum"],
   ["Solana"],
-  ["Injective","injectiv"],
+  ["Injective","injectiv","in jective"],
   ["Raydium","ray dium"],
   ["Holochain","holo chain"],
   ["Tars AI","tars ai"],
@@ -536,8 +565,12 @@ const voiceVocabulary = [["Bitcoin","bit coin","bit-coin"],
   ["BTC","bi ti ci","b t c"],
   ["ETH","e t h"],
   ["INJ","i n j"],
-  ["USDC","u s d c","u esse di ci"],
+  ["USDC","u s d c","u esse di ci","u esse di ce"],
   ["USDT","u s d t","u esse di ti"],
+  ["APY","a p y","a pi ipsilon"],
+  ["APR","a p r","a pi erre"],
+  ["TVL","t v l","ti vu elle"],
+  ["Web3","web 3","web tre"],
   ["LUNC","l u n c"],
   ["Nasdaq"],
   ["Nasdaq 100","nasdaq cento"],
@@ -636,15 +669,22 @@ function joinedAudio(session) {
 
 // Whisper takes 16 kHz PCM; capture at the browser's hardware rate.
 function speechSamples(audio, rate) {
-  if (rate === 16000) return audio;
-  const ratio = rate / 16000;
-  const output = new Float32Array(Math.floor(audio.length / ratio));
-  for (let i = 0; i < output.length; i++) {
-    const start = Math.floor(i * ratio);
-    const end = Math.max(start + 1, Math.floor((i + 1) * ratio));
-    let sum = 0;
-    for (let j = start; j < end; j++) sum += audio[j];
-    output[i] = sum / (end - start);
+  if(rate===16000)return audio;
+  const ratio=rate/16000;
+  const output=new Float32Array(Math.floor(audio.length/ratio));
+  for(let i=0;i<output.length;i++){
+    const start=i*ratio,end=Math.min(audio.length,(i+1)*ratio);
+    if(ratio<1){
+      const j=Math.floor(start),fraction=start-j;
+      output[i]=audio[j]*(1-fraction)+(audio[Math.min(j+1,audio.length-1)]||0)*fraction;
+    }else{
+      let sum=0,weight=0;
+      for(let j=Math.floor(start);j<Math.ceil(end)&&j<audio.length;j++){
+        const w=Math.max(0,Math.min(end,j+1)-Math.max(start,j));
+        sum+=audio[j]*w;weight+=w;
+      }
+      output[i]=weight?sum/weight:0;
+    }
   }
   return output;
 }
@@ -658,7 +698,7 @@ function pauseEndsPhrase(session, rms, count) {
   if (session.levelHistory.length > windowSize) session.levelHistory.shift();
   const sorted = [...session.levelHistory].sort((a,b) => a - b);
   const floor = sorted[Math.floor((sorted.length - 1) * 0.12)];
-  const gate = sorted.length * seconds >= 0.7 ? Math.max(0.0005, floor * 1.55) : 0.0006;
+  const gate = sorted.length * seconds >= 0.7 ? Math.max(0.00025, floor * 1.32) : 0.00035;
   if (rms >= gate) {
     session.speechSeconds += seconds;
     session.pauseSeconds = 0;
@@ -672,10 +712,11 @@ function transcribeSoFar(session) {
   const final = session.phase === 'transcribing';
   const rate = session.ctx.sampleRate;
   if (recording !== session || session.pending) return;
-  const interval = session.lastSent ? 3 : 2;
+  const interval = session.lastSent ? 5 : 3;
   if (!final && (session.speechSeconds < 0.16 || session.length - session.lastSent < rate * interval)) return;
   session.pending = true;
   session.lastSent = session.length;
+  const sentFinal = final;
   function fail(message) {
     voiceWorker?.terminate();
     voiceWorker = null;
@@ -693,8 +734,8 @@ function transcribeSoFar(session) {
       clearTimeout(session.watchdog);
       session.pending = false;
       if (data.error) { fail(data.error); return; }
-      const complete = session.phase === 'transcribing' && session.lastSent === session.length;
-      if (data.text || complete) {
+      const complete = sentFinal && session.phase === 'transcribing' && session.lastSent === session.length;
+      if (data.text) {
         const corrected = data.text ? correctItalianDictation(data.text, complete) : '';
         const space = corrected && session.original && !/\s$/.test(session.original) ? ' ' : '';
         input.value = session.original + space + corrected;
@@ -706,7 +747,7 @@ function transcribeSoFar(session) {
       }
       if (complete) {
         endVoice();
-        statusLine.textContent = data.notice || (data.text ? 'Trascrizione pronta. Rileggila e premi Invia domanda.' : 'Nessuna parola riconosciuta.');
+        statusLine.textContent = data.notice || (data.text ? 'Trascrizione pronta. Rileggila e premi Invia domanda.' : 'Trascrizione finale non disponibile. Verifica il testo provvisorio o riascolta l’audio.');
         input.focus();
       } else {
         transcribeSoFar(session);
@@ -718,8 +759,10 @@ function transcribeSoFar(session) {
     const samples = speechSamples(joinedAudio(session), rate);
     session.watchdog=setTimeout(()=>{
       if(recording===session)fail('Trascrizione troppo lenta. Riprova con una frase più breve.');
-    },180000);
-    voiceWorker.postMessage(samples, [samples.buffer]);
+    },240000);
+    const memory=Number(navigator.deviceMemory);
+    const preferSmall=(!memory||memory>=4) && (navigator.hardwareConcurrency||4)>=4;
+    voiceWorker.postMessage({samples,final:sentFinal,preferSmall}, [samples.buffer]);
   } catch { fail('Trascrizione non disponibile. Puoi scrivere la domanda.'); }
 }
 
@@ -737,7 +780,7 @@ function finishRecording() {
 mic.onclick = async () => {
   if (question) return;
   if (recording) { finishRecording(); return; }
-  const session = {phase:'request', blocks:[], length:0, lastSent:0, pending:false, original:input.value, levelHistory:[], speechSeconds:0, pauseSeconds:0, pauseLimit:3};
+  const session = {phase:'request', blocks:[], length:0, lastSent:0, pending:false, original:input.value, levelHistory:[], speechSeconds:0, pauseSeconds:0, pauseLimit:4};
   recording = session;
   voiceControls(true);
   mic.disabled = true;
@@ -750,7 +793,7 @@ mic.onclick = async () => {
     session.ctx = new Audio();
     await session.ctx.resume();
     if (recording !== session) return;
-    const stream = await navigator.mediaDevices.getUserMedia({audio:{channelCount:{ideal:1}, echoCancellation:{ideal:true}, noiseSuppression:{ideal:true}, autoGainControl:{ideal:true}}});
+    const stream = await navigator.mediaDevices.getUserMedia({audio:{channelCount:{ideal:1}, sampleRate:{ideal:48000}, echoCancellation:{ideal:true}, noiseSuppression:{ideal:true}, autoGainControl:{ideal:true}}});
     if (recording !== session) { stream.getTracks().forEach(track => track.stop()); return; }
     session.stream = stream;
     session.source = session.ctx.createMediaStreamSource(stream);
