@@ -6,9 +6,17 @@
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:1rem/1.55 system-ui,sans-serif}main{max-width:48rem;margin:0 auto;padding:clamp(1rem,4vw,3rem)}header{display:flex;justify-content:space-between;align-items:center}a,strong{color:var(--accent)}h1{font-size:clamp(2rem,5vw,3rem);line-height:1.12}article{border-left:2px solid var(--line);padding-left:1rem;margin:1.25rem 0}article p{white-space:pre-wrap;overflow-wrap:anywhere;margin:.3rem 0}textarea,button{background:var(--panel);color:inherit;border:1px solid var(--line);border-radius:.6rem;padding:.65rem .9rem;font:inherit}button{cursor:pointer}button:disabled{opacity:.55}label,textarea,small{display:block}textarea{width:100%;margin:.45rem 0;resize:vertical}small{margin-bottom:1rem}#send{background:var(--accent);color:var(--bg);font-weight:bold}
 main{padding-bottom:4rem}.lightbar{position:fixed;bottom:0;left:0;right:0;height:6px;z-index:5;background:linear-gradient(90deg,#6c63ff,#00cfff,#00e29c,#ffd24f,#ff578e,#6c63ff);background-size:200% 100%;box-shadow:0 -2px 15px #9878ff95;pointer-events:none;animation:flow 7s linear infinite}body:has(#chat[data-voice="on"]) .lightbar,body:has(#send:disabled) .lightbar{height:9px;box-shadow:0 -4px 24px #25cfffaa;animation-duration:2s}@keyframes flow{to{background-position:200% 0}}@media(prefers-reduced-motion:reduce){.lightbar{animation:none}}#mic[aria-pressed=true]{outline:2px solid var(--accent)}
 #voice-wave{position:fixed;bottom:0;left:0;width:100%;height:84px;z-index:6;pointer-events:none;overflow:visible;display:none;filter:drop-shadow(0 0 5px #6ecaff)}#voice-wave.speaking{display:block}.lightbar:has(+ #voice-wave.speaking){opacity:0}
+#market-ideas{margin:1.5rem 0}#market-ideas h2{font-size:1.2rem;margin:0 0 .65rem}#idea-market{font:inherit;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:.5rem;padding:.4rem .65rem;margin:.25rem 0 .65rem}.idea-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr));gap:.6rem;margin-bottom:.5rem}.idea{text-align:left}.idea span{display:block;margin-top:.25rem}.idea:hover,.idea:focus-visible{border-color:var(--accent)}
 </style></head><body><main>
 <header><a href="./index.html">← Dashboard Vertex</a><button id="reset">Nuova chat</button></header>
 <h1>Assistente mercati</h1><p>Parla con Vertex di azioni, indici, ETF, obbligazioni, valute, materie prime e cripto. Per un’analisi attuale, includi la quotazione e la data.</p>
+<section id="market-ideas" aria-labelledby="ideas-title">
+<h2 id="ideas-title">Domande sui mercati</h2>
+<label for="idea-market">Scegli un mercato</label>
+<select id="idea-market"><option>Cripto</option><option>Azioni e indici</option><option>ETF</option><option>Obbligazioni</option><option>Valute</option><option>Materie prime</option></select>
+<div class="idea-grid"><button type="button" class="idea"><strong>Andamento</strong><span>Come si sono mossi Bitcoin, Ethereum e Solana negli ultimi sette giorni?</span></button><button type="button" class="idea"><strong>Previsioni</strong><span>Quali scenari sono plausibili per Bitcoin nel prossimo mese e quali segnali li confermerebbero?</span></button></div>
+<small>Seleziona una domanda per modificarla o aggiungere i tuoi dati prima di inviarla.</small>
+</section>
 <section id="log" role="log" aria-label="Conversazione"></section>
 <form id="chat"><label for="question">La tua domanda</label><textarea id="question" rows="3" maxlength="2000" placeholder="Che differenza c’è tra un BTP e un ETF obbligazionario?" required></textarea>
 <small>La prima dettatura scarica anche il modello vocale. Audio e trascrizione restano sul dispositivo. Al primo invio il browser scarica il modello (circa 512 MB) e i componenti necessari. Le domande vengono elaborate sul dispositivo. La conversazione si azzera quando chiudi la pagina.</small>
@@ -64,6 +72,47 @@ self.onmessage = async ({data: turns}) => {
 const form = el('chat'), input = el('question'), log = el('log'), statusLine = el('status');
 let worker, question;
 const history = [];
+const ideasByMarket = {
+  "Cripto": [
+    "Come si sono mossi Bitcoin, Ethereum e Solana negli ultimi sette giorni?",
+    "Quali scenari sono plausibili per Bitcoin nel prossimo mese e quali segnali li confermerebbero?"
+  ],
+  "Azioni e indici": [
+    "Come si confrontano Nasdaq e FTSE MIB nell’ultimo mese?",
+    "Come potrebbero reagire i titoli tecnologici nel prossimo trimestre se i tassi restassero alti?"
+  ],
+  "ETF": [
+    "Come si confrontano i rendimenti di due ETF globali nell’ultimo anno, dividendi inclusi?",
+    "Come potrebbe comportarsi un ETF azionario globale nei prossimi sei mesi se il dollaro si indebolisse?"
+  ],
+  "Obbligazioni": [
+    "Come è cambiato il rendimento del BTP decennale nell’ultimo mese?",
+    "Quali scenari si aprono per i prezzi dei BTP se la BCE taglia i tassi o li mantiene fermi?"
+  ],
+  "Valute": [
+    "Qual è stato l’andamento di EUR/USD nelle ultime quattro settimane?",
+    "Quali fattori potrebbero rafforzare o indebolire l’euro rispetto al dollaro nel prossimo trimestre?"
+  ],
+  "Materie prime": [
+    "Come si sono mossi oro e petrolio Brent nell’ultimo mese?",
+    "Quali scenari potrebbero spingere il prezzo del petrolio al rialzo o al ribasso nei prossimi tre mesi?"
+  ]
+};
+const marketPicker = el('idea-market');
+const ideaButtons = document.querySelectorAll('#market-ideas .idea');
+marketPicker.onchange = () => {
+  ideaButtons.forEach((button, index) => {
+    button.querySelector('span').textContent = ideasByMarket[marketPicker.value][index];
+  });
+};
+ideaButtons.forEach(button => {
+  button.onclick = () => {
+    if (input.readOnly) return;
+    input.value = button.querySelector('span').textContent;
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  };
+});
 const mic = el('mic');
 let recording = null, voiceWorker = null;
 const voiceWave = document.getElementById('voice-wave');
@@ -259,7 +308,7 @@ form.onsubmit = event => {
         input.focus();
       };
     }
-    const prompt = 'Sei Vertex, assistente personale sui mercati finanziari. Rispondi in italiano in modo chiaro e conciso. Tratta azioni, ETF, indici, obbligazioni, forex, materie prime, crypto e macroeconomia. Non disponi di dati live o notizie recenti. Per analisi attuali chiedi prezzo, data e fonte. Non inventare dati o fonti. Distingui esempi, fatti e ipotesi.';
+    const prompt = 'Sei Vertex, assistente personale sui mercati finanziari. Rispondi in italiano in modo chiaro e conciso. Tratta azioni, ETF, indici, obbligazioni, forex, materie prime, crypto e macroeconomia. Non disponi di dati live o notizie recenti. Per analisi attuali chiedi prezzo, data e fonte. Non inventare dati o fonti. Per l’andamento usa il periodo richiesto. Se mancano i dati chiedi valori iniziali e finali, date e valuta; per un confronto usa lo stesso periodo. Per le previsioni illustra scenari rialzista, centrale e ribassista, con ipotesi, fattori da osservare e condizioni che li smentirebbero. Evita target e probabilità privi di dati. Distingui esempi, fatti e ipotesi.';
     worker.postMessage([{role:'system',content:prompt}, ...history, {role:'user',content:question}]);
   } catch {
     stop();
