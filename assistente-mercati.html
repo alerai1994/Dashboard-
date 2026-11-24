@@ -372,6 +372,7 @@ function updateWave(samples) {
   for (const sample of samples) energy += sample * sample;
   const rms = Math.sqrt(energy / (samples.length || 1));
   voiceLevel = Math.min(1, Math.sqrt(rms * 9));
+  return rms;
 }
 
 function startWave() {
@@ -521,7 +522,7 @@ function normalizeMarketTerms(text) {
     .replace(/\b(token|cripto|criptovaluta) ore\b/gi, (_, kind) => kind + ' ORE');
 }
 
-function correctItalianDictation(text) {
+function correctItalianDictation(text, complete = true) {
   const terms = [
     [/\bperch[eè](?![\p{L}])/giu, 'perché'],
     [/\bqual['’]\s*[eè](?![\p{L}])/giu, 'qual è'],
@@ -532,7 +533,7 @@ function correctItalianDictation(text) {
   let corrected = normalizeMarketTerms(text.trim());
   for (const [pattern, replacement] of terms) corrected = corrected.replace(pattern, replacement);
   corrected = corrected.replace(/^(\p{Ll})/u, letter => letter.toLocaleUpperCase('it'));
-  if (/^(?:qual[ei]?|quanto|quanta|quanti|quante|perché|come|quando|dove|chi|cosa|che cosa)\s/iu.test(corrected)) {
+  if (complete && /^(?:qual[ei]?|quanto|quanta|quanti|quante|perché|come|quando|dove|chi|cosa|che cosa)\s/iu.test(corrected)) {
     if (!/[!?…]$/.test(corrected)) corrected = corrected.replace(/\.?$/, '?');
   }
   return corrected;
@@ -563,15 +564,30 @@ function speechSamples(audio, rate) {
   return output;
 }
 
+// Measure pause duration in captured audio, independently of timers and model speed.
+function pauseEndsPhrase(session, rms, count) {
+  const seconds = count / session.ctx.sampleRate;
+  const gate = Math.max(0.0012, session.noiseFloor * 2.6);
+  if (rms >= gate) {
+    session.speechSeconds += seconds;
+    session.pauseSeconds = 0;
+  } else {
+    const weight = 1 - Math.exp(-seconds / 0.7);
+    session.noiseFloor += weight * (rms - session.noiseFloor);
+    session.pauseSeconds += seconds;
+  }
+  return session.speechSeconds >= 0.16 && session.pauseSeconds >= 2;
+}
+
 function transcribeSoFar(session) {
   const final = session.phase === 'transcribing';
   const rate = session.ctx.sampleRate;
   if (recording !== session || session.pending) return;
-  if (!final && session.length - session.lastSent < rate * 2) return;
+  const interval = session.lastSent ? 1.8 : 1;
+  if (!final && (session.speechSeconds < 0.16 || session.length - session.lastSent < rate * interval)) return;
   session.pending = true;
   session.lastSent = session.length;
   function fail(message) {
-    input.value = session.original;
     voiceWorker?.terminate();
     voiceWorker = null;
     endVoice();
@@ -588,7 +604,7 @@ function transcribeSoFar(session) {
       if (data.error) { fail(data.error); return; }
       const complete = session.phase === 'transcribing' && session.lastSent === session.length;
       if (data.text || complete) {
-        const corrected = data.text ? correctItalianDictation(data.text) : '';
+        const corrected = data.text ? correctItalianDictation(data.text, complete) : '';
         const space = corrected && session.original && !/\s$/.test(session.original) ? ' ' : '';
         input.value = session.original + space + corrected;
         input.scrollTop = input.scrollHeight;
@@ -621,13 +637,13 @@ function finishRecording() {
   if (!session.length) { endVoice(); statusLine.textContent = 'Nessun audio registrato.'; return; }
   mic.disabled = true;
   statusLine.textContent = 'Completo la trascrizione…';
-  offerPlayback(joinedAudio(session), session.ctx.sampleRate);
+  try { offerPlayback(joinedAudio(session), session.ctx.sampleRate); } catch { clearPlayback(); }
   transcribeSoFar(session);
 }
 mic.onclick = async () => {
   if (question) return;
   if (recording) { finishRecording(); return; }
-  const session = {phase:'request', blocks:[], length:0, lastSent:0, pending:false, original:input.value};
+  const session = {phase:'request', blocks:[], length:0, lastSent:0, pending:false, original:input.value, noiseFloor:0.0005, speechSeconds:0, pauseSeconds:0};
   recording = session;
   mic.disabled = true;
   input.readOnly = true;
@@ -638,7 +654,7 @@ mic.onclick = async () => {
     session.ctx = new Audio();
     await session.ctx.resume();
     if (recording !== session) return;
-    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    const stream = await navigator.mediaDevices.getUserMedia({audio:{channelCount:{ideal:1}, echoCancellation:{ideal:true}, noiseSuppression:{ideal:true}, autoGainControl:{ideal:true}}});
     if (recording !== session) { stream.getTracks().forEach(track => track.stop()); return; }
     session.stream = stream;
     session.source = session.ctx.createMediaStreamSource(stream);
@@ -646,10 +662,10 @@ mic.onclick = async () => {
     session.processor.onaudioprocess = event => {
       if (session.phase !== 'listening') return;
       const part = event.inputBuffer.getChannelData(0).slice(0, session.ctx.sampleRate * 30 - session.length);
-      updateWave(part);
+      const rms = updateWave(part);
       session.blocks.push(part);
       session.length += part.length;
-      if (session.length >= session.ctx.sampleRate * 30) finishRecording();
+      if (pauseEndsPhrase(session, rms, part.length) || session.length >= session.ctx.sampleRate * 30) finishRecording();
       else transcribeSoFar(session);
     };
     session.source.connect(session.processor);
@@ -660,7 +676,7 @@ mic.onclick = async () => {
     mic.textContent = '■ Termina dettatura';
     mic.setAttribute('aria-pressed','true');
     el('chat').dataset.voice = 'on';
-    statusLine.textContent = 'In ascolto · il testo compare durante la dettatura. Al primo uso attendi il download del modello. Limite: 30 secondi.';
+    statusLine.textContent = 'Parla: il testo compare durante la dettatura. Una pausa di 2 secondi conclude la frase. Durata massima: 30 secondi.';
   } catch (error) {
     if (recording !== session) return;
     endVoice();
