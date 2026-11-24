@@ -5,7 +5,7 @@
 @media(prefers-color-scheme:light){:root{color-scheme:light;--bg:#f5f8f8;--panel:white;--ink:#183238;--line:#80999c;--accent:#0e6767}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:1rem/1.55 system-ui,sans-serif}main{max-width:48rem;margin:0 auto;padding:clamp(1rem,4vw,3rem)}header{display:flex;justify-content:space-between;align-items:center}a,strong{color:var(--accent)}h1{font-size:clamp(2rem,5vw,3rem);line-height:1.12}article{border-left:2px solid var(--line);padding-left:1rem;margin:1.25rem 0}article p{white-space:pre-wrap;overflow-wrap:anywhere;margin:.3rem 0}textarea,button{background:var(--panel);color:inherit;border:1px solid var(--line);border-radius:.6rem;padding:.65rem .9rem;font:inherit}button{cursor:pointer}button:disabled{opacity:.55}label,textarea,small{display:block}textarea{width:100%;margin:.45rem 0;resize:vertical}small{margin-bottom:1rem}#send{background:var(--accent);color:var(--bg);font-weight:bold}
 main{padding-bottom:4rem}.lightbar{position:fixed;bottom:0;left:0;right:0;height:6px;z-index:5;background:linear-gradient(90deg,#6c63ff,#00cfff,#00e29c,#ffd24f,#ff578e,#6c63ff);background-size:200% 100%;box-shadow:0 -2px 15px #9878ff95;pointer-events:none;animation:flow 7s linear infinite}body:has(#chat[data-voice="on"]) .lightbar,body:has(#send:disabled) .lightbar{height:9px;box-shadow:0 -4px 24px #25cfffaa;animation-duration:2s}@keyframes flow{to{background-position:200% 0}}@media(prefers-reduced-motion:reduce){.lightbar{animation:none}}#mic[aria-pressed=true]{outline:2px solid var(--accent)}
-#voice-wave{position:fixed;bottom:0;left:0;width:100%;height:84px;z-index:6;pointer-events:none;overflow:visible;display:none;filter:drop-shadow(0 0 5px #6ecaff)}#voice-wave.speaking{display:block}.lightbar:has(+ #voice-wave.speaking){opacity:0}
+#voice-wave{position:fixed;bottom:0;left:0;width:100%;height:clamp(78px,14vh,138px);box-sizing:content-box;padding-bottom:env(safe-area-inset-bottom,0px);z-index:6;pointer-events:none;display:none;background:radial-gradient(ellipse at 50% 62%,#1b0b0b 0%,#070304 43%,#020203 76%)}#voice-wave.speaking{display:block}.voice-halo{filter:blur(3px);opacity:.7}body.voice-listening .lightbar{visibility:hidden}body.voice-listening main{padding-bottom:calc(clamp(78px,14vh,138px) + env(safe-area-inset-bottom,0px) + 1.5rem)}
 </style></head><body><main>
 <header><a href="./index.html">← Dashboard Vertex</a><button id="reset">Nuova chat</button></header>
 <h1>Assistente mercati</h1><p>Parla con Vertex di azioni, indici, ETF, obbligazioni, valute, materie prime e cripto. Per un’analisi attuale, includi la quotazione e la data.</p>
@@ -15,11 +15,14 @@ main{padding-bottom:4rem}.lightbar{position:fixed;bottom:0;left:0;right:0;height
 <div id="playback" hidden><label for="voice-original">Riascolta la tua ultima dettatura</label><audio id="voice-original" controls></audio><details id="raw-dictation" hidden><summary>Trascrizione originale</summary><p id="raw-words"></p></details></div>
 <button id="mic" type="button" aria-pressed="false">🎙 Microfono</button> <button id="send">Invia domanda</button> <button type="button" id="stop" hidden>Annulla</button><p id="status" role="status"></p></form></main>
 <div class="lightbar" aria-hidden="true"></div>
-<svg id="voice-wave" aria-hidden="true" viewBox="0 0 600 84" preserveAspectRatio="none">
-  <defs><linearGradient id="voice-colors" gradientUnits="userSpaceOnUse" x2="600">
-    <stop stop-color="#6c63ff"/><stop offset=".22" stop-color="#00cfff"/><stop offset=".44" stop-color="#00e29c"/><stop offset=".66" stop-color="#ffd24f"/><stop offset=".84" stop-color="#ff578e"/><stop offset="1" stop-color="#6c63ff"/>
-  </linearGradient></defs>
-  <path d="M0 52 Q25 24 50 52 T100 52 T150 52 T200 52 T250 52 T300 52 T350 52 T400 52 T450 52 T500 52 T550 52 T600 52" fill="none" stroke="url(#voice-colors)" stroke-width="6" vector-effect="non-scaling-stroke"/>
+<svg id="voice-wave" aria-hidden="true" viewBox="0 0 760 144" preserveAspectRatio="none">
+  <defs>
+    <linearGradient id="filament-upper"><stop stop-color="#ffe154"/><stop offset=".16" stop-color="#fda500"/><stop offset=".31" stop-color="#ff389e"/><stop offset=".45" stop-color="#ffb500"/><stop offset=".58" stop-color="#eaff20"/><stop offset=".65" stop-color="#b3e8ff"/><stop offset=".76" stop-color="#d7f21d"/><stop offset="1" stop-color="#ffda24"/></linearGradient>
+    <linearGradient id="filament-lower"><stop stop-color="#ffd132"/><stop offset=".18" stop-color="#00b5dd"/><stop offset=".34" stop-color="#ab32ff"/><stop offset=".43" stop-color="#ff4327"/><stop offset=".53" stop-color="#ffdf1b"/><stop offset=".62" stop-color="#26e3cf"/><stop offset=".7" stop-color="#ff3216"/><stop offset=".81" stop-color="#ff6f00"/><stop offset="1" stop-color="#ffe852"/></linearGradient>
+    <g id="voice-threads"></g>
+  </defs>
+  <use class="voice-halo" href="#voice-threads"/>
+  <use href="#voice-threads"/>
 </svg>
 <script type="text/plain" id="voice-engine">function cleanDictation(text) {
   const musicTag = /\[\s*(?:musica|music)\s*\]|\(\s*(?:musica|music)\s*\)/gi;
@@ -320,30 +323,49 @@ function marketContext(question) {
 const mic = el('mic');
 let recording = null, voiceWorker = null;
 const voiceWave = document.getElementById('voice-wave');
-const wavePath = voiceWave.querySelector('path');
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+const threads = [];
+for (let i = 0; i < 25; i++) {
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  const side = i / 24;
+  path.setAttribute('fill', 'none');
+  path.setAttribute('stroke', side < 0.5 ? 'url(#filament-upper)' : 'url(#filament-lower)');
+  path.setAttribute('stroke-width', i === 0 || i === 24 ? '1.55' : '0.86');
+  path.setAttribute('opacity', String(0.52 + 0.38 * Math.abs(2 * side - 1)));
+  document.getElementById('voice-threads').append(path);
+  threads.push(path);
+}
 let waveFrame = 0, voiceLevel = 0, amplitude = 0, phase = 0, previousFrame = 0;
 
 function renderWave(time) {
-  const dt = Math.min((time - previousFrame) / 1000, 0.05);
-  previousFrame = time;
-  amplitude += (voiceLevel - amplitude) * (1 - Math.exp(-14 * dt));
-  if (!reducedMotion.matches) phase += dt * (3 + amplitude * 4);
-  const height = 12 + 23 * amplitude;
-  let shape = '';
-  for (let x = 0; x <= 600; x += 3) {
-    const envelope = 0.72 + 0.28 * Math.sin(Math.PI * x / 600);
-    const y = 42 + height * envelope * Math.sin(x / 22 - phase);
-    shape += (x ? ' L' : 'M') + x + ' ' + y.toFixed(2);
-  }
-  wavePath.setAttribute('d', shape);
+  const dt = Math.min((time - previousFrame) / 1000, 0.1);
   waveFrame = requestAnimationFrame(renderWave);
+  if (dt < 0.03 && time !== previousFrame) return;
+  previousFrame = time;
+  amplitude += (voiceLevel - amplitude) * (1 - Math.exp(-12 * dt));
+  if (!reducedMotion.matches) phase += dt * (1.3 + 2 * amplitude);
+  const height = 31 + 29 * amplitude;
+  for (const [index, path] of threads.entries()) {
+    const layer = index / (threads.length - 1);
+    let shape = 'M16 72 L131 72';
+    for (let x = 136; x <= 628; x += 4) {
+      const u = (x - 132) / 500;
+      const envelope = Math.pow(Math.sin(Math.PI * u), 0.85);
+      const twist = layer * (2.6 + 0.75 * Math.sin(8 * u + phase * 0.4));
+      const crest = 0.62 * Math.sin(u * 17.5 - phase + twist)
+                  + 0.28 * Math.sin(u * 8.4 + phase * 0.65 - twist)
+                  + 0.18 * Math.sin(u * 31.5 - phase * 0.5 + twist);
+      shape += ' L' + x + ' ' + (72 + height * envelope * crest).toFixed(2);
+    }
+    path.setAttribute('d', shape + ' L632 72 L744 72');
+  }
 }
 
 function resetWave() {
   cancelAnimationFrame(waveFrame);
   waveFrame = voiceLevel = amplitude = 0;
   voiceWave.classList.remove('speaking');
+  document.body.classList.remove('voice-listening');
 }
 
 function updateWave(samples) {
@@ -356,6 +378,7 @@ function updateWave(samples) {
 function startWave() {
   previousFrame = performance.now();
   voiceWave.classList.add('speaking');
+  document.body.classList.add('voice-listening');
   renderWave(previousFrame);
 }
 function releaseAudio(session) {
