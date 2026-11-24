@@ -43,7 +43,7 @@
 :root{color-scheme:light;--bg:#f5f8f8;--panel:white;--ink:#183238;--line:#80999c;--accent:#0e6767;background:var(--bg)}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:1rem/1.55 system-ui,sans-serif}main{max-width:48rem;margin:0 auto;padding:clamp(1rem,4vw,3rem)}header{display:flex;justify-content:flex-start;padding-top:clamp(1rem,4vw,3rem);padding-left:max(.5rem,env(safe-area-inset-left,0px));padding-right:max(.5rem,env(safe-area-inset-right,0px));align-items:center}#close-assistant{margin-left:auto;display:grid;place-items:center;width:44px;height:44px;text-decoration:none;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:.6rem;font:1.7rem/1 system-ui}#close-assistant:focus-visible{outline:2px solid var(--accent);outline-offset:2px}header+main{padding-top:0}a,strong{color:var(--accent)}h1{font-size:clamp(2rem,5vw,3rem);line-height:1.12}article{border-left:2px solid var(--line);padding-left:1rem;margin:1.25rem 0}article p{white-space:pre-wrap;overflow-wrap:anywhere;margin:.3rem 0}textarea,button{background:var(--panel);color:inherit;border:1px solid var(--line);border-radius:.6rem;padding:.65rem .9rem;font:inherit}button{cursor:pointer}button:disabled{opacity:.55}label,textarea,small{display:block}textarea{width:100%;margin:.45rem 0;resize:vertical}small{margin-bottom:1rem}#send{background:var(--accent);color:var(--bg);font-weight:bold}
 main{padding-bottom:4rem}.lightbar{position:fixed;bottom:0;left:0;right:0;height:6px;z-index:5;background:linear-gradient(90deg,#6c63ff,#00cfff,#00e29c,#ffd24f,#ff578e,#6c63ff);background-size:200% 100%;box-shadow:0 -2px 15px #9878ff95;pointer-events:none;animation:flow 7s linear infinite}body:has(#chat[data-voice="on"]) .lightbar,body:has(#send:disabled) .lightbar{height:9px;box-shadow:0 -4px 24px #25cfffaa;animation-duration:2s}@keyframes flow{to{background-position:200% 0}}@media(prefers-reduced-motion:reduce){.lightbar{animation:none}}#mic[aria-pressed=true]{outline:2px solid var(--accent)}
-#voice-wave{position:fixed;bottom:0;left:0;width:100%;height:clamp(78px,14vh,138px);box-sizing:content-box;padding-bottom:env(safe-area-inset-bottom,0px);z-index:6;pointer-events:none;display:none;background:transparent}#voice-wave.speaking{display:block}.voice-halo{filter:blur(3px);opacity:.7}body.voice-listening .lightbar{visibility:hidden}body.voice-listening main{padding-bottom:calc(clamp(78px,14vh,138px) + env(safe-area-inset-bottom,0px) + 1.5rem)}
+#voice-wave,#voice-wave-canvas{position:fixed;bottom:0;left:0;width:100%;height:clamp(78px,14vh,138px);box-sizing:content-box;padding-bottom:env(safe-area-inset-bottom,0px);z-index:6;pointer-events:none;display:none;background:transparent}#voice-wave.speaking,#voice-wave-canvas.speaking{display:block}.voice-halo{filter:blur(3px);opacity:.7}body.voice-listening .lightbar{visibility:hidden}body.voice-listening main{padding-bottom:calc(clamp(78px,14vh,138px) + env(safe-area-inset-bottom,0px) + 1.5rem)}
 
 #mic,#cancel-voice,#send,#stop{min-height:44px;touch-action:manipulation}#question{font-size:16px}button:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}#status{overflow-wrap:anywhere}main{padding-bottom:calc(4rem + env(safe-area-inset-bottom,0px))}
 </style></head><body><header><button id="reset">Nuova chat</button><a id="close-assistant" href="./index.html?from=assistant" aria-label="Chiudi assistente vocale" title="Chiudi assistente vocale">×</a></header>
@@ -63,6 +63,7 @@ main{padding-bottom:4rem}.lightbar{position:fixed;bottom:0;left:0;right:0;height
   <g id="voice-glow" class="voice-halo"></g>
   <g id="voice-threads"></g>
 </svg>
+<canvas id="voice-wave-canvas" aria-hidden="true"></canvas>
 <script type="text/plain" id="voice-engine">function cleanDictation(text) {
   const musicTag = /\[\s*(?:musica|music)\s*\]|\(\s*(?:musica|music)\s*\)/gi;
   return text.replace(musicTag, '').trim();
@@ -144,9 +145,37 @@ async function decodeVoice(clip, final) {
   }
   return transcriber(clip,options);
 }
+function speechSamples(audio, rate) {
+  if(rate===16000)return audio;
+  const ratio=rate/16000;
+  const output=new Float32Array(Math.floor(audio.length/ratio));
+  // Windowed sinc low-pass avoids aliasing on 44.1/48/96 kHz microphones.
+  const half=24, cutoff=Math.min(1,1/ratio)*0.92, phases=128;
+  const kernels=Array.from({length:phases+1},(_,p)=>{
+    const weights=new Float64Array(half*2+1);
+    for(let k=-half;k<=half;k++){
+      const x=k-p/phases,t=Math.PI*x*cutoff;
+      const window=Math.abs(x)<=half?0.5+0.5*Math.cos(Math.PI*x/half):0;
+      weights[k+half]=cutoff*(Math.abs(t)<1e-9?1:Math.sin(t)/t)*window;
+    }
+    return weights;
+  });
+  for(let i=0;i<output.length;i++){
+    const pos=i*ratio,j=Math.floor(pos),w=kernels[Math.round((pos-j)*phases)];
+    let sum=0,weight=0;
+    for(let k=-half;k<=half;k++){
+      if(j+k<0||j+k>=audio.length)continue;
+      const v=w[k+half];sum+=audio[j+k]*v;weight+=v;
+    }
+    output[i]=Math.abs(weight)>1e-8?sum/weight:0;
+  }
+  return output;
+}
+
 self.onmessage = async ({data}) => {
-  const {samples, final, preferSmall}=data;
+  const {samples:rawSamples, rate, final, preferSmall}=data;
   try {
+    const samples=speechSamples(rawSamples,rate);
     const clip = audibleSegment(samples, final);
     if (!clip) {
       self.postMessage({text:'', notice:'Audio troppo debole o silenzioso. Avvicina il microfono e riprova.'});
@@ -427,6 +456,13 @@ function voiceControls(active) {
 }
 let recording = null, voiceWorker = null;
 const voiceWave = document.getElementById('voice-wave');
+const voiceCanvas=document.getElementById('voice-wave-canvas');
+let waveContext=null;
+try{waveContext=voiceCanvas.getContext('2d');}catch{}
+const canvasGradients=[
+ [[0,'#ffe154'],[.16,'#fda500'],[.31,'#ff389e'],[.45,'#ffb500'],[.58,'#eaff20'],[.65,'#b3e8ff'],[.76,'#d7f21d'],[1,'#ffda24']],
+ [[0,'#ffd132'],[.18,'#00b5dd'],[.34,'#ab32ff'],[.43,'#ff4327'],[.62,'#26e3cf'],[.7,'#ff3216'],[.81,'#ff6f00'],[1,'#ffe852']]
+];
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const threads = [], glowThreads = [];
 for (let i = 0; i < 25; i++) {
@@ -476,7 +512,43 @@ function originalWaveShape(layer,height,phase){
   }
   return shape+' L632 72 L744 72';
 }
+function paintCanvasWave(height,angle){
+  if(!waveContext||typeof Path2D!=='function')return false;
+  try{
+    const width=Math.round(voiceCanvas.clientWidth*Math.min(window.devicePixelRatio||1,2));
+    const cssHeight=voiceCanvas.clientHeight-(parseFloat(getComputedStyle(voiceCanvas).paddingBottom)||0);
+    const h=Math.round(cssHeight*Math.min(window.devicePixelRatio||1,2));
+    if(width<=0||h<=0)return false;
+    if(voiceCanvas.width!==width||voiceCanvas.height!==h){
+      voiceCanvas.width=width;voiceCanvas.height=h;
+    }
+    const ctx=waveContext;
+    ctx.setTransform(width/760,0,0,h/144,0,0);
+    ctx.clearRect(0,0,760,144);
+    const gradients=canvasGradients.map(stops=>{
+      const gradient=ctx.createLinearGradient(16,0,744,0);
+      for(const [offset,color] of stops)gradient.addColorStop(offset,color);
+      return gradient;
+    });
+    for(let i=0;i<25;i++){
+      const layer=i/24,stroke=gradients[layer<.5?0:1];
+      const path=new Path2D(originalWaveShape(layer,height,angle));
+      ctx.strokeStyle=stroke;ctx.lineWidth=i===0||i===24?1.55:.86;
+      ctx.globalAlpha=.52+.38*Math.abs(2*layer-1);
+      // Canvas redraw avoids stale SVG filter/compositor layers in installed Edge apps.
+      ctx.shadowColor='rgba(255,154,65,.6)';ctx.shadowBlur=4;
+      ctx.stroke(path);
+    }
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+    return true;
+  }catch{return false;}
+}
 function paintVoiceWave(height,angle){
+  if(voiceCanvas.classList.contains('speaking')){
+    if(paintCanvasWave(height,angle))return;
+    voiceCanvas.classList.remove('speaking');
+    voiceWave.classList.add('speaking');
+  }
   for(let i=0;i<threads.length;i++){
     const shape=originalWaveShape(i/(threads.length-1),height,angle);
     threads[i].setAttribute('d',shape);
@@ -503,6 +575,7 @@ function resetWave(){
   waveFrame=voiceLevel=amplitude=phase=lastVoiceSample=0;
   waveAnalyser=waveSamples=waveBytes=null;
   voiceWave.classList.remove('speaking');
+  voiceCanvas.classList.remove('speaking');
   document.body.classList.remove('voice-listening');
 }
 function updateWave(samples){
@@ -523,7 +596,8 @@ function startWave(session){
     else waveBytes=new Uint8Array(waveAnalyser.fftSize);
   }
   previousFrame=performance.now();
-  voiceWave.classList.add('speaking');
+  if(waveContext&&typeof Path2D==='function')voiceCanvas.classList.add('speaking');
+  else voiceWave.classList.add('speaking');
   document.body.classList.add('voice-listening');
   paintVoiceWave(31,0);
   waveFrame=requestAnimationFrame(renderWave);
@@ -531,6 +605,7 @@ function startWave(session){
 function releaseAudio(session) {
   resetWave();
   clearTimeout(session.listenTimer);
+  clearTimeout(session.captureCheck);
   try { session.processor?.disconnect(); } catch {}
   try { session.source?.disconnect(); } catch {}
   try { session.analyser?.disconnect(); } catch {}
@@ -717,33 +792,6 @@ function joinedAudio(session) {
 }
 
 // Whisper takes 16 kHz PCM; capture at the browser's hardware rate.
-function speechSamples(audio, rate) {
-  if(rate===16000)return audio;
-  const ratio=rate/16000;
-  const output=new Float32Array(Math.floor(audio.length/ratio));
-  // Windowed sinc low-pass avoids aliasing on 44.1/48/96 kHz microphones.
-  const half=24, cutoff=Math.min(1,1/ratio)*0.92, phases=128;
-  const kernels=Array.from({length:phases+1},(_,p)=>{
-    const weights=new Float64Array(half*2+1);
-    for(let k=-half;k<=half;k++){
-      const x=k-p/phases,t=Math.PI*x*cutoff;
-      const window=Math.abs(x)<=half?0.5+0.5*Math.cos(Math.PI*x/half):0;
-      weights[k+half]=cutoff*(Math.abs(t)<1e-9?1:Math.sin(t)/t)*window;
-    }
-    return weights;
-  });
-  for(let i=0;i<output.length;i++){
-    const pos=i*ratio,j=Math.floor(pos),w=kernels[Math.round((pos-j)*phases)];
-    let sum=0,weight=0;
-    for(let k=-half;k<=half;k++){
-      if(j+k<0||j+k>=audio.length)continue;
-      const v=w[k+half];sum+=audio[j+k]*v;weight+=v;
-    }
-    output[i]=Math.abs(weight)>1e-8?sum/weight:0;
-  }
-  return output;
-}
-
 // Measure pause duration in captured audio, independently of timers and model speed.
 function pauseEndsPhrase(session, rms, count) {
   const seconds = count / session.ctx.sampleRate;
@@ -817,20 +865,20 @@ function transcribeSoFar(session) {
     voiceWorker.onerror = () => {
       if (recording === session) fail('Motore vocale non disponibile. Puoi scrivere la domanda.');
     };
-    const samples = speechSamples(joinedAudio(session), rate);
+    const samples = joinedAudio(session);
     session.watchdog=setTimeout(()=>{
       if(recording===session)fail('Trascrizione troppo lenta. Riprova con una frase più breve.');
     },240000);
     const memory=Number(navigator.deviceMemory);
     const preferSmall=(!memory||memory>=4) && (navigator.hardwareConcurrency||4)>=4;
-    voiceWorker.postMessage({samples,final:sentFinal,preferSmall}, [samples.buffer]);
+    voiceWorker.postMessage({samples,rate,final:sentFinal,preferSmall}, [samples.buffer]);
   } catch { fail('Trascrizione non disponibile. Puoi scrivere la domanda.'); }
 }
 
 // AudioWorklet avoids recording gaps when the main UI thread is busy.
-async function createVoiceCapture(session,onSamples){
+async function createVoiceCapture(session,onSamples,forceCompatible=false){
   const ctx=session.ctx;
-  if(ctx.audioWorklet&&typeof AudioWorkletNode==='function'){
+  if(!forceCompatible&&ctx.audioWorklet&&typeof AudioWorkletNode==='function'){
     let url;
     try{
       const code=`class VertexCapture extends AudioWorkletProcessor{
@@ -893,7 +941,7 @@ mic.onclick = async () => {
     if (recording !== session) { stream.getTracks().forEach(track => track.stop()); return; }
     session.stream = stream;
     session.source = session.ctx.createMediaStreamSource(stream);
-    session.processor = await createVoiceCapture(session, samples => {
+    const onSamples = samples => {
       if (recording!==session || session.phase !== 'listening' || !samples?.length) return;
       const part = samples.slice(0, session.ctx.sampleRate * 30 - session.length);
       if(!part.length)return;
@@ -902,20 +950,43 @@ mic.onclick = async () => {
       session.length += part.length;
       if (pauseEndsPhrase(session, rms, part.length) || session.length >= session.ctx.sampleRate * 30) finishRecording();
       else transcribeSoFar(session);
-    });
+    };
+    session.processor=await createVoiceCapture(session,onSamples);
     if(recording!==session||!session.processor)return;
-    session.source.connect(session.processor);
     try {
       session.analyser=session.ctx.createAnalyser();
       session.analyser.fftSize=1024;
-      session.source.connect(session.analyser);
     }catch{session.analyser=null;}
+    if(session.analyser){
+      session.source.connect(session.analyser);
+      session.analyser.connect(session.processor);
+    }else session.source.connect(session.processor);
     session.mute=session.ctx.createGain();
     session.mute.gain.value=0;
     session.processor.connect(session.mute);
     session.mute.connect(session.ctx.destination);
+    await session.ctx.resume();
+    if(recording!==session)return;
     session.phase = 'listening';
     startWave(session);
+    // Recover if an installed browser accepts AudioWorklet but sends no PCM.
+    session.captureCheck=setTimeout(async()=>{
+      if(recording!==session||session.phase!=='listening'||session.length||!session.processor?.port)return;
+      const old=session.processor;
+      const upstream=session.analyser||session.source;
+      try{
+        upstream.disconnect(old);old.disconnect();
+        old.port.onmessage=null;old.port.close();
+        session.processor=await createVoiceCapture(session,onSamples,true);
+        if(recording!==session||!session.processor)return;
+        upstream.connect(session.processor);session.processor.connect(session.mute);
+        await session.ctx.resume();
+      }catch{
+        if(recording===session){
+          endVoice();statusLine.textContent='Il microfono non trasmette audio. Controlla il dispositivo di ingresso e riprova.';
+        }
+      }
+    },1800);
     session.listenTimer=setTimeout(()=>{
       if(recording!==session||session.phase!=='listening')return;
       if(session.length)finishRecording();
