@@ -1270,6 +1270,7 @@ function idle() {
   el('stop').textContent='Annulla';
 }
 function stop() {
+  if(cryptoUpdateController){cryptoUpdateController.abort();cryptoUpdateController=null;}
   cancelSpeech();
   el('speak-retry').hidden=true;
   if (worker) worker.terminate();
@@ -1286,7 +1287,7 @@ function cancelSpeech(){
 }
 function speechChunks(value){
   // Keep chunks short to avoid long-utterance stalls on Chromium and mobile.
-  const words=String(value).replace(/[*#`]/g,'').trim().split(/\s+/);
+  const words=String(value).replace(/https?:\/\/\S+/g,'').replace(/[*#`]/g,'').trim().split(/\s+/);
   const chunks=[];let part='';
   for(const word of words){
     if(part&&(part.length+word.length+1>180)){chunks.push(part);part='';}
@@ -1399,7 +1400,90 @@ function acceptAnswer(answer) {
   if(readAloud)speakAnswer(answer);
   else input.focus();
 }
-function submitQuestion(fromVoice=false){
+let cryptoUpdateController=null;
+function cryptoUpdateIntent(text){
+  const key=questionKey(text);
+  const news=/\b(?:notizie|news|annunci|novità|novita|roadmap|listing)\b/u.test(key);
+  const update=/\b(?:aggiornamenti|aggiornamento|aggiornami|ultime|ultimi|oggi|adesso|ora|attuale|prezzo|quotazione|quotazioni|quanto vale|quanto costa|come va|andamento|variazione|capitalizzazione)\b/u.test(key);
+  if((!news&&!update)||/\b(?:previsioni|previsione|target|domani|come funziona|come calcolo|che cosa significa)\b/u.test(key))return null;
+  return {key,news,update,general:/\b(?:cripto|crypto|criptovalute|criptovaluta)\b/u.test(key)};
+}
+function cryptoCatalog(heat,quotes){
+  const fast=new Map((Array.isArray(quotes?.crypto)?quotes.crypto:[]).map(q=>[q.id,q]));
+  return (Array.isArray(heat?.coins)?heat.coins:[]).filter(c=>typeof c.id==='string'&&typeof c.name==='string').map(c=>{
+    const q=fast.get(c.localId);
+    const newer=q&&String(q.symbol||'').toLowerCase()===c.id.toLowerCase()&&typeof q.value==='number'&&q.value>0&&q.currency==='USD'&&Date.parse(q.time)>Date.parse(c.observedAt||0);
+    return {...c,price:newer?q.value:c.price,change:newer?q.change:c.change,observedAt:newer?q.time:c.observedAt,source:newer?q.source:c.source,marketCap:newer?q.market_cap:c.marketCap};
+  });
+}
+function cryptoFind(key,catalog){
+  const padded=' '+key+' ';
+  const aliases={btc:['bit coin'],eth:['eterium'],inj:['injectiv','in jective'],lunc:['luna classic','terra luna classic'],tai:['tars ai'],hot:['holochain'],ton:['toncoin','gram'],vra:['vera sity']};
+  const ambiguous=new Set('in on one me ai no sei gas ora ore ton near op a i e l us s pi etc amp not come di su un la il'.split(' '));
+  const matches=[];
+  for(const c of catalog){
+    const names=[c.name,c.id,c.symbol,c.localId,...(aliases[c.localId]||[])].filter(Boolean).map(questionKey);
+    let score=0;
+    for(const name of names){
+      if(name.length<2||!padded.includes(' '+name+' '))continue;
+      if(ambiguous.has(name)){
+        if(!['ore','ton','near','op','gas','sei','pi','etc','amp','not','one','ai','me'].includes(name))continue;
+        if(![' crypto ',' cripto ',' token ',' criptovaluta ',' su ',' di '].some(prefix=>padded.includes(prefix+name+' ')))continue;
+        if(name==='ore'&&/\b(?:ultime|24|48|12|2|3|4|5) ore\b/.test(key))continue;
+      }
+      score=Math.max(score,name.length);
+    }
+    if(score)matches.push({c,score});
+  }
+  matches.sort((a,b)=>b.score-a.score);
+  const selected=[];
+  for(const m of matches){
+    if(selected.some(x=>questionKey(x.name).includes(questionKey(m.c.name))))continue;
+    selected.push(m.c);
+  }
+  return selected.slice(0,5);
+}
+function cryptoQuoteLine(c,now=Date.now()){
+  const t=Date.parse(c.observedAt);
+  if(typeof c.price!=='number'||!Number.isFinite(c.price)||c.price<=0||!Number.isFinite(t)||t>now+300000)return c.name+': quotazione verificata non disponibile.';
+  const date=new Intl.DateTimeFormat('it-IT',{dateStyle:'short',timeStyle:'short',timeZone:'Europe/Rome'}).format(new Date(t));
+  const price=new Intl.NumberFormat('it-IT',{maximumFractionDigits:c.price<.01?12:6}).format(c.price);
+  const delta=typeof c.change==='number'&&Number.isFinite(c.change)?'; variazione 24 ore alla rilevazione '+(c.change>=0?'+':'')+c.change.toFixed(2).replace('.',',')+'%':'';
+  return c.name+' ('+String(c.symbol||'').toUpperCase()+'): '+price+' USD'+delta+'. '+(now-t>86400000?'Dato storico, non aggiornato nelle ultime 24 ore. ':'Ultima rilevazione disponibile. ')+'Fonte: '+(c.source||'CoinGecko')+', '+date+' (ora italiana).';
+}
+function cryptoNewsLines(feed,selected,now=Date.now()){
+  const terms=selected.flatMap(c=>[questionKey(c.name),questionKey(c.symbol||'')]).filter(x=>x.length>=3&&!['ore','gas','one','not','near','amp'].includes(x));
+  return (Array.isArray(feed?.items)?feed.items:[]).filter(i=>{
+    const t=Date.parse(i.date);
+    if(typeof i.title!=='string'||typeof i.url!=='string'||!i.url.startsWith('https://www.sec.gov/')||!Number.isFinite(t)||t>now+300000||now-t>7*86400000)return false;
+    return selected.length?terms.some(term=>(' '+questionKey(i.title)+' ').includes(' '+term+' ')):/\b(?:crypto|bitcoin|ethereum|digital assets?|stablecoins?|tokenization|blockchain)\b/i.test(i.title);
+  }).sort((a,b)=>Date.parse(b.date)-Date.parse(a.date)).slice(0,3).map(i=>new Intl.DateTimeFormat('it-IT',{dateStyle:'short',timeZone:'Europe/Rome'}).format(new Date(i.date))+' — SEC: '+i.title+'\n'+i.url);
+}
+async function fetchCryptoFile(path,signal){
+  const r=await fetch('./'+path+'?v='+Math.floor(Date.now()/60000),{cache:'no-store',signal});
+  if(!r.ok)throw Error('Feed non disponibile');
+  return r.json();
+}
+async function answerCryptoUpdate(intent,signal){
+  const [heat,quotes,news]=await Promise.allSettled([
+    fetchCryptoFile('crypto-heatmap-data.json',signal),
+    fetchCryptoFile('market-quotes.json',signal),
+    fetchCryptoFile('sec-news.json',signal)
+  ]);
+  const catalog=cryptoCatalog(heat.status==='fulfilled'?heat.value:null,quotes.status==='fulfilled'?quotes.value:null);
+  const selected=cryptoFind(intent.key,catalog);
+  if(!selected.length&&!intent.general)return null;
+  const coins=selected.length?selected:catalog.filter(c=>['btc','eth','sol','inj','bnb'].includes(c.localId));
+  const parts=[];
+  if(intent.update||!intent.news)parts.push(coins.length?'Quotazioni crypto disponibili:\n'+coins.map(c=>cryptoQuoteLine(c)).join('\n'):'Feed delle quotazioni non raggiungibile. Non posso verificare i prezzi.');
+  if(intent.news||/\b(?:aggiornamenti|aggiornamento|aggiornami)\b/.test(intent.key)){
+    const headlines=cryptoNewsLines(news.status==='fulfilled'?news.value:null,selected);
+    parts.push(news.status!=='fulfilled'?'Archivio SEC non raggiungibile.':headlines.length?'Comunicazioni ufficiali SEC degli ultimi 7 giorni (titoli originali):\n'+headlines.join('\n'):'Nessuna comunicazione SEC pertinente trovata negli ultimi 7 giorni. Questo non significa che non ci siano altre notizie.');
+    parts.push('La copertura delle notizie è limitata all’archivio SEC; non posso confermare annunci dei progetti, listing o notizie di altre fonti.');
+  }
+  return parts.join('\n\n');
+}
+async function submitQuestion(fromVoice=false){
   if(!memoryReady||recording||question||speakingAnswer||!input.value.trim())return;
   voiceQuestion=fromVoice;
   el('speak-retry').hidden=true;
@@ -1413,6 +1497,24 @@ function submitQuestion(fromVoice=false){
   input.readOnly = true;
   el('send').disabled = true;
   el('stop').hidden = false;
+  const intent=cryptoUpdateIntent(question);
+  if(intent){
+    const controller=new AbortController();cryptoUpdateController=controller;
+    const timeout=setTimeout(()=>controller.abort(),12000);
+    statusLine.textContent='Verifica aggiornamenti crypto…';
+    try{
+      const answer=await answerCryptoUpdate(intent,controller.signal);
+      if(cryptoUpdateController!==controller)return;
+      if(answer){acceptAnswer(answer);return;}
+    }catch{
+      if(cryptoUpdateController!==controller)return;
+      if(intent.general){acceptAnswer('Non riesco a verificare gli aggiornamenti crypto in questo momento.');return;}
+    }finally{
+      clearTimeout(timeout);
+      if(cryptoUpdateController===controller)cryptoUpdateController=null;
+    }
+    if(!question)return;
+  }
   statusLine.textContent = 'Preparazione del modello locale…';
   try {
     if (!worker) {
