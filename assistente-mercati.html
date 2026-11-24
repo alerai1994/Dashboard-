@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Assistente mercati · Vertex</title>
+<style>
+:root{color-scheme:dark;--bg:#111d21;--panel:#1b2b30;--text:#edf4f5;--line:#38515a;--accent:#a0d9df;--muted:#b4c3c8}
+@media(prefers-color-scheme:light){:root{color-scheme:light;--bg:#f6f8f8;--panel:white;--text:#192c32;--line:#a5b8bf;--accent:#17616c;--muted:#485f68}}
+*{box-sizing:border-box}body{background:var(--bg);color:var(--text);font:1rem/1.55 Inter,system-ui,sans-serif;margin:0}main{max-width:54rem;margin:auto;padding:clamp(1rem,4vw,3rem)}a{color:var(--accent)}header{display:flex;justify-content:space-between;align-items:center;gap:1rem}h1{font-size:clamp(2rem,5vw,3.3rem);line-height:1.1}button,textarea{font:inherit;color:inherit;background:var(--panel);border:1px solid var(--line);border-radius:.6rem;padding:.6rem .9rem}button{cursor:pointer}button:hover{border-color:var(--accent)}button:disabled{opacity:.55}#ideas{display:flex;gap:.5rem;flex-wrap:wrap}article{margin:1rem 0;border-bottom:1px solid var(--line);padding:.8rem 0}article strong{color:var(--accent)}article p{white-space:pre-wrap;overflow-wrap:anywhere;margin:.4rem 0}form{margin-top:1.5rem}label{display:block;font-weight:bold}textarea{width:100%;margin:.5rem 0;resize:vertical}small,#status{display:block;color:var(--muted)}#send{margin-top:.7rem;background:var(--accent);color:var(--bg);font-weight:bold}
+</style><script async src="https://js.puter.com/v2/"></script></head>
+<body><main><header><a href="./index.html">← Dashboard Vertex</a><button id="reset" type="button">Nuova chat</button></header>
+<h1>Assistente mercati</h1><div id="ideas"><button>Come incidono i tassi BCE sui BTP?</button><button>Confronta oro e Bitcoin nell’ultimo mese.</button><button>Cosa ha mosso il Nasdaq oggi?</button></div>
+<section id="messages" role="log" aria-label="Conversazione" aria-live="polite"></section>
+<form id="composer"><label for="question">La tua domanda sui mercati</label><textarea id="question" rows="3" maxlength="5000" required placeholder="Scrivi una domanda o approfondisci la risposta precedente"></textarea>
+<small>All’invio, Puter e il servizio IA ricevono la domanda e il contesto recente della chat. Si applicano le quote del tuo account Puter.</small>
+<button id="send" type="submit">Invia domanda</button><p id="status" role="status"></p></form></main><script>
+const byId = id => document.getElementById(id);
+const form = byId('composer');
+const input = byId('question');
+const log = byId('messages');
+const status = byId('status');
+const history = [];
+let busy = false;
+
+function addMessage(label, text) {
+  const article = document.createElement('article');
+  const heading = document.createElement('strong');
+  const body = document.createElement('p');
+  heading.textContent = label;
+  body.textContent = text;
+  article.append(heading, body);
+  log.append(article);
+  return article;
+}
+
+function showSources(article, result) {
+  const annotations = result.message.annotations || [];
+  const urls = [...(Array.isArray(result.citations) ? result.citations : []),
+    ...annotations.map(item => item.url_citation?.url)];
+  const list = document.createElement('ul');
+  for (const url of new Set(urls)) {
+    if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) continue;
+    try {
+      const link = document.createElement('a');
+      link.href = new URL(url).href;
+      link.textContent = new URL(url).hostname;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      const item = document.createElement('li');
+      item.append(link);
+      list.append(item);
+    } catch {}
+  }
+  if (list.childElementCount) article.append(list);
+}
+
+byId('ideas').onclick = event => {
+  if (event.target.tagName !== 'BUTTON' || busy) return;
+  input.value = event.target.textContent;
+  input.focus();
+};
+byId('reset').onclick = () => {
+  if (busy) return;
+  history.length = 0;
+  log.replaceChildren();
+  status.textContent = '';
+  input.value = '';
+  input.focus();
+};
+
+form.onsubmit = async event => {
+  event.preventDefault();
+  const question = input.value.trim();
+  if (!question || busy) return;
+  busy = true;
+  byId('send').disabled = byId('reset').disabled = input.readOnly = true;
+  let pending;
+  try {
+    if (!window.puter?.ai) throw Error('SDK');
+    if (!puter.auth.isSignedIn()) {
+      status.textContent = 'Accedi a Puter nella finestra che si apre.';
+      await puter.auth.signIn();
+    }
+    pending = addMessage('Tu', question);
+    status.textContent = 'Sto preparando la risposta…';
+    const instructions = 'Sei l’assistente mercati di Vertex. Rispondi in italiano, in modo chiaro e diretto. Copri azioni, ETF, obbligazioni, indici, materie prime, valute, derivati, macroeconomia e criptovalute. Data della domanda: ' + new Date().toISOString() + '. Per prezzi, notizie e dati recenti verifica fonti autorevoli e indica fonte, data, valuta e ora se disponibile. Se non trovi dati verificabili dichiaralo. Distingui fatti, scenari e opinioni. Spiega i rischi pertinenti. Chiedi chiarimenti su ticker o periodi ambigui. Usa testo semplice e includi indirizzi delle fonti per dati recenti.';
+    const turn = {role:'user', content:question};
+    const result = await puter.ai.chat([{role:'system', content:instructions}, ...history.slice(-12), turn], {model:'perplexity/sonar', normalize:true});
+    const answer = result?.message?.content;
+    if (typeof answer !== 'string' || !answer.trim()) throw Error('EMPTY');
+    const article = addMessage('Assistente mercati', answer.trim());
+    history.push(turn, {role:'assistant', content:answer});
+    input.value = '';
+    status.textContent = '';
+    showSources(article, result);
+    article.scrollIntoView({block:'nearest'});
+  } catch (error) {
+    if (input.value.trim() === question) pending?.remove();
+    const detail = String(error?.message || error?.error?.message || error || '');
+    status.textContent = /quota|credit|balance|limit|payment/i.test(detail)
+      ? 'Il servizio segnala un limite di utilizzo. Controlla la quota del tuo account Puter.'
+      : 'Risposta non disponibile. Controlla la connessione e l’accesso a Puter, poi riprova.';
+  } finally {
+    busy = false;
+    byId('send').disabled = byId('reset').disabled = input.readOnly = false;
+  }
+};
+</script></body></html>
