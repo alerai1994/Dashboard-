@@ -28,7 +28,11 @@ main{padding-bottom:4rem}.lightbar{position:fixed;bottom:0;left:0;right:0;height
   </linearGradient></defs>
   <path d="M0 52 Q25 24 50 52 T100 52 T150 52 T200 52 T250 52 T300 52 T350 52 T400 52 T450 52 T500 52 T550 52 T600 52" fill="none" stroke="url(#voice-colors)" stroke-width="6" vector-effect="non-scaling-stroke"/>
 </svg>
-<script type="text/plain" id="voice-engine">let transcriber;
+<script type="text/plain" id="voice-engine">function cleanDictation(text) {
+  const musicTag = /\[\s*(?:musica|music)\s*\]|\(\s*(?:musica|music)\s*\)/gi;
+  return text.replace(musicTag, ' ').replace(/\s+/g, ' ').replace(/\s+([,.;:!?])/g, '$1').trim();
+}
+let transcriber;
 self.onmessage = async ({data: samples}) => {
   try {
     if (!transcriber) {
@@ -38,7 +42,8 @@ self.onmessage = async ({data: samples}) => {
       transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny', {device:'wasm', dtype:'q8'});
     }
     const result = await transcriber(samples, {language:'italian', task:'transcribe'});
-    self.postMessage({text:result.text.trim()});
+    const text = cleanDictation(result.text);
+    self.postMessage({text: /[\p{L}\p{N}]/u.test(text) ? text : ''});
   } catch {
     self.postMessage({error:'Trascrizione non riuscita. Controlla la connessione per il primo download o scrivi la domanda.'});
   }
