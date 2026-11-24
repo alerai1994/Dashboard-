@@ -1889,12 +1889,22 @@ function acceptAnswer(answer) {
   speakAnswer(answer);
 }
 let cryptoUpdateController=null;
-function cryptoUpdateIntent(text){
-  const key=questionKey(text);
-  const news=/\b(?:notizie|news|annunci|novità|novita|roadmap|listing)\b/u.test(key);
-  const update=/\b(?:aggiornamenti|aggiornamento|aggiornami|ultime|ultimi|oggi|adesso|ora|attuale|prezzo|quotazione|quotazioni|quanto vale|quanto costa|come va|andamento|variazione|capitalizzazione)\b/u.test(key);
-  if((!news&&!update)||/\b(?:previsioni|previsione|target|domani|come funziona|come calcolo|che cosa significa)\b/u.test(key))return null;
-  return {key,news,update,general:/\b(?:cripto|crypto|criptovalute|criptovaluta)\b/u.test(key)};
+function cryptoUpdateIntent(text,previous=''){
+  const key=questionKey(normalizeMarketTerms(String(text))).normalize('NFD').replace(/\p{M}/gu,'');
+  if(/\b(?:previsioni|previsione|target|domani|come funziona|come calcolo|che cosa significa|come comprare|come acquistare|perche|motivo|causa|ragioni)\b/u.test(key))return null;
+  const news=/\b(?:notizi[ae]|news|annunci|novita|roadmap|listing|aggiornament[oi]|aggiornami)\b/u.test(key);
+  const price=/\b(?:prezz[oi]|quotazion[ei]|quanto (?:vale|sta|costa|quota|fa)|a quanto (?:sta|si trova|e)|a che prezzo|che prezzo|che valore|valore attuale|valore di|valore del|valore della)\b/u.test(key);
+  const direction=/\b(?:sces[oaie]|salit[oaie]|calat[oaie]|cresciut[oaie]|crollat[oaie]|aumentat[oaie]|pers[oaie]|guadagnat[oaie]|rialz[oi]|ribass[oi]|sta (?:scendendo|salendo|calando|crescendo|crollando)|in (?:salita|discesa|rialzo|ribasso)|andamento|variazione|quanto ha (?:perso|guadagnato))\b/u.test(key);
+  const update=price||direction||/\b(?:aggiornament[oi]|aggiornami|ultime|ultimi|oggi|adesso|ora|attuale|come (?:va|sta andando)|capitalizzazione)\b/u.test(key);
+  if(!news&&!update){
+    const follow=key.match(/^(?:e invece|e|invece)\s+(.+?)(?:\s+invece)?$/);
+    const prev=previous?cryptoUpdateIntent(previous):null;
+    if(follow&&prev&&follow[1].split(' ').length<=7&&!/\b(?:se|quando|come|quanto|perche|cosa|quale)\b/.test(follow[1]))return cryptoUpdateIntent((prev.direction?'andamento di ':prev.news?'aggiornamenti su ':'prezzo di ')+follow[1]);
+    return null;
+  }
+  const general=/\b(?:cripto|crypto|criptovalute|criptovaluta|altcoin|mercato criptovalutario)\b/u.test(key);
+  const unsupportedPeriod=/\b(?:ieri|settimana|settiman[ae]|mese|mensile|mes[ei]|anno|anni|annuale|da lunedi|da martedi|da mercoledi|da giovedi|da venerdi|da sabato|da domenica|ultim[ei] (?:[2-9]\d*|1[0-9]+) giorni)\b/.test(key)||/\bultime\s+(?!24\b)\d+\s+ore\b/.test(key);
+  return {key,news,update,general,price,direction,unsupportedPeriod};
 }
 function cryptoCatalog(heat,quotes){
   const fast=new Map((Array.isArray(quotes?.crypto)?quotes.crypto:[]).map(q=>[q.id,q]));
@@ -1909,8 +1919,15 @@ function cryptoFind(key,catalog){
   const aliases={btc:['bit coin'],eth:['eterium'],inj:['injectiv','in jective'],lunc:['luna classic','terra luna classic'],tai:['tars ai'],hot:['holochain'],ton:['toncoin','gram'],vra:['vera sity']};
   const ambiguous=new Set('in on one me ai no sei gas ora ore ton near op a i e l us s pi etc amp not come di su un la il'.split(' '));
   const matches=[];
+  const target=key.replace(/^(?:ciao vertex |vertex )?/,'')
+    .replace(/^(?:quanto (?:sta|vale|costa|quota|fa)|a quanto (?:sta|e|si trova)|(?:e |sta )?(?:sceso|scesa|salito|salita|calato|calata|cresciuto|cresciuta|crollato|crollata|scendendo|salendo)|come (?:va|sta andando)|(?:qual e |quale e )?(?:il )?(?:prezzo|valore|andamento)(?: di| del| della)?|(?:ci sono )?(?:aggiornamenti|notizie|novita)(?: su| sulle| sulla| sui| sul)?|aggiornami su)\s+/,'')
+    .replace(/^(?:il|la|lo|token|cripto|crypto|criptovaluta)\s+/,'')
+    .replace(/\s+(?:oggi|adesso|ora|in questo momento|nelle ultime 24 ore|nelle 24 ore|in 24 ore|invece|per favore)$/,'').trim();
+  const normalizeName=v=>questionKey(String(v)).normalize('NFD').replace(/\p{M}/gu,'');
+  const exact=catalog.filter(c=>[c.name,c.id,c.symbol,c.localId,...(aliases[c.localId]||[])].filter(Boolean).some(x=>normalizeName(x)===target));
+  if(exact.length)return [...new Map(exact.map(c=>[c.id,c])).values()].slice(0,5);
   for(const c of catalog){
-    const names=[c.name,c.id,c.symbol,c.localId,...(aliases[c.localId]||[])].filter(Boolean).map(questionKey);
+    const names=[c.name,c.id,c.symbol,c.localId,...(aliases[c.localId]||[])].filter(Boolean).map(normalizeName);
     let score=0;
     for(const name of names){
       if(name.length<2||!padded.includes(' '+name+' '))continue;
@@ -1929,15 +1946,16 @@ function cryptoFind(key,catalog){
     if(selected.some(x=>questionKey(x.name).includes(questionKey(m.c.name))))continue;
     selected.push(m.c);
   }
-  return selected.slice(0,5);
+  return [...new Map(selected.map(c=>[c.id,c])).values()].slice(0,5);
 }
-function cryptoQuoteLine(c,now=Date.now()){
+function cryptoQuoteLine(c,now=Date.now(),direction=false){
   const t=Date.parse(c.observedAt);
   if(typeof c.price!=='number'||!Number.isFinite(c.price)||c.price<=0||!Number.isFinite(t)||t>now+300000)return c.name+': quotazione verificata non disponibile.';
   const date=new Intl.DateTimeFormat('it-IT',{dateStyle:'short',timeStyle:'short',timeZone:'Europe/Rome'}).format(new Date(t));
   const price=new Intl.NumberFormat('it-IT',{maximumFractionDigits:c.price<.01?12:6}).format(c.price);
   const delta=typeof c.change==='number'&&Number.isFinite(c.change)?'; variazione 24 ore alla rilevazione '+(c.change>=0?'+':'')+c.change.toFixed(2).replace('.',',')+'%':'';
-  return c.name+' ('+String(c.symbol||'').toUpperCase()+'): '+price+' USD'+delta+'. '+(now-t>86400000?'Dato storico, non aggiornato nelle ultime 24 ore. ':'Ultima rilevazione disponibile. ')+'Fonte: '+(c.source||'CoinGecko')+', '+date+' (ora italiana).';
+  const trend=direction&&typeof c.change==='number'&&Number.isFinite(c.change)?(now-t>86400000?'Alla rilevazione storica, ':'Nelle 24 ore precedenti la rilevazione, ')+c.name+(c.change<0?' è in ribasso':c.change>0?' è in rialzo':' è invariata')+'. ':direction?'Direzione non verificabile: variazione 24 ore assente. ':'';
+  return trend+c.name+' ('+String(c.symbol||'').toUpperCase()+'): '+price+' USD'+delta+'. '+(now-t>86400000?'Dato storico, non aggiornato nelle ultime 24 ore. ':'Ultima rilevazione disponibile. ')+'Fonte: '+(c.source||'CoinGecko')+', '+date+' (ora italiana).';
 }
 function cryptoNewsLines(feed,selected,now=Date.now()){
   const terms=selected.flatMap(c=>[questionKey(c.name),questionKey(c.symbol||'')]).filter(x=>x.length>=3&&!['ore','gas','one','not','near','amp'].includes(x));
@@ -1953,7 +1971,7 @@ async function fetchCryptoFile(path,signal){
   return r.json();
 }
 async function answerCryptoUpdate(intent,signal){
-  const needsNews=intent.news||/\b(?:aggiornamenti|aggiornamento|aggiornami)\b/.test(intent.key);
+  const needsNews=intent.news;
   const [heat,quotes,news]=await Promise.allSettled([
     fetchCryptoFile('crypto-heatmap-data.json',signal),
     fetchCryptoFile('market-quotes.json',signal),
@@ -1962,9 +1980,10 @@ async function answerCryptoUpdate(intent,signal){
   const catalog=cryptoCatalog(heat.status==='fulfilled'?heat.value:null,quotes.status==='fulfilled'?quotes.value:null);
   const selected=cryptoFind(intent.key,catalog);
   if(!selected.length&&!intent.general)return null;
+  if(intent.unsupportedPeriod)return 'I dati disponibili riportano la variazione delle 24 ore precedenti la rilevazione. Non posso confermare il rendimento per il diverso periodo richiesto.';
   const coins=selected.length?selected:catalog.filter(c=>['btc','eth','sol','inj','bnb'].includes(c.localId));
   const parts=[];
-  if(intent.update||!intent.news)parts.push(coins.length?'Quotazioni crypto disponibili:\n'+coins.map(c=>cryptoQuoteLine(c)).join('\n'):'Feed delle quotazioni non raggiungibile. Non posso verificare i prezzi.');
+  if(intent.update||!intent.news)parts.push(coins.length?'Quotazioni crypto disponibili:\n'+coins.map(c=>cryptoQuoteLine(c,Date.now(),intent.direction)).join('\n'):'Feed delle quotazioni non raggiungibile. Non posso verificare i prezzi.');
   if(intent.news||/\b(?:aggiornamenti|aggiornamento|aggiornami)\b/.test(intent.key)){
     const headlines=cryptoNewsLines(news.status==='fulfilled'?news.value:null,selected);
     parts.push(news.status!=='fulfilled'?'Archivio SEC non raggiungibile.':headlines.length?'Comunicazioni ufficiali SEC degli ultimi 7 giorni (titoli originali):\n'+headlines.join('\n'):'Nessuna comunicazione SEC pertinente trovata negli ultimi 7 giorni. Questo non significa che non ci siano altre notizie.');
@@ -1977,7 +1996,7 @@ async function submitQuestion(fromVoice=false){
   voiceQuestion=fromVoice;
   el('speak-retry').hidden=true;
   question=input.value.trim();
-  const quickAnswer = agentAction(question) || recallMemory(question,memoryPairs) || answerIndex.get(questionKey(question)) || directDefinition(question) || instantConversation(question);
+  const quickAnswer = agentAction(question) || recallMemory(question,memoryPairs) || (!cryptoUpdateIntent(question)?(answerIndex.get(questionKey(question)) || directDefinition(question) || instantConversation(question)):'');
   if (quickAnswer) {
     acceptAnswer(quickAnswer);
     return;
@@ -1986,7 +2005,8 @@ async function submitQuestion(fromVoice=false){
   input.readOnly = true;
   el('send').disabled = true;
   el('stop').hidden = false;
-  const intent=cryptoUpdateIntent(question);
+  const previous=memoryPairs.filter(p=>p.chat===memoryChat).at(-1)?.q||'';
+  const intent=cryptoUpdateIntent(question,previous);
   if(intent){
     const controller=new AbortController();cryptoUpdateController=controller;
     const timeout=setTimeout(()=>controller.abort(),12000);
