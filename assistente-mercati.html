@@ -1765,7 +1765,18 @@ function bubble(label, value) {
   const article = document.createElement('article');
   const name = document.createElement('strong'), body = document.createElement('p');
   name.textContent = label;
-  body.textContent = value;
+  if(label==='Vertex'){
+    const text=String(value);
+    let last=0;
+    for(const match of text.matchAll(/https?:\/\/[^\s<>]+/g)){
+      body.append(document.createTextNode(text.slice(last,match.index)));
+      const url=safeArticleURL(match[0]);
+      if(url){const link=document.createElement('a');link.href=url;link.textContent=url;link.target='_blank';link.rel='noopener noreferrer';body.append(link);}
+      else body.append(document.createTextNode(match[0]));
+      last=match.index+match[0].length;
+    }
+    body.append(document.createTextNode(text.slice(last)));
+  }else body.textContent=value;
   article.append(name, body);
   log.append(article);
 }
@@ -1970,6 +1981,80 @@ async function fetchCryptoFile(path,signal){
   if(!r.ok)throw Error('Feed non disponibile');
   return r.json();
 }
+function publicWebTopic(text){
+  const value=String(text).trim();
+  if(!value||value.length>140||/https?:|@|[\r\n]|\b(?:password|seed phrase|chiave privata|codice fiscale|iban|numero di telefono|indirizzo wallet|mia|mio|mie|miei|nostr[oaie]|personale)\b|0x[a-f0-9]{12,}|\d{7,}/iu.test(value))return '';
+  return value.replace(/[^\p{L}\p{N}\s.'’\-]/gu,' ').replace(/\s+/g,' ').trim();
+}
+async function publicWebJSON(url,signal,ms=6500){
+  const controller=new AbortController();
+  const abort=()=>controller.abort();
+  if(signal?.aborted)throw Error('Annullato');
+  signal?.addEventListener('abort',abort,{once:true});
+  const timer=setTimeout(abort,ms);
+  try{
+    const response=await fetch(url,{signal:controller.signal,credentials:'omit',referrerPolicy:'no-referrer',cache:'no-store'});
+    if(!response.ok)throw Error('Fonte non disponibile');
+    return await response.json();
+  }finally{clearTimeout(timer);signal?.removeEventListener('abort',abort);}
+}
+function safeArticleURL(value){
+  try{const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password?u.href:'';}catch{return '';}
+}
+function cleanWebText(value,max=450){
+  return String(value||'').replace(/[\u0000-\u001F\u007F]/g,' ').replace(/\s+/g,' ').trim().slice(0,max);
+}
+async function webNews(topic,signal){
+  const clean=publicWebTopic(topic);
+  if(!clean)return [];
+  const url=new URL('https://api.gdeltproject.org/api/v2/doc/doc');
+  const terms=clean.replace(/["'’]/g,' ').trim();
+  url.search=new URLSearchParams({query:'"'+terms+'" sourcelang:italian',mode:'artlist',format:'json',maxrecords:'10',timespan:'7d',sort:'datedesc'}).toString();
+  const data=await publicWebJSON(url,signal);
+  const seen=new Set();
+  return (Array.isArray(data.articles)?data.articles:[]).flatMap(a=>{
+    const link=safeArticleURL(a.url),title=cleanWebText(a.title,260);
+    if(!link||!title||seen.has(title.toLocaleLowerCase('it')))return [];
+    const domain=new URL(link).hostname;
+    const date=String(a.seendate||'').match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/);
+    const stamp=date?Date.parse(date[1]+'-'+date[2]+'-'+date[3]+'T'+date[4]+':'+date[5]+':'+date[6]+'Z'):NaN;
+    if(!Number.isFinite(stamp)||stamp>Date.now()+300000||Date.now()-stamp>8*86400000)return [];
+    seen.add(title.toLocaleLowerCase('it'));
+    return [{title,link,domain,date:new Intl.DateTimeFormat('it-IT',{dateStyle:'short',timeZone:'Europe/Rome'}).format(new Date(stamp))}];
+  }).slice(0,4);
+}
+function formatWebNews(articles){
+  return articles.length?'Titoli trovati sul web negli ultimi 7 giorni (indicizzati da GDELT; non verificati nel testo integrale):\n'+articles.map(a=>a.date+' — '+a.domain+': '+a.title+'\n'+a.link).join('\n'):'Nessun titolo pertinente restituito dalla ricerca web. Non significa che non esistano altre notizie.';
+}
+function webQuestionIntent(text){
+  const q=String(text).trim();
+  const news=q.match(/^(?:cerca|ricerca|verifica|controlla|trovami|dammi|mostrami)?\s*(?:sul web\s+|su internet\s+)?(?:le\s+)?(?:ultime\s+)?(?:notizie|news|novit[àa]|aggiornamenti)\s+(?:su|di|riguardo a|relative a)\s+(.+?)[?!.\s]*$/iu);
+  if(news)return {kind:'news',topic:publicWebTopic(news[1])};
+  const explicit=q.match(/^(?:cerca|ricerca|verifica|controlla|analizza)(?:mi)?\s+(?:sul web|su internet|online)\s*[:\-]?\s+(.+?)[?!.\s]*$/iu);
+  if(explicit)return {kind:'wiki',topic:publicWebTopic(explicit[1])};
+  const definition=q.match(/^(?:chi (?:è|e)|cos['’]è|cos['’]e|che cos['’]è|che cosa (?:è|e)|cosa (?:è|e)|cosa significa|che significa|che vuol dire|spiegami|definisci)\s+(.+?)[?!.\s]*$/iu);
+  if(definition)return {kind:'wiki',topic:publicWebTopic(definition[1].replace(/^(?:il|lo|la|un|uno|una)\s+/i,''))};
+  return null;
+}
+async function wikiWebAnswer(topic,signal){
+  const url=new URL('https://it.wikipedia.org/w/api.php');
+  url.search=new URLSearchParams({action:'query',generator:'search',gsrsearch:topic,gsrnamespace:'0',gsrlimit:'3',prop:'extracts|info|pageprops',exintro:'1',explaintext:'1',exsentences:'4',inprop:'url',format:'json',formatversion:'2',origin:'*'}).toString();
+  const data=await publicWebJSON(url,signal);
+  const pages=(Array.isArray(data?.query?.pages)?data.query.pages:[]).sort((a,b)=>(a.index??99)-(b.index??99));
+  const tokens=questionKey(topic).split(' ').filter(x=>x.length>=3);
+  const page=pages.find(p=>p.extract&&!p.pageprops?.disambiguation&&tokens.some(t=>questionKey(String(p.title)).split(' ').includes(t)));
+  if(!page)return 'Non ho trovato una voce enciclopedica sufficientemente pertinente. Prova a precisare l’argomento.';
+  const link=safeArticleURL(page.fullurl);
+  if(!link||new URL(link).hostname!=='it.wikipedia.org')return 'Non riesco a verificare la fonte enciclopedica.';
+  return 'Dalla voce Wikipedia «'+cleanWebText(page.title,120)+'»:\n'+cleanWebText(page.extract,1150)+'\nFonte: '+link+'\nInformazione enciclopedica, non una verifica di notizie in tempo reale.';
+}
+async function answerPublicWeb(intent,signal){
+  if(!intent.topic)return 'Per tutelare la riservatezza, usa un argomento pubblico senza dati personali per la ricerca web.';
+  try{
+    if(intent.kind==='news')return formatWebNews(await webNews(intent.topic,signal));
+    return await wikiWebAnswer(intent.topic,signal);
+  }catch{return 'Non riesco a raggiungere la fonte web in questo momento. Non posso confermare una risposta aggiornata.';}
+}
 async function answerCryptoUpdate(intent,signal){
   const needsNews=intent.news;
   const [heat,quotes,news]=await Promise.allSettled([
@@ -1987,7 +2072,12 @@ async function answerCryptoUpdate(intent,signal){
   if(intent.news||/\b(?:aggiornamenti|aggiornamento|aggiornami)\b/.test(intent.key)){
     const headlines=cryptoNewsLines(news.status==='fulfilled'?news.value:null,selected);
     parts.push(news.status!=='fulfilled'?'Archivio SEC non raggiungibile.':headlines.length?'Comunicazioni ufficiali SEC degli ultimi 7 giorni (titoli originali):\n'+headlines.join('\n'):'Nessuna comunicazione SEC pertinente trovata negli ultimi 7 giorni. Questo non significa che non ci siano altre notizie.');
-    parts.push('La copertura delle notizie è limitata all’archivio SEC; non posso confermare annunci dei progetti, listing o notizie di altre fonti.');
+    const topic=selected.length===1?selected[0].name:selected.length>1?'':'criptovalute';
+    if(topic){
+      try{parts.push(formatWebNews(await webNews(topic,signal)));}
+      catch{parts.push('Ricerca di notizie web non raggiungibile. Le informazioni SEC disponibili restano riportate sopra.');}
+    }else parts.push('Per le notizie web dei singoli progetti, chiedi una criptovaluta alla volta.');
+    parts.push('I titoli indicizzati non dimostrano da soli la causa di un movimento di prezzo. Verifica gli articoli originali.');
   }
   return parts.join('\n\n');
 }
@@ -1996,7 +2086,7 @@ async function submitQuestion(fromVoice=false){
   voiceQuestion=fromVoice;
   el('speak-retry').hidden=true;
   question=input.value.trim();
-  const quickAnswer = agentAction(question) || recallMemory(question,memoryPairs) || (!cryptoUpdateIntent(question)?(answerIndex.get(questionKey(question)) || directDefinition(question) || instantConversation(question)):'');
+  const quickAnswer = agentAction(question) || recallMemory(question,memoryPairs) || (!cryptoUpdateIntent(question)&&!webQuestionIntent(question)?(answerIndex.get(questionKey(question)) || directDefinition(question) || instantConversation(question)):'');
   if (quickAnswer) {
     acceptAnswer(quickAnswer);
     return;
@@ -2023,6 +2113,16 @@ async function submitQuestion(fromVoice=false){
       if(cryptoUpdateController===controller)cryptoUpdateController=null;
     }
     if(!question)return;
+  }
+  const webIntent=webQuestionIntent(question);
+  if(webIntent){
+    const controller=new AbortController();cryptoUpdateController=controller;
+    statusLine.textContent='Consultazione delle fonti web…';
+    try{
+      const answer=await answerPublicWeb(webIntent,controller.signal);
+      if(cryptoUpdateController!==controller)return;
+      acceptAnswer(answer);return;
+    }finally{if(cryptoUpdateController===controller)cryptoUpdateController=null;}
   }
   statusLine.textContent = 'Preparazione del modello locale…';
   try {
