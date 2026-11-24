@@ -53,7 +53,7 @@ main{padding-bottom:4rem}.lightbar{position:fixed;bottom:0;left:0;right:0;height
 <h1>Assistente mercati</h1><p>Parla con Vertex di azioni, indici, ETF, obbligazioni, valute, materie prime e cripto. Per un’analisi attuale, includi la quotazione e la data.</p>
 <p id="memory-status" role="status"></p><section id="log" role="log" aria-label="Conversazione"></section>
 <form id="chat"><label for="question">La tua domanda</label><textarea id="question" rows="3" placeholder="Che differenza c’è tra un BTP e un ETF obbligazionario?" required></textarea>
-<small>La dettatura locale scarica il modello vocale al primo utilizzo e mantiene audio e trascrizione sul dispositivo. Al primo invio il browser scarica il modello (circa 512 MB) e i componenti necessari. Le domande vengono elaborate sul dispositivo. Vertex conserva fino a 250 scambi sul dispositivo, se il browser consente il salvataggio locale. Nuova chat mantiene i ricordi; Cancella memoria elimina tutte le conversazioni memorizzate. La memoria non si sincronizza fra dispositivi. Le risposte alle domande dettate vengono lette dalla voce del dispositivo o del browser; la sintesi vocale potrebbe usare un servizio del sistema.</small>
+<small>La dettatura locale scarica il modello vocale al primo utilizzo e mantiene audio e trascrizione sul dispositivo. Al primo invio il browser scarica il modello (circa 512 MB) e i componenti necessari. Le domande vengono elaborate sul dispositivo. Vertex conserva fino a 10.000 scambi (20.000 messaggi) nel database locale del browser, secondo lo spazio disponibile. Nei browser che non supportano l’archivio esteso rimane una memoria ridotta. Nuova chat mantiene i ricordi; Cancella memoria elimina tutte le conversazioni memorizzate. La memoria non si sincronizza fra dispositivi. Le risposte alle domande dettate vengono lette dalla voce del dispositivo o del browser; la sintesi vocale potrebbe usare un servizio del sistema.</small>
 
 <button id="mic" type="button" aria-pressed="false">🎙 Microfono</button> <button id="cancel-voice" type="button" hidden>Annulla dettatura</button> <button id="send">Invia domanda</button> <button type="button" id="stop" hidden>Annulla</button> <button type="button" id="speak-retry" hidden>🔊 Ascolta risposta</button><p id="status" role="status"></p></form></main>
 <div class="lightbar" aria-hidden="true"></div>
@@ -258,41 +258,153 @@ self.onmessage = async ({data: turns}) => {
 const form = el('chat'), input = el('question'), log = el('log'), statusLine = el('status');
 let worker, question, voiceQuestion=false;
 const MEMORY_KEY='vertex-assistant-memory-v1';
-const MEMORY_LIMIT=250;
-const MEMORY_RECENT=12;
-const MEMORY_CONTEXT_CHARS=12000;
-let memoryPairs=[],memoryChat=1,memoryAvailable=true;
+const MEMORY_DB='vertex-assistant-memory-v2';
+const MEMORY_LIMIT=10000;
+const MEMORY_FALLBACK_LIMIT=250;
+const MEMORY_RECENT=24;
+const MEMORY_CONTEXT_CHARS=18000;
+let memoryPairs=[],memoryChat=1,memoryAvailable=true,memoryDb=null,memoryReady=false,memoryQueue=Promise.resolve(),memoryPending=0;
+const memoryTermCache=new WeakMap();
 function validMemory(data){
   const source=Array.isArray(data?.pairs)?data.pairs:[];
   const pairs=source.filter(p=>p&&typeof p.q==='string'&&typeof p.a==='string'&&
     Number.isSafeInteger(p.chat)&&p.chat>0&&p.q.trim()&&p.a.trim())
-    .slice(-MEMORY_LIMIT).map(p=>({q:p.q.slice(0,3000),a:p.a.slice(0,5000),chat:p.chat}));
+    .slice(-MEMORY_LIMIT).map(p=>({q:p.q.slice(0,12000),a:p.a.slice(0,24000),chat:p.chat,
+      ...(Number.isSafeInteger(p.id)?{id:p.id}:{})}));
   const lastChat=pairs.reduce((n,p)=>Math.max(n,p.chat),1);
   const chat=Number.isSafeInteger(data?.chat)&&data.chat>=lastChat?data.chat:lastChat;
   return {pairs,chat};
 }
-function restoreMemory(){
+function dbRequest(request){
+  return new Promise((resolve,reject)=>{
+    request.onsuccess=()=>resolve(request.result);
+    request.onerror=()=>reject(request.error||Error('IndexedDB'));
+  });
+}
+function dbDone(tx){
+  return new Promise((resolve,reject)=>{
+    tx.oncomplete=()=>resolve();
+    tx.onabort=tx.onerror=()=>reject(tx.error||Error('Archivio non disponibile'));
+  });
+}
+function openMemoryDb(){
+  return new Promise((resolve,reject)=>{
+    if(!window.indexedDB){reject(Error('IndexedDB non disponibile'));return;}
+    const request=indexedDB.open(MEMORY_DB,1);
+    let settled=false;
+    const timer=setTimeout(()=>{settled=true;reject(Error('Timeout archivio'));},5000);
+    request.onupgradeneeded=()=>{
+      const db=request.result;
+      if(!db.objectStoreNames.contains('exchanges'))db.createObjectStore('exchanges',{keyPath:'id',autoIncrement:true});
+      if(!db.objectStoreNames.contains('meta'))db.createObjectStore('meta');
+    };
+    request.onsuccess=()=>{
+      clearTimeout(timer);
+      if(settled){request.result.close();return;}
+      settled=true;resolve(request.result);
+    };
+    request.onerror=request.onblocked=()=>{
+      clearTimeout(timer);settled=true;reject(request.error||Error('Archivio bloccato'));
+    };
+  });
+}
+async function restoreMemory(){
+  let legacy={pairs:[],chat:1},legacyReadable=true;
+  try{const raw=localStorage.getItem(MEMORY_KEY);if(raw)legacy=validMemory(JSON.parse(raw));}
+  catch{legacyReadable=false;}
   try{
-    const raw=localStorage.getItem(MEMORY_KEY);
-    if(raw){const saved=validMemory(JSON.parse(raw));memoryPairs=saved.pairs;memoryChat=saved.chat;}
-  }catch{memoryAvailable=false;}
+    const db=await openMemoryDb();
+    const tx=db.transaction(['exchanges','meta'],'readwrite'),done=dbDone(tx);
+    const exchanges=tx.objectStore('exchanges'),meta=tx.objectStore('meta');
+    const initialized=await dbRequest(meta.get('initialized'));
+    if(!initialized){
+      for(const p of legacy.pairs)exchanges.add({q:p.q,a:p.a,chat:p.chat});
+      meta.put(legacy.chat,'chat');meta.put(true,'initialized');
+    }
+    const rows=await dbRequest(exchanges.getAll());
+    const chat=await dbRequest(meta.get('chat'));
+    await done;
+    const saved=validMemory({pairs:rows,chat});
+    memoryPairs=saved.pairs;memoryChat=saved.chat;memoryDb=db;memoryAvailable=true;
+    // Remove legacy data only after the migration transaction has committed.
+    try{localStorage.removeItem(MEMORY_KEY);}catch{}
+    db.onversionchange=()=>{db.close();memoryDb=null;memoryAvailable=false;memoryStatus();};
+  }catch{
+    memoryPairs=legacy.pairs.slice(-MEMORY_FALLBACK_LIMIT);memoryChat=legacy.chat;
+    memoryAvailable=legacyReadable;
+  }
+  memoryReady=true;
+  memoryStatus();
 }
 function memoryStatus(){
-  el('memory-status').textContent=memoryAvailable?
-    'Memoria locale: '+memoryPairs.length+' / '+MEMORY_LIMIT+' scambi · '+memoryPairs.filter(p=>p.chat===memoryChat).length+' in questa chat':
-    'Memoria temporanea: il browser non consente il salvataggio permanente.';
+  const node=el('memory-status');
+  if(!memoryReady){node.textContent='Caricamento memoria locale…';return;}
+  const active=memoryPairs.filter(p=>p.chat===memoryChat).length;
+  const limit=memoryDb?MEMORY_LIMIT:MEMORY_FALLBACK_LIMIT;
+  node.textContent=memoryAvailable?
+    'Memoria locale: '+memoryPairs.length.toLocaleString('it-IT')+' / '+limit.toLocaleString('it-IT')+
+    ' scambi · '+(memoryPairs.length*2).toLocaleString('it-IT')+' messaggi · '+active+' in questa chat'+(memoryPending?' · salvataggio…':''):
+    'Memoria non completamente salvata: il browser ha limitato l’archiviazione. I dati restano disponibili nella sessione.';
 }
-function saveMemory(){
+function queueMemory(work){
+  memoryPending++;memoryStatus();
+  const result=memoryQueue.then(work);
+  memoryQueue=result.catch(()=>{memoryAvailable=false;}).finally(()=>{memoryPending--;memoryStatus();});
+  return result;
+}
+function saveMemory(pair=null){
+  if(memoryDb){
+    const db=memoryDb,chat=memoryChat;
+    return queueMemory(async()=>{
+      const tx=db.transaction(['exchanges','meta'],'readwrite'),done=dbDone(tx);
+      const store=tx.objectStore('exchanges');
+      tx.objectStore('meta').put(chat,'chat');
+      if(pair){
+        const id=await dbRequest(store.add({q:pair.q,a:pair.a,chat:pair.chat}));
+        pair.id=id;
+        const count=await dbRequest(store.count());
+        let excess=count-MEMORY_LIMIT;
+        if(excess>0){
+          await new Promise((resolve,reject)=>{
+            const cursor=store.openCursor();
+            cursor.onerror=()=>reject(cursor.error);
+            cursor.onsuccess=()=>{
+              const row=cursor.result;
+              if(!row||excess<=0){resolve();return;}
+              row.delete();excess--;row.continue();
+            };
+          });
+        }
+      }
+      await done;memoryAvailable=true;
+    });
+  }
   try{
-    localStorage.setItem(MEMORY_KEY,JSON.stringify({chat:memoryChat,pairs:memoryPairs}));
+    localStorage.setItem(MEMORY_KEY,JSON.stringify({chat:memoryChat,pairs:memoryPairs.slice(-MEMORY_FALLBACK_LIMIT)}));
     memoryAvailable=true;
   }catch{memoryAvailable=false;}
   memoryStatus();
+  return Promise.resolve();
 }
 function rememberExchange(q,a){
-  memoryPairs.push({chat:memoryChat,q:String(q).slice(0,3000),a:String(a).slice(0,5000)});
-  if(memoryPairs.length>MEMORY_LIMIT)memoryPairs.splice(0,memoryPairs.length-MEMORY_LIMIT);
-  saveMemory();
+  const pair={chat:memoryChat,q:String(q).slice(0,12000),a:String(a).slice(0,24000)};
+  memoryPairs.push(pair);
+  const limit=memoryDb?MEMORY_LIMIT:MEMORY_FALLBACK_LIMIT;
+  if(memoryPairs.length>limit)memoryPairs.splice(0,memoryPairs.length-limit);
+  saveMemory(pair).catch(()=>{});
+}
+async function clearStoredMemory(){
+  if(memoryDb){
+    const db=memoryDb;
+    await queueMemory(async()=>{
+      const tx=db.transaction(['exchanges','meta'],'readwrite'),done=dbDone(tx);
+      tx.objectStore('exchanges').clear();
+      tx.objectStore('meta').put(1,'chat');
+      tx.objectStore('meta').put(true,'initialized');
+      await done;
+    });
+  }
+  localStorage.removeItem(MEMORY_KEY);
 }
 const memoryStopWords=new Set('come cosa quale quali quanto quanta quanti quante quando dove perché perche della delle dello degli nella nelle nello negli questo questa quello quella quelli quelle posso potrei voglio vorrei sapere domanda risposta parlato prima dopo ancora anche quello ricordami ricordi memoria vertex spiega spiegami dicevi detto fare farmi sono essere avere stato stata'.split(' '));
 function memoryTerms(text){
@@ -303,21 +415,26 @@ function buildMemoryContext(pairs,chat,q){
   let used=0;
   for(let i=pairs.length-1;i>=0&&recent.length<MEMORY_RECENT;i--){
     const p=pairs[i];if(p.chat!==chat)continue;
-    const cost=p.q.length+p.a.length;
-    if(used+cost>MEMORY_CONTEXT_CHARS-3500)break;
-    recent.unshift(p);included.add(i);used+=cost;
+    const remaining=MEMORY_CONTEXT_CHARS-6000-used;
+    if(remaining<300)break;
+    const excerpt={q:p.q.slice(0,Math.min(2400,Math.floor(remaining*.4))),a:p.a.slice(0,Math.min(4200,Math.floor(remaining*.6)))};
+    const cost=excerpt.q.length+excerpt.a.length;
+    recent.unshift(excerpt);included.add(i);used+=cost;
   }
   const scored=[];
   for(let i=0;i<pairs.length;i++){
     if(included.has(i))continue;
-    const p=pairs[i],qTerms=memoryTerms(p.q),aTerms=memoryTerms(p.a);
+    const p=pairs[i];
+    let cached=memoryTermCache.get(p);
+    if(!cached){cached={q:memoryTerms(p.q),a:memoryTerms(p.a)};memoryTermCache.set(p,cached);}
+    const qTerms=cached.q,aTerms=cached.a;
     let score=0;
     for(const term of terms){if(qTerms.has(term))score+=3;else if(aTerms.has(term))score+=1;}
     if(score>=3)scored.push({p,i,score});
   }
   scored.sort((a,b)=>b.score-a.score||b.i-a.i);
-  const older=[];let remaining=Math.min(3500,MEMORY_CONTEXT_CHARS-used);
-  for(const {p} of scored.slice(0,5)){
+  const older=[];let remaining=Math.min(6000,MEMORY_CONTEXT_CHARS-used);
+  for(const {p} of scored.slice(0,10)){
     const excerpt={domanda:p.q.slice(0,600),risposta:p.a.slice(0,900)};
     const size=JSON.stringify(excerpt).length;
     if(size>remaining)continue;
@@ -337,7 +454,6 @@ function recallMemory(q,pairs){
   }
   return '';
 }
-restoreMemory();
 const markets = {
   "Cripto": [
     [
@@ -1039,7 +1155,7 @@ function finishRecording() {
   transcribeSoFar(session);
 }
 mic.onclick = async () => {
-  if (question || speakingAnswer) return;
+  if (!memoryReady || question || speakingAnswer) return;
   if (recording) { finishRecording(); return; }
   try { window.speechSynthesis?.getVoices(); } catch {}
   el('speak-retry').hidden=true;
@@ -1249,21 +1365,23 @@ function bubble(label, value) {
 }
 el('stop').onclick = () => { const wasSpeaking=speakingAnswer;stop(); statusLine.textContent = wasSpeaking?'Risposta vocale interrotta.':'Operazione annullata.'; };
 el('reset').onclick = () => {
+  if(!memoryReady)return;
   stop();
   cancelVoice();
   memoryChat++;
-  saveMemory();
+  saveMemory().catch(()=>{});
   lastSpokenAnswer='';
   log.replaceChildren();
   input.value = '';
   statusLine.textContent = '';
   input.focus();
 };
-el('clear-memory').onclick=()=>{
+el('clear-memory').onclick=async()=>{
+  if(!memoryReady)return;
   if(!window.confirm('Eliminare tutte le domande e risposte memorizzate da Vertex su questo dispositivo?'))return;
   stop();cancelVoice();
   memoryPairs=[];memoryChat=1;lastSpokenAnswer='';
-  try{localStorage.removeItem(MEMORY_KEY);memoryAvailable=true;}catch{memoryAvailable=false;}
+  try{await clearStoredMemory();memoryAvailable=true;}catch{memoryAvailable=false;}
   log.replaceChildren();input.value='';
   memoryStatus();
   statusLine.textContent=memoryAvailable?'Memoria cancellata.':'Memoria della sessione cancellata. Il browser non consente di verificare il salvataggio locale.';
@@ -1282,7 +1400,7 @@ function acceptAnswer(answer) {
   else input.focus();
 }
 function submitQuestion(fromVoice=false){
-  if(recording||question||speakingAnswer||!input.value.trim())return;
+  if(!memoryReady||recording||question||speakingAnswer||!input.value.trim())return;
   voiceQuestion=fromVoice;
   el('speak-retry').hidden=true;
   question=input.value.trim();
@@ -1317,8 +1435,13 @@ function submitQuestion(fromVoice=false){
   }
 }
 form.onsubmit=event=>{event.preventDefault();submitQuestion(false);};
-for(const p of memoryPairs.filter(p=>p.chat===memoryChat).slice(-30)){
-  bubble('Tu',p.q);bubble('Vertex',p.a);
-}
+mic.disabled=true;el('send').disabled=true;
 memoryStatus();
+restoreMemory().finally(()=>{
+  for(const p of memoryPairs.filter(p=>p.chat===memoryChat).slice(-60)){
+    bubble('Tu',p.q);bubble('Vertex',p.a);
+  }
+  mic.disabled=false;el('send').disabled=false;
+  memoryStatus();
+});
 </script></body></html>
