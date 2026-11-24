@@ -20,9 +20,11 @@ main{padding-bottom:4rem}.lightbar{position:fixed;bottom:0;left:0;right:0;height
 <div class="idea-grid" id="idea-results"></div>
 <small>Seleziona una domanda per modificarla prima dell’invio, oppure scrivi o detta la tua.</small>
 </section>
+<details><summary>Domande con risposta ed esempi</summary><div id="quick-list"></div></details>
 <section id="log" role="log" aria-label="Conversazione"></section>
-<form id="chat"><label for="question">La tua domanda</label><textarea id="question" rows="3" maxlength="2000" placeholder="Che differenza c’è tra un BTP e un ETF obbligazionario?" required></textarea>
+<form id="chat"><label for="question">La tua domanda</label><textarea id="question" rows="3" placeholder="Che differenza c’è tra un BTP e un ETF obbligazionario?" required></textarea>
 <small>La prima dettatura scarica anche il modello vocale. Audio e trascrizione restano sul dispositivo. Al primo invio il browser scarica il modello (circa 512 MB) e i componenti necessari. Le domande vengono elaborate sul dispositivo. La conversazione si azzera quando chiudi la pagina.</small>
+<div id="playback" hidden><label for="voice-original">Riascolta la tua ultima dettatura</label><audio id="voice-original" controls></audio></div>
 <button id="mic" type="button" aria-pressed="false">🎙 Microfono</button> <button id="send">Invia domanda</button> <button type="button" id="stop" hidden>Annulla</button><p id="status" role="status"></p></form></main>
 <div class="lightbar" aria-hidden="true"></div>
 <svg id="voice-wave" aria-hidden="true" viewBox="0 0 600 84" preserveAspectRatio="none">
@@ -33,7 +35,7 @@ main{padding-bottom:4rem}.lightbar{position:fixed;bottom:0;left:0;right:0;height
 </svg>
 <script type="text/plain" id="voice-engine">function cleanDictation(text) {
   const musicTag = /\[\s*(?:musica|music)\s*\]|\(\s*(?:musica|music)\s*\)/gi;
-  return text.replace(musicTag, ' ').replace(/\s+/g, ' ').replace(/\s+([,.;:!?])/g, '$1').trim();
+  return text.replace(musicTag, '').trim();
 }
 let transcriber;
 self.onmessage = async ({data: samples}) => {
@@ -42,9 +44,9 @@ self.onmessage = async ({data: samples}) => {
       const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2/dist/transformers.min.js');
       env.allowLocalModels = false;
       env.backends.onnx.wasm.numThreads = 1;
-      transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny', {device:'wasm', dtype:'q8'});
+      transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-base', {device:'wasm', dtype:'q8'});
     }
-    const result = await transcriber(samples, {language:'italian', task:'transcribe'});
+    const result = await transcriber(samples, {language:'italian', task:'transcribe', do_sample:false});
     const text = cleanDictation(result.text);
     self.postMessage({text: /[\p{L}\p{N}]/u.test(text) ? text : ''});
   } catch {
@@ -68,7 +70,7 @@ self.onmessage = async ({data: turns}) => {
       });
     }
     self.postMessage({status: 'Vertex sta elaborando la domanda sul dispositivo…'});
-    const result = await model(turns, {max_new_tokens: 300, do_sample: false, return_full_text: false});
+    const result = await model(turns, {max_new_tokens: 450, do_sample: false, return_full_text: false});
     const generated = result[0].generated_text;
     const answer = typeof generated === 'string' ? generated : generated.at(-1)?.content;
     if (!answer?.trim()) throw Error('empty');
@@ -188,6 +190,10 @@ const markets = {
   ]
 };
 const topics = {
+  "Calcoli ed esempi": ["Come calcolo il rendimento percentuale di {s} fra due date?","Come cambia il risultato di un investimento in {s} considerando due acquisti a prezzi diversi?","Come calcolo la perdita massima osservata per {s} {p}?"],
+  "Strategie e simulazioni": ["Come simulo un acquisto periodico di {s} {p} includendo le commissioni?","Come confronto due regole di ingresso su {s} evitando di usare informazioni future?","Quali ipotesi servono per simulare uno shock su {s} {f}?"],
+  "Segnali e indicatori": ["Cosa posso dedurre se il prezzo di {s} sale ma il volume scende?","Come interpreto segnali discordanti fra RSI e MACD per {s}?","Come verifico se la volatilità di {s} è aumentata {p}?"],
+  "Lettura dei grafici": ["Come distinguo un rimbalzo da un cambio di tendenza sul grafico di {s}?","Come cambia il grafico di {s} passando da una scala lineare a una logaritmica?","Quali dati servono per confrontare il grafico di {s} su base giornaliera e settimanale?"],
   "Andamento": [
     "Qual è stata la direzione prevalente per {s} {p} e quanto è cambiato il prezzo in percentuale?",
     "Per {s}, quali sono stati il massimo, il minimo e il calo più ampio {p}?",
@@ -262,6 +268,46 @@ const periods = [
   ]
 ];
 const market = el('idea-market'), asset = el('idea-asset'), topic = el('idea-topic'), period = el('idea-period');
+const quickAnswers = [
+  [
+    "Come calcolo il rendimento percentuale?",
+    "Sottrai il prezzo di acquisto da quello finale, dividi la differenza per il prezzo di acquisto e moltiplica per 100. Da 80 a 92 il rendimento di prezzo è (92 − 80) / 80 × 100 = 15%. Per il risultato effettivo considera anche proventi, commissioni ed eventuali effetti del cambio."
+  ],
+  [
+    "Che cosa significa drawdown?",
+    "È la perdita rispetto a un massimo precedente. Se il valore sale a 120 e poi scende a 90, il drawdown è del 25%. Per misurare il massimo drawdown nel periodo devi confrontare ogni punto con il massimo raggiunto fino a quel momento."
+  ],
+  [
+    "Perché uno spread ampio conta?",
+    "Lo spread è la distanza tra il miglior prezzo disponibile per vendere e quello per comprare. Con denaro a 99 e lettera a 101, comprare e rivendere subito una unità ai prezzi indicati costa 2, prima delle commissioni."
+  ],
+  [
+    "Come confronto Bitcoin e Nasdaq?",
+    "Scegli lo stesso intervallo e la stessa valuta. Riporta entrambe le serie a 100 alla partenza e confronta rendimento, volatilità e drawdown. Bitcoin scambia anche nel fine settimana: per confrontare rendimenti giornalieri usa orari e calendari coerenti."
+  ],
+  [
+    "Come si legge una previsione di mercato?",
+    "Parti dall’orizzonte temporale. Per ogni scenario annota l’ipotesi, il segnale che la sostiene e il dato che la smentirebbe. Per esempio, uno scenario basato su un taglio dei tassi va riesaminato se la banca centrale mantiene i tassi più alti del previsto."
+  ],
+  [
+    "Cosa succede a un’obbligazione se salgono i tassi?",
+    "A parità delle altre condizioni, il prezzo di un’obbligazione a tasso fisso tende a scendere quando aumenta il rendimento richiesto dal mercato. Con duration modificata pari a 5, un aumento del rendimento di 1 punto percentuale implica un calo di prezzo indicativo del 5%. È una stima, soprattutto per variazioni ampie."
+  ]
+];
+function questionKey(value) {
+  return value.toLocaleLowerCase('it').replace(/[’']/g,' ').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
+}
+const answerIndex = new Map(quickAnswers.map(([q,a]) => [questionKey(q),a]));
+const quickList = el('quick-list');
+for (const [q,a] of quickAnswers) {
+  const item = document.createElement('details');
+  const title = document.createElement('summary');
+  const body = document.createElement('p');
+  title.textContent = q;
+  body.textContent = a;
+  item.append(title,body);
+  quickList.append(item);
+}
 const specific = 'Approfondimenti sul mercato';
 function options(control, values) {
   control.replaceChildren(...values.map(value => new Option(value,value)));
@@ -358,6 +404,34 @@ function endVoice() {
   el('send').disabled = false;
   el('chat').dataset.voice = 'off';
 }
+let recordingUrl;
+function clearPlayback() {
+  if (!recordingUrl) return;
+  const player = el('voice-original');
+  player.pause();
+  player.removeAttribute('src');
+  player.load();
+  URL.revokeObjectURL(recordingUrl);
+  recordingUrl = null;
+  el('playback').hidden = true;
+}
+function offerPlayback(samples, sampleRate) {
+  clearPlayback();
+  const buffer = new ArrayBuffer(44 + samples.length * 2);
+  const view = new DataView(buffer);
+  function tag(offset, name) {
+    for (let i = 0; i < name.length; i++) view.setUint8(offset + i,name.charCodeAt(i));
+  }
+  tag(0,'RIFF'); view.setUint32(4,buffer.byteLength - 8,true); tag(8,'WAVE');
+  tag(12,'fmt '); view.setUint32(16,16,true); view.setUint16(20,1,true);
+  view.setUint16(22,1,true); view.setUint32(24,sampleRate,true);
+  view.setUint32(28,sampleRate * 2,true); view.setUint16(32,2,true);
+  view.setUint16(34,16,true); tag(36,'data'); view.setUint32(40,samples.length * 2,true);
+  samples.forEach((value,i) => view.setInt16(44 + i * 2, Math.round(Math.max(-1,Math.min(1,value)) * 32767),true));
+  recordingUrl = URL.createObjectURL(new Blob([buffer], {type:'audio/wav'}));
+  el('voice-original').src = recordingUrl;
+  el('playback').hidden = false;
+}
 function finishRecording() {
   const session = recording;
   if (!session || session.phase !== 'listening') return;
@@ -370,13 +444,17 @@ function finishRecording() {
     const samples = new Float32Array(session.length);
     let offset = 0;
     for (const block of session.blocks) { samples.set(block, offset); offset += block.length; }
+    offerPlayback(samples, session.ctx.sampleRate);
     if (!voiceWorker) {
       const url = URL.createObjectURL(new Blob([el('voice-engine').textContent], {type:'text/javascript'}));
       try { voiceWorker = new Worker(url, {type:'module'}); } finally { URL.revokeObjectURL(url); }
     }
     voiceWorker.onmessage = ({data}) => {
       if (recording !== session) return;
-      if (data.text) input.value = [input.value.trim(), data.text].filter(Boolean).join(' ').slice(0,input.maxLength);
+      if (data.text) {
+        const separator = input.value && !/\s$/.test(input.value) ? ' ' : '';
+        input.value += separator + data.text;
+      }
       endVoice();
       statusLine.textContent = data.error || (data.text ? 'Dettatura pronta. Puoi correggere il testo o inviarlo.' : 'Nessuna parola riconosciuta.');
       input.focus();
@@ -461,16 +539,32 @@ el('stop').onclick = () => { stop(); statusLine.textContent = 'Operazione annull
 el('reset').onclick = () => {
   stop();
   cancelVoice();
+  clearPlayback();
   history.length = 0;
   log.replaceChildren();
   input.value = '';
   statusLine.textContent = '';
   input.focus();
 };
+function acceptAnswer(answer) {
+  bubble('Tu', question);
+  bubble('Vertex', answer);
+  history.push({role:'user', content:question}, {role:'assistant', content:answer});
+  if (history.length > 8) history.splice(0,2);
+  statusLine.textContent = '';
+  input.value = '';
+  idle();
+  input.focus();
+}
 form.onsubmit = event => {
   event.preventDefault();
   if (recording || question || !input.value.trim()) return;
-  question = input.value.trim();
+  question = input.value;
+  const quickAnswer = answerIndex.get(questionKey(question));
+  if (quickAnswer) {
+    acceptAnswer(quickAnswer);
+    return;
+  }
   mic.disabled = true;
   input.readOnly = true;
   el('send').disabled = true;
@@ -484,17 +578,10 @@ form.onsubmit = event => {
       worker.onmessage = ({data}) => {
         if (data.status) { statusLine.textContent = data.status; return; }
         if (data.error) { stop(); statusLine.textContent = data.error; return; }
-        bubble('Tu', question);
-        bubble('Vertex', data.answer);
-        history.push({role:'user', content:question}, {role:'assistant', content:data.answer});
-        if (history.length > 8) history.splice(0,2);
-        statusLine.textContent = '';
-        input.value = '';
-        idle();
-        input.focus();
+        acceptAnswer(data.answer);
       };
     }
-    const prompt = 'Sei Vertex, assistente personale sui mercati finanziari. Rispondi in italiano in modo chiaro e conciso. Tratta azioni, ETF, indici, obbligazioni, forex, materie prime, crypto e macroeconomia. Non disponi di dati live o notizie recenti. Per analisi attuali chiedi prezzo, data e fonte. Non inventare dati o fonti. Per l’andamento usa il periodo richiesto. Se mancano i dati chiedi valori iniziali e finali, date e valuta; per un confronto usa lo stesso periodo. Per le previsioni illustra scenari rialzista, centrale e ribassista, con ipotesi, fattori da osservare e condizioni che li smentirebbero. Evita target e probabilità privi di dati. Distingui esempi, fatti e ipotesi.';
+    const prompt = 'Sei Vertex, assistente personale sui mercati finanziari. Rispondi in italiano in modo chiaro e conciso. Tratta azioni, ETF, indici, obbligazioni, forex, materie prime, crypto e macroeconomia. Non disponi di dati live o notizie recenti. Per analisi attuali chiedi prezzo, data e fonte. Non inventare dati o fonti. Per l’andamento usa il periodo richiesto. Se mancano i dati chiedi valori iniziali e finali, date e valuta; per un confronto usa lo stesso periodo. Per le previsioni illustra scenari rialzista, centrale e ribassista, con ipotesi, fattori da osservare e condizioni che li smentirebbero. Evita target e probabilità privi di dati. Rispondi prima alla domanda precisa, poi spiega il ragionamento. Se utile includi formula e un esempio numerico esplicitamente ipotetico. Mantieni nomi e cifre indicati dall’utente; se un nome dettato è ambiguo chiedi conferma. Distingui esempi, fatti e ipotesi.';
     worker.postMessage([{role:'system',content:prompt}, ...history, {role:'user',content:question}]);
   } catch {
     stop();
