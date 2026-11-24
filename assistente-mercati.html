@@ -123,28 +123,30 @@ function hasRecognitionLoop(text) {
   }
   return false;
 }
-let transcriber, modelName, modelLoading;
-async function loadVoiceModel(name) {
+let transcriber, modelName, modelLoading, modelDevice='wasm';
+async function loadVoiceModel(name,device='wasm') {
   const {pipeline, env} = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2/dist/transformers.min.js');
   env.allowLocalModels = false;
   env.backends.onnx.wasm.numThreads = 1;
   transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-'+name, {
-    device:'wasm', dtype:'q8', progress_callback(event) {
+    device, dtype:'q8', progress_callback(event) {
       if (event.status === 'progress' && Number.isFinite(event.progress)) {
         self.postMessage({status:'Preparazione riconoscimento vocale · '+Math.round(event.progress)+'%'});
       }
     }
   });
-  modelName=name;
+  modelName=name;modelDevice=device;
 }
 function ensureVoiceModel(preferSmall){
   if(transcriber)return Promise.resolve(transcriber);
   if(!modelLoading){
     modelLoading=(async()=>{
       let lastError;
-      const choices=preferSmall?['small','base','tiny']:['base','tiny'];
-      for(const name of choices){
-        try{await loadVoiceModel(name);return transcriber;}
+      let gpu=false;
+      try{gpu=!!(await self.navigator?.gpu?.requestAdapter());}catch{}
+      const choices=gpu?[['base','webgpu'],['base','wasm'],['tiny','wasm']]:[['base','wasm'],['tiny','wasm']];
+      for(const [name,device] of choices){
+        try{await loadVoiceModel(name,device);return transcriber;}
         catch(error){
           lastError=error;transcriber=null;modelName=null;
           self.postMessage({status:'Preparazione del modello vocale compatibile…'});
@@ -156,7 +158,7 @@ function ensureVoiceModel(preferSmall){
   return modelLoading;
 }
 async function decodeVoice(clip, final) {
-  const options={language:'italian',task:'transcribe',do_sample:false,return_timestamps:false};
+  const options={language:'italian',task:'transcribe',do_sample:false,return_timestamps:false,max_new_tokens:Math.max(32,Math.min(448,Math.ceil(clip.length/16000*16)+24))};
   // Full-phrase decoding, without a financial prompt that could invent terms.
   // Beam search is optional in the browser runtime; retry greedy if unsupported.
   if(final) {
@@ -211,7 +213,7 @@ self.onmessage = async ({data}) => {
       try{result=await decodeVoice(clip,final);break;}
       catch(error){
         if(modelName==='tiny')throw error;
-        const fallback=modelName==='small'?['base','tiny']:['tiny'];
+        const fallback=modelDevice==='webgpu'?['base','tiny']:modelName==='small'?['base','tiny']:['tiny'];
         try{await transcriber.dispose();}catch{}
         transcriber=null;modelName=null;
         self.postMessage({status:'Passaggio al modello vocale compatibile…'});
@@ -863,6 +865,7 @@ function releaseAudio(session) {
 }
 function endVoice() {
   const session = recording;
+  if(session)detachLocalRecognition(session);
   recording = null;
   if (session) {
     clearTimeout(session.watchdog);
@@ -1095,15 +1098,87 @@ function warmVoice(session){
     engine.postMessage({type:'warm',preferSmall:preferAccurateVoice()});
   }catch{/* The first transcription retries initialization. */}
 }
+let localRecognitionAvailable=false;
+const LocalRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+async function checkLocalRecognition(){
+  if(!LocalRecognition||typeof LocalRecognition.available!=='function'||!('processLocally' in LocalRecognition.prototype))return;
+  try{localRecognitionAvailable=await LocalRecognition.available({langs:['it-IT'],processLocally:true})==='available';}catch{}
+}
+checkLocalRecognition();
+function updateDictation(session,text){
+  if(recording!==session||!text?.trim())return;
+  const corrected=normalizeMarketTerms(text.trim());
+  input.value=session.original+(session.original&&!/\s$/.test(session.original)?' ':'')+corrected;
+  session.lastTranscript=corrected;input.scrollTop=input.scrollHeight;
+}
+function detachLocalRecognition(session,abort=true){
+  clearTimeout(session.nativeTimer);
+  const recognizer=session.recognizer;
+  if(!recognizer)return;
+  session.recognizer=null;
+  recognizer.onresult=recognizer.onerror=recognizer.onend=recognizer.onstart=null;
+  try{if(abort)recognizer.abort();}catch{}
+}
+function nativeFallback(session){
+  if(recording!==session)return;
+  detachLocalRecognition(session);
+  session.nativeActive=false;
+  if(session.phase==='listening'||session.phase==='transcribing'){
+    warmVoice(session);
+    transcribeSoFar(session);
+  }
+}
+function startLocalRecognition(session){
+  if(!localRecognitionAvailable||!LocalRecognition)return false;
+  try{
+    const recognition=new LocalRecognition();
+    recognition.processLocally=true;
+    if(recognition.processLocally!==true)return false;
+    recognition.lang='it-IT';recognition.continuous=true;recognition.interimResults=true;
+    session.recognizer=recognition;session.nativeActive=true;
+    recognition.onstart=()=>{
+      if(recording!==session||session.recognizer!==recognition)return;
+      clearTimeout(session.nativeTimer);
+      if(session.phase==='transcribing')try{recognition.stop();}catch{nativeFallback(session);}
+    };
+    recognition.onresult=event=>{
+      if(recording!==session||session.recognizer!==recognition)return;
+      let text='',final='';
+      for(let i=0;i<event.results.length;i++){
+        const value=event.results[i][0]?.transcript||'';
+        text+=(text?' ':'')+value;
+        if(event.results[i].isFinal)final+=(final?' ':'')+value;
+      }
+      session.nativeFinal=final.trim();
+      session.nativeText=text.trim();
+      updateDictation(session,text);
+      if(session.phase==='listening')statusLine.textContent='Sto trascrivendo…';
+    };
+    recognition.onerror=()=>nativeFallback(session);
+    recognition.onend=()=>{
+      if(recording!==session||session.recognizer!==recognition)return;
+      const final=session.nativeFinal;
+      detachLocalRecognition(session,false);session.nativeActive=false;
+      if(session.phase==='transcribing'&&final&&final===session.nativeText){
+        updateDictation(session,final);endVoice();submitQuestion(true);
+      }else if(session.phase==='listening'||session.phase==='transcribing'){
+        warmVoice(session);transcribeSoFar(session);
+      }
+    };
+    session.nativeTimer=setTimeout(()=>nativeFallback(session),2500);
+    recognition.start();
+    return true;
+  }catch{detachLocalRecognition(session);session.nativeActive=false;return false;}
+}
 function voicePartialInterval(session){
   // One request in flight. Adapt to measured decoding speed, never queue
   // outdated partial audio; final decoding always uses the complete recording.
-  return session.lastSent?Math.max(0.8,Math.min(2.4,(session.decodeMs||1000)/1000*.65)):0.75;
+  return session.lastSent?Math.max(0.5,Math.min(1.8,(session.decodeMs||700)/1000*.55)):0.5;
 }
 function transcribeSoFar(session) {
   const final = session.phase === 'transcribing';
   const rate = session.sampleRate||session.ctx.sampleRate;
-  if (recording !== session || session.pending) return;
+  if (recording !== session || session.pending || session.nativeActive) return;
   const interval = voicePartialInterval(session);
   if (!final && (session.speechSeconds < 0.10 || session.length - session.lastSent < rate * interval)) return;
   session.pending = true;
@@ -1214,6 +1289,12 @@ function finishRecording() {
   if (!session || session.phase !== 'listening') return;
   session.phase = 'transcribing';
   releaseAudio(session);
+  if(session.nativeActive&&session.recognizer){
+    mic.disabled=true;statusLine.textContent='Completo la trascrizione…';
+    clearTimeout(session.nativeTimer);session.nativeTimer=setTimeout(()=>nativeFallback(session),1500);
+    try{session.recognizer.stop();}catch{nativeFallback(session);}
+    return;
+  }
   if (!session.length) { endVoice(); statusLine.textContent = 'Nessun audio registrato.'; return; }
   mic.disabled = true;
   statusLine.textContent = 'Completo la trascrizione…';
@@ -1246,7 +1327,7 @@ mic.onclick = async () => {
     }
     if (recording !== session) { stream.getTracks().forEach(track => track.stop()); return; }
     session.stream = stream;
-    warmVoice(session);
+    if(!localRecognitionAvailable)warmVoice(session);
     session.source = session.ctx.createMediaStreamSource(stream);
     const onSamples = samples => {
       if (recording!==session || session.phase !== 'listening' || !samples?.length) return;
@@ -1255,6 +1336,7 @@ mic.onclick = async () => {
       const rms = updateWave(part);
       session.blocks.push(part);
       session.length += part.length;
+      if(session.nativeActive&&!session.nativeText&&session.speechSeconds>2.5)nativeFallback(session);
       if (pauseEndsPhrase(session, rms, part.length) || session.length >= session.ctx.sampleRate * 30) finishRecording();
       else transcribeSoFar(session);
     };
@@ -1277,6 +1359,7 @@ mic.onclick = async () => {
     if(session.ctx.state!=='running')throw Object.assign(Error('Audio sospeso'),{name:'AudioSuspended'});
     if(recording!==session)return;
     session.phase = 'listening';
+    if(localRecognitionAvailable&&!startLocalRecognition(session))warmVoice(session);
     startWave(session);
     // Recover if an installed browser accepts AudioWorklet but sends no PCM.
     session.captureCheck=setTimeout(async()=>{
