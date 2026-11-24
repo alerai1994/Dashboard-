@@ -102,7 +102,7 @@ function audibleSegment(samples, final = false) {
     }
     levels.push(Math.sqrt(energy / (end - start)));
   }
-  if (levels.length < 5) return null;
+  if (levels.length < 15) return null;
   const ordered = [...levels].sort((a,b) => a - b);
   const quiet = ordered[Math.floor((ordered.length - 1) * 0.15)];
   const speech = ordered[Math.floor((ordered.length - 1) * 0.85)];
@@ -114,7 +114,7 @@ function audibleSegment(samples, final = false) {
   const first = levels.findIndex(level => level >= threshold);
   let last = levels.length - 1;
   while (last >= first && last >= 0 && levels[last] < threshold) last--;
-  if (first < 0 || levels.filter(level => level >= threshold).length < 5) return null;
+  if (first < 0 || levels.filter(level => level >= threshold).length < 10) return null;
   const margin=final?16000:10400;
   const clip = clean.subarray(Math.max(0, first * 320 - margin), Math.min(clean.length, (last + 1) * 320 + margin));
   const gain = Math.min(12, 0.92 / Math.max(peak, 0.0001), Math.max(1, 0.065 / Math.max(speech, threshold)));
@@ -137,30 +137,40 @@ function hasRecognitionLoop(text) {
   }
   return false;
 }
-let transcriber, modelName, modelLoading, modelDevice='wasm';
-async function loadVoiceModel(name,device='wasm') {
+function validItalianTranscript(text){
+  if(typeof text!=='string')return false;
+  const value=text.trim();
+  if(!value||/[\uFFFD\uFFFE\uFFFF\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/u.test(value))return false;
+  const letters=value.match(/\p{L}/gu)||[];
+  // Italian and market vocabulary may contain foreign words, but not random mixed scripts.
+  if(letters.some(c=>!/\p{Script=Latin}/u.test(c)))return false;
+  if(!letters.length&&!/\d/.test(value))return false;
+  const words=value.match(/[\p{L}\p{N}]+/gu)||[];
+  if(words.some(w=>w.length>48))return false;
+  return true;
+}
+let transcriber, modelName, modelLoading, modelPrecision='q8';
+async function loadVoiceModel(name,precision='q8') {
   const {pipeline, env} = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2/dist/transformers.min.js');
   env.allowLocalModels = false;
   env.backends.onnx.wasm.numThreads = 1;
   transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-'+name, {
-    device, dtype:'q8', progress_callback(event) {
+    device:'wasm', dtype:precision, progress_callback(event) {
       if (event.status === 'progress' && Number.isFinite(event.progress)) {
         self.postMessage({status:'Preparazione riconoscimento vocale · '+Math.round(event.progress)+'%'});
       }
     }
   });
-  modelName=name;modelDevice=device;
+  modelName=name;modelPrecision=precision;
 }
 function ensureVoiceModel(preferSmall){
   if(transcriber)return Promise.resolve(transcriber);
   if(!modelLoading){
     modelLoading=(async()=>{
       let lastError;
-      let gpu=false;
-      try{gpu=!!(await self.navigator?.gpu?.requestAdapter());}catch{}
-      const choices=gpu?[['base','webgpu'],['base','wasm'],['tiny','wasm']]:[['base','wasm'],['tiny','wasm']];
-      for(const [name,device] of choices){
-        try{await loadVoiceModel(name,device);return transcriber;}
+      const choices=[['base','q8'],['base','fp32'],['tiny','fp32']];
+      for(const [name,precision] of choices){
+        try{await loadVoiceModel(name,precision);return transcriber;}
         catch(error){
           lastError=error;transcriber=null;modelName=null;
           self.postMessage({status:'Preparazione del modello vocale compatibile…'});
@@ -171,15 +181,27 @@ function ensureVoiceModel(preferSmall){
   }
   return modelLoading;
 }
-async function decodeVoice(clip, final) {
-  const options={language:'italian',task:'transcribe',do_sample:false,return_timestamps:false,max_new_tokens:Math.max(32,Math.min(448,Math.ceil(clip.length/16000*16)+24))};
-  // Full-phrase decoding, without a financial prompt that could invent terms.
-  // Beam search is optional in the browser runtime; retry greedy if unsupported.
-  if(final) {
-    try { return await transcriber(clip,{...options,num_beams:3}); }
-    catch { /* A limited runtime may only support greedy decoding. */ }
-  }
+async function decodeVoice(clip,final){
+  const options={language:'it',task:'transcribe',do_sample:false,num_beams:1,return_timestamps:false,
+    max_new_tokens:Math.max(32,Math.min(448,Math.ceil(clip.length/16000*12)+24))};
   return transcriber(clip,options);
+}
+async function retryPreciseVoice(clip){
+  try{await transcriber?.dispose();}catch{}
+  transcriber=null;modelName=null;
+  self.postMessage({status:'Verifica della trascrizione italiana…'});
+  let lastError;
+  for(const name of ['base','tiny']){
+    try{
+      await loadVoiceModel(name,'fp32');
+      const result=await decodeVoice(clip,true);
+      const text=cleanDictation(result.text||'');
+      if(validItalianTranscript(text)&&!hasRecognitionLoop(text))return text;
+    }catch(e){lastError=e;}
+    try{await transcriber?.dispose();}catch{}
+    transcriber=null;modelName=null;
+  }
+  return '';
 }
 function speechSamples(audio, rate) {
   if(rate===16000)return audio;
@@ -215,6 +237,7 @@ self.onmessage = async ({data}) => {
     return;
   }
   try {
+    if(!(rawSamples instanceof Float32Array)||!Number.isFinite(rate)||rate<8000||rate>192000||!rawSamples.length||rawSamples.some(v=>!Number.isFinite(v)))throw Error('Audio non valido');
     const samples=speechSamples(rawSamples,rate);
     const clip = audibleSegment(samples, final);
     if (!clip) {
@@ -222,34 +245,24 @@ self.onmessage = async ({data}) => {
       return;
     }
     await ensureVoiceModel(preferSmall);
-    let result;
-    for(;;){
-      try{result=await decodeVoice(clip,final);break;}
-      catch(error){
-        if(modelName==='tiny')throw error;
-        const fallback=modelDevice==='webgpu'?['base','tiny']:modelName==='small'?['base','tiny']:['tiny'];
-        try{await transcriber.dispose();}catch{}
-        transcriber=null;modelName=null;
-        self.postMessage({status:'Passaggio al modello vocale compatibile…'});
-        let loaded=false;
-        for(const name of fallback){
-          try{await loadVoiceModel(name);loaded=true;break;}catch{}
-        }
-        if(!loaded)throw error;
+    let text='';
+    try{
+      const result=await decodeVoice(clip,final);
+      text=cleanDictation(result.text||'');
+    }catch{}
+    if(!validItalianTranscript(text)||hasRecognitionLoop(text)){
+      // A partial decoding failure must never appear in the text field.
+      if(!final){
+        self.postMessage({text:'',notice:'Sto verificando il riconoscimento…'});
+        return;
       }
+      text=await retryPreciseVoice(clip);
     }
-    let text=cleanDictation(result.text||'');
-    if(final && (!/[\p{L}\p{N}]/u.test(text)||hasRecognitionLoop(text))){
-      try{
-        const retry=cleanDictation((await decodeVoice(samples,true)).text||'');
-        if(/[\p{L}\p{N}]/u.test(retry)&&!hasRecognitionLoop(retry))text=retry;
-      }catch{}
-    }
-    if(hasRecognitionLoop(text)){
-      self.postMessage({text:'',notice:'La dettatura contiene ripetizioni anomale. Ripeti la domanda.'});
+    if(!validItalianTranscript(text)||hasRecognitionLoop(text)){
+      self.postMessage({text:'',notice:'Non ho riconosciuto correttamente la frase in italiano. Ripeti la domanda.'});
       return;
     }
-    self.postMessage({text:/[\p{L}\p{N}]/u.test(text)?text:''});
+    self.postMessage({text});
   }catch{
     self.postMessage({error:'Trascrizione non riuscita. Controlla la connessione per il primo download o scrivi la domanda.'});
   }
@@ -1160,8 +1173,20 @@ async function checkLocalRecognition(){
   try{localRecognitionAvailable=await LocalRecognition.available({langs:['it-IT'],processLocally:true})==='available';}catch{}
 }
 checkLocalRecognition();
+function validItalianTranscript(text){
+  if(typeof text!=='string')return false;
+  const value=text.trim();
+  if(!value||/[\uFFFD\uFFFE\uFFFF\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/u.test(value))return false;
+  const letters=value.match(/\p{L}/gu)||[];
+  // Italian and market vocabulary may contain foreign words, but not random mixed scripts.
+  if(letters.some(c=>!/\p{Script=Latin}/u.test(c)))return false;
+  if(!letters.length&&!/\d/.test(value))return false;
+  const words=value.match(/[\p{L}\p{N}]+/gu)||[];
+  if(words.some(w=>w.length>48))return false;
+  return true;
+}
 function updateDictation(session,text){
-  if(recording!==session||!text?.trim())return;
+  if(recording!==session||!validItalianTranscript(text))return;
   const corrected=normalizeMarketTerms(text.trim());
   input.value=session.original+(session.original&&!/\s$/.test(session.original)?' ':'')+corrected;
   session.lastTranscript=corrected;input.scrollTop=input.scrollHeight;
@@ -1214,7 +1239,7 @@ function startLocalRecognition(session){
       if(recording!==session||session.recognizer!==recognition)return;
       const final=session.nativeFinal;
       detachLocalRecognition(session,false);session.nativeActive=false;
-      if(session.phase==='transcribing'&&final&&final===session.nativeText){
+      if(session.phase==='transcribing'&&validItalianTranscript(final)&&final===session.nativeText){
         updateDictation(session,final);endVoice();submitQuestion(true);
       }else if(session.phase==='listening'||session.phase==='transcribing'){
         warmVoice(session);transcribeSoFar(session);
@@ -1235,7 +1260,7 @@ function transcribeSoFar(session) {
   const rate = session.sampleRate||session.ctx.sampleRate;
   if (recording !== session || session.pending || session.nativeActive) return;
   const interval = voicePartialInterval(session);
-  if (!final && (session.speechSeconds < 0.10 || session.length - session.lastSent < rate * interval)) return;
+  if (!final && (session.speechSeconds < 0.30 || session.length - session.lastSent < rate * interval)) return;
   session.pending = true;
   session.lastSent = session.length;
   const sentFinal = final;
@@ -1268,7 +1293,8 @@ function transcribeSoFar(session) {
         fail(data.error);return;
       }
       const complete = sentFinal && session.phase === 'transcribing' && session.lastSent === session.length;
-      if (data.text?.trim()) {
+      const recognized=validItalianTranscript(data.text);
+      if (recognized) {
         const corrected = normalizeMarketTerms(data.text.trim()); // Only curated aliases, and only in market context.
         const space = corrected && session.original && !/\s$/.test(session.original) ? ' ' : '';
         input.value = session.original + space + corrected;
@@ -1277,14 +1303,15 @@ function transcribeSoFar(session) {
       }
       if (complete) {
         endVoice();
-        if(data.text?.trim()&&!data.notice){
+        if(recognized&&!data.notice){
           submitQuestion(true);
         }else{
-          statusLine.textContent=data.notice||'Trascrizione finale non disponibile. Verifica il testo provvisorio o ripeti la domanda.';
+          input.value=session.original;
+          statusLine.textContent=data.notice||'Trascrizione italiana non affidabile. Ripeti la domanda.';
           setContinuousTalk(false);input.focus();
         }
       } else {
-        if(session.phase==='listening'&&data.text)statusLine.textContent='Sto trascrivendo… continua a parlare.';
+        if(session.phase==='listening')statusLine.textContent=recognized?'Sto trascrivendo… continua a parlare.':(data.notice||'In ascolto…');
         transcribeSoFar(session);
       }
     };
