@@ -5,7 +5,7 @@
 @media(prefers-color-scheme:light){:root{color-scheme:light;--bg:#f5f8f8;--panel:white;--ink:#183238;--line:#80999c;--accent:#0e6767}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:1rem/1.55 system-ui,sans-serif}main{max-width:48rem;margin:0 auto;padding:clamp(1rem,4vw,3rem)}header{display:flex;justify-content:space-between;align-items:center}a,strong{color:var(--accent)}h1{font-size:clamp(2rem,5vw,3rem);line-height:1.12}article{border-left:2px solid var(--line);padding-left:1rem;margin:1.25rem 0}article p{white-space:pre-wrap;overflow-wrap:anywhere;margin:.3rem 0}textarea,button{background:var(--panel);color:inherit;border:1px solid var(--line);border-radius:.6rem;padding:.65rem .9rem;font:inherit}button{cursor:pointer}button:disabled{opacity:.55}label,textarea,small{display:block}textarea{width:100%;margin:.45rem 0;resize:vertical}small{margin-bottom:1rem}#send{background:var(--accent);color:var(--bg);font-weight:bold}
 main{padding-bottom:4rem}.lightbar{position:fixed;bottom:0;left:0;right:0;height:6px;z-index:5;background:linear-gradient(90deg,#6c63ff,#00cfff,#00e29c,#ffd24f,#ff578e,#6c63ff);background-size:200% 100%;box-shadow:0 -2px 15px #9878ff95;pointer-events:none;animation:flow 7s linear infinite}body:has(#chat[data-voice="on"]) .lightbar,body:has(#send:disabled) .lightbar{height:9px;box-shadow:0 -4px 24px #25cfffaa;animation-duration:2s}@keyframes flow{to{background-position:200% 0}}@media(prefers-reduced-motion:reduce){.lightbar{animation:none}}#mic[aria-pressed=true]{outline:2px solid var(--accent)}
-#voice-wave{position:fixed;bottom:0;left:0;width:100%;height:40px;z-index:6;pointer-events:none;overflow:visible;display:none;filter:drop-shadow(0 0 5px #6ecaff)}#voice-wave.speaking{display:block}.lightbar:has(+ #voice-wave.speaking){opacity:0}
+#voice-wave{position:fixed;bottom:0;left:0;width:100%;height:84px;z-index:6;pointer-events:none;overflow:visible;display:none;filter:drop-shadow(0 0 5px #6ecaff)}#voice-wave.speaking{display:block}.lightbar:has(+ #voice-wave.speaking){opacity:0}
 </style></head><body><main>
 <header><a href="./index.html">← Dashboard Vertex</a><button id="reset">Nuova chat</button></header>
 <h1>Assistente mercati</h1><p>Parla con Vertex di azioni, indici, ETF, obbligazioni, valute, materie prime e cripto. Per un’analisi attuale, includi la quotazione e la data.</p>
@@ -14,11 +14,11 @@ main{padding-bottom:4rem}.lightbar{position:fixed;bottom:0;left:0;right:0;height
 <small>La prima dettatura scarica anche il modello vocale. Audio e trascrizione restano sul dispositivo. Al primo invio il browser scarica il modello (circa 512 MB) e i componenti necessari. Le domande vengono elaborate sul dispositivo. La conversazione si azzera quando chiudi la pagina.</small>
 <button id="mic" type="button" aria-pressed="false">🎙 Microfono</button> <button id="send">Invia domanda</button> <button type="button" id="stop" hidden>Annulla</button><p id="status" role="status"></p></form></main>
 <div class="lightbar" aria-hidden="true"></div>
-<svg id="voice-wave" aria-hidden="true" viewBox="0 0 600 40" preserveAspectRatio="none">
+<svg id="voice-wave" aria-hidden="true" viewBox="0 0 600 84" preserveAspectRatio="none">
   <defs><linearGradient id="voice-colors" gradientUnits="userSpaceOnUse" x2="600">
     <stop stop-color="#6c63ff"/><stop offset=".22" stop-color="#00cfff"/><stop offset=".44" stop-color="#00e29c"/><stop offset=".66" stop-color="#ffd24f"/><stop offset=".84" stop-color="#ff578e"/><stop offset="1" stop-color="#6c63ff"/>
   </linearGradient></defs>
-  <path d="M0 35 H600" fill="none" stroke="url(#voice-colors)" stroke-width="6" vector-effect="non-scaling-stroke"/>
+  <path d="M0 52 Q25 24 50 52 T100 52 T150 52 T200 52 T250 52 T300 52 T350 52 T400 52 T450 52 T500 52 T550 52 T600 52" fill="none" stroke="url(#voice-colors)" stroke-width="6" vector-effect="non-scaling-stroke"/>
 </svg>
 <script type="text/plain" id="voice-engine">let transcriber;
 self.onmessage = async ({data: samples}) => {
@@ -75,16 +75,12 @@ function renderWave(time) {
   const dt = Math.min((time - previousFrame) / 1000, 0.05);
   previousFrame = time;
   amplitude += (voiceLevel - amplitude) * (1 - Math.exp(-14 * dt));
-  phase += dt * 5;
-  if (voiceLevel === 0 && amplitude < 0.01) {
-    resetWave();
-    return;
-  }
-  const height = 15 * amplitude;
+  if (!reducedMotion.matches) phase += dt * (3 + amplitude * 4);
+  const height = 12 + 23 * amplitude;
   let shape = '';
   for (let x = 0; x <= 600; x += 3) {
-    const envelope = Math.sin(Math.PI * x / 600);
-    const y = 35 - height * envelope * (1 + Math.sin(x / 25 - phase));
+    const envelope = 0.72 + 0.28 * Math.sin(Math.PI * x / 600);
+    const y = 42 + height * envelope * Math.sin(x / 22 - phase);
     shape += (x ? ' L' : 'M') + x + ' ' + y.toFixed(2);
   }
   wavePath.setAttribute('d', shape);
@@ -98,16 +94,16 @@ function resetWave() {
 }
 
 function updateWave(samples) {
-  if (reducedMotion.matches) { resetWave(); return; }
   let energy = 0;
   for (const sample of samples) energy += sample * sample;
   const rms = Math.sqrt(energy / (samples.length || 1));
-  voiceLevel = Math.min(1, Math.max(0, (rms - 0.008) * 10));
-  if (voiceLevel && !waveFrame) {
-    previousFrame = performance.now();
-    voiceWave.classList.add('speaking');
-    waveFrame = requestAnimationFrame(renderWave);
-  }
+  voiceLevel = Math.min(1, Math.sqrt(rms * 9));
+}
+
+function startWave() {
+  previousFrame = performance.now();
+  voiceWave.classList.add('speaking');
+  renderWave(previousFrame);
 }
 function releaseAudio(session) {
   resetWave();
@@ -188,6 +184,7 @@ mic.onclick = async () => {
     session.source.connect(session.processor);
     session.processor.connect(session.ctx.destination);
     session.phase = 'listening';
+    startWave();
     mic.disabled = false;
     mic.textContent = '■ Termina dettatura';
     mic.setAttribute('aria-pressed','true');
