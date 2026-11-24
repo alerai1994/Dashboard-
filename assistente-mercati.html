@@ -1001,7 +1001,7 @@ function pauseEndsPhrase(session, rms, count) {
   }
   const adaptive=Math.max(0.00025,floor*1.32);
   const ceiling=session.voiceReference?Math.max(0.00025,session.voiceReference*0.35):Math.max(0.00035,upper*0.65);
-  const gate=sorted.length*seconds>=0.7?Math.min(adaptive,ceiling):0.00035;
+  const gate=sorted.length*seconds>=0.7?Math.max(0.00025,Math.min(adaptive,ceiling)):0.00035;
   if (rms >= gate) {
     session.speechSeconds += seconds;
     session.pauseSeconds = 0;
@@ -1039,14 +1039,14 @@ function warmVoice(session){
 function voicePartialInterval(session){
   // One request in flight. Adapt to measured decoding speed, never queue
   // outdated partial audio; final decoding always uses the complete recording.
-  return session.lastSent?Math.max(1.15,Math.min(3.5,(session.decodeMs||1200)/1000*.8)):1.1;
+  return session.lastSent?Math.max(0.85,Math.min(2.5,(session.decodeMs||1000)/1000*.65)):0.85;
 }
 function transcribeSoFar(session) {
   const final = session.phase === 'transcribing';
   const rate = session.ctx.sampleRate;
   if (recording !== session || session.pending) return;
   const interval = voicePartialInterval(session);
-  if (!final && (session.speechSeconds < 0.12 || session.length - session.lastSent < rate * interval)) return;
+  if (!final && (session.speechSeconds < 0.10 || session.length - session.lastSent < rate * interval)) return;
   session.pending = true;
   session.lastSent = session.length;
   const sentFinal = final;
@@ -1079,10 +1079,11 @@ function transcribeSoFar(session) {
         fail(data.error);return;
       }
       const complete = sentFinal && session.phase === 'transcribing' && session.lastSent === session.length;
-      if (data.text) {
+      if (data.text?.trim()) {
         const corrected = data.text.trim(); // Faithful dictation: do not rewrite recognized words.
         const space = corrected && session.original && !/\s$/.test(session.original) ? ' ' : '';
         input.value = session.original + space + corrected;
+        session.lastTranscript=corrected;
         input.scrollTop = input.scrollHeight;
       }
       if (complete) {
@@ -1157,7 +1158,7 @@ function finishRecording() {
 mic.onclick = async () => {
   if (!memoryReady || question || speakingAnswer) return;
   if (recording) { finishRecording(); return; }
-  try { window.speechSynthesis?.getVoices(); } catch {}
+  prepareSpeechFromGesture();
   el('speak-retry').hidden=true;
   const session = {phase:'request', blocks:[], length:0, lastSent:0, pending:false, original:input.value, levelHistory:[], speechSeconds:0, pauseSeconds:0, pauseLimit:4};
   recording = session;
@@ -1222,7 +1223,7 @@ mic.onclick = async () => {
           endVoice();statusLine.textContent='Il microfono non trasmette audio. Controlla il dispositivo di ingresso e riprova.';
         }
       }
-    },1800);
+    },1400);
     session.listenTimer=setTimeout(()=>{
       if(recording!==session||session.phase!=='listening')return;
       if(session.length)finishRecording();
@@ -1278,11 +1279,33 @@ function stop() {
   idle();
 }
 let speakingAnswer=false,speechGeneration=0,speechTimer=0,activeUtterance=null,lastSpokenAnswer='';
+let speechPrimed=false,speechPrimer=null,availableSpeechVoices=[];
+function refreshSpeechVoices(){
+  try{availableSpeechVoices=window.speechSynthesis?.getVoices()||[];}catch{availableSpeechVoices=[];}
+}
+refreshSpeechVoices();
+try{window.speechSynthesis?.addEventListener('voiceschanged',refreshSpeechVoices);}catch{}
+function prepareSpeechFromGesture(){
+  // Some mobile browsers only initialize the speech engine during a tap.
+  // Prime silently BEFORE starting microphone capture, without a spoken greeting.
+  const synth=window.speechSynthesis;
+  if(!synth||typeof window.SpeechSynthesisUtterance!=='function')return;
+  try{
+    refreshSpeechVoices();synth.resume();
+    if(speechPrimed)return;
+    const u=new SpeechSynthesisUtterance('Vertex');
+    speechPrimer=u;u.lang='it-IT';u.volume=0;
+    u.onend=()=>{speechPrimed=true;speechPrimer=null;};
+    u.onerror=()=>{speechPrimed=false;speechPrimer=null;};
+    synth.speak(u);
+  }catch{speechPrimed=false;}
+}
 function cancelSpeech(){
   speechGeneration++;
   clearTimeout(speechTimer);
   speakingAnswer=false;
   activeUtterance=null;
+  speechPrimer=null;
   try{window.speechSynthesis?.cancel();}catch{}
 }
 function speechChunks(value){
@@ -1315,7 +1338,7 @@ function speakAnswer(answer){
   const chunks=speechChunks(lastSpokenAnswer);
   if(!chunks.length)return;
   const generation=speechGeneration;
-  let index=0;
+  let index=0,attempt=0;
   speakingAnswer=true;
   mic.disabled=true;
   el('send').disabled=true;
@@ -1333,11 +1356,13 @@ function speakAnswer(answer){
     if(generation!==speechGeneration)return;
     if(index>=chunks.length){finish(false);return;}
     try{
-      const u=new SpeechSynthesisUtterance(chunks[index++]);
+      const u=new SpeechSynthesisUtterance(chunks[index]);
       activeUtterance=u;
       u.lang='it-IT';u.rate=0.98;u.pitch=1;u.volume=1;
-      const voice=italianSpeechVoice(synth.getVoices());
-      if(voice)u.voice=voice;
+      refreshSpeechVoices();
+      const voice=italianSpeechVoice(availableSpeechVoices);
+      // If the selected system voice fails, let the browser choose an Italian voice.
+      if(voice&&attempt===0)u.voice=voice;
       u.onstart=()=>{
         if(generation!==speechGeneration)return;
         clearTimeout(speechTimer);
@@ -1345,17 +1370,27 @@ function speakAnswer(answer){
       };
       u.onend=()=>{
         if(generation!==speechGeneration)return;
-        clearTimeout(speechTimer);activeUtterance=null;next();
+        clearTimeout(speechTimer);activeUtterance=null;index++;attempt=0;next();
       };
-      u.onerror=()=>finish(true);
-      speechTimer=setTimeout(()=>finish(true),9000);
+      function retryChunk(){
+        if(generation!==speechGeneration||activeUtterance!==u)return;
+        clearTimeout(speechTimer);
+        u.onend=u.onerror=u.onstart=null;
+        activeUtterance=null;
+        if(attempt++===0){
+          try{synth.cancel();synth.resume();}catch{}
+          speechTimer=setTimeout(next,150);
+        }else finish(true);
+      }
+      u.onerror=retryChunk;
+      speechTimer=setTimeout(retryChunk,8000);
       synth.resume();
       synth.speak(u);
     }catch{finish(true);}
   }
   next();
 }
-el('speak-retry').onclick=()=>{if(!recording&&!question&&!speakingAnswer&&lastSpokenAnswer)speakAnswer(lastSpokenAnswer);};
+el('speak-retry').onclick=()=>{if(!recording&&!question&&!speakingAnswer&&lastSpokenAnswer){refreshSpeechVoices();speakAnswer(lastSpokenAnswer);}};
 function bubble(label, value) {
   const article = document.createElement('article');
   const name = document.createElement('strong'), body = document.createElement('p');
