@@ -694,7 +694,7 @@ function vertexArmLoadWatchdog(tier,engine,onFail){
  const touch=()=>{
   if(worker!==engine||epoch!==vertexLoadEpoch)return;
   clearTimeout(vertexLoadTimer);
-  const delay=Math.max(0,Math.min(120000,vertexLoadDeadline-Date.now()));
+  const delay=Math.max(0,Math.min(question&&tier!=='base'?45000:120000,vertexLoadDeadline-Date.now()));
   vertexLoadTimer=setTimeout(()=>{if(worker===engine&&epoch===vertexLoadEpoch)onFail();},delay);
  };
  touch();return touch;
@@ -725,8 +725,14 @@ function vertexReleaseHeavyForVoice(){
  el('ai-model-note').textContent=vertexTierNotes[vertexTier]+' Modello sospeso per liberare memoria al microfono; verrà riaperto quando necessario.';
 }
 function vertexMayRestoreWake(blocked,loading,batch){return !loading&&!batch;}
+let vertexProgressSignature='',vertexProgressEpoch=-1;
 function vertexModelEvent(data){
- if(data.modelProgress&&vertexLoadTouch)vertexLoadTouch();
+ if(data.modelProgress&&vertexLoadTouch){
+   const signature=String(data.modelProgress);
+   if(vertexProgressEpoch!==vertexLoadEpoch||signature!==vertexProgressSignature){
+     vertexProgressEpoch=vertexLoadEpoch;vertexProgressSignature=signature;vertexLoadTouch();
+   }
+ }
  if(vertexBatchRunning){if(data.batchState||data.batchDone||data.modelProgress)vertexBatchEvent(data);return;}
  if(data.modelProgress){vertexPreparingTier=data.loadingTier||vertexTier;el('ai-model-note').textContent=vertexTierNotes[vertexTier]+' '+data.modelProgress+'.';}
  if(data.downloadReady&&data.loadingTier){vertexDownloaded.add(data.loadingTier);vertexClearLoadTimer();vertexLoadTouch=null;vertexPreparingTier='';vertexSetMarker('');el('ai-model-note').textContent=vertexDownloadNotice(data.loadingTier);statusLine.textContent='Download completato. Puoi usare Vertex.';restorePreferredWake();}
@@ -4057,8 +4063,18 @@ function vertexPublicMarketTargets(raw){
  if(named.length)return named;
  return marketGroupPatterns.filter(([,p])=>p.test(key)).map(([g])=>vertexMarketLabels[g]).filter(Boolean);
 }
+function vertexDirectMarketComparison(raw){
+ const key=marketFold(bilingualMarketQuestion(raw));
+ if(!publicWebTopic(raw)||!(/^(?:(?:mi puoi|puoi|potresti)\s+)?(?:confronta|confrontami|confronto|compare)\b|\b(?:vs|versus)\b/.test(key)))return null;
+ if(/\b(?:previsioni|previsione|domani|anno|anni|rischi|tecnologia|differenze|come funziona|vantaggi|svantaggi|meglio|conviene|comprare|investire|storico|settimana|mese|20\d{2})\b/.test(key))return null;
+ const normalized=key.replace(/\bconfrontami\b/,'confronta').replace(/\b(?:vs|versus)\b/,' con ');
+ const intent=allMarketIntent('Confronta '+normalized);
+ if(!intent||intent.assets.length+intent.coins.length<2)return null;
+ return {...intent,quote:true,comparison:true};
+}
 function vertexMarketFollowup(raw,previous=''){
  const key=marketFold(raw);
+ if(vertexDirectMarketComparison(raw))return raw;
  if(!previous||key.length>110||!publicWebTopic(raw)||!publicWebTopic(previous))return raw;
  if(!/^(?:e |invece |oggi\b|adesso\b|ora\b|in questo momento\b|attualmente\b|quanto\b|a quanto\b|qual e\b|il prezzo\b|che prezzo\b|come\b|sta\b|le notizie\b|ultime\b|notizie\b|novita\b|aggiornamenti\b|annunci\b|perche\b|confronta\b|confrontali\b)/.test(key))return raw;
  const priorMarket=allMarketIntent(previous),priorCrypto=cryptoNewsRequest(previous),previousKey=marketFold(previous);
@@ -4118,6 +4134,17 @@ async function submitQuestion(fromVoice=false){
   // Conversational requests do not need a network query or a model download.
   const conversational=vertexLocalClockAnswer(question)||instantConversation(question);
   if(conversational){acceptAnswer(conversational);return;}
+   const directComparison=vertexDirectMarketComparison(question);
+   if(directComparison){
+     mic.disabled=true;input.readOnly=true;el('send').disabled=true;el('stop').hidden=false;
+     const controller=new AbortController();cryptoUpdateController=controller;
+     const timer=setTimeout(()=>controller.abort(),10000);
+     statusLine.textContent='Confronto diretto delle quotazioni…';
+     try{const answer=await answerAllMarkets(directComparison,controller.signal);if(cryptoUpdateController===controller)acceptAnswer(answer);}
+     catch{if(cryptoUpdateController===controller)acceptAnswer('Non riesco a verificare le quotazioni per il confronto. Riprova tra poco.');}
+     finally{clearTimeout(timer);if(cryptoUpdateController===controller)cryptoUpdateController=null;}
+     return;
+   }
   // General news questions without a named topic must not search for filler words.
   const latestKey=marketFold(question).replace(/^(?:ciao vertex|ehi vertex|vertex)\s+/,'');
   if(vertexDailyBriefIntent(question)){
