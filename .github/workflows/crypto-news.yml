@@ -25,6 +25,18 @@ jobs:
           from html.parser import HTMLParser
           sources = {
               "Injective Official": ("https://injective.com/blog", "injective.com"),
+              "Ethereum Foundation": ("https://blog.ethereum.org/en/feed.xml", "ethereum.org"),
+              "Bitcoin Core releases": ("https://github.com/bitcoin/bitcoin/releases.atom", "github.com"),
+              "Solana Agave releases": ("https://github.com/anza-xyz/agave/releases.atom", "github.com"),
+              "Chainlink Blog": ("https://blog.chain.link/rss/", "chain.link"),
+              "Celestia Blog": ("https://blog.celestia.org/rss/", "celestia.org"),
+              "Filecoin Blog": ("https://filecoin.io/blog/feed/index.xml", "filecoin.io"),
+              "Circle Blog": ("https://www.circle.com/blog/rss.xml", "circle.com"),
+              "Crypto.com Blog": ("https://blog.crypto.com/rss/", "crypto.com"),
+              "Electric Coin Company": ("https://electriccoin.co/feed/", "electriccoin.co"),
+              "dYdX Blog": ("https://integral.dydx.exchange/rss/", "dydx.exchange"),
+              "Decentraland Blog": ("https://decentraland.org/blog/feed.xml", "decentraland.org"),
+              "Chia Blog": ("https://chia.net/feed.xml", "chia.net"),
               "CoinDesk": ("https://www.coindesk.com/arc/outboundfeeds/rss/", "coindesk.com"),
               "Cointelegraph": ("https://cointelegraph.com/rss", "cointelegraph.com"),
               "The Block": ("https://www.theblock.co/rss.xml", "theblock.co"),
@@ -43,6 +55,7 @@ jobs:
               "NY Times Technology": ("https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml", "nytimes.com"),
               "MIT Technology Review": ("https://www.technologyreview.com/feed/", "technologyreview.com"),
           }
+          project_sources = {"Ethereum Foundation":"ETH","Bitcoin Core releases":"BTC","Solana Agave releases":"SOL","Chainlink Blog":"LINK","Celestia Blog":"TIA","Filecoin Blog":"FIL","Circle Blog":"USDC","Crypto.com Blog":"CRO","Electric Coin Company":"ZEC","dYdX Blog":"DYDX","Decentraland Blog":"MANA","Chia Blog":"XCH","Injective Official":"INJ"}
           now = dt.datetime.now(dt.timezone.utc)
           path = pathlib.Path("crypto-news.json")
           def timestamp(value):
@@ -115,7 +128,7 @@ jobs:
                           continue
                       fields = {child.tag.split("}")[-1]: child for child in item}
                       title = " ".join("".join(fields["title"].itertext()).split()) if "title" in fields else ""
-                      link = fields.get("link")
+                      link = next((child for child in item if child.tag.split("}")[-1] == "link" and child.get("rel", "alternate") == "alternate"), fields.get("link"))
                       if link is None:
                           continue
                       url = (link.get("href") or link.text or "").strip()
@@ -123,14 +136,20 @@ jobs:
                       host = parsed.hostname or ""
                       if parsed.scheme != "https" or parsed.username or parsed.password or not (host == domain or host.endswith("." + domain) or (domain == "bbc.co.uk" and (host == "bbc.com" or host.endswith(".bbc.com")))):
                           continue
-                      date = next((fields[key].text for key in ("pubDate", "published", "date") if key in fields and fields[key].text), "")
+                      date = next((fields[key].text for key in ("pubDate", "published", "date", "updated") if key in fields and fields[key].text), "")
                       try:
                           stamp = timestamp(date)
                       except (TypeError, ValueError):
                           continue
                       if not title or stamp > now + dt.timedelta(minutes=5) or stamp < now - dt.timedelta(days=30):
                           continue
-                      items.append({"title": title[:350], "url": url, "date": stamp.isoformat(), "source": source})
+                      row = {"title": title[:350], "url": url, "date": stamp.isoformat(), "source": source}
+                      if source in project_sources:
+                          row.update(project=project_sources[source], official=True)
+                          if source.endswith("releases"):
+                              row["kind"] = "software-release"
+                              row["title"] = source + ": " + row["title"]
+                      items.append(row)
                   return source, items, None
               except Exception as error:
                   return source, [], type(error).__name__
@@ -160,13 +179,81 @@ jobs:
           payload = {"updatedAt": now.isoformat(), "sources": status, "items": sorted(rows.values(), key=lambda x: x["date"], reverse=True)[:8000]}
           path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
           print("Archived", len(payload["items"]), "headlines")
+          # Targeted news search runs on the server, not in the user's browser.
+          # Rotate through the exact app catalogue; prioritize commonly requested projects.
+          project_path = pathlib.Path("crypto-project-news.json")
+          html = pathlib.Path("assistente-mercati.html").read_text(encoding="utf-8")
+          catalog_match = re.search(r"voiceCryptoCatalog=(\[\[.*?\]\]);", html, re.S)
+          if not catalog_match:
+              raise SystemExit("Project catalogue not found")
+          catalogue = list(dict.fromkeys(tuple(row) for row in json.loads(catalog_match[1])))
+          priority = {"BTC","ETH","SOL","INJ","ORE","BNB","XRP","LUNC","VRA","TAI","HOT","RAY","WLFI"}
+          aliases = {"ORE":"ORE Solana","HOT":"Holochain","TAI":"TARS AI","LUNC":"Terra Luna Classic","GRAM":"Toncoin","POL":"Polygon","VRA":"Verasity","WLFI":"World Liberty Financial","NEAR":"NEAR Protocol"}
+          try:
+              old = json.loads(project_path.read_text(encoding="utf-8"))
+          except (OSError, ValueError):
+              old = {}
+          remaining = [row for row in catalogue if row[1] not in priority]
+          cursor = int(old.get("cursor",0)) % max(1,len(remaining))
+          batch = [row for row in catalogue if row[1] in priority] + [remaining[(cursor+i)%len(remaining)] for i in range(min(24,len(remaining)))]
+          def fold(text):
+              return " ".join(re.findall(r"\w+", text.casefold(), re.UNICODE))
+          def project_search(row):
+              name,symbol = row
+              term = aliases.get(symbol,re.sub(r"\s*\([^)]*\)", "", name).strip())
+              query = '"' + term.replace('"','') + '" (crypto OR blockchain OR token OR cryptocurrency) when:30d'
+              url = "https://news.google.com/rss/search?" + urllib.parse.urlencode({"q":query,"hl":"en-US","gl":"US","ceid":"US:en"})
+              try:
+                  req=urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0","Accept":"application/rss+xml, text/xml"})
+                  with urllib.request.urlopen(req,timeout=12) as response:
+                      raw=response.read(2_000_001)
+                  if len(raw)>2_000_000: raise ValueError("Feed too large")
+                  root=ET.fromstring(raw)
+                  rows=[]
+                  for item in root.findall(".//item"):
+                      title=" ".join((item.findtext("title") or "").split())
+                      link=(item.findtext("link") or "").strip()
+                      source=" ".join((item.findtext("source") or "").split())
+                      parsed=urllib.parse.urlsplit(link)
+                      if parsed.scheme!="https" or parsed.hostname!="news.google.com" or not parsed.path.startswith("/rss/articles/") or not source or not title: continue
+                      # Don't confuse a common ticker with an unrelated story.
+                      clean=title.removesuffix(" - "+source)
+                      key=" "+fold(clean)+" "
+                      tokens=[fold(term),fold(name)]
+                      if symbol=="ORE": tokens=["ore"]
+                      matched=any(t and " "+t+" " in key for t in tokens)
+                      crypto=bool(re.search(r"\b(crypto|blockchain|token|solana|coin|bitcoin|ethereum|defi|staking|exchange)\b",key))
+                      ambiguous=symbol in {"ORE","HOT","ONE","NEAR","OP","GAS","PI","SEI","LINK","RAIN","GRASS","GATE","SKY","SUN","CAP","BEAM","FLUX","STABLE","TERRA","RENDER","DASH","JUP","X","S","M","U","Q"}
+                      if not matched or ambiguous and not crypto: continue
+                      try: stamp=timestamp(item.findtext("pubDate") or "")
+                      except (TypeError,ValueError): continue
+                      if not now-dt.timedelta(days=30)<=stamp<=now+dt.timedelta(minutes=5): continue
+                      rows.append({"title":clean[:350],"url":link,"date":stamp.isoformat(),"source":source[:100],"project":symbol,"indexed":True})
+                  return symbol,rows[:15],None
+              except Exception as error:
+                  return symbol,[],type(error).__name__
+          with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+              project_results=list(pool.map(project_search,batch))
+          projects=old.get("projects",{})
+          for symbol,items,error in project_results:
+              previous_items=projects.get(symbol,{}).get("items",[])
+              merged={}
+              for item in items+previous_items:
+                  try:
+                      if now-dt.timedelta(days=30)<=timestamp(item["date"])<=now+dt.timedelta(minutes=5):
+                          merged.setdefault(item["url"],item)
+                  except (ValueError,TypeError,KeyError): continue
+              projects[symbol]={"checkedAt":now.isoformat(),"ok":error is None,"error":error,"items":sorted(merged.values(),key=lambda x:x["date"],reverse=True)[:15]}
+          project_path.write_text(json.dumps({"updatedAt":now.isoformat(),"catalogueSize":len(catalogue),"cursor":(cursor+24)%max(1,len(remaining)),"projects":projects},ensure_ascii=False,separators=(",",":"))+"\n",encoding="utf-8")
+          print("Targeted projects checked",len(project_results),"successful",sum(error is None for _,_,error in project_results))
+
           PY
       - name: Publish news archive
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add crypto-news.json
+          git add crypto-news.json crypto-project-news.json
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "data: refresh multi-source publisher headlines"
           for attempt in 1 2 3 4; do
