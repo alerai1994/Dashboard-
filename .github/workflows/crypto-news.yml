@@ -1,0 +1,115 @@
+name: Vertex Crypto News
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/crypto-news.yml]
+  schedule:
+    - cron: '7,37 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: vertex-crypto-news
+  cancel-in-progress: false
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch public publisher RSS feeds
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import concurrent.futures, datetime as dt, email.utils, json, pathlib, urllib.request, urllib.parse, xml.etree.ElementTree as ET
+          sources = {
+              "CoinDesk": ("https://www.coindesk.com/arc/outboundfeeds/rss/", "coindesk.com"),
+              "Cointelegraph": ("https://cointelegraph.com/rss", "cointelegraph.com"),
+              "The Block": ("https://www.theblock.co/rss.xml", "theblock.co"),
+              "Decrypt": ("https://decrypt.co/feed", "decrypt.co"),
+              "CryptoSlate": ("https://cryptoslate.com/feed/", "cryptoslate.com"),
+          }
+          now = dt.datetime.now(dt.timezone.utc)
+          path = pathlib.Path("crypto-news.json")
+          def timestamp(value):
+              try:
+                  parsed = email.utils.parsedate_to_datetime(value)
+              except (TypeError, ValueError):
+                  parsed = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+              return parsed.replace(tzinfo=dt.timezone.utc) if parsed.tzinfo is None else parsed.astimezone(dt.timezone.utc)
+          def fetch(pair):
+              source, (url, domain) = pair
+              try:
+                  request = urllib.request.Request(url, headers={"User-Agent": "Vertex-News/1.0 (public RSS reader)", "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml"})
+                  with urllib.request.urlopen(request, timeout=15) as response:
+                      raw = response.read(4_000_001)
+                  if len(raw) > 4_000_000:
+                      raise ValueError("Feed too large")
+                  root = ET.fromstring(raw)
+                  items = []
+                  for item in root.iter():
+                      if item.tag.split("}")[-1] not in ("item", "entry"):
+                          continue
+                      fields = {child.tag.split("}")[-1]: child for child in item}
+                      title = " ".join("".join(fields["title"].itertext()).split()) if "title" in fields else ""
+                      link = fields.get("link")
+                      if link is None:
+                          continue
+                      url = (link.get("href") or link.text or "").strip()
+                      parsed = urllib.parse.urlsplit(url)
+                      host = parsed.hostname or ""
+                      if parsed.scheme != "https" or parsed.username or parsed.password or not (host == domain or host.endswith("." + domain)):
+                          continue
+                      date = next((fields[key].text for key in ("pubDate", "published", "date") if key in fields and fields[key].text), "")
+                      try:
+                          stamp = timestamp(date)
+                      except (TypeError, ValueError):
+                          continue
+                      if not title or stamp > now + dt.timedelta(minutes=5) or stamp < now - dt.timedelta(days=30):
+                          continue
+                      items.append({"title": title[:350], "url": url, "date": stamp.isoformat(), "source": source})
+                  return source, items, None
+              except Exception as error:
+                  return source, [], type(error).__name__
+          try:
+              previous = json.loads(path.read_text())
+          except (OSError, ValueError):
+              previous = {}
+          with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
+              results = list(pool.map(fetch, sources.items()))
+          status = {}
+          fresh = []
+          for source, items, error in results:
+              status[source] = {"ok": error is None, "items": len(items)}
+              if error:
+                  status[source]["error"] = error
+              fresh.extend(items)
+          if not any(row["ok"] for row in status.values()):
+              raise SystemExit("No publisher feed reachable; retaining previous archive")
+          rows = {}
+          for item in fresh + previous.get("items", []):
+              try:
+                  stamp = timestamp(item["date"])
+                  if now - dt.timedelta(days=30) <= stamp <= now + dt.timedelta(minutes=5):
+                      rows.setdefault(item["url"], item)
+              except (KeyError, ValueError, TypeError):
+                  continue
+          payload = {"updatedAt": now.isoformat(), "sources": status, "items": sorted(rows.values(), key=lambda x: x["date"], reverse=True)[:2500]}
+          path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          print("Archived", len(payload["items"]), "headlines")
+          PY
+      - name: Publish news archive
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add crypto-news.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data: refresh crypto publisher headlines"
+          for attempt in 1 2 3 4; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep 2
+          done
+          exit 1
