@@ -2329,10 +2329,65 @@ function cryptoNewsLines(feed,selected,now=Date.now()){
     return selected.length?terms.some(term=>(' '+questionKey(i.title)+' ').includes(' '+term+' ')):/\b(?:crypto|bitcoin|ethereum|digital assets?|stablecoins?|tokenization|blockchain)\b/i.test(i.title);
   }).sort((a,b)=>Date.parse(b.date)-Date.parse(a.date)).slice(0,3).map(i=>new Intl.DateTimeFormat('it-IT',{dateStyle:'short',timeZone:'Europe/Rome'}).format(new Date(i.date))+' — SEC: '+i.title+'\n'+i.url);
 }
+// Short in-memory cache for successful public feeds, not answers or private conversations.
+const vertexPublicCache=new Map();
+function vertexCachedPublic(key,now=Date.now()){
+  const entry=vertexPublicCache.get(key);
+  if(!entry)return undefined;
+  if(entry.until<=now){vertexPublicCache.delete(key);return undefined;}
+  return entry.value;
+}
+function vertexCachePublic(key,value,ttl,now=Date.now()){
+  if(value==null||typeof value!=='object'||ttl<=0)return value;
+  if(vertexPublicCache.size>=32&&!vertexPublicCache.has(key))vertexPublicCache.delete(vertexPublicCache.keys().next().value);
+  vertexPublicCache.set(key,{value,until:now+ttl});return value;
+}
+function vertexPublicTTL(url){
+  const host=String(url.hostname||'');
+  if(host==='it.wikipedia.org'||host==='api.crossref.org'||host==='openlibrary.org')return 90000;
+  if(host==='api.gdeltproject.org')return 12000;
+  return 0;
+}
+function vertexCanFinishEarly(intent,settled){
+  return !intent.current&&!intent.explicit&&!intent.academic&&!intent.books&&settled.some(r=>r?.status==='fulfilled'&&Array.isArray(r.value)&&r.value.some(row=>row.kind==='reference'&&row.extract?.length>=100));
+}
+async function vertexGatherResearch(intent,signal){
+  const child=new AbortController();
+  const abort=()=>child.abort();
+  if(signal?.aborted)throw Error('Annullato');
+  signal?.addEventListener('abort',abort,{once:true});
+  const tasks=[researchWikipedia(intent,child.signal),researchPublicNews(intent,child.signal)];
+  if(intent.academic)tasks.push(researchCrossref(intent,child.signal));
+  if(intent.books)tasks.push(researchBooks(intent,child.signal));
+  const settled=new Array(tasks.length);let remaining=tasks.length,grace=0,done=false;
+  try{
+    return await new Promise(resolve=>{
+      const finish=()=>{if(done)return;done=true;clearTimeout(grace);resolve(settled.filter(Boolean));child.abort();};
+      tasks.forEach((task,i)=>Promise.resolve(task).then(value=>({status:'fulfilled',value}),reason=>({status:'rejected',reason})).then(result=>{
+        if(done)return;
+        settled[i]=result;remaining--;
+        if(!remaining||signal?.aborted){finish();return;}
+        // Give other sources a short opportunity, but don't hold an ordinary definition
+        // until the slower news index times out. Explicit/latest research always waits.
+        if(!grace&&vertexCanFinishEarly(intent,settled))grace=setTimeout(finish,450);
+      }));
+    });
+  }finally{clearTimeout(grace);signal?.removeEventListener('abort',abort);child.abort();}
+}
 async function fetchCryptoFile(path,signal){
-  const r=await fetch('./'+path+'?v='+Math.floor(Date.now()/60000),{cache:'no-store',signal});
-  if(!r.ok)throw Error('Feed non disponibile');
-  return r.json();
+  if(signal?.aborted)throw Error('Annullato');
+  const key='feed:'+path;
+  const cached=vertexCachedPublic(key);if(cached!==undefined)return cached;
+  const controller=new AbortController(),abort=()=>controller.abort();
+  signal?.addEventListener('abort',abort,{once:true});
+  const timer=setTimeout(abort,5000);
+  try{
+    const r=await fetch('./'+path+'?v='+Math.floor(Date.now()/60000),{cache:'no-store',signal:controller.signal});
+    if(!r.ok)throw Error('Feed non disponibile');
+    const data=await r.json();
+    if(controller.signal.aborted)throw Error('Annullato');
+    return vertexCachePublic(key,data,12000);
+  }finally{clearTimeout(timer);signal?.removeEventListener('abort',abort);}
 }
 function publicWebTopic(text){
   const value=String(text).trim();
@@ -2340,6 +2395,9 @@ function publicWebTopic(text){
   return value.replace(/[^\p{L}\p{N}\s.'’\-]/gu,' ').replace(/\s+/g,' ').trim();
 }
 async function publicWebJSON(url,signal,ms=6500){
+  if(signal?.aborted)throw Error('Annullato');
+  const key='web:'+String(url),ttl=vertexPublicTTL(url);
+  const cached=vertexCachedPublic(key);if(cached!==undefined)return cached;
   const controller=new AbortController();
   const abort=()=>controller.abort();
   if(signal?.aborted)throw Error('Annullato');
@@ -2348,7 +2406,9 @@ async function publicWebJSON(url,signal,ms=6500){
   try{
     const response=await fetch(url,{signal:controller.signal,credentials:'omit',referrerPolicy:'no-referrer',cache:'no-store'});
     if(!response.ok)throw Error('Fonte non disponibile');
-    return await response.json();
+    const data=await response.json();
+    if(controller.signal.aborted)throw Error('Annullato');
+    return vertexCachePublic(key,data,ttl);
   }finally{clearTimeout(timer);signal?.removeEventListener('abort',abort);}
 }
 function safeArticleURL(value){
@@ -2455,7 +2515,7 @@ async function researchPublicNews(intent,signal){
   const url=new URL('https://api.gdeltproject.org/api/v2/doc/doc');
   const query=terms.map(t=>'"'+t+'"').join(' ');
   url.search=new URLSearchParams({query,mode:'artlist',format:'json',maxrecords:'35',timespan:intent.current?'30d':'90d',sort:'datedesc'}).toString();
-  const data=await publicWebJSON(url,signal,7500);
+  const data=await publicWebJSON(url,signal,5500);
   const seen=new Set();
   return (Array.isArray(data?.articles)?data.articles:[]).flatMap(a=>{
     const link=safeArticleURL(a.url),title=cleanWebText(a.title,280),stamp=marketNewsDate(a.seendate);
@@ -2516,10 +2576,7 @@ function formatGeneralResearch(intent,settled){
   return {text:parts.join('\n\n'),spoken:spoken.join(' '),references:refs.length,headlines:news.length};
 }
 async function answerGeneralResearch(intent,signal){
-  const tasks=[researchWikipedia(intent,signal),researchPublicNews(intent,signal)];
-  if(intent.academic)tasks.push(researchCrossref(intent,signal));
-  if(intent.books)tasks.push(researchBooks(intent,signal));
-  const settled=await Promise.allSettled(tasks);
+  const settled=await vertexGatherResearch(intent,signal);
   const answer=formatGeneralResearch(intent,settled);
   return answer?{...answer,found:true}:{found:false,text:settled.every(r=>r.status==='rejected')?'Non riesco a raggiungere le fonti web in questo momento.':'Non ho trovato informazioni pubbliche sufficientemente pertinenti per rispondere con certezza. Prova a indicarmi un argomento più preciso.',spoken:''};
 }
@@ -3073,7 +3130,7 @@ async function answerProjectCryptoNews(request,signal){
     url.search=new URLSearchParams({query,mode:'artlist',format:'json',maxrecords:'75',timespan:request.requestedHours?Math.max(1,request.requestedHours)+'h':request.newsDays+'d',sort:'datedesc'}).toString();
     let hits=[],failed=false;
     try{
-      const data=await publicWebJSON(url,signal,9500);
+      const data=await publicWebJSON(url,signal,5500);
       hits=marketNewsArticles(data,intent).filter(a=>{
         const title=marketFold(a.title);
         const full=marketFold(name),ticker=marketFold(symbol);
@@ -3151,7 +3208,7 @@ async function submitQuestion(fromVoice=false){
   el('stop').hidden = false;
   if(projectNews){
     const controller=new AbortController();cryptoUpdateController=controller;
-    const timeout=setTimeout(()=>controller.abort(),18000);
+    const timeout=setTimeout(()=>controller.abort(),12000);
     statusLine.textContent='Ricerca delle ultime notizie crypto…';
     try{const answer=await answerProjectCryptoNews(projectNews,controller.signal);if(cryptoUpdateController===controller)acceptAnswer(typeof answer==='string'?answer:answer.text,typeof answer==='string'?answer:answer.spoken);}
     catch{if(cryptoUpdateController===controller)acceptAnswer('Non riesco a verificare le novità su questa criptovaluta in questo momento. Riprova più tardi.');}
@@ -3206,7 +3263,7 @@ async function submitQuestion(fromVoice=false){
   const research=requestedResearch;
   if(research){
     const controller=new AbortController();cryptoUpdateController=controller;
-    const timeout=setTimeout(()=>controller.abort(),12000);
+    const timeout=setTimeout(()=>controller.abort(),8500);
     statusLine.textContent='Ricerca e confronto delle fonti pubbliche…';
     try{
       const answer=await answerGeneralResearch(research,controller.signal);
