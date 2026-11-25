@@ -622,7 +622,7 @@ self.onmessage=async({data})=>{
 const form = el('chat'), input = el('question'), log = el('log'), statusLine = el('status');
 let worker, question, voiceQuestion=false;
 let vertexTier='media',vertexEnhancedSessionFallback=false,vertexReadyTier='',vertexPreparingTier='',vertexBatchRunning=false;
-let vertexLoadTimer=0,vertexLoadDeadline=0,vertexBlockedTier='',vertexLoading=false,vertexLoadEpoch=0;
+let vertexLoadTimer=0,vertexLoadDeadline=0,vertexBlockedTier='',vertexLoading=false,vertexLoadEpoch=0,vertexBaseFailureAt=0;
 const VERTEX_LOAD_MARKER='vertex-resident-model-r11';
 try{const interrupted=sessionStorage.getItem(VERTEX_LOAD_MARKER);if(['base','media','superiore'].includes(interrupted))vertexBlockedTier=interrupted;}catch{}
 const vertexBatchStatus={base:'',media:'',superiore:''};
@@ -705,7 +705,7 @@ function vertexAbortPreparation(message,block=true){
  vertexLoadEpoch++;vertexClearLoadTimer();vertexLoadTouch=null;
  if(worker){worker.terminate();worker=null;}
  vertexPreparingTier='';vertexReadyTier='';
- if(block)vertexBlockedTier=tier;
+ if(block){vertexBlockedTier=tier;if(tier==='base')vertexBaseFailureAt=Date.now();}
  vertexSetMarker('');
  syncVertexTier();el('ai-model-note').textContent=vertexTierNotes[vertexTier]+' '+message;
  statusLine.textContent=message;
@@ -1600,8 +1600,13 @@ function setMicState(state){
 }
 function endVoice() {
   const session = recording;
-  if(session)detachLocalRecognition(session);
   recording = null;
+  if(session){
+    detachLocalRecognition(session);
+    clearTimeout(session.requestTimer);
+    // An abandoned decode must never reach the next microphone session.
+    if(session.pending&&voiceWorker){voiceWorker.terminate();voiceWorker=null;}
+  }
   if (session) {
     clearTimeout(session.watchdog);
     clearTimeout(session.listenTimer);
@@ -2217,7 +2222,8 @@ function finishRecording() {
   transcribeSoFar(session);
 }
 mic.onclick=()=>{
-  if(vertexBatchRunning||vertexLoading||!memoryReady||question||speakingAnswer)return;
+  if(vertexBatchRunning||!memoryReady||question||speakingAnswer)return;
+  if(vertexLoading)vertexAbortPreparation('Preparazione sospesa per usare il microfono.',false);
   if(vertexWakeEnabled){setWakePreference(false);cancelVoice();statusLine.textContent='Microfono disattivato.';return;}
   if(recording){
     setContinuousTalk(false);
@@ -2233,10 +2239,11 @@ mic.onclick=()=>{
   beginVoiceListening();
 };
 async function beginVoiceListening(){
-  if(vertexLoading||vertexBatchRunning||!memoryReady||recording||question||speakingAnswer||document.hidden){setContinuousTalk(false);return;}
+  if(vertexLoading||vertexBatchRunning||!memoryReady||recording||question||speakingAnswer||document.hidden)return;
   el('speak-retry').hidden=true;
   const session = {wakeMode:vertexWakeEnabled?(vertexWakeAwaitCommand?'command':'standby'):'',language:voiceLanguage,phase:'request', blocks:[], length:0, lastSent:0, pending:false, original:input.value, levelHistory:[], speechSeconds:0, pauseSeconds:0, pauseLimit:2.5,lastVoicedLength:0,nativeLastResultLength:0};
   recording = session;
+  session.requestTimer=setTimeout(()=>{if(recording===session&&session.phase==='request'){setContinuousTalk(false);endVoice();statusLine.textContent='Attivazione del microfono non completata. Verifica i permessi e riprova.';}},30000);
   voiceControls(true);
   setMicState('request');
   mic.disabled = false;
@@ -2297,6 +2304,7 @@ async function beginVoiceListening(){
     await Promise.race([session.ctx.resume(),new Promise(resolve=>setTimeout(resolve,2000))]);
     if(session.ctx.state!=='running')throw Object.assign(Error('Audio sospeso'),{name:'AudioSuspended'});
     if(recording!==session)return;
+    clearTimeout(session.requestTimer);
     session.phase = 'listening';
     if(localRecognitionLanguages[session.language]&&!startLocalRecognition(session))warmVoice(session);
     startWave(session);
@@ -2456,8 +2464,9 @@ el('close-assistant').addEventListener('click', event => {
   stop();
 });
 
-let localAnswerTimer=0;
+let localAnswerTimer=0,vertexTurnId=0;
 function idle() {
+  vertexTurnId++;
   clearTimeout(localAnswerTimer);
   mic.disabled = false;
   question = '';
@@ -2469,6 +2478,7 @@ function idle() {
 }
 function stop(keepModel=false) {
   const preserveWorker=keepModel&&!question;
+  if(recording)cancelVoice();
   clearTimeout(answerPreparationTimer);
   clearTimeout(localAnswerTimer);
   clearAnswerPreview();
@@ -2912,6 +2922,8 @@ el('download-agent').onclick=()=>{
 };
 function acceptAnswer(answer,spokenAnswer=answer) {
   if(!question)return;
+  answer=String(answer||'').trim()||'Non ho ottenuto una risposta utilizzabile. Puoi riprovare.';
+  spokenAnswer=String(spokenAnswer||'').trim()||answer;
   clearAnswerPreview();
   bubble('Tu', question);
   bubble('Vertex', answer);
@@ -2919,7 +2931,7 @@ function acceptAnswer(answer,spokenAnswer=answer) {
   statusLine.textContent = '';
   input.value = '';
   idle();
-  speakAnswer(spokenAnswer);
+  try{speakAnswer(spokenAnswer);}catch{cancelSpeech();idle();statusLine.textContent='Risposta disponibile nel testo. La voce non è riuscita ad avviarsi.';el('speak-retry').hidden=false;continueAfterSpeech();}
 }
 let cryptoUpdateController=null;
 function bilingualMarketQuestion(text){
@@ -3050,10 +3062,13 @@ async function vertexGatherResearch(intent,signal){
   const tasks=[researchWikipedia(intent,child.signal),researchPublicNews(intent,child.signal)];
   if(intent.academic)tasks.push(researchCrossref(intent,child.signal));
   if(intent.books)tasks.push(researchBooks(intent,child.signal));
-  const settled=new Array(tasks.length);let remaining=tasks.length,grace=0,done=false;
+  const settled=new Array(tasks.length);let remaining=tasks.length,grace=0,deadline=0,done=false,finishOnAbort=null;
   try{
     return await new Promise(resolve=>{
-      const finish=()=>{if(done)return;done=true;clearTimeout(grace);resolve(settled.filter(Boolean));child.abort();};
+      const finish=()=>{if(done)return;done=true;clearTimeout(grace);clearTimeout(deadline);resolve(settled.filter(Boolean));child.abort();};
+      finishOnAbort=finish;signal?.addEventListener('abort',finishOnAbort,{once:true});
+      deadline=setTimeout(finish,9000);
+      if(signal?.aborted){finish();return;}
       tasks.forEach((task,i)=>Promise.resolve(task).then(value=>({status:'fulfilled',value}),reason=>({status:'rejected',reason})).then(result=>{
         if(done)return;
         settled[i]=result;remaining--;
@@ -3063,7 +3078,7 @@ async function vertexGatherResearch(intent,signal){
         if(!grace&&vertexCanFinishEarly(intent,settled))grace=setTimeout(finish,450);
       }));
     });
-  }finally{clearTimeout(grace);signal?.removeEventListener('abort',abort);child.abort();}
+  }finally{clearTimeout(grace);clearTimeout(deadline);signal?.removeEventListener('abort',abort);if(finishOnAbort)signal?.removeEventListener('abort',finishOnAbort);child.abort();}
 }
 async function fetchCryptoFile(path,signal){
   if(signal?.aborted)throw Error('Annullato');
@@ -4169,6 +4184,7 @@ async function vertexSubmitQuestion(fromVoice=false){
   voiceQuestion=fromVoice;
   el('speak-retry').hidden=true;
   question=input.value.trim();
+  const turnId=++vertexTurnId;
   // Conversational requests do not need a network query or a model download.
   const conversational=vertexLocalClockAnswer(question)||instantConversation(question);
   if(conversational){acceptAnswer(conversational);return;}
@@ -4324,14 +4340,14 @@ async function vertexSubmitQuestion(fromVoice=false){
   statusLine.textContent = localResearchNote?'Consultazione del modello locale…':'Preparazione del modello locale, solo se necessario…';
   try {
     const activeQuestion=question;
-    if(vertexBlockedTier==='base'){
+    if(vertexBlockedTier==='base'&&Date.now()-vertexBaseFailureAt<90000){
       await vertexRecoverAnswer(activeQuestion,'Il modello locale non è disponibile. Non posso inventare una risposta; puoi riprovare selezionando Base oppure farmi un’altra domanda.',!!research);
       return;
     }
     let runtimeTier=vertexBlockedTier?'base':vertexDeviceRuntimeTier(vertexTier);
     if(runtimeTier!=='base'&&!(await vertexConfirmRuntime(runtimeTier)))runtimeTier='base';
     if(runtimeTier!==vertexTier)syncVertexTier(runtimeTier);
-    if(question!==activeQuestion)return;
+    if(question!==activeQuestion||vertexTurnId!==turnId)return;
     const advanced=runtimeTier!=='base';
     
     let retriedStandard=false;
@@ -4340,12 +4356,12 @@ async function vertexSubmitQuestion(fromVoice=false){
       vertexSuspendVoiceForLoad();
       const activeWorker=getAnswerWorker();
       clearTimeout(localAnswerTimer);
-      const current=()=>worker===activeWorker&&question===activeQuestion&&!!question;
+      const current=()=>worker===activeWorker&&question===activeQuestion&&vertexTurnId===turnId&&!!question;
       const fail=()=>{
         if(!current())return;
         clearTimeout(localAnswerTimer);vertexLoadEpoch++;vertexClearLoadTimer();vertexLoadTouch=null;
         activeWorker.terminate();worker=null;vertexReadyTier='';vertexPreparingTier='';
-        vertexBlockedTier=useEnhanced?runtimeTier:'base';vertexSetMarker('');
+        vertexBlockedTier=useEnhanced?runtimeTier:'base';if(!useEnhanced)vertexBaseFailureAt=Date.now();vertexSetMarker('');
         const partial=String(answerPreviewText||'').trim();
         clearAnswerPreview();
         if(useEnhanced&&!retriedStandard&&!partial){
@@ -4370,6 +4386,7 @@ async function vertexSubmitQuestion(fromVoice=false){
         if(typeof data.answer==='string'){
           clearTimeout(localAnswerTimer);
           if(!data.answer.trim()){fail();return;}
+          if(vertexBlockedTier==='base')vertexBlockedTier='';
           const notice=localResearchNote?'Non sono riuscito a verificare abbastanza informazioni online. Ti rispondo in base alle mie conoscenze generali.\n\n':'';
           activeWorker.onmessage=({data})=>{if(worker===activeWorker)vertexModelEvent(data);};
           acceptAnswer(notice+data.answer.trim());
@@ -4378,7 +4395,7 @@ async function vertexSubmitQuestion(fromVoice=false){
       const tier=useEnhanced?runtimeTier:'base';vertexSetMarker(tier);
       if(vertexReadyTier!==tier){vertexPreparingTier=tier;vertexLoadTouch=vertexArmLoadWatchdog(tier,activeWorker,fail);}
       else localAnswerTimer=setTimeout(fail,120000);
-      activeWorker.postMessage({...payload,tier,allowHeavy:tier!=='base'&&tier===runtimeTier,forceCPU:vertexForceCPU});
+      activeWorker.postMessage({...payload,tier,allowHeavy:tier!=='base'&&tier===runtimeTier,forceCPU:vertexForceCPU||retriedStandard});
     }
     const profile=vertexReasoningProfile(runtimeTier,question);
     const detailed=contextOnly||profile.complex||vertexNeedsFullContext(question);
@@ -4393,7 +4410,7 @@ async function vertexSubmitQuestion(fromVoice=false){
     clearTimeout(localAnswerTimer);
     if(worker){worker.terminate();worker=null;}
     vertexLoadEpoch++;vertexClearLoadTimer();vertexLoadTouch=null;vertexSetMarker('');vertexReadyTier='';vertexPreparingTier='';syncVertexTier();
-    if(question)await vertexRecoverAnswer(question,vertexLocalFailure(localResearchNote),!!research);
+    if(question&&vertexTurnId===turnId)await vertexRecoverAnswer(question,vertexLocalFailure(localResearchNote),!!research);
   }
 }
 function vertexBatchControls(running){
@@ -4425,7 +4442,7 @@ function vertexBatchEvent(data){
   }
   vertexBatchReport();
  }
- if(data.modelProgress){if(vertexLoadTouch)vertexLoadTouch();vertexBatchReport(data.modelProgress);}
+ if(data.modelProgress)vertexBatchReport(data.modelProgress);
  if(data.batchDone){
   const count=Object.values(data.results||{}).filter(v=>v===true).length;
   finishVertexBatch(data.busy?'Motore occupato. Riprova.':count+' modelli su 3 scaricati. Nessun avvio simultaneo in RAM.',data.activeTier||'');
@@ -4458,7 +4475,7 @@ el('ai-model-toggle').addEventListener('click',()=>setVertexModelMenu(el('ai-mod
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!el('ai-model-selector').hidden){event.preventDefault();setVertexModelMenu(false,true);}});
 document.querySelectorAll('.ai-model-option').forEach(button=>button.addEventListener('click',()=>{if(vertexBatchRunning||question||(recording&&recording.wakeMode!=='standby')||speakingAnswer){statusLine.textContent='Termina o annulla la risposta prima di cambiare modello.';return;}clearTimeout(answerPreparationTimer);statusLine.textContent=setVertexTier(button.dataset.tier);setVertexModelMenu(false,true);}));
 input.addEventListener('input',()=>{if(recording?.wakeMode)recording.userEdited=true;clearTimeout(answerPreparationTimer);if(input.value.trim().length>=8&&!recording&&!question)answerPreparationTimer=setTimeout(()=>prepareAnswerEngine(true),450);});
-form.onsubmit=event=>{event.preventDefault();if(vertexLoading||vertexBatchRunning||question||speakingAnswer||!input.value.trim())return;if(recording?.wakeMode){const draft=input.value;if(recording.pending&&voiceWorker){voiceWorker.terminate();voiceWorker=null;}endVoice();input.value=draft;vertexWakeAwaitCommand=false;}if(!recording)prepareSpeechFromGesture();submitQuestion(false);};
+form.onsubmit=event=>{event.preventDefault();if(vertexBatchRunning||question||speakingAnswer||!input.value.trim())return;if(vertexLoading)vertexAbortPreparation('Preparazione sospesa per rispondere.',false);if(recording?.wakeMode){const draft=input.value;if(recording.pending&&voiceWorker){voiceWorker.terminate();voiceWorker=null;}endVoice();input.value=draft;vertexWakeAwaitCommand=vertexWakeEnabled;}if(!recording)prepareSpeechFromGesture();submitQuestion(false);};
 mic.disabled=true;el('send').disabled=true;
 memoryStatus();
 restoreMemory().finally(()=>{
@@ -4466,6 +4483,6 @@ restoreMemory().finally(()=>{
     bubble('Tu',p.q);bubble('Vertex',p.a);
   }
   mic.disabled=false;el('send').disabled=false;
-  memoryStatus();if(vertexBlockedTier){el('ai-model-note').textContent=vertexTierNotes[vertexTier]+' Caricamento precedente interrotto. Seleziona Medio per riprovare in sicurezza.';statusLine.textContent='Ripristino dopo un possibile arresto: nessun download automatico.';}else restorePreferredWake();
+  memoryStatus();if(vertexBlockedTier){el('ai-model-note').textContent=vertexTierNotes[vertexTier]+' Caricamento precedente interrotto. Seleziona Medio per riprovare in sicurezza.';statusLine.textContent='Ripristino dopo un possibile arresto: nessun download automatico.';restorePreferredWake();}else restorePreferredWake();
 });
 </script></body></html>
