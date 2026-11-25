@@ -736,7 +736,7 @@ function vertexModelEvent(data){
  if(vertexBatchRunning){if(data.batchState||data.batchDone||data.modelProgress)vertexBatchEvent(data);return;}
  if(data.modelProgress){vertexPreparingTier=data.loadingTier||vertexTier;el('ai-model-note').textContent=vertexTierNotes[vertexTier]+' '+data.modelProgress+'.';}
  if(data.downloadReady&&data.loadingTier){vertexDownloaded.add(data.loadingTier);vertexClearLoadTimer();vertexLoadTouch=null;vertexPreparingTier='';vertexSetMarker('');el('ai-model-note').textContent=vertexDownloadNotice(data.loadingTier);statusLine.textContent='Download completato. Puoi usare Vertex.';restorePreferredWake();}
- if(data.modelReady&&data.activeTier){vertexClearLoadTimer();vertexLoadTouch=null;vertexReadyTier=data.activeTier;vertexPreparingTier='';vertexSetMarker(data.activeTier);syncVertexTier(data.activeTier);if(data.activeTier===vertexTier)el('ai-model-note').textContent=vertexTierNotes[vertexTier]+' Modello pronto.';if(!question&&!vertexBatchRunning)restorePreferredWake();}
+ if(data.modelReady&&data.activeTier){vertexClearLoadTimer();vertexLoadTouch=null;vertexReadyTier=data.activeTier;vertexPreparingTier='';vertexSetMarker('');syncVertexTier(data.activeTier);if(data.activeTier===vertexTier)el('ai-model-note').textContent=vertexTierNotes[vertexTier]+' Modello pronto.';if(!question&&!vertexBatchRunning)restorePreferredWake();}
  if(data.prepareError){vertexAbortPreparation('Caricamento non riuscito. Seleziona di nuovo il modello per riprovare.');}
 }
 function setVertexTier(tier){
@@ -4123,7 +4123,45 @@ function vertexLocalClockAnswer(raw,now=new Date()){
  }
  return '';
 }
+// Recover a factual public question without sending personal conversations or creative prompts.
+function vertexPublicFallbackIntent(raw){
+ const key=marketFold(raw);
+ if(!publicWebTopic(raw)||vertexContextOnlyFollowup(raw))return null;
+ if(!/^(?:(?:vertex|per favore)\s+)?(?:chi (?:e|era|sono)|che cos e|cos e|cosa (?:e|sono|significa)|che cosa (?:e|sono|significa)|come funzion[an]|come funziona|quali sono|quando|dove si trova|spiegami|parlami di|dimmi|vorrei sapere|mi puoi dire|puoi spiegarmi|what is|who is|how does)\b/.test(key))return null;
+ if(/\b(?:scrivi|scrivimi|crea|creami|inventa|immagina|consigliami|fammi|preparami|mio|mia|miei|mie|personale|password|diagnosi|sintomi)\b/.test(key))return null;
+ return generalResearchIntent(raw);
+}
+async function vertexRecoverAnswer(activeQuestion,message,alreadySearched=false){
+ if(question!==activeQuestion)return;
+ const fallback=alreadySearched?null:vertexPublicFallbackIntent(activeQuestion);
+ if(!fallback){acceptAnswer(message);return;}
+ const controller=new AbortController();cryptoUpdateController=controller;
+ const timer=setTimeout(()=>controller.abort(),7500);
+ statusLine.textContent='Verifico le fonti pubbliche disponibili…';
+ try{
+  const result=await answerGeneralResearch(fallback,controller.signal);
+  if(cryptoUpdateController!==controller||question!==activeQuestion)return;
+  if(result?.found){acceptAnswer(result.text,result.spoken||result.text);return;}
+  acceptAnswer(message);
+ }catch{if(cryptoUpdateController===controller&&question===activeQuestion)acceptAnswer(message);}
+ finally{clearTimeout(timer);if(cryptoUpdateController===controller)cryptoUpdateController=null;}
+}
+// The public handler catches unexpected routing errors as well as model failures.
 async function submitQuestion(fromVoice=false){
+ if(vertexBatchRunning||!memoryReady||recording||question||speakingAnswer||!input.value.trim())return;
+ try{await vertexSubmitQuestion(fromVoice);}
+ catch{
+  if(!question)return;
+  const active=question;
+  if(cryptoUpdateController){cryptoUpdateController.abort();cryptoUpdateController=null;}
+  clearTimeout(localAnswerTimer);vertexLoadEpoch++;vertexClearLoadTimer();vertexLoadTouch=null;
+  if(worker){worker.terminate();worker=null;}
+  vertexReadyTier='';vertexPreparingTier='';vertexSetMarker('');
+  clearAnswerPreview();syncVertexTier();
+  await vertexRecoverAnswer(active,'Non sono riuscito a completare questa richiesta. Puoi ripeterla o riformularla: sono ancora qui per aiutarti.');
+ }
+}
+async function vertexSubmitQuestion(fromVoice=false){
   if(vertexBatchRunning||!memoryReady||recording||question||speakingAnswer||!input.value.trim())return;
   const modelCommand=vertexHiddenModelCommand(input.value);
   if(modelCommand==='all'){startVertexBatch();if(vertexBatchRunning)input.value='';else if(fromVoice)resumeWakeListening();return;}
@@ -4187,7 +4225,7 @@ async function submitQuestion(fromVoice=false){
   const requestedResearch=researchCandidate&&(researchCandidate.current||researchCandidate.explicit||researchCandidate.academic||researchCandidate.books||webQuestionIntent(question))?researchCandidate:null;
   const preferResearch=!!(requestedResearch&&(requestedResearch.explicit||requestedResearch.current));
   const followup=vertexReasoningProfile(vertexTier,question).followup;
-  const quickAnswer = vertexVerifiedArithmetic(question) || agentAction(question) || bilingualTranslation(question) || (!preferResearch&&!followup?directDefinition(question):'') || (!preferResearch&&!projectNews&&!marketIntent&&!intent&&!webQuestionIntent(question)&&!lexicalIntent(question)?(instantConversation(question) || recallMemory(question,memoryPairs) || (!followup?answerIndex.get(questionKey(question)):'')||''):'');
+  const quickAnswer = vertexVerifiedArithmetic(question) || agentAction(question) || bilingualTranslation(question) || (!preferResearch&&!followup&&!projectNews&&!marketIntent&&!intent?directDefinition(question):'') || (!preferResearch&&!projectNews&&!marketIntent&&!intent&&!webQuestionIntent(question)&&!lexicalIntent(question)?(instantConversation(question) || recallMemory(question,memoryPairs) || (!followup?answerIndex.get(questionKey(question)):'')||''):'');
   if (quickAnswer) {
     acceptAnswer(quickAnswer);
     return;
@@ -4286,7 +4324,10 @@ async function submitQuestion(fromVoice=false){
   statusLine.textContent = localResearchNote?'Consultazione del modello locale…':'Preparazione del modello locale, solo se necessario…';
   try {
     const activeQuestion=question;
-    if(vertexBlockedTier==='base'){acceptAnswer('Il modello leggero si è fermato. Puoi continuare a chiedermi prezzi, notizie e calcoli; per riprovare le altre domande seleziona Base.');return;}
+    if(vertexBlockedTier==='base'){
+      await vertexRecoverAnswer(activeQuestion,'Il modello locale non è disponibile. Non posso inventare una risposta; puoi riprovare selezionando Base oppure farmi un’altra domanda.',!!research);
+      return;
+    }
     let runtimeTier=vertexBlockedTier?'base':vertexDeviceRuntimeTier(vertexTier);
     if(runtimeTier!=='base'&&!(await vertexConfirmRuntime(runtimeTier)))runtimeTier='base';
     if(runtimeTier!==vertexTier)syncVertexTier(runtimeTier);
@@ -4313,7 +4354,8 @@ async function submitQuestion(fromVoice=false){
           startLocalAnswer(false);return;
         }
         const message='Il modello si è fermato prima di completare la risposta. Puoi riprovare oppure continuare con prezzi e notizie verificabili.';
-        acceptAnswer(partial?'Risposta parziale, non completata: '+partial+'\n\n'+message:message);
+        if(partial){acceptAnswer('Risposta parziale, non completata: '+partial+'\n\n'+message);return;}
+        void vertexRecoverAnswer(activeQuestion,message,!!research);
       };
       activeWorker.onerror=fail;
       activeWorker.onmessage=({data})=>{
@@ -4351,7 +4393,7 @@ async function submitQuestion(fromVoice=false){
     clearTimeout(localAnswerTimer);
     if(worker){worker.terminate();worker=null;}
     vertexLoadEpoch++;vertexClearLoadTimer();vertexLoadTouch=null;vertexSetMarker('');vertexReadyTier='';vertexPreparingTier='';syncVertexTier();
-    if(question)acceptAnswer(vertexLocalFailure(localResearchNote));
+    if(question)await vertexRecoverAnswer(question,vertexLocalFailure(localResearchNote),!!research);
   }
 }
 function vertexBatchControls(running){
