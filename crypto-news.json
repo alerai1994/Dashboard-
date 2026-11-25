@@ -1,9 +1,65 @@
 {
-  "updatedAt": "2026-11-25T20:31:32.490890+00:00",
+  "updatedAt": "2026-11-25T20:33:25.801578+00:00",
   "sources": {
     "Injective Official": {
       "ok": true,
       "items": 6
+    },
+    "Ethereum Foundation": {
+      "ok": true,
+      "items": 5
+    },
+    "Bitcoin Core releases": {
+      "ok": true,
+      "items": 6
+    },
+    "Solana Agave releases": {
+      "ok": true,
+      "items": 7
+    },
+    "Chainlink Blog": {
+      "ok": false,
+      "items": 0,
+      "error": "ParseError"
+    },
+    "Celestia Blog": {
+      "ok": true,
+      "items": 3
+    },
+    "Filecoin Blog": {
+      "ok": false,
+      "items": 0,
+      "error": "HTTPError"
+    },
+    "Circle Blog": {
+      "ok": false,
+      "items": 0,
+      "error": "HTTPError"
+    },
+    "Crypto.com Blog": {
+      "ok": false,
+      "items": 0,
+      "error": "ParseError"
+    },
+    "Electric Coin Company": {
+      "ok": false,
+      "items": 0,
+      "error": "ParseError"
+    },
+    "dYdX Blog": {
+      "ok": false,
+      "items": 0,
+      "error": "URLError"
+    },
+    "Decentraland Blog": {
+      "ok": false,
+      "items": 0,
+      "error": "HTTPError"
+    },
+    "Chia Blog": {
+      "ok": false,
+      "items": 0,
+      "error": "HTTPError"
     },
     "CoinDesk": {
       "ok": true,
@@ -155,6 +211,15 @@
       "url": "https://www.theblock.co/news/ecosystems/2026-11-25-bitcoin-miners-hit-hashrate-hijacking-attack-exploiting-unencrypted-connections-446723",
       "date": "2026-11-25T19:37:10+00:00",
       "source": "The Block"
+    },
+    {
+      "title": "Solana Agave releases: Release v4.5.0-rc.0",
+      "url": "https://github.com/anza-xyz/agave/releases/tag/v4.5.0-rc.0",
+      "date": "2026-11-25T19:37:02+00:00",
+      "source": "Solana Agave releases",
+      "project": "SOL",
+      "official": true,
+      "kind": "software-release"
     },
     {
       "title": "Medicare Hospice Caps Leave Patients Without Care",
@@ -509,6 +574,14 @@
       "url": "https://www.nytimes.com/2026/11/25/world/asia/friendsgiving-thanksgiving-expats.html",
       "date": "2026-11-25T15:53:44+00:00",
       "source": "NY Times World"
+    },
+    {
+      "title": "Lithe: A Formally Verifiable EVM Language Built for Agents",
+      "url": "https://blog.celestia.org/lithe-a-formally-verifiable-evm-language-built-for-agents/",
+      "date": "2026-11-25T15:51:09+00:00",
+      "source": "Celestia Blog",
+      "project": "TIA",
+      "official": true
     },
     {
       "title": "Bitcoin’s selloff deepens as Trump tariffs and hot inflation revive market fears",
@@ -1181,6 +1254,14 @@
       "url": "https://www.bbc.co.uk/news/articles/cmwy9jne0g7qo?at_medium=RSS&at_campaign=rss",
       "date": "2026-11-25T00:34:05+00:00",
       "source": "BBC Business"
+    },
+    {
+      "title": "Devcon 8 India Recap: Four Days in Mumbai, and What's Next",
+      "url": "https://blog.ethereum.org/en/2026/11/25/devcon-mumbai-wrap",
+      "date": "2026-11-25T00:00:00+00:00",
+      "source": "Ethereum Foundation",
+      "project": "ETH",
+      "official": true
     },
     {
       "title": "Hackers breach CIA intelligence network in latest US cyberattack",
@@ -1893,6 +1974,14 @@
       "datePrecision": "day"
     },
     {
+      "title": "PQAI #1: One hash to rule them all — Keccak-256 for Ethereum's post-quantum, post-AI era",
+      "url": "https://blog.ethereum.org/en/2026/11/24/pqai-1",
+      "date": "2026-11-24T00:00:00+00:00",
+      "source": "Ethereum Foundation",
+      "project": "ETH",
+      "official": true
+    },
+    {
       "title": "Trump Is Said to Have Pushed to Reinstate Nvidia CEO Jensen Huang",
       "url": "https://www.nytimes.com/2026/11/23/us/politics/trump-nvidia-huang.html",
       "date": "2026-11-23T23:41:29+00:00",
@@ -2229,6 +2318,14 @@
       "source": "BBC Business"
     },
     {
+      "title": "PQAI #0: Preparing Ethereum for a post-quantum, post-AI world",
+      "url": "https://blog.ethereum.org/en/2026/11/23/pqai-0",
+      "date": "2026-11-23T00:00:00+00:00",
+      "source": "Ethereum Foundation",
+      "project": "ETH",
+      "official": true
+    },
+    {
       "title": "How Melania Trump Found a Diplomatic Opening in the War in Ukraine",
       "url": "https://www.nytimes.com/2026/11/22/us/politics/melania-trump-ukraine-diplomacy.html",
       "date": "2026-11-22T18:12:18+00:00",
@@ -2319,6 +2416,24 @@
       "source": "MIT Technology Review"
     },
     {
+      "title": "Bitcoin Core releases: Bitcoin Core 30.5",
+      "url": "https://github.com/bitcoin/bitcoin/releases/tag/v30.5",
+      "date": "2026-11-20T11:30:35+00:00",
+      "source": "Bitcoin Core releases",
+      "project": "BTC",
+      "official": true,
+      "kind": "software-release"
+    },
+    {
+      "title": "Bitcoin Core releases: Bitcoin Core 31.3",
+      "url": "https://github.com/bitcoin/bitcoin/releases/tag/v31.3",
+      "date": "2026-11-20T11:29:43+00:00",
+      "source": "Bitcoin Core releases",
+      "project": "BTC",
+      "official": true,
+      "kind": "software-release"
+    },
+    {
       "title": "The Internet Broke Our Taste. Will A.I. Destroy It for Good?",
       "url": "https://www.nytimes.com/2026/11/20/magazine/ai-slop-taste-aesthetic-silicon-valley.html",
       "date": "2026-11-20T10:00:38+00:00",
@@ -2353,6 +2468,15 @@
       "url": "https://www.nytimes.com/2026/11/19/technology/downdetector-tech-outages-microsoft-chase-apple.html",
       "date": "2026-11-19T21:39:12+00:00",
       "source": "NY Times Technology"
+    },
+    {
+      "title": "Solana Agave releases: Release v5.0.0-alpha.1",
+      "url": "https://github.com/anza-xyz/agave/releases/tag/v5.0.0-alpha.1",
+      "date": "2026-11-19T21:29:46+00:00",
+      "source": "Solana Agave releases",
+      "project": "SOL",
+      "official": true,
+      "kind": "software-release"
     },
     {
       "title": "What are Anthropic’s financials?",
@@ -2497,6 +2621,14 @@
       "source": "Federal Reserve"
     },
     {
+      "title": "Scaling Voyager to 21M TPS",
+      "url": "https://blog.celestia.org/scaling-voyager-to-21m-tps/",
+      "date": "2026-11-12T17:12:41+00:00",
+      "source": "Celestia Blog",
+      "project": "TIA",
+      "official": true
+    },
+    {
       "title": "Federal Reserve Board issues enforcement action with former employee of United Community Bank",
       "url": "https://www.federalreserve.gov/newsevents/pressreleases/enforcement20261112a.htm",
       "date": "2026-11-12T16:00:00+00:00",
@@ -2529,10 +2661,36 @@
       "datePrecision": "day"
     },
     {
+      "title": "Solana Agave releases: Release v4.5.0-beta.0",
+      "url": "https://github.com/anza-xyz/agave/releases/tag/v4.5.0-beta.0",
+      "date": "2026-11-06T13:58:53+00:00",
+      "source": "Solana Agave releases",
+      "project": "SOL",
+      "official": true,
+      "kind": "software-release"
+    },
+    {
       "title": "The engine parts that 'fight the laws of the universe'",
       "url": "https://www.bbc.co.uk/news/articles/cwe9lmp1pyyxo?at_medium=RSS&at_campaign=rss",
       "date": "2026-11-06T00:06:06+00:00",
       "source": "BBC Business"
+    },
+    {
+      "title": "EIP-8037/EIP-8038 Glamsterdam",
+      "url": "https://blog.ethereum.org/en/2026/11/06/glamsterdam-8037-8038",
+      "date": "2026-11-06T00:00:00+00:00",
+      "source": "Ethereum Foundation",
+      "project": "ETH",
+      "official": true
+    },
+    {
+      "title": "Solana Agave releases: Release v4.4.1",
+      "url": "https://github.com/anza-xyz/agave/releases/tag/v4.4.1",
+      "date": "2026-11-05T19:38:43+00:00",
+      "source": "Solana Agave releases",
+      "project": "SOL",
+      "official": true,
+      "kind": "software-release"
     },
     {
       "title": "Federal Reserve Board announces termination of enforcement action with Allegiant United Holdings, LLC, Nano Financial Holdings, Inc., and Nano Banc",
@@ -2561,12 +2719,29 @@
       "source": "BBC Technology"
     },
     {
+      "title": "Designing for sovereignty: Ethereum for digital public infrastructure",
+      "url": "https://blog.ethereum.org/en/2026/11/03/digital-pub-infra",
+      "date": "2026-11-03T00:00:00+00:00",
+      "source": "Ethereum Foundation",
+      "project": "ETH",
+      "official": true
+    },
+    {
       "title": "Introducing Injective Institutional Rail Injective Institutional Rail is a dedicated, institutional-grade gateway into Injective block production for banks, trading firms and enterprise applications, delivering predictable transaction inclusion with instant finality.",
       "url": "https://injective.com/blog/introducing-injective-institutional-rail",
       "date": "2026-11-02T00:00:00+00:00",
       "source": "Injective Official",
       "project": "INJ",
       "datePrecision": "day"
+    },
+    {
+      "title": "Solana Agave releases: Release v4.4.0",
+      "url": "https://github.com/anza-xyz/agave/releases/tag/v4.4.0",
+      "date": "2026-10-30T15:32:32+00:00",
+      "source": "Solana Agave releases",
+      "project": "SOL",
+      "official": true,
+      "kind": "software-release"
     },
     {
       "title": "How video game remakes tap the power of nostalgia",
@@ -2581,6 +2756,14 @@
       "source": "Federal Reserve"
     },
     {
+      "title": "Introducing Voyager: Hyperscale Payments for Agentic Commerce",
+      "url": "https://blog.celestia.org/introducing-voyager-hyperscale-payments-for-agentic-commerce/",
+      "date": "2026-10-29T17:56:26+00:00",
+      "source": "Celestia Blog",
+      "project": "TIA",
+      "official": true
+    },
+    {
       "title": "'I live with a ghost' - inside the haunted homes attracting bargain hunters",
       "url": "https://www.bbc.co.uk/news/articles/cqwy78elyrlzo?at_medium=RSS&at_campaign=rss",
       "date": "2026-10-29T09:30:03+00:00",
@@ -2593,10 +2776,64 @@
       "source": "Federal Reserve"
     },
     {
+      "title": "Bitcoin Core releases: Bitcoin Core 29.5",
+      "url": "https://github.com/bitcoin/bitcoin/releases/tag/v29.5",
+      "date": "2026-10-28T14:27:09+00:00",
+      "source": "Bitcoin Core releases",
+      "project": "BTC",
+      "official": true,
+      "kind": "software-release"
+    },
+    {
+      "title": "Bitcoin Core releases: Bitcoin Core 30.4",
+      "url": "https://github.com/bitcoin/bitcoin/releases/tag/v30.4",
+      "date": "2026-10-28T14:26:15+00:00",
+      "source": "Bitcoin Core releases",
+      "project": "BTC",
+      "official": true,
+      "kind": "software-release"
+    },
+    {
+      "title": "Bitcoin Core releases: Bitcoin Core 31.2",
+      "url": "https://github.com/bitcoin/bitcoin/releases/tag/v31.2",
+      "date": "2026-10-28T14:24:55+00:00",
+      "source": "Bitcoin Core releases",
+      "project": "BTC",
+      "official": true,
+      "kind": "software-release"
+    },
+    {
+      "title": "Bitcoin Core releases: Bitcoin Core 32.1",
+      "url": "https://github.com/bitcoin/bitcoin/releases/tag/v32.1",
+      "date": "2026-10-28T14:23:53+00:00",
+      "source": "Bitcoin Core releases",
+      "project": "BTC",
+      "official": true,
+      "kind": "software-release"
+    },
+    {
       "title": "'An annoying buzz': The search for stealthier drones",
       "url": "https://www.bbc.co.uk/news/articles/ck1exgejq3xvo?at_medium=RSS&at_campaign=rss",
       "date": "2026-10-28T00:01:10+00:00",
       "source": "BBC Business"
+    },
+    {
+      "title": "Solana Agave releases: Release v4.4.0-rc.1",
+      "url": "https://github.com/anza-xyz/agave/releases/tag/v4.4.0-rc.1",
+      "date": "2026-10-27T16:58:47+00:00",
+      "source": "Solana Agave releases",
+      "project": "SOL",
+      "official": true,
+      "kind": "software-release"
+    },
+    {
+      "title": "Solana Agave releases: Release v4.5.0-alpha.4",
+      "url": "https://github.com/anza-xyz/agave/releases/tag/v4.5.0-alpha.4",
+      "date": "2026-10-26T22:32:23+00:00",
+      "source": "Solana Agave releases",
+      "project": "SOL",
+      "official": true,
+      "kind": "software-release"
     }
   ]
 }
