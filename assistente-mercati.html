@@ -2196,7 +2196,7 @@ function lexicalBucket(value){return lexicalFold(value).replace(/[^a-z0-9]/g,'')
 function lexicalIntent(question){
   const q=String(question).trim();
   const plain=stripDefinitionWrappers(q);
-  const pron=plain.match(/^(?:come si pronuncia|pronuncia|pronuncia di|how do you pronounce|how to pronounce|pronunciation of)\s+(.+)$/u);
+  const pron=plain.match(/^(?:come si pronuncia|pronuncia di|pronuncia|how do you pronounce|how to pronounce|pronunciation of)\s+(.+)$/u);
   if(pron)return {kind:'pronunciation',topic:pron[1],language:/(?:in inglese|in english)$/.test(pron[1])?'en':/(?:in italiano|in italian)$/.test(pron[1])?'it':voiceLanguage};
   const tr=plain.match(/^(?:come si dice|traduci|traducimi|translate|how do you say)\s+(.+?)\s+(?:in|into|to)\s+(inglese|english|italiano|italian)$/u);
   if(tr)return {kind:'translation',topic:tr[1],language:/^(?:inglese|english)$/.test(tr[2])?'it':'en'};
@@ -2265,16 +2265,56 @@ async function lookupEnglishWord(manifest,topic,signal){
     return glosses.some(g=>lexicalFold(g).split(/[,;()]|\s+or\s+/).some(part=>part.trim()===key));
   }).slice(0,3);
 }
+// CMU Pronouncing Dictionary: English (US), ARPABET. Copyright Carnegie Mellon University.
+// A reference pronunciation is not a proven transcription alias. Never auto-rewrite text using this dictionary.
+const englishPronunciationSource='https://raw.githubusercontent.com/cmusphinx/cmudict/74790861f652b15e4ac49015a90074ad62a27690/cmudict.dict';
+let englishPronunciationText=null;
+async function fetchEnglishPronunciationText(signal){
+  if(englishPronunciationText)return englishPronunciationText;
+  const controller=new AbortController(),abort=()=>controller.abort();
+  if(signal?.aborted)throw Error('Annullato');
+  signal?.addEventListener('abort',abort,{once:true});
+  const timer=setTimeout(abort,8000);
+  try{
+    const r=await fetch(englishPronunciationSource,{signal:controller.signal,credentials:'omit',referrerPolicy:'no-referrer',cache:'force-cache'});
+    if(!r.ok)throw Error('Dizionario non disponibile');
+    const value=await r.text();
+    if(value.length<100000||value.length>10000000)throw Error('Formato dizionario non valido');
+    englishPronunciationText=value;return value;
+  }finally{clearTimeout(timer);signal?.removeEventListener('abort',abort);}
+}
+function cmuWordPronunciations(source,word){
+  const target=word.toLowerCase();
+  if(!/^[a-z][a-z'-]{0,59}$/.test(target))return [];
+  const found=new Set();
+  for(const line of source.split(/\r?\n/)){
+    if(!line.startsWith(target+' ')&&!line.startsWith(target+'('))continue;
+    const match=line.match(/^(\S+)\s+([A-Z0-9 ]+)(?:\s+#.*)?$/);
+    if(match&&match[1].replace(/\(\d+\)$/,'')===target)found.add(match[2].trim());
+  }
+  return [...found].slice(0,8);
+}
+async function answerEnglishPronunciation(topic,signal){
+  const words=topic.toLowerCase().split(/\s+/);
+  if(words.length>5||words.some(w=>!/^[a-z][a-z'-]{0,59}$/.test(w)))return '';
+  const source=await fetchEnglishPronunciationText(signal);
+  const lines=words.map(word=>{
+    const pronunciations=cmuWordPronunciations(source,word);
+    return word+': '+(pronunciations.length?pronunciations.join(' / '):'pronuncia non presente nel dizionario');
+  });
+  return 'Pronuncia inglese americana (notazione fonetica ARPABET; 1 = accento primario, 2 = secondario, 0 = non accentato):\n'+lines.join('\n')+'\nFonte: CMU Pronouncing Dictionary, Carnegie Mellon University.\nhttps://github.com/cmusphinx/cmudict\nLicenza: https://github.com/cmusphinx/cmudict/blob/master/LICENSE';
+}
+
 async function answerExtendedLexicon(intent,signal){
   const topic=lexicalTopic(intent);
   // Search dictionary terms only, never send audio or conversation history.
   if(!topic||topic.length>65||topic.split(/\s+/).length>5)return '';
+  if(intent.kind==='pronunciation'&&intent.language==='en')return answerEnglishPronunciation(topic,signal);
   const manifest=await lexicalJSON('data/index.json',signal);
   if(!manifest?.buckets||!Number.isFinite(manifest?.totals?.entries))return '';
   let entries=intent.language==='en'?await lookupEnglishWord(manifest,topic,signal):[await lookupItalianWord(manifest,topic,signal)].filter(Boolean);
   if(!entries.length&&intent.kind==='definition'&&intent.language==='en')entries=[await lookupItalianWord(manifest,topic,signal)].filter(Boolean);
   if(!entries.length)return '';
-  if(intent.kind==='pronunciation'&&intent.language==='en')return '';
   const results=entries.map(entry=>{
     const word=cleanWebText(entry.word,100);
     const glosses=(entry.en||[]).flatMap(g=>g.glosses||[]).filter(Boolean).slice(0,3).map(x=>cleanWebText(x,180));
