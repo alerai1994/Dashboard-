@@ -737,27 +737,39 @@ const definitionPhrasePatterns=[...definitionPhrasesIT,...definitionPhrasesEN].m
   const [before,after]=phrase.split('{term}');
   return new RegExp('^'+questionKey(before)+'\\s+(.+?)'+(after.trim()?'\\s+'+questionKey(after):'')+'$');
 });
+const linguisticWrappers={"it":{"prefix":["","vertex","ciao vertex","ehi vertex","buongiorno vertex","buonasera vertex","ascolta vertex","scusa vertex"],"suffix":["","per favore","grazie","se puoi","se ti è possibile"]},"en":{"prefix":["","vertex","hello vertex","hey vertex","good morning vertex","good evening vertex","listen vertex","excuse me vertex"],"suffix":["","please","thank you","if you can","if possible"]}};
+function stripDefinitionWrappers(question){
+  let key=questionKey(question);
+  const all=Object.values(linguisticWrappers);
+  const prefixes=all.flatMap(x=>x.prefix).filter(Boolean).map(questionKey).sort((a,b)=>b.length-a.length);
+  const suffixes=all.flatMap(x=>x.suffix).filter(Boolean).map(questionKey).sort((a,b)=>b.length-a.length);
+  for(const prefix of prefixes){if(key.startsWith(prefix+' ')){key=key.slice(prefix.length+1);break;}}
+  for(const suffix of suffixes){if(key.endsWith(' '+suffix)){key=key.slice(0,-suffix.length-1);break;}}
+  return key;
+}
+const glossaryByKey=new Map();
+for(const entry of glossaryEntries)for(const key of entry.keys)if(!glossaryByKey.has(key))glossaryByKey.set(key,entry);
 function expandedDefinition(question){
-  const key=questionKey(question);
+  const key=stripDefinitionWrappers(question);
   for(const pattern of definitionPhrasePatterns){
     const match=key.match(pattern);
     if(!match)continue;
     const term=match[1].replace(/^(?:il|lo|la|l|un|una|uno|gli|i|le|the|a|an)\s+/,'').trim();
-    const entry=glossaryEntries.find(item=>item.keys.includes(term)||item.keys.includes(match[1]));
+    const entry=glossaryByKey.get(match[1])||glossaryByKey.get(term);
     if(entry)return entry.answer;
   }
   return '';
 }
 function directDefinition(question){
   const expanded=expandedDefinition(question);if(expanded)return expanded;
-  let key=questionKey(question);
+  let key=stripDefinitionWrappers(question);
   key=key.replace(/^(?:please |hey vertex |hello vertex )/,'').replace(/^(?:what is|what s|what are|what does|define|explain|can you explain|could you explain|would you explain|tell me about|what do you mean by|what is meant by|what is the meaning of|give me a definition of|how does)\s+/,'').replace(/\s+(?:mean|means|work|in simple terms|please)$/,'').replace(/^(?:a|an|the)\s+/,'');
   key=key.replace(/^(?:ciao vertex|ciao|buongiorno|buonasera|per favore)\s+/u,'')
     .replace(/^(?:potresti|puoi|sapresti|vorresti)\s+(?:spiegarmi|dirmi|chiarirmi|definirmi|spiegare|dire)\s+/u,'')
     .replace(/^(?:vorrei sapere|vorrei capire|mi puoi spiegare|mi puoi dire|mi sai dire|mi sapresti dire|mi potresti spiegare|mi potresti dire|sai dirmi|sai spiegarmi|che vuol dire|cosa vuol dire|che cosa vuol dire|cosa si intende per|che cosa si intende per|qual è il significato di|qual e il significato di|qual è la definizione di|qual e la definizione di|dammi una definizione di|spiegazione di)\s+/u,'');
   key=key.replace(/^(?:mi (?:spieghi|dici)|spiegami|dimmi|che cosa significa|cosa significa|che significa|che cos e|cos e|che cosa e|cosa e|che cos è|cos è|che cosa è|cosa è|come funziona|definisci|significato di)\s+/u,'')
     .replace(/^(?:il|lo|la|l|un|una|uno|gli|i|le)\s+/u,'').replace(/\s+(?:per favore|in parole semplici|in maniera semplice|in modo semplice|brevemente|in breve|grazie)$/u,'').trim();
-  return glossaryEntries.find(entry=>entry.keys.includes(key))?.answer||'';
+  return glossaryByKey.get(key)?.answer||'';
 }
 function instantConversation(q){
   const key=questionKey(q);
@@ -1114,7 +1126,10 @@ function createVoiceAliasMap(){
       letters.map(x=>englishVariants[x]||englishLetters[x]).join(' '),
       letters.join('-'),letters.join(', '),letters.map(x=>spokenLetters[x]).join('-'),letters.map(x=>englishLetters[x]).join('-'),
       letters.join(' - '),letters.join('. '),letters.map(x=>spokenLetters[x]).join(', '),letters.map(x=>englishLetters[x]).join(', '),
-      letters.map(x=>italianVariants[x]||spokenLetters[x]).join('-'),letters.map(x=>englishVariants[x]||englishLetters[x]).join('-')]){
+      letters.map(x=>italianVariants[x]||spokenLetters[x]).join('-'),letters.map(x=>englishVariants[x]||englishLetters[x]).join('-'),
+      letters.map(x=>spokenLetters[x]).join('. '),letters.map(x=>englishLetters[x]).join('. '),
+      letters.map(x=>italianVariants[x]||spokenLetters[x]).join(', '),letters.map(x=>englishVariants[x]||englishLetters[x]).join(', '),
+      letters.map(x=>spokenLetters[x]).join(' - '),letters.map(x=>englishLetters[x]).join(' - ')]){
       const key=voiceAliasKey(variant);
       if(!map.has(key))map.set(key,symbol);
     }
@@ -2170,12 +2185,117 @@ async function answerCryptoUpdate(intent,signal){
   }
   return parts.join('\n\n');
 }
+
+// Extended lexical lookup uses pinned, public data shards (not a second AI model).
+// itadict data: Wiktionary, CC BY-SA 4.0, modified via kaikki.org.
+// Source and original entry attribution are shown with each result.
+const vertexLexiconBase='https://raw.githubusercontent.com/maxArturo/itadict/569cb6bb1b9cb3e2d8abef210a27a31d2c47003a/';
+const lexicalCache=new Map();
+function lexicalFold(value){return String(value).normalize('NFD').replace(/\p{M}+/gu,'').toLowerCase().trim();}
+function lexicalBucket(value){return lexicalFold(value).replace(/[^a-z0-9]/g,'').slice(0,2);}
+function lexicalIntent(question){
+  const q=String(question).trim();
+  const plain=stripDefinitionWrappers(q);
+  const pron=plain.match(/^(?:come si pronuncia|pronuncia|pronuncia di|how do you pronounce|how to pronounce|pronunciation of)\s+(.+)$/u);
+  if(pron)return {kind:'pronunciation',topic:pron[1],language:/(?:in inglese|in english)$/.test(pron[1])?'en':/(?:in italiano|in italian)$/.test(pron[1])?'it':voiceLanguage};
+  const tr=plain.match(/^(?:come si dice|traduci|traducimi|translate|how do you say)\s+(.+?)\s+(?:in|into|to)\s+(inglese|english|italiano|italian)$/u);
+  if(tr)return {kind:'translation',topic:tr[1],language:/^(?:inglese|english)$/.test(tr[2])?'it':'en'};
+  for(const pattern of definitionPhrasePatterns){
+    const m=plain.match(pattern);
+    if(m)return {kind:'definition',topic:m[1],language:/^(?:what|can|could|would|please|explain|describe|define|i |give|how|tell|help|remind)/.test(plain)?'en':'it'};
+  }
+  const def=plain.match(/^(?:cos e|cos è|che cos e|che cos è|che cosa e|che cosa è|cosa significa|che significa|che vuol dire|spiegami|what is|what s|what does|what are|define|explain)\s+(.+)$/u);
+  if(def)return {kind:'definition',topic:def[1].replace(/\s+(?:mean|means)$/,''),
+    language:/^(?:what|define|explain)/.test(plain)?'en':'it'};
+  return null;
+}
+function lexicalTopic(intent){
+  return publicWebTopic(intent.topic.replace(/\s+(?:in inglese|in english|in italiano|in italian)$/i,'').replace(/^(?:il|lo|la|l|un|una|uno|gli|i|le|a|an|the)\s+/i,'')).trim();
+}
+async function lexicalJSON(path,signal){
+  if(!/^data\/(?:[a-z0-9_-]+\/)*[a-z0-9_-]+\.json$/i.test(path))throw Error('Percorso dizionario non valido');
+  if(lexicalCache.has(path))return lexicalCache.get(path);
+  const data=await publicWebJSON(vertexLexiconBase+path,signal,6500);
+  if(lexicalCache.size>=24){const first=[...lexicalCache.keys()].find(k=>k!=='data/index.json');if(first)lexicalCache.delete(first);}
+  lexicalCache.set(path,data);return data;
+}
+function lexicalShards(manifest,word,kind){
+  const prefix=lexicalBucket(word),fold=lexicalFold(word).replace(/[^a-z0-9]/g,'');
+  const bucket=kind==='en'?manifest.buckets[prefix||'_']:manifest.buckets[prefix.padEnd(2,'_')]||manifest.buckets[prefix];
+  const files=bucket?.[kind];if(!Array.isArray(files)||!files.length)return [];
+  if(files.length===1)return files;
+  const candidates=files.filter(x=>fold.startsWith(String(x.path).split('/').at(-1).replace(/\.json$/,''))).sort((a,b)=>b.path.length-a.path.length);
+  return candidates.length?[candidates[0]]:files.filter(x=>String(x.path).endsWith('/'+fold.padEnd(3,'_')+'.json')).slice(0,1);
+}
+async function lexicalEntry(manifest,id,signal){
+  if(!/^[a-z0-9_]+:\d+$/i.test(id))return null;
+  const key=id.split(':')[0];
+  for(const file of lexicalShards(manifest,key,'entry')){
+    const list=await lexicalJSON(file.path,signal);
+    const found=Array.isArray(list)?list.find(e=>e.id===id):null;
+    if(found)return found;
+  }
+  return null;
+}
+async function lookupItalianWord(manifest,topic,signal){
+  const key=lexicalFold(topic);
+  for(const file of lexicalShards(manifest,topic,'search')){
+    const list=await lexicalJSON(file.path,signal);
+    const rows=Array.isArray(list)?list.filter(r=>Array.isArray(r)&&r[0]===key):[];
+    const exact=rows.find(r=>lexicalFold(r[2])===key&&String(r[2]).toLowerCase()===topic.toLowerCase())||rows[0];
+    if(exact)return {word:exact[2],ipa:exact[3],pos:[{senses:[exact[5]]}],en:[{glosses:[exact[6]]}]};
+  }
+  for(const file of lexicalShards(manifest,topic,'forms')){
+    const forms=await lexicalJSON(file.path,signal);
+    const form=Object.prototype.hasOwnProperty.call(forms,key)?forms[key]:null;
+    if(form?.id){const entry=await lexicalEntry(manifest,form.id,signal);if(entry)return {...entry,inflected:topic};}
+  }
+  return null;
+}
+async function lookupEnglishWord(manifest,topic,signal){
+  const key=lexicalFold(topic),ids=[];
+  for(const file of lexicalShards(manifest,topic,'en')){
+    const index=await lexicalJSON(file.path,signal);
+    const candidates=Object.prototype.hasOwnProperty.call(index,key)?index[key]:[];
+    if(Array.isArray(candidates))ids.push(...candidates.filter(id=>typeof id==='string').slice(0,5));
+  }
+  const hits=await Promise.allSettled([...new Set(ids)].slice(0,5).map(id=>lexicalEntry(manifest,id,signal)));
+  return hits.flatMap(r=>r.status==='fulfilled'&&r.value?[r.value]:[]).filter(entry=>{
+    const glosses=(entry.en||[]).flatMap(g=>g.glosses||[]);
+    return glosses.some(g=>lexicalFold(g).split(/[,;()]|\s+or\s+/).some(part=>part.trim()===key));
+  }).slice(0,3);
+}
+async function answerExtendedLexicon(intent,signal){
+  const topic=lexicalTopic(intent);
+  // Search dictionary terms only, never send audio or conversation history.
+  if(!topic||topic.length>65||topic.split(/\s+/).length>5)return '';
+  const manifest=await lexicalJSON('data/index.json',signal);
+  if(!manifest?.buckets||!Number.isFinite(manifest?.totals?.entries))return '';
+  let entries=intent.language==='en'?await lookupEnglishWord(manifest,topic,signal):[await lookupItalianWord(manifest,topic,signal)].filter(Boolean);
+  if(!entries.length&&intent.kind==='definition'&&intent.language==='en')entries=[await lookupItalianWord(manifest,topic,signal)].filter(Boolean);
+  if(!entries.length)return '';
+  if(intent.kind==='pronunciation'&&intent.language==='en')return '';
+  const results=entries.map(entry=>{
+    const word=cleanWebText(entry.word,100);
+    const glosses=(entry.en||[]).flatMap(g=>g.glosses||[]).filter(Boolean).slice(0,3).map(x=>cleanWebText(x,180));
+    const senses=(entry.pos||[]).flatMap(g=>g.senses||[]).filter(Boolean).slice(0,2).map(x=>cleanWebText(x,350));
+    const ipa=cleanWebText(entry.ipa,160);
+    if(intent.kind==='pronunciation'&&!ipa)return '';
+    return (entry.inflected?'Forma «'+entry.inflected+'», lemma: ':'')+word+(ipa?' — IPA: '+ipa:'')+
+      (glosses.length?'\nIn inglese: '+glosses.join('; '):'')+
+      (intent.kind!=='pronunciation'&&senses.length?'\n'+senses.join('\n'):'')+
+      '\nFonte: Wikizionario, CC BY-SA 4.0, estratto modificato da itadict.\nhttps://it.wiktionary.org/wiki/'+encodeURIComponent(word);
+  }).filter(Boolean);
+  if(!results.length)return '';
+  return results.join('\n\n')+'\nDati del dizionario: https://github.com/maxArturo/itadict · https://creativecommons.org/licenses/by-sa/4.0/';
+}
+
 async function submitQuestion(fromVoice=false){
   if(!memoryReady||recording||question||speakingAnswer||!input.value.trim())return;
   voiceQuestion=fromVoice;
   el('speak-retry').hidden=true;
   question=input.value.trim();
-  const quickAnswer = agentAction(question) || bilingualTranslation(question) || directDefinition(question) || (!cryptoUpdateIntent(question)&&!webQuestionIntent(question)?(instantConversation(question) || recallMemory(question,memoryPairs) || answerIndex.get(questionKey(question))):'');
+  const quickAnswer = agentAction(question) || bilingualTranslation(question) || directDefinition(question) || (!cryptoUpdateIntent(question)&&!webQuestionIntent(question)&&!lexicalIntent(question)?(instantConversation(question) || recallMemory(question,memoryPairs) || answerIndex.get(questionKey(question))):'');
   if (quickAnswer) {
     acceptAnswer(quickAnswer);
     return;
@@ -2201,6 +2321,19 @@ async function submitQuestion(fromVoice=false){
       clearTimeout(timeout);
       if(cryptoUpdateController===controller)cryptoUpdateController=null;
     }
+    if(!question)return;
+  }
+  const lexical=lexicalIntent(question);
+  if(lexical){
+    const controller=new AbortController();cryptoUpdateController=controller;
+    const timeout=setTimeout(()=>controller.abort(),10000);
+    statusLine.textContent='Consultazione del dizionario bilingue…';
+    try{
+      const answer=await answerExtendedLexicon(lexical,controller.signal);
+      if(cryptoUpdateController!==controller)return;
+      if(answer){acceptAnswer(answer);return;}
+    }catch{if(cryptoUpdateController!==controller)return;}
+    finally{clearTimeout(timeout);if(cryptoUpdateController===controller)cryptoUpdateController=null;}
     if(!question)return;
   }
   const webIntent=webQuestionIntent(question);
