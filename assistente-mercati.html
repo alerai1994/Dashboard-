@@ -416,9 +416,9 @@ function vertexCompactMessages(turns,limit=4000){
 async function vertexAnswerWithReview(turns,tier,maxTokens,generate,limit){
  const profile=vertexReasoningProfile(tier,turns.at(-1)?.content);
  const budget=Math.max(48,Math.min(profile.tokens,maxTokens||profile.tokens));
- const draft=await generate(vertexCompactMessages(turns,limit),budget,!profile.review);
+ const draft=await generate(vertexCompactMessages(turns,limit),budget,true);
  if(!draft?.trim())throw Error('Risposta vuota');
- if(!profile.review)return draft.trim();
+ if(!profile.review||draft.length>1000)return draft.trim();
  const request=vertexReviewRequest(turns,draft,limit);
  if(!request)return draft.trim();
  self.postMessage({status:'Sto verificando la risposta…',activeTier:tier});
@@ -644,7 +644,13 @@ function syncVertexTier(active){
  el('ai-model-note').textContent=vertexTierNotes[vertexTier]+(active&&active!==vertexTier?' Motore effettivo: '+vertexTierNames[active]+' (compatibilità).':'');
 }
 function vertexRuntimeTier(selected){return ['base','media','superiore'].includes(selected)?selected:'base';}
-function vertexDeviceRuntimeTier(selected){return vertexRuntimeTier(selected);}
+function vertexAdaptiveTier(selected,cores,memory,mobile){
+ const tier=vertexRuntimeTier(selected),cpu=Number(cores)||2,ram=Number(memory);
+ if(tier==='base'||cpu<4||Number.isFinite(ram)&&ram<6||mobile&&(!Number.isFinite(ram)||ram<8))return 'base';
+ if(tier==='superiore'&&(cpu<8||!Number.isFinite(ram)||ram<12))return 'media';
+ return tier;
+}
+function vertexDeviceRuntimeTier(selected){return vertexAdaptiveTier(selected,navigator.hardwareConcurrency,Number(navigator.deviceMemory),vertexIsMobile());}
 function vertexIsMobile(){return !!navigator.userAgentData?.mobile||/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent||'')||(/Mac/i.test(navigator.platform||'')&&navigator.maxTouchPoints>1);}
 function vertexHeavyCPUConsentNeeded(tier,memory,mobile,gpu){
  return tier!=='base'&&!gpu&&(mobile||!Number.isFinite(memory)||memory<8);
@@ -677,7 +683,7 @@ function vertexSuspendVoiceForLoad(){
  // Preserve an active voice dialogue while temporarily releasing microphone resources.
  if(!question)setContinuousTalk(false);
  if(recording){if(recording.wakeMode)endVoice();else cancelVoice();}
- if(voiceWorker){voiceWorker.terminate();voiceWorker=null;}
+ if(voiceWorker&&(!question||!Number.isFinite(Number(navigator.deviceMemory))||Number(navigator.deviceMemory)<8||vertexDeviceRuntimeTier(vertexTier)!=='base')){voiceWorker.terminate();voiceWorker=null;}
  stopLocalSpeech();
 }
 function vertexLoadBudget(tier){return tier==='superiore'?20*60000:15*60000;}
@@ -718,7 +724,7 @@ function vertexReleaseHeavyForVoice(){
  vertexReadyTier='';vertexPreparingTier='';vertexSetMarker('');syncVertexTier();
  el('ai-model-note').textContent=vertexTierNotes[vertexTier]+' Modello sospeso per liberare memoria al microfono; verrà riaperto quando necessario.';
 }
-function vertexMayRestoreWake(blocked,loading,batch){return !blocked&&!loading&&!batch;}
+function vertexMayRestoreWake(blocked,loading,batch){return !loading&&!batch;}
 function vertexModelEvent(data){
  if(data.modelProgress&&vertexLoadTouch)vertexLoadTouch();
  if(vertexBatchRunning){if(data.batchState||data.batchDone||data.modelProgress)vertexBatchEvent(data);return;}
@@ -735,7 +741,7 @@ function setVertexTier(tier){
  syncVertexTier(vertexReadyTier);
  if(vertexReadyTier===tier)el('ai-model-note').textContent=vertexTierNotes[tier]+' Modello pronto.';
  else if(vertexDownloaded.has(tier))el('ai-model-note').textContent=vertexDownloadNotice(tier);
- if(tier==='base'&&!question&&!speakingAnswer&&(!recording||recording.wakeMode==='standby'))prepareSelectedVertexModel();
+ if(tier==='base'&&!question&&!speakingAnswer&&!recording&&!vertexWakeEnabled)prepareSelectedVertexModel();
  if(tier!=='base'&&!vertexDownloaded.has(tier))el('ai-model-note').textContent=vertexTierNotes[tier];
  return 'Modello '+vertexTierNames[tier]+' selezionato. '+(tier==='base'?'Userò il modello più leggero.':'Lo userò per le domande che richiedono AI locale, se le risorse lo consentono. Il primo download può richiedere tempo.');
 }
@@ -2074,7 +2080,7 @@ function transcribeSoFar(session) {
   function fail(message) {
     if(recording!==session)return;
     // Keep visible words if recognition fails; never send an unverified partial.
-    const draft=vertexOwnsVoiceDraft(session,input.value)&&session.lastTranscript?input.value:session.original;
+    const draft=session.userEdited?input.value:vertexOwnsVoiceDraft(session,input.value)&&session.lastTranscript?input.value:session.original;
     input.value=draft;
     voiceWorker?.terminate();
     voiceWorker = null;
@@ -2085,7 +2091,7 @@ function transcribeSoFar(session) {
     getVoiceWorker();
     voiceWorker.onmessage = ({data}) => {
       if (recording !== session) return;
-      if (data.status) { statusLine.textContent=data.status; return; }
+      if (data.status) { if(!session.lastTranscript)statusLine.textContent=data.status; return; }
       clearTimeout(session.watchdog);
       session.pending = false;
       session.decodeMs=performance.now()-started;
@@ -2134,8 +2140,15 @@ function transcribeSoFar(session) {
     };
     const samples = joinedAudio(session);
     session.watchdog=setTimeout(()=>{
-      if(recording===session)fail('Trascrizione troppo lenta. Riprova con una frase più breve.');
-    },240000);
+      if(recording!==session)return;
+      if(session.phase==='listening'&&!session.watchdogRetry){
+        session.watchdogRetry=true;session.pending=false;session.lastSent=0;
+        voiceWorker?.terminate();voiceWorker=null;
+        statusLine.textContent='Ripristino del riconoscimento vocale…';
+        transcribeSoFar(session);return;
+      }
+      fail('Il riconoscimento si è fermato. Ho mantenuto il testo disponibile: controllalo e riprova.');
+    },session.decodeMs?Math.max(20000,Math.min(60000,session.decodeMs*4)):120000);
     voiceWorker.postMessage({samples,rate,final:sentFinal,language:session.language,preferSmall:preferAccurateVoice()}, [samples.buffer]);
   } catch { fail('Trascrizione non disponibile. Puoi scrivere la domanda.'); }
 }
@@ -3931,7 +3944,7 @@ function getAnswerWorker(){
 }
 let answerPreparationTimer=0;
 function prepareSelectedVertexModel(){
-  if(vertexBlockedTier||vertexLoading||vertexBatchRunning||question||(recording&&recording.wakeMode!=='standby')||speakingAnswer||document.hidden||vertexReadyTier===vertexTier||vertexPreparingTier===vertexTier||vertexDownloaded.has(vertexTier))return;
+  if(vertexBlockedTier||vertexLoading||vertexBatchRunning||question||recording||vertexWakeEnabled||speakingAnswer||document.hidden||vertexReadyTier===vertexTier||vertexPreparingTier===vertexTier||vertexDownloaded.has(vertexTier))return;
   if(navigator.connection?.saveData){el('ai-model-note').textContent=vertexTierNotes[vertexTier]+' Risparmio dati attivo: download al primo utilizzo.';return;}
   // Browser storage persistence is best effort; never delete cached model files.
   try{navigator.storage?.persist?.().catch(()=>{});}catch{}
@@ -4168,19 +4181,22 @@ async function submitQuestion(fromVoice=false){
   const webIntent=contextOnly||research?null:webQuestionIntent(question);
   if(webIntent){
     const controller=new AbortController();cryptoUpdateController=controller;
+    const timeout=setTimeout(()=>controller.abort(),12000);
     statusLine.textContent='Consultazione delle fonti web…';
     try{
       const answer=await answerPublicWeb(webIntent,controller.signal);
       if(cryptoUpdateController!==controller)return;
       acceptAnswer(answer);return;
-    }finally{if(cryptoUpdateController===controller)cryptoUpdateController=null;}
+    }catch{if(cryptoUpdateController===controller)acceptAnswer('Non riesco a raggiungere le fonti web in questo momento.');return;}
+    finally{clearTimeout(timeout);if(cryptoUpdateController===controller)cryptoUpdateController=null;}
   }
   statusLine.textContent = localResearchNote?'Consultazione del modello locale…':'Preparazione del modello locale, solo se necessario…';
   try {
     const activeQuestion=question;
-    if(vertexBlockedTier){acceptAnswer('Il caricamento precedente del modello si è interrotto. Per evitare nuovi blocchi, seleziona di nuovo il modello Medio oppure scegli Base.');return;}
-    const runtimeTier=vertexDeviceRuntimeTier(vertexTier);
-    if(!(await vertexConfirmRuntime(runtimeTier))){acceptAnswer('Avvio del modello '+vertexTierNames[runtimeTier]+' annullato. La selezione resta invariata.');return;}
+    if(vertexBlockedTier==='base'){acceptAnswer('Il modello leggero si è fermato. Puoi continuare a chiedermi prezzi, notizie e calcoli; per riprovare le altre domande seleziona Base.');return;}
+    let runtimeTier=vertexBlockedTier?'base':vertexDeviceRuntimeTier(vertexTier);
+    if(runtimeTier!=='base'&&!(await vertexConfirmRuntime(runtimeTier)))runtimeTier='base';
+    if(runtimeTier!==vertexTier)syncVertexTier(runtimeTier);
     if(question!==activeQuestion)return;
     const advanced=runtimeTier!=='base';
     
@@ -4196,8 +4212,15 @@ async function submitQuestion(fromVoice=false){
         clearTimeout(localAnswerTimer);vertexLoadEpoch++;vertexClearLoadTimer();vertexLoadTouch=null;
         activeWorker.terminate();worker=null;vertexReadyTier='';vertexPreparingTier='';
         vertexBlockedTier=useEnhanced?runtimeTier:'base';vertexSetMarker('');
+        const partial=String(answerPreviewText||'').trim();
         clearAnswerPreview();
-        acceptAnswer('Il modello '+vertexTierNames[vertexBlockedTier]+' non ha completato il caricamento o la risposta. Ho fermato il tentativo per evitare un ciclo. Puoi riselezionarlo oppure dire «Usa il motore CPU»; nessun altro modello è stato avviato automaticamente.');
+        if(useEnhanced&&!retriedStandard&&!partial){
+          retriedStandard=true;
+          syncVertexTier('base');statusLine.textContent='Passo al modello leggero per recuperare la risposta…';
+          startLocalAnswer(false);return;
+        }
+        const message='Il modello si è fermato prima di completare la risposta. Puoi riprovare oppure continuare con prezzi e notizie verificabili.';
+        acceptAnswer(partial?'Risposta parziale, non completata: '+partial+'\n\n'+message:message);
       };
       activeWorker.onerror=fail;
       activeWorker.onmessage=({data})=>{
