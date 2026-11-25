@@ -1785,12 +1785,12 @@ function vertexCorrectDistinctiveSpeech(text){
 function vertexContextualSpeechRepair(text){
  let value=String(text);
  const rules=[
-  [/\b(?:mi\s+)?puoi\s+dire\s+quali\s+sono\b/giu,m=>m],
   [/\b(?:qual['’]\s*[eè]|qual\s+e)(?=\s+(?:il|la|lo|un|una|l['’]|stato|stati|stata|state|era|sarebbe))/giu,'qual è'],
   [/\b(?:che\s+cosa|cosa)\s+e(?=\s+(?:il|la|lo|un|una|l['’]|successo|accaduto))/giu,m=>m.replace(/\be$/iu,'è')],
   [/\b(?:come|cos[ae])\s+e(?=\s+(?:andata|andato|successo|possibile|fatto|fatta|stato|stata))/giu,m=>m.replace(/\be$/iu,'è')],
-  [/\bce\s+(?=(?:stato|stata|ne\s+sono|un|una|qualcuno|qualcosa|ancora)\b)/giu,'c’è '],
+  [/\bce\s+(?=(?:stato|stata|un|una|qualcuno|qualcosa|ancora)\b)/giu,'c’è '],
   [/\b(?:un\s+po[’']?|unpo)(?=\s|[.,;:!?]|$)/giu,'un po’'],
+  [/\b(prezzo|mercato|valore|indice|bitcoin|ethereum|solana|token|titolo|cambio|petrolio|oro|dollaro)\s+e(?=\s+(?:salito|sceso|calato|aumentato|diminuito|crollato|cresciuto|rimasto|cambiato)\b)/giu,(_,subject)=>subject+' è'],
   [/\b(?:daccordo|d\s+accordo)\b/giu,'d’accordo'],
   [/\b(?:tuttora|tutt['’]\s+ora)\b/giu,'tuttora'],
   [/\b(?:l['’]\s+|l\s+)(?=(?:andamento|inflazione|economia|azione|analisi|aggiornamento|investimento|indice|ultima|ultimo|apertura|obbligazione|andata|informazione)\b)/giu,'l’'],
