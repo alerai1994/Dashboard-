@@ -2869,7 +2869,7 @@ function agentAction(raw){
     catch{/* Natural language and complex financial calculations go to the generative assistant. */}
   }
   if(/^(?:cosa puoi fare|quali azioni puoi eseguire|mostra azioni ai|aiutami con le azioni)$/.test(key))return 'Posso consultare le quotazioni disponibili, calcolare espressioni e percentuali, salvare note e attività sul dispositivo, esportare la chat, scrivere testi e preparare riepiloghi. Non posso controllare altre applicazioni, effettuare operazioni finanziarie o inviare messaggi autonomamente.';
-  if(/^(?:termina conversazione|ferma conversazione|disattiva conversazione continua|smetti di ascoltare|disattiva microfono|spegni microfono|chiudi microfono)$/.test(key)){setContinuousTalk(false);return 'Conversazione continua disattivata.';}
+  if(/^(?:termina conversazione|ferma conversazione|disattiva conversazione continua|smetti di ascoltare|disattiva microfono|spegni microfono|chiudi microfono)$/.test(key)){setWakePreference(false);setContinuousTalk(false);return 'Conversazione continua disattivata.';}
   if(/^(?:esporta|scarica|salva come file)\s+(?:la\s+)?(?:chat|conversazione)(?:\s+attuale)?$/.test(key)){
     const rows=memoryPairs.filter(p=>p.chat===memoryChat);
     if(!rows.length)return 'Non ci sono ancora conversazioni da esportare.';
@@ -4044,6 +4044,58 @@ async function vertexDailyBrief(signal){
  const caveat=update+' Quotazioni rappresentative, non una lista completa di tutti gli strumenti. I titoli non sono verificati nel testo integrale; le fonti possono avere ritardi.';
  return {text:[...parts,caveat].join('\n\n'),spoken:[...spoken,caveat].join('\n')};
 }
+// Resolve short follow-up questions from public asset names only, never chat text.
+function vertexMarketFollowup(raw,previous=''){
+ const key=marketFold(raw);
+ if(!previous||!publicWebTopic(raw)||!publicWebTopic(previous)||key.length>90)return raw;
+ const previousKey=marketFold(previous);
+ const priorMarket=allMarketIntent(previous);
+ const priorCrypto=cryptoNewsRequest(previous);
+ if(!priorMarket&&!priorCrypto)return raw;
+ const assets=priorMarket?.assets||[],coins=priorCrypto?.coins?.length?priorCrypto.coins:priorMarket?.coins||[];
+ const macro=priorMarket?.specificMacro||[];
+ const targets=[...new Set([...assets.map(a=>a.name),...coins.map(a=>a.name),...macro])];
+ const groups=priorMarket?.groups||[];
+ const generic=groups.includes('mercati')?'mercati':groups.length===1?groups[0]:'';
+ const topic=targets.length===1?targets[0]:!targets.length?generic:'';
+ const current=/^(?:e\s+)?(?:oggi|adesso|ora|in questo momento|attualmente)(?:\s+invece)?$/.test(key);
+ const quote=/^(?:e\s+)?(?:quanto vale|quanto costa|quanto quota|a quanto sta|qual e il prezzo|il prezzo|che prezzo ha|quanto ha perso|quanto ha guadagnato|come va|come sta andando|sta salendo|sta scendendo)(?:\s+(?:oggi|ora|adesso|in questo momento))?$/.test(key);
+ const news=/^(?:e\s+)?(?:le\s+)?(?:ultime\s+)?(?:notizie|novita|aggiornamenti|annunci)(?:\s+(?:di oggi|oggi|recenti|adesso|ora|in questo momento))?$/.test(key);
+ const causal=/^(?:e\s+)?perche\s+(?:sta\s+)?(?:scende|sale|scendendo|salendo|e sceso|e salito|e calato|e aumentato|crolla|crollando)(?:\s+oggi)?$/.test(key);
+ if(topic&&(current||quote||news||causal)){
+  if(causal)return 'Perché '+topic+' '+key.replace(/^(?:e\s+)?perche\s+/,'')+' oggi';
+  if(news||current&&(priorCrypto||priorMarket?.news))return 'Notizie su '+topic+' oggi';
+  return 'Andamento e prezzo di '+topic+' oggi';
+ }
+ // Preserve the original request type when changing a named public asset.
+ const follow=key.match(/^(?:e invece|invece|e)\s+(.+?)(?:\s+invece)?$/);
+ if(follow){
+  const a=marketAssetMatches(follow[1]),b=marketCryptoMatches(follow[1]);
+  const names=[...new Set([...a.map(x=>x.name),...b.map(x=>x.name)])];
+  if(names.length===1&&follow[1].split(' ').length<=5){
+   const when=/\b(?:oggi|adesso|ora|in questo momento)\b/.test(previousKey)?' oggi':'';
+   return (priorCrypto||priorMarket?.news?'Notizie su ':'Andamento e prezzo di ')+names[0]+when;
+  }
+ }
+ return raw;
+}
+function vertexResolvedPrevious(pairs,chat){
+ const recent=[];
+ for(let i=pairs.length-1;i>=0&&recent.length<6;i--)if(pairs[i].chat===chat)recent.unshift(pairs[i].q||'');
+ let previous='';
+ for(const raw of recent)previous=vertexMarketFollowup(raw,previous);
+ return previous;
+}
+function vertexLocalClockAnswer(raw,now=new Date()){
+ const key=marketFold(raw);
+ if(/^(?:che ore sono|che ora e|dimmi l ora|dimmi che ore sono|ora attuale|orario attuale)(?: in italia)?$/.test(key)){
+  return 'In Italia sono le '+new Intl.DateTimeFormat('it-IT',{timeZone:'Europe/Rome',hour:'2-digit',minute:'2-digit'}).format(now)+'.';
+ }
+ if(/^(?:che giorno e oggi|che giorno siamo|qual e la data di oggi|che data e oggi|data di oggi|oggi che giorno e)$/.test(key)){
+  return 'Oggi è '+new Intl.DateTimeFormat('it-IT',{timeZone:'Europe/Rome',dateStyle:'full'}).format(now)+'.';
+ }
+ return '';
+}
 async function submitQuestion(fromVoice=false){
   if(vertexBatchRunning||!memoryReady||recording||question||speakingAnswer||!input.value.trim())return;
   const modelCommand=vertexHiddenModelCommand(input.value);
@@ -4053,7 +4105,7 @@ async function submitQuestion(fromVoice=false){
   el('speak-retry').hidden=true;
   question=input.value.trim();
   // Conversational requests do not need a network query or a model download.
-  const conversational=instantConversation(question);
+  const conversational=vertexLocalClockAnswer(question)||instantConversation(question);
   if(conversational){acceptAnswer(conversational);return;}
   // General news questions without a named topic must not search for filler words.
   const latestKey=marketFold(question).replace(/^(?:ciao vertex|ehi vertex|vertex)\s+/,'');
@@ -4086,11 +4138,12 @@ async function submitQuestion(fromVoice=false){
   }
   const previous=vertexPreviousQuestion(memoryPairs,memoryChat);
   const contextOnly=vertexContextOnlyFollowup(question);
+  const routedQuestion=contextOnly?question:vertexMarketFollowup(question,vertexResolvedPrevious(memoryPairs,memoryChat));
   if(contextOnly&&!previous){acceptAnswer('Certo, a quale argomento ti riferisci?');return;}
-  const projectNews=contextOnly?null:cryptoNewsRequest(question,previous);
-  const marketIntent=contextOnly||projectNews?null:allMarketIntent(question,previous);
-  const intent=contextOnly||projectNews||marketIntent?null:cryptoUpdateIntent(question,previous);
-  const researchCandidate=contextOnly?null:generalResearchIntent(question);
+  const projectNews=contextOnly?null:cryptoNewsRequest(routedQuestion,previous);
+  const marketIntent=contextOnly||projectNews?null:allMarketIntent(routedQuestion,previous);
+  const intent=contextOnly||projectNews||marketIntent?null:cryptoUpdateIntent(routedQuestion,previous);
+  const researchCandidate=contextOnly||projectNews||marketIntent||intent?null:generalResearchIntent(question);
   const requestedResearch=researchCandidate&&(researchCandidate.current||researchCandidate.explicit||researchCandidate.academic||researchCandidate.books||webQuestionIntent(question))?researchCandidate:null;
   const preferResearch=!!(requestedResearch&&(requestedResearch.explicit||requestedResearch.current));
   const followup=vertexReasoningProfile(vertexTier,question).followup;
