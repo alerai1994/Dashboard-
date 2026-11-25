@@ -273,10 +273,13 @@ function vertexComputeThreads(cores,isolated,memory){
   const cap=Number.isFinite(memory)&&memory<4?2:8;
   return Math.max(1,Math.min(cap,count>2?count-1:count));
 }
-function vertexModelChoices(gpu,enhanced){
+function vertexModelChoices(gpu,enhanced,fp16=false,cachedQ4=false){
   const lite={model:'onnx-community/Qwen2.5-0.5B-Instruct'};
   const large={model:'onnx-community/Qwen2.5-1.5B-Instruct'};
-  return [...(enhanced?(gpu?[{...large,device:'webgpu',dtype:'q4'},{...large,device:'wasm',dtype:'q4'}]:[{...large,device:'wasm',dtype:'q4'}]):[]),...(gpu?[{...lite,device:'webgpu',dtype:'q4'}]:[]),{...lite,device:'wasm',dtype:'q4'},{...lite,device:'wasm',dtype:'q8'}];
+  const largeGPU={...large,device:'webgpu',dtype:'q4'};
+  const compactGPU={...large,device:'webgpu',dtype:'q4f16'};
+  const advancedGPU=fp16&&!cachedQ4?[compactGPU,largeGPU]:fp16?[largeGPU,compactGPU]:[largeGPU];
+  return [...(enhanced?(gpu?[...advancedGPU,{...large,device:'wasm',dtype:'q4'}]:[{...large,device:'wasm',dtype:'q4'}]):[]),...(gpu?[{...lite,device:'webgpu',dtype:'q4'}]:[]),{...lite,device:'wasm',dtype:'q4'},{...lite,device:'wasm',dtype:'q8'}];
 }
 
 function engineLibrary(){
@@ -287,6 +290,7 @@ async function loadEngine(choice){
   if(!library)await engineLibrary();
   const {pipeline,env}=library;
   env.allowLocalModels=false;
+  env.useBrowserCache=typeof caches!=='undefined';
   env.backends.onnx.wasm.numThreads=vertexComputeThreads(self.navigator?.hardwareConcurrency,self.crossOriginIsolated,Number(self.navigator?.deviceMemory));
   model=await pipeline('text-generation',choice.model,{
     device:choice.device,dtype:choice.dtype,
@@ -297,13 +301,25 @@ async function loadEngine(choice){
     }
   });
   mode=choice;
+  self.postMessage({status:'Modello locale pronto.'});
 }
 async function engineChoices(enhanced=false){
   if(!adapterPromise)adapterPromise=(async()=>{
-    try{if(self.navigator?.gpu)return !!await Promise.race([self.navigator.gpu.requestAdapter({powerPreference:'high-performance'}),new Promise(r=>setTimeout(()=>r(null),1200))]);}catch{}
-    return false;
+    try{if(self.navigator?.gpu){
+      const adapter=await Promise.race([self.navigator.gpu.requestAdapter({powerPreference:'high-performance'}),new Promise(r=>setTimeout(()=>r(null),1200))]);
+      if(adapter)return {gpu:true,fp16:adapter.features.has('shader-f16')};
+    }}catch{}
+    return {gpu:false,fp16:false};
   })();
-  return vertexModelChoices(await adapterPromise,enhanced);
+  const adapter=await adapterPromise;
+  let cachedQ4=false;
+  if(enhanced&&adapter.fp16&&typeof caches!=='undefined'){
+    try{
+      const cache=await caches.open('transformers-cache');
+      cachedQ4=!!await cache.match('https://huggingface.co/onnx-community/Qwen2.5-1.5B-Instruct/resolve/main/onnx/model_q4.onnx');
+    }catch{}
+  }
+  return vertexModelChoices(adapter.gpu,enhanced,adapter.fp16,cachedQ4);
 }
 function sameEngine(a,b){return !!a&&!!b&&a.model===b.model&&a.device===b.device&&a.dtype===b.dtype;}
 async function disposeModel(){
@@ -911,7 +927,16 @@ function directDefinition(question){
   key=key.replace(/^(?:(?:qual (?:è|e)|quale (?:è|e))\s+)?(?:la |le )?(?:differenz[ae]|confronto)\s+(?:tra|fra|di)\s+/u,'').replace(/^(?:che cosa sono|cosa sono|quali sono|come funzionano|parlami di)\s+/u,'').replace(/^(?:il|lo|la|l|un|una|uno|gli|i|le)\s+/u,'').trim();
   return glossaryByKey.get(key)?.answer||'';
 }
+function vertexConversationReply(raw){
+  const key=questionKey(raw).normalize('NFD').replace(/\p{M}/gu,'').replace(/^(?:(?:ciao|ehi|hey) )?vertex /,'').replace(/ vertex$/,'');
+  if(/^(?:cosa|che cosa|che|quali cose|quali domande|che tipo di domande) (?:posso|potrei) (?:chiederti|chiedere|domandarti|domandare|farti|fare)(?: a te)?$/.test(key)||/^(?:cosa|che cosa) (?:sai fare|puoi fare|puoi fare per me|puoi dirmi)|^(?:come (?:funzioni|mi puoi aiutare|puoi aiutarmi)|quali sono le tue capacita|what can i ask you|what can you do)$/.test(key)&&key.split(' ').length<=7)return 'Puoi chiedermi informazioni sui mercati, sulle criptovalute, sulla tecnologia, sulla scienza e sulla vita quotidiana. Posso spiegarti concetti, fare calcoli, aiutarti a scrivere testi e cercare informazioni pubbliche online. Di cosa vuoi parlare?';
+  if(/^(?:(?:vi|ci|si) )?(?:possiamo parlare|possiamo conversare|possiamo fare due chiacchiere|posso parlarti|posso parlare con te|posso farti una domanda|ti posso fare una domanda|ti posso chiedere una cosa|hai un momento|sei disponibile|sei qui|ci sei)(?: un attimo| un po| con te)?$/.test(key))return 'Certo, possiamo parlare. Dimmi pure cosa hai in mente.';
+  if(/^(?:mi senti|riesci a sentirmi|mi ascolti|riesci ad ascoltarmi|mi capisci|riesci a capirmi)$/.test(key))return 'Ho ricevuto la tua domanda. Dimmi pure.';
+  if(/^(?:come ti chiami|qual e il tuo nome|chi sei|who are you|what is your name|what s your name)$/.test(key))return 'Sono Vertex, il tuo assistente virtuale. Posso aiutarti con domande generali e informazioni finanziarie.';
+  return '';
+}
 function instantConversation(q){
+  const direct=vertexConversationReply(q);if(direct)return direct;
   const key=questionKey(q);
   if(/^(?:come stai|come va vertex|how are you|how are you doing|how s it going)$/.test(key))return 'Sono pronto ad aiutarti. Di cosa vuoi parlare?';
   if(/^(?:parli inglese|sai parlare inglese|do you speak english|can you understand english)$/.test(key))return 'Posso comprendere italiano e inglese. Per la dettatura inglese puoi dire o scrivere Attiva inglese; le mie risposte rimangono in italiano.';
@@ -2511,7 +2536,7 @@ async function answerPublicWeb(intent,signal){
 // Public research only. Never send conversation history or private data to search providers.
 function generalResearchIntent(raw){
   const original=String(raw||'').trim();
-  if(!original||original.length>240||!publicWebTopic(original))return null;
+  if(!original||original.length>240||!publicWebTopic(original)||vertexConversationReply(original))return null;
   const key=questionKey(original).normalize('NFD').replace(/\p{M}/gu,'');
   const explicit=/^(?:(?:vertex|ciao vertex|ehi vertex)\s+)?(?:cerca|ricerca|verifica|controlla|trovami|search|look up)(?:mi)?\s+(?:(?:sul web|su internet|online|the web|on the web)\s+)?/.test(key);
   if(/\b(?:password|passcode|pin|credenziali|indirizzo di casa|indirizzo email|telefono|numero di conto|codice fiscale|cartella clinica|diagnosi personale|seed phrase|chiave privata|ricetta medica|codice di accesso)\b/.test(key))return null;
@@ -3231,7 +3256,7 @@ function getAnswerWorker(){
 }
 let answerPreparationTimer=0;
 function prepareAnswerEngine(allowModel=false){
-  if(worker||question||recording||speakingAnswer||document.hidden)return;
+  if(worker||question||recording||speakingAnswer||document.hidden||vertexConversationReply(input.value))return;
   const policy=vertexPreloadPolicy(navigator.hardwareConcurrency||2,Number(navigator.deviceMemory),navigator.connection?.saveData,navigator.connection?.effectiveType);
   if(policy==='none')return;
   try{const engine=getAnswerWorker();engine.onerror=()=>{if(worker===engine&&!question){engine.terminate();worker=null;}};engine.postMessage({type:'prepare',preload:allowModel&&policy==='model'&&!vertexEnhanced,enhanced:false});}catch{}
@@ -3241,6 +3266,9 @@ async function submitQuestion(fromVoice=false){
   voiceQuestion=fromVoice;
   el('speak-retry').hidden=true;
   question=input.value.trim();
+  // Conversational requests do not need a network query or a model download.
+  const conversational=instantConversation(question);
+  if(conversational){acceptAnswer(conversational);return;}
   const previous=vertexPreviousQuestion(memoryPairs,memoryChat);
   const projectNews=cryptoNewsRequest(question,previous);
   const marketIntent=projectNews?null:allMarketIntent(question,previous);
@@ -3341,7 +3369,7 @@ async function submitQuestion(fromVoice=false){
       acceptAnswer(answer);return;
     }finally{if(cryptoUpdateController===controller)cryptoUpdateController=null;}
   }
-  statusLine.textContent = localResearchNote?'Consultazione del modello locale…':'Preparazione del modello locale…';
+  statusLine.textContent = localResearchNote?'Consultazione del modello locale…':'Preparazione del modello locale, solo se necessario…';
   try {
     const activeQuestion=question;
     const advanced=vertexEnhanced&&vertexEnhancedAvailable()&&!vertexEnhancedSessionFallback;
