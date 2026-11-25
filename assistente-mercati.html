@@ -3851,6 +3851,26 @@ async function submitQuestion(fromVoice=false){
   // Conversational requests do not need a network query or a model download.
   const conversational=instantConversation(question);
   if(conversational){acceptAnswer(conversational);return;}
+  // General news questions without a named topic must not search for filler words.
+  const latestKey=marketFold(question).replace(/^(?:ciao vertex|ehi vertex|vertex)\s+/,'');
+  const genericNews=/^(?:(?:mi puoi|puoi|potresti|vorrei|voglio)\s+)?(?:(?:dire|darmi|dammi|dimmi|cerca|trovami|mostrami|leggi|quali sono|ci sono)\s+)?(?:(?:le|delle)\s+)?(?:(?:ultime|nuove)\s+)?(?:notizie|news|novita|aggiornamenti)(?:\s+(?:di oggi|oggi|adesso|ora|in questo momento|piu recenti|dal mondo|nel mondo|generali|del giorno))?$/.test(latestKey);
+  if(genericNews){
+    mic.disabled=true;input.readOnly=true;el('send').disabled=true;el('stop').hidden=false;
+    const controller=new AbortController();cryptoUpdateController=controller;
+    statusLine.textContent='Consultazione delle testate disponibili…';
+    try{
+      const archive=await fetchCryptoFile('crypto-news.json',controller.signal);
+      if(cryptoUpdateController!==controller)return;
+      const rows=vertexMergeNews(vertexArchiveRows(archive,{days:1}),8);
+      const fmt=new Intl.DateTimeFormat('it-IT',{dateStyle:'short',timeStyle:'short',timeZone:'Europe/Rome'});
+      const updated=Number.isFinite(Date.parse(archive.updatedAt))?' Archivio aggiornato il '+fmt.format(new Date(archive.updatedAt))+'.':'';
+      if(!rows.length){acceptAnswer('Nessuna notizia delle ultime 24 ore è disponibile nell’archivio consultato.'+updated);return;}
+      const lead='Ecco le notizie più recenti disponibili nelle ultime 24 ore.'+updated;
+      acceptAnswer(lead+'\n\n'+rows.map(a=>a.title+'\nFonte: '+a.source+' — '+fmt.format(new Date(a.stamp))+'\n'+a.link).join('\n\n')+'\n\nTitoli delle testate, non verificati nel testo integrale.',lead+' '+rows.slice(0,4).map(a=>a.source+': '+a.title).join('. ')+'. I collegamenti alle fonti sono nella risposta scritta.');
+    }catch{if(cryptoUpdateController===controller)acceptAnswer('Non riesco a raggiungere l’archivio delle notizie in questo momento. Prova a indicarmi un argomento specifico.');}
+    finally{if(cryptoUpdateController===controller)cryptoUpdateController=null;}
+    return;
+  }
   const previous=vertexPreviousQuestion(memoryPairs,memoryChat);
   const projectNews=cryptoNewsRequest(question,previous);
   const marketIntent=projectNews?null:allMarketIntent(question,previous);
