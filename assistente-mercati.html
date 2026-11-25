@@ -1754,21 +1754,58 @@ function normalizeMarketTerms(text){
     .replace(/\b(token|cripto|crypto|criptovaluta)\s+ore\b/gi,(_,kind)=>kind+' ORE');
 }
 
-function correctItalianDictation(text, complete = true) {
-  const terms = [
-    [/\bperch[eè](?![\p{L}])/giu, 'perché'],
-    [/\bqual['’]\s*[eè](?![\p{L}])/giu, 'qual è'],
-    [/\bqual e(?=\s+(?:il|la|lo|un|una)\b)/giu, 'qual è'],
-    [/\bpo['’]\s*/giu, match => match.replace("'", '’')],
-    [/\bun po(?=\s|[.,;:!?]|$)/giu, 'un po’']
-  ];
-  let corrected = normalizeMarketTerms(text.trim());
-  for (const [pattern, replacement] of terms) corrected = corrected.replace(pattern, replacement);
-  corrected = corrected.replace(/^(\p{Ll})/u, letter => letter.toLocaleUpperCase('it'));
-  if (complete && /^(?:qual[ei]?|quanto|quanta|quanti|quante|perché|come|quando|dove|chi|cosa|che cosa)\s/iu.test(corrected)) {
-    if (!/[!?…]$/.test(corrected)) corrected = corrected.replace(/\.?$/, '?');
-  }
-  return corrected;
+// High-confidence spellings only. Never guess a number, a negation or an asset ticker.
+const vertexDistinctiveSpeechAliases=[
+ ['Bitcoin',['bit koin','bitkoin','bit co in','bit coin']],
+ ['Ethereum',['eterium','etherium','etereum','eter eum','i ti rium']],
+ ['Solana',['sol anna','sol ana','so lana']],
+ ['Injective',['in jective','in jectiv','in gective','in gettiv','injectiv']],
+ ['Raydium',['rei dium','ray dium']],
+ ['Holochain',['holo chain','olo cein']],
+ ['CoinGecko',['coin gecko','coin gekko','koin geko']],
+ ['CoinMarketCap',['coin market cap','koin market cap']],
+ ['TradingView',['trading view','treiding viu']],
+ ['Nasdaq',['nas dac','nas dak','naz dac']],
+ ['Dow Jones',['dau gions','dau jones']],
+ ['FTSE MIB',['futsi mib','fut si mib']],
+ ['ChatGPT',['chat g p t','chat gi pi ti','chat gpt']],
+ ['blockchain',['block chain','blok cein']],
+ ['stablecoin',['stable coin','steibol coin']],
+ ['staking',['steiking','stei king']],
+ ['order book',['order buk','orderbook']]
+];
+const vertexDistinctiveAliasMap=new Map(vertexDistinctiveSpeechAliases.flatMap(([canonical,aliases])=>aliases.map(a=>[a,canonical])));
+const vertexDistinctiveAliasPattern=new RegExp('(?<![\\p{L}\\p{N}])(?:'+[...vertexDistinctiveAliasMap.keys()].sort((a,b)=>b.length-a.length).map(a=>a.replace(/[.*+?^\${}()|[\]\\]/g,'\\$&').replace(/ /g,'\\s+')).join('|')+')(?![\\p{L}\\p{N}])','giu');
+function vertexCorrectDistinctiveSpeech(text){
+ return String(text).replace(vertexDistinctiveAliasPattern,m=>vertexDistinctiveAliasMap.get(voiceAliasKey(m))||m);
+}
+function correctItalianDictation(text,complete=true){
+ const terms=[
+  [/\bperch[eè](?![\p{L}])/giu,'perché'],
+  [/\bqual['’]\s*[eè](?![\p{L}])/giu,'qual è'],
+  [/\bqual e(?=\s+(?:il|la|lo|un|una)\b)/giu,'qual è'],
+  [/\bun po(?=\s|[.,;:!?]|$)/giu,'un po’'],
+  [/\bpo['’](?=\s|[.,;:!?]|$)/giu,'po’'],
+  [/\b(?:c['’]\s*e|ce)\s+(?=(?:un|una|uno|il|la|qualche|ancora)\b)/giu,'c’è '],
+  [/\bcos['’]\s*e\b/giu,'cos’è'],
+  [/\bcom['’]\s*e\b/giu,'com’è'],
+  [/\b(?:cioe|cioé)\b/giu,'cioè'],
+  [/\b(?:cosi|cosí)\b/giu,'così'],
+  [/\b(?:piu|piú)\b/giu,'più'],
+  [/\b(?:gia|giá)\b/giu,'già'],
+  [/\b(?:finche|finchè)\b/giu,'finché'],
+  [/\b(?:poiche|poichè)\b/giu,'poiché'],
+  [/\b(?:affinche|affinchè)\b/giu,'affinché'],
+  [/\b(?:nonche|nonchè)\b/giu,'nonché']
+ ];
+ let corrected=normalizeMarketTerms(vertexCorrectDistinctiveSpeech(String(text).trim()));
+ for(const [pattern,replacement] of terms)corrected=corrected.replace(pattern,replacement);
+ corrected=corrected.replace(/[ \t]+/g,' ').replace(/\s+([?!;:])/g,'$1').replace(/^(\p{Ll})/u,l=>l.toLocaleUpperCase('it'));
+ if(complete&&/^(?:qual[ei]?|quanto|quanta|quanti|quante|perché|come|quando|dove|chi|cosa|che cosa|mi dici|mi puoi dire|puoi spiegarmi)\s/iu.test(corrected)&&!/[!?…]$/.test(corrected)){
+  // Do not remove a decimal separator or change a trailing numeric value.
+  corrected=corrected.replace(/\.$/,'')+'?';
+ }
+ return corrected;
 }
 
 function joinedAudio(session) {
@@ -1786,7 +1823,7 @@ function joinedAudio(session) {
 function phrasePauseLimit(session){
   const last=String(session.lastTranscript||session.nativeText||'').trim().toLowerCase().replace(/[.,!?;:]+$/,'');
   const incomplete=/(?:^|\s)(?:e|o|ma|perché|perche|quindi|che|di|del|della|con|per|su|il|la|un|una|and|or|but|because|with|of|to|the|a|an|for|about)$/.test(last);
-  return (session.pauseLimit||1.9)+(incomplete?1.4:0);
+  return (session.pauseLimit||2.5)+(incomplete?1.8:0);
 }
 function pauseEndsPhrase(session,rms,count){
   const seconds=count/(session.sampleRate||session.ctx.sampleRate);
@@ -1881,12 +1918,12 @@ function hasRecognitionLoop(text) {
   }
   return false;
 }
-function normalizeVoiceTranscript(text,language='it'){
+function normalizeVoiceTranscript(text,language='it',complete=false){
   const value=String(text||'').trim();
   if(!validItalianTranscript(value)||hasRecognitionLoop(value))return '';
   let corrected=value;
   if(language==='it'){
-    corrected=correctItalianDictation(value,false);
+    corrected=correctItalianDictation(value,complete);
   }else{
     corrected=normalizeMarketTerms(value);
     corrected=corrected.replace(/\bi m\b/gi,"I'm").replace(/\bi ve\b/gi,"I've");
@@ -1904,21 +1941,23 @@ function vertexLiveDraft(mode,text){
 function vertexOwnsVoiceDraft(session,value){
  return !session.userEdited&&(value===session.original||value===session.liveDraft);
 }
-function updateDictation(session,text){
+function updateDictation(session,text,complete=false){
  if(recording!==session||!vertexOwnsVoiceDraft(session,input.value))return;
  if(session.wakeMode==='standby'&&vertexWakePhrase(text).matched){
   session.wakeDetected=true;
   if(session.phase==='listening')statusLine.textContent='Ti ascolto…';
  }
- const corrected=normalizeVoiceTranscript(vertexLiveDraft(session.wakeMode,text),session.language);
+ const corrected=normalizeVoiceTranscript(vertexLiveDraft(session.wakeMode,text),session.language,complete);
  if(!corrected){
+  // Keep the last usable draft on an empty or invalid interim result.
+  if(!complete)return;
   if(session.wakeMode&&session.liveDraft!==undefined&&input.value===session.liveDraft){
    input.value=session.original;session.liveDraft=undefined;session.lastTranscript='';
   }
   return;
  }
  input.value=session.original+(session.original&&!/\s$/.test(session.original)?' ':'')+corrected;
- session.liveDraft=input.value;session.lastTranscript=corrected;
+ session.liveDraft=input.value;session.lastTranscript=corrected;session.lastRawTranscript=String(text||'');
  input.scrollTop=input.scrollHeight;
 }
 function detachLocalRecognition(session,abort=true){
@@ -1975,7 +2014,7 @@ function startLocalRecognition(session){
       const missedTail=(session.lastVoicedLength||0)-(session.nativeFinalLength||0)>(session.sampleRate||16000)*.75;
       if(session.phase==='transcribing'&&!missedTail&&normalizeVoiceTranscript(final,session.language)&&final===session.nativeText){
         if(handleWakeTranscript(session,final,true))return;
-        updateDictation(session,final);endVoice();submitQuestion(true);
+        updateDictation(session,final,true);endVoice();submitQuestion(true);
       }else if(session.phase==='listening'||session.phase==='transcribing'){
         warmVoice(session);transcribeSoFar(session);
       }
@@ -2002,7 +2041,9 @@ function transcribeSoFar(session) {
   const started=performance.now();
   function fail(message) {
     if(recording!==session)return;
-    input.value=session.original;
+    // Keep visible words if recognition fails; never send an unverified partial.
+    const draft=vertexOwnsVoiceDraft(session,input.value)&&session.lastTranscript?input.value:session.original;
+    input.value=draft;
     voiceWorker?.terminate();
     voiceWorker = null;
     endVoice();
@@ -2034,7 +2075,7 @@ function transcribeSoFar(session) {
       const complete = sentFinal && session.phase === 'transcribing' && session.lastSent === session.length;
       const corrected=normalizeVoiceTranscript(data.text,session.language);
       const recognized=!!corrected;
-      if(recognized)updateDictation(session,data.text);
+      if(recognized)updateDictation(session,data.text,complete&&!data.notice);
       if (complete) {
         if(handleWakeTranscript(session,data.text,recognized&&!data.notice))return;
         endVoice();
@@ -2143,7 +2184,7 @@ mic.onclick=()=>{
 async function beginVoiceListening(){
   if(vertexLoading||vertexBatchRunning||!memoryReady||recording||question||speakingAnswer||document.hidden){setContinuousTalk(false);return;}
   el('speak-retry').hidden=true;
-  const session = {wakeMode:vertexWakeEnabled?(vertexWakeAwaitCommand?'command':'standby'):'',language:voiceLanguage,phase:'request', blocks:[], length:0, lastSent:0, pending:false, original:input.value, levelHistory:[], speechSeconds:0, pauseSeconds:0, pauseLimit:1.9,lastVoicedLength:0,nativeLastResultLength:0};
+  const session = {wakeMode:vertexWakeEnabled?(vertexWakeAwaitCommand?'command':'standby'):'',language:voiceLanguage,phase:'request', blocks:[], length:0, lastSent:0, pending:false, original:input.value, levelHistory:[], speechSeconds:0, pauseSeconds:0, pauseLimit:2.5,lastVoicedLength:0,nativeLastResultLength:0};
   recording = session;
   voiceControls(true);
   setMicState('request');
@@ -2323,7 +2364,7 @@ function handleWakeTranscript(session,raw,reliable){
  if(!vertexWakeEnabled)return true;
  if(decision.action==='submit'){
   vertexWakeAwaitCommand=true;
-  const command=normalizeVoiceTranscript(decision.command,session.language);
+  const command=normalizeVoiceTranscript(decision.command,session.language,true);
   if(command){input.value=command;submitQuestion(true);return true;}
  }
  vertexWakeAwaitCommand=vertexWakeNextCommand(session.wakeMode,decision.action,session.speechStarted);
