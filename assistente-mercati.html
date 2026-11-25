@@ -3152,7 +3152,7 @@ function vertexMarketArchiveMatch(title,intent){
   const terms=intent.terms.map(marketFold).filter(t=>t.length>=3);
   if(terms.some(t=>containsMarketPhrase(key,t)))return true;
   if(specific)return false;
-  const categories={crypto:/\b(?:crypto|cripto|bitcoin|ethereum|solana|blockchain|stablecoin|defi|token)\b/,forex:/\b(?:forex|currency|currencies|dollar|dollaro|euro|yen|sterling|exchange rate)\b/,etf:/\b(?:etf|etfs|exchange traded fund)\b/,commodities:/\b(?:oil|petrolio|gold|oro|silver|argento|copper|gas|commodities)\b/,bigtech:/\b(?:technology|tech|ai|nvidia|apple|microsoft|alphabet|amazon|meta|semiconductor)\b/,mercati:/\b(?:market|markets|stock|stocks|shares|borsa|mercati|azioni|crypto|bitcoin|etf|forex|inflation|fed|bce|oil|gold|bond|economy|economia|dollar|rates|trade)\b/,azioni:/\b(?:stock|stocks|shares|equity|earnings|borsa|azioni|nasdaq|dow jones)\b/,indici:/\b(?:nasdaq|dow jones|s p 500|ftse|dax|indices|index|indici)\b/};
+  const categories={obbligazioni:/\b(?:bond|bonds|treasury|yield|yields|btp|bund|obbligazioni)\b/,macro:/\b(?:inflation|inflazione|fed|bce|ecb|rates|tassi|gdp|pil|economy|economia|central bank)\b/,'materie prime':/\b(?:oil|petrolio|gold|oro|silver|argento|copper|rame|gas|commodities)\b/,crypto:/\b(?:crypto|cripto|bitcoin|ethereum|solana|blockchain|stablecoin|defi|token)\b/,forex:/\b(?:forex|currency|currencies|dollar|dollaro|euro|yen|sterling|exchange rate)\b/,etf:/\b(?:etf|etfs|exchange traded fund)\b/,commodities:/\b(?:oil|petrolio|gold|oro|silver|argento|copper|gas|commodities)\b/,bigtech:/\b(?:technology|tech|ai|nvidia|apple|microsoft|alphabet|amazon|meta|semiconductor)\b/,mercati:/\b(?:market|markets|stock|stocks|shares|borsa|mercati|azioni|crypto|bitcoin|etf|forex|inflation|fed|bce|oil|gold|bond|economy|economia|dollar|rates|trade)\b/,azioni:/\b(?:stock|stocks|shares|equity|earnings|borsa|azioni|nasdaq|dow jones)\b/,indici:/\b(?:nasdaq|dow jones|s p 500|ftse|dax|indices|index|indici)\b/};
   return intent.groups.some(g=>categories[g]?.test(key));
 }
 function formatWebNews(articles){
@@ -3598,7 +3598,7 @@ function allMarketIntent(raw,previous=''){
   if(/\b(?:previsioni|previsione|forecast|prediction|target|domani|tomorrow|come funziona|come comprare|come acquistare|cosa significa|che significa|definisci|what does|calcola|calcolami|calculate|traduci|translate|pronuncia|pronounce)\b/.test(key))return null;
   const news=/\b(?:notizi[ae]|news|novita|aggiornament[oi]|aggiornami|annunci|roadmap|listing|ultim[ei] sviluppi|cosa succede|che succede|cosa sta succedendo|what s happening|what is happening|latest developments|breaking news|earnings|trimestrali)\b/.test(key);
   const causal=/\b(?:perche|why|motivo|causa|ragioni)\b/.test(key);
-  const quote=/\b(?:prezz[oi]|quotazion[ei]|quanto (?:vale|sta|costa|quota)|a quanto|valore attuale|andamento|variazione|rialz[oi]|ribass[oi]|sces[oaie]|salit[oaie]|calat[oaie]|pers[oaie]|guadagnat[oaie]|sta (?:salendo|scendendo)|come (?:va|vanno|sta andando|stanno andando)|performing|performance|up|down|dropped|fallen|risen)\b/.test(key);
+  const quote=/\b(?:confronta|confronto|compare|prezz[oi]|quotazion[ei]|quanto (?:vale|sta|costa|quota)|a quanto|valore attuale|andamento|variazione|rialz[oi]|ribass[oi]|sces[oaie]|salit[oaie]|calat[oaie]|pers[oaie]|guadagnat[oaie]|sta (?:salendo|scendendo)|come (?:va|vanno|sta andando|stanno andando)|performing|performance|up|down|dropped|fallen|risen)\b/.test(key);
   const today=/\b(?:oggi|adesso|ora|in questo momento|attuale|today|right now)\b/.test(key);
   let assets=marketAssetMatches(key),coins=marketCryptoMatches(key);
   const groups=marketGroupPatterns.filter(([,pattern])=>pattern.test(key)).map(([group])=>group);
@@ -4044,37 +4044,48 @@ async function vertexDailyBrief(signal){
  const caveat=update+' Quotazioni rappresentative, non una lista completa di tutti gli strumenti. I titoli non sono verificati nel testo integrale; le fonti possono avere ritardi.';
  return {text:[...parts,caveat].join('\n\n'),spoken:[...spoken,caveat].join('\n')};
 }
-// Resolve short follow-up questions from public asset names only, never chat text.
+// Context is resolved from the public market catalogue, not private conversation text.
+const vertexMarketLabels={crypto:'criptovalute',indici:'indici azionari',azioni:'azioni',etf:'ETF',forex:'forex','materie prime':'materie prime',obbligazioni:'obbligazioni',macro:'macroeconomia',mercati:'mercati'};
+function vertexPublicMarketTargets(raw){
+ const key=marketFold(raw),assets=marketAssetMatches(key),coins=marketCryptoMatches(key);
+ const exact=key.replace(/^(?:il|la|le|gli|i|token|cripto|crypto|criptovaluta)\s+/,'').replace(/\s+(?:oggi|adesso|ora)$/,'');
+ const direct=voiceCryptoCatalog.filter(([n,s])=>marketFold(n)===exact||marketFold(s)===exact);
+ const explicitCrypto=/\b(?:token|cripto|crypto|criptovaluta)\b/.test(key);
+ const a=assets.map(x=>x.name);
+ const b=(direct.length&&(!assets.length||explicitCrypto)?direct.map(([name,symbol])=>({name,symbol})):coins).filter(x=>explicitCrypto||!assets.length||!assets.some(y=>y.aliases.some(z=>marketFold(z)===marketFold(x.name)||marketFold(z)===marketFold(x.symbol)))).map(x=>'cripto '+x.name);
+ const named=[...new Set([...a,...b,...macroTopics.filter(([,p])=>p.test(key)).map(([n])=>n)])];
+ if(named.length)return named;
+ return marketGroupPatterns.filter(([,p])=>p.test(key)).map(([g])=>vertexMarketLabels[g]).filter(Boolean);
+}
 function vertexMarketFollowup(raw,previous=''){
  const key=marketFold(raw);
- if(!previous||key.length>90||!(/^(?:e |invece |oggi\b|adesso\b|ora\b|in questo momento\b|attualmente\b|quanto\b|a quanto\b|qual e\b|il prezzo\b|che prezzo\b|come\b|sta\b|le notizie\b|ultime\b|notizie\b|novita\b|aggiornamenti\b|annunci\b|perche\b)/.test(key))||!publicWebTopic(raw)||!publicWebTopic(previous))return raw;
- const previousKey=marketFold(previous);
- const priorMarket=allMarketIntent(previous);
- const priorCrypto=cryptoNewsRequest(previous);
- if(!priorMarket&&!priorCrypto)return raw;
- const assets=priorMarket?.assets||[],coins=priorCrypto?.coins?.length?priorCrypto.coins:priorMarket?.coins||[];
- const macro=priorMarket?.specificMacro||[];
- const targets=[...new Set([...assets.map(a=>a.name),...coins.map(a=>a.name),...macro])];
- const groups=priorMarket?.groups||[];
- const generic=groups.includes('mercati')?'mercati':groups.length===1?groups[0]:'';
- const topic=targets.length===1?targets[0]:!targets.length?generic:'';
+ if(!previous||key.length>110||!publicWebTopic(raw)||!publicWebTopic(previous))return raw;
+ if(!/^(?:e |invece |oggi\b|adesso\b|ora\b|in questo momento\b|attualmente\b|quanto\b|a quanto\b|qual e\b|il prezzo\b|che prezzo\b|come\b|sta\b|le notizie\b|ultime\b|notizie\b|novita\b|aggiornamenti\b|annunci\b|perche\b|confronta\b|confrontali\b)/.test(key))return raw;
+ const priorMarket=allMarketIntent(previous),priorCrypto=cryptoNewsRequest(previous),previousKey=marketFold(previous);
+ if(!priorMarket&&!priorCrypto&&!vertexDailyBriefIntent(previous))return raw;
+ const targets=vertexPublicMarketTargets(previous);
+ const topic=targets.length===1?targets[0]:'';
+ const period=previousKey.match(/\b(?:ultime \d+ ore|ultimi \d+ giorni|questo mese|oggi|adesso|ora|in questo momento)\b/)?.[0]||'';
+ const when=period?' '+period:'';
  const current=/^(?:e\s+)?(?:oggi|adesso|ora|in questo momento|attualmente)(?:\s+invece)?$/.test(key);
- const quote=/^(?:e\s+)?(?:quanto vale|quanto costa|quanto quota|a quanto sta|qual e il prezzo|il prezzo|che prezzo ha|quanto ha perso|quanto ha guadagnato|come va|come sta andando|sta salendo|sta scendendo)(?:\s+(?:oggi|ora|adesso|in questo momento))?$/.test(key);
+ const quote=/^(?:e\s+)?(?:quanto vale|quanto costa|quanto quota|a quanto sta|qual e il prezzo|il prezzo|che prezzo ha|quanto ha perso|quanto ha guadagnato|come va|come vanno|come sta andando|come stanno andando|sta salendo|sta scendendo)(?:\s+(?:oggi|ora|adesso|in questo momento))?$/.test(key);
  const news=/^(?:e\s+)?(?:le\s+)?(?:ultime\s+)?(?:notizie|novita|aggiornamenti|annunci)(?:\s+(?:di oggi|oggi|recenti|adesso|ora|in questo momento))?$/.test(key);
  const causal=/^(?:e\s+)?perche\s+(?:sta\s+)?(?:scende|sale|scendendo|salendo|e sceso|e salito|e calato|e aumentato|crolla|crollando)(?:\s+oggi)?$/.test(key);
+ const wasNews=!!(priorCrypto||priorMarket?.news);
  if(topic&&(current||quote||news||causal)){
   if(causal)return 'Perché '+topic+' '+key.replace(/^(?:e\s+)?perche\s+/,'')+' oggi';
-  if(news||current&&(priorCrypto||priorMarket?.news))return 'Notizie su '+topic+' oggi';
+  if(news||current&&wasNews)return 'Notizie su '+topic+' oggi';
   return 'Andamento e prezzo di '+topic+' oggi';
  }
- // Preserve the original request type when changing a named public asset.
- const follow=key.match(/^(?:e invece|invece|e)\s+(.+?)(?:\s+invece)?$/);
- if(follow){
-  const a=marketAssetMatches(follow[1]),b=marketCryptoMatches(follow[1]);
-  const names=[...new Set([...a.map(x=>x.name),...b.map(x=>x.name)])];
-  if(names.length===1&&follow[1].split(' ').length<=5){
-   const when=/\b(?:oggi|adesso|ora|in questo momento)\b/.test(previousKey)?' oggi':'';
-   return (priorCrypto||priorMarket?.news?'Notizie su ':'Andamento e prezzo di ')+names[0]+when;
+ if(/^confrontali(?: oggi)?$/.test(key)&&targets.length>1)return 'Confronta andamento e prezzo di '+targets.join(' e ')+' oggi';
+ const follow=key.match(/^(?:e invece|invece|e|confronta(?: con)?)\s+(.+?)(?:\s+invece)?$/);
+ if(follow&&follow[1].split(' ').length<=10){
+  const next=vertexPublicMarketTargets(follow[1]);
+  if(next.length&&next.length<=5){
+   const compare=/^confronta/.test(key);
+   const selected=compare?[...new Set([...targets,...next])]:next;
+   if(selected.length>5)return raw;
+   return (compare?'Confronta andamento e prezzo di ':wasNews?'Notizie su ':'Andamento e prezzo di ')+selected.join(' e ')+(compare?' oggi':when);
   }
  }
  return raw;
@@ -4119,7 +4130,7 @@ async function submitQuestion(fromVoice=false){
     return;
   }
   const genericNews=/^(?:(?:mi puoi|puoi|potresti|vorrei|voglio)\s+)?(?:(?:dire|darmi|dammi|dimmi|cerca|trovami|mostrami|leggi|quali sono|ci sono)\s+)?(?:(?:le|delle)\s+)?(?:(?:ultime|nuove)\s+)?(?:notizie|news|novita|aggiornamenti)(?:\s+(?:di oggi|oggi|adesso|ora|in questo momento|piu recenti|dal mondo|nel mondo|generali|del giorno))?$/.test(latestKey);
-  if(genericNews){
+  if(genericNews&&vertexMarketFollowup(question,vertexResolvedPrevious(memoryPairs,memoryChat))===question){
     mic.disabled=true;input.readOnly=true;el('send').disabled=true;el('stop').hidden=false;
     const controller=new AbortController();cryptoUpdateController=controller;
     statusLine.textContent='Consultazione delle testate disponibili…';
@@ -4140,8 +4151,10 @@ async function submitQuestion(fromVoice=false){
   const contextOnly=vertexContextOnlyFollowup(question);
   const routedQuestion=contextOnly?question:vertexMarketFollowup(question,vertexResolvedPrevious(memoryPairs,memoryChat));
   if(contextOnly&&!previous){acceptAnswer('Certo, a quale argomento ti riferisci?');return;}
-  const projectNews=contextOnly?null:cryptoNewsRequest(routedQuestion,previous);
-  const marketIntent=contextOnly||projectNews?null:allMarketIntent(routedQuestion,previous);
+  const combinedMarket=contextOnly?null:allMarketIntent(routedQuestion,previous);
+  const mixed=!!(combinedMarket&&(combinedMarket.assets.length&&combinedMarket.coins.length||combinedMarket.groups.some(g=>g!=='crypto'&&g!=='mercati')&&combinedMarket.coins.length||combinedMarket.quote&&combinedMarket.news));
+  const projectNews=contextOnly||mixed?null:cryptoNewsRequest(routedQuestion,previous);
+  const marketIntent=contextOnly||projectNews?null:combinedMarket;
   const intent=contextOnly||projectNews||marketIntent?null:cryptoUpdateIntent(routedQuestion,previous);
   const researchCandidate=contextOnly||projectNews||marketIntent||intent?null:generalResearchIntent(question);
   const requestedResearch=researchCandidate&&(researchCandidate.current||researchCandidate.explicit||researchCandidate.academic||researchCandidate.books||webQuestionIntent(question))?researchCandidate:null;
