@@ -108,16 +108,16 @@ function audibleSegment(samples, final = false) {
   const speech = ordered[Math.floor((ordered.length - 1) * 0.85)];
   // A steady floor throughout the clip provides little evidence of a spoken phrase.
   const upper = ordered[Math.floor((ordered.length - 1) * 0.97)];
-  if (upper < 0.00030 || (upper < 0.0015 && quiet > 0 && upper < quiet * 1.15)) return null;
+  if (upper < 0.00022 || (upper < 0.002 && quiet > 0 && upper < quiet * 1.20)) return null;
   // A clip may start mid-word. Cap the trim threshold relative to its louder frames.
-  const threshold = Math.max(0.00018, Math.min(quiet * 1.7, speech * 0.42));
+  const threshold = Math.max(0.00014, Math.min(quiet * 1.45, speech * 0.35));
   const first = levels.findIndex(level => level >= threshold);
   let last = levels.length - 1;
   while (last >= first && last >= 0 && levels[last] < threshold) last--;
   if (first < 0 || levels.filter(level => level >= threshold).length < 10) return null;
   const margin=final?16000:10400;
   const clip = clean.subarray(Math.max(0, first * 320 - margin), Math.min(clean.length, (last + 1) * 320 + margin));
-  const gain = Math.min(12, 0.92 / Math.max(peak, 0.0001), Math.max(1, 0.065 / Math.max(speech, threshold)));
+  const gain = Math.min(8, 0.90 / Math.max(peak, 0.0001), Math.max(1, 0.055 / Math.max(speech, threshold)));
   for (let i = 0; i < clip.length; i++) clip[i] *= gain;
   return clip;
 }
@@ -1182,31 +1182,41 @@ function joinedAudio(session) {
 
 // Whisper takes 16 kHz PCM; capture at the browser's hardware rate.
 // Measure pause duration in captured audio, independently of timers and model speed.
+function phrasePauseLimit(session){
+  const last=String(session.lastTranscript||session.nativeText||'').trim().toLowerCase().replace(/[.,!?;:]+$/,'');
+  const incomplete=/(?:^|\s)(?:e|o|ma|perché|perche|quindi|che|di|del|della|con|per|su|il|la|un|una|and|or|but|because|with|of|to|the|a|an|for|about)$/.test(last);
+  return (session.pauseLimit||3.4)+(incomplete?1.2:0);
+}
 function pauseEndsPhrase(session,rms,count){
-  const seconds=count/session.ctx.sampleRate;
-  if(!Number.isFinite(rms))rms=0;
+  const seconds=count/(session.sampleRate||session.ctx.sampleRate);
+  if(!Number.isFinite(seconds)||seconds<=0)return false;
+  if(!Number.isFinite(rms)||rms<0)rms=0;
   session.levelHistory.push(rms);
-  const windowSize=Math.max(1,Math.ceil(2/seconds));
+  const windowSize=Math.max(1,Math.min(256,Math.ceil(1.8/seconds)));
   if(session.levelHistory.length>windowSize)session.levelHistory.shift();
   const sorted=[...session.levelHistory].sort((a,b)=>a-b);
   const floor=sorted[Math.floor((sorted.length-1)*.15)];
-  // Keep the noise floor separate from the speech reference.
-  if(!session.speechStarted){
-    session.noiseFloor=session.noiseFloor===undefined?Math.min(floor,.004):
-      Math.min(.03,session.noiseFloor*.98+Math.min(floor,session.noiseFloor*1.2+.0001)*.02);
-  }
-  const noise=session.noiseFloor||.0001;
-  const reference=session.voiceReference||0;
-  const gate=Math.max(.00035,noise*1.7,reference*.075);
-  if(rms>gate){
+  // Do not classify a loud first syllable as the noise floor.
+  if(session.noiseFloor===undefined)session.noiseFloor=Math.min(floor,.0006);
+  const noise=Math.max(.00007,session.noiseFloor);
+  const reference=(session.voiceReference||0)*Math.exp(-seconds/1.0);
+  const gate=Math.max(.00022,noise*1.65,Math.min(.0015,reference*.025));
+  const voiced=rms>gate;
+  if(voiced){
     session.voiceReference=Math.max(rms,reference);
     session.speechSeconds+=seconds;
     session.pauseSeconds=0;
-    if(session.speechSeconds>=.12)session.speechStarted=true;
+    session.lastVoicedLength=session.length||0;
+    if(session.speechSeconds>=.10)session.speechStarted=true;
   }else{
+    session.voiceReference=reference;
     session.pauseSeconds+=seconds;
+    // Update the floor from quiet frames, not a window filled with preceding speech.
+    const target=Math.min(.025,floor,rms);
+    const weight=Math.min(.12,seconds*.7);
+    session.noiseFloor=Math.max(.00007,noise+(target-noise)*weight);
   }
-  return session.speechStarted&&session.speechSeconds>=.25&&session.pauseLimit>0&&session.pauseSeconds>=session.pauseLimit;
+  return session.speechStarted&&session.speechSeconds>=.20&&session.pauseSeconds>=phrasePauseLimit(session);
 }
 
 // Start model initialization as soon as microphone permission is granted,
@@ -1273,10 +1283,11 @@ function hasRecognitionLoop(text) {
 function normalizeVoiceTranscript(text,language='it'){
   const value=String(text||'').trim();
   if(!validItalianTranscript(value)||hasRecognitionLoop(value))return '';
-  let corrected=normalizeMarketTerms(value);
+  let corrected=value;
   if(language==='it'){
-    corrected=correctItalianDictation(corrected,false);
+    corrected=correctItalianDictation(value,false);
   }else{
+    corrected=normalizeMarketTerms(value);
     corrected=corrected.replace(/\bi m\b/gi,"I'm").replace(/\bi ve\b/gi,"I've");
   }
   return corrected;
@@ -1325,8 +1336,11 @@ function startLocalRecognition(session){
         text+=(text?' ':'')+value;
         if(event.results[i].isFinal)final+=(final?' ':'')+value;
       }
-      session.nativeFinal=final.trim();
+      const newFinal=final.trim();
+      if(newFinal&&newFinal!==session.nativeFinal)session.nativeFinalLength=session.length;
+      session.nativeFinal=newFinal;
       session.nativeText=text.trim();
+      session.nativeLastResultLength=session.length;
       updateDictation(session,text);
       if(session.phase==='listening')statusLine.textContent='Sto trascrivendo…';
     };
@@ -1335,7 +1349,8 @@ function startLocalRecognition(session){
       if(recording!==session||session.recognizer!==recognition)return;
       const final=session.nativeFinal;
       detachLocalRecognition(session,false);session.nativeActive=false;
-      if(session.phase==='transcribing'&&normalizeVoiceTranscript(final,session.language)&&final===session.nativeText){
+      const missedTail=(session.lastVoicedLength||0)-(session.nativeFinalLength||0)>(session.sampleRate||16000)*.75;
+      if(session.phase==='transcribing'&&!missedTail&&normalizeVoiceTranscript(final,session.language)&&final===session.nativeText){
         updateDictation(session,final);endVoice();submitQuestion(true);
       }else if(session.phase==='listening'||session.phase==='transcribing'){
         warmVoice(session);transcribeSoFar(session);
@@ -1405,8 +1420,9 @@ function transcribeSoFar(session) {
         if(recognized&&!data.notice){
           submitQuestion(true);
         }else{
-          input.value=session.original;
-          statusLine.textContent=data.notice||'Trascrizione non affidabile. Ripeti la domanda.';
+          const draft=normalizeVoiceTranscript(session.lastTranscript,session.language);
+          input.value=session.original+(draft?(session.original&&!/\s$/.test(session.original)?' ':'')+draft:'');
+          statusLine.textContent=draft?'Non ho verificato tutta la frase. Controlla il testo e invialo solo se è corretto.':(data.notice||'Trascrizione non affidabile. Ripeti la domanda.');
           setContinuousTalk(false);input.focus();
         }
       } else {
@@ -1502,7 +1518,7 @@ mic.onclick=()=>{
 async function beginVoiceListening(){
   if(!memoryReady||recording||question||speakingAnswer||document.hidden){setContinuousTalk(false);return;}
   el('speak-retry').hidden=true;
-  const session = {language:voiceLanguage,phase:'request', blocks:[], length:0, lastSent:0, pending:false, original:input.value, levelHistory:[], speechSeconds:0, pauseSeconds:0, pauseLimit:2.8};
+  const session = {language:voiceLanguage,phase:'request', blocks:[], length:0, lastSent:0, pending:false, original:input.value, levelHistory:[], speechSeconds:0, pauseSeconds:0, pauseLimit:3.4,lastVoicedLength:0,nativeLastResultLength:0};
   recording = session;
   voiceControls(true);
   setMicState('request');
@@ -1529,13 +1545,20 @@ async function beginVoiceListening(){
     session.source = session.ctx.createMediaStreamSource(stream);
     const onSamples = samples => {
       if (recording!==session || session.phase !== 'listening' || !samples?.length) return;
-      const part = samples.slice(0, session.sampleRate * 30 - session.length);
-      if(!part.length)return;
+      const part = samples.slice(0, Math.max(0,session.sampleRate * 30 - session.length));
+      if(!part.length){if(session.speechStarted)finishRecording();return;}
       const rms = updateWave(part);
       session.blocks.push(part);
       session.length += part.length;
+      const ended=pauseEndsPhrase(session,rms,part.length);
+      if(!session.speechStarted&&!session.pending){
+        const preRoll=Math.ceil(session.sampleRate*1.2);
+        while(session.blocks.length>1&&session.length-session.blocks[0].length>=preRoll){
+          session.length-=session.blocks.shift().length;
+        }
+      }
       if(session.nativeActive&&!session.nativeText&&session.speechSeconds>2.5)nativeFallback(session);
-      if (pauseEndsPhrase(session, rms, part.length) || session.length >= session.ctx.sampleRate * 30) finishRecording();
+      if(ended||(session.speechStarted&&session.length>=session.sampleRate*30))finishRecording();
       else transcribeSoFar(session);
     };
     session.processor=await createVoiceCapture(session,onSamples);
@@ -1583,17 +1606,17 @@ async function beginVoiceListening(){
       statusLine.textContent='Il microfono non invia audio. Controlla ingresso e permessi, poi riattivalo.';
     },5500);
     session.listenTimer=setTimeout(()=>{
-      if(recording!==session||session.phase!=='listening')return;
-      if(session.length&&session.speechStarted)finishRecording();
-      else {setContinuousTalk(false);endVoice();statusLine.textContent='Nessun audio ricevuto. Controlla il microfono e riprova.';}
-    },35000);
+      if(recording!==session||session.phase!=='listening'||session.speechStarted)return;
+      setContinuousTalk(false);input.value=session.original;endVoice();
+      statusLine.textContent='Non ho sentito una frase. Riattiva il microfono quando sei pronto a parlare.';
+    },45000);
     stream.getAudioTracks().forEach(track=>track.addEventListener('ended',()=>{
       if(recording===session&&session.phase==='listening')finishRecording();
     },{once:true}));
     mic.disabled = false;
     setMicState('on');
     el('chat').dataset.voice = 'on';
-    statusLine.textContent = 'Parla: trascrizione durante la dettatura. '+(session.pauseLimit?'Pausa di '+session.pauseLimit+' secondi per terminare. ':'Arresto manuale. ')+'Durata massima: 30 secondi.';
+    statusLine.textContent = 'Parla: trascrizione durante la dettatura. '+(session.pauseLimit?'Pausa naturale di circa '+session.pauseLimit+' secondi per terminare. ':'Arresto manuale. ')+'Durata massima: 30 secondi.';
   } catch (error) {
     if (recording !== session) return;
     setContinuousTalk(false);endVoice();
