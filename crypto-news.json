@@ -1,6 +1,10 @@
 {
-  "updatedAt": "2026-11-25T20:28:10.076983+00:00",
+  "updatedAt": "2026-11-25T20:31:32.490890+00:00",
   "sources": {
+    "Injective Official": {
+      "ok": true,
+      "items": 6
+    },
     "CoinDesk": {
       "ok": true,
       "items": 25
@@ -74,6 +78,12 @@
     }
   },
   "items": [
+    {
+      "title": "Rumor About Big Score on Nvidia Stock Surge Is Not Backed by Trading Records",
+      "url": "https://www.nytimes.com/2026/11/25/business/nvidia-stock-insider-trading-rumor.html",
+      "date": "2026-11-25T20:27:35+00:00",
+      "source": "NY Times Business"
+    },
     {
       "title": "Study Hard, Get Ahead?",
       "url": "https://www.nytimes.com/2026/11/25/world/youth-protests-education-tariffs-thanksgiving.html",
@@ -1875,6 +1885,14 @@
       "source": "BBC Business"
     },
     {
+      "title": "INJ Is Live on Base INJ is officially live on Base with Aero hosting day one liquidity and True Markets, Bitget Wallet, Maestro, 1inch, KyberSwap, Arcadia, and o1.exchange joining as launch partners.",
+      "url": "https://injective.com/blog/inj-on-base",
+      "date": "2026-11-24T00:00:00+00:00",
+      "source": "Injective Official",
+      "project": "INJ",
+      "datePrecision": "day"
+    },
+    {
       "title": "Trump Is Said to Have Pushed to Reinstate Nvidia CEO Jensen Huang",
       "url": "https://www.nytimes.com/2026/11/23/us/politics/trump-nvidia-huang.html",
       "date": "2026-11-23T23:41:29+00:00",
@@ -2403,6 +2421,14 @@
       "source": "NY Times Technology"
     },
     {
+      "title": "Injective Becomes the Largest Blockchain for Tokenized Real Estate as Publicly Traded Company Pentiv Surpasses $1.5 Billion in Onchain Mortgages Pentiv has added $524.8 million in prime mortgage records to Injective, taking its onchain mortgage registry past $1.5 billion. With this milestone, Injective becomes the largest blockchain for tokenized r",
+      "url": "https://injective.com/blog/injective-becomes-the-largest-blockchain-for-tokenized-real-estate-as-publicly-traded-company-pentiv-surpasses-1-5-billion-in-onchain-mortgages",
+      "date": "2026-11-19T00:00:00+00:00",
+      "source": "Injective Official",
+      "project": "INJ",
+      "datePrecision": "day"
+    },
+    {
       "title": "A.I. Makes More Tech Outages Likely, Microsoft’s Chief Warns",
       "url": "https://www.nytimes.com/2026/11/18/business/dealbook/microsoft-satya-nadella-outages-ai.html",
       "date": "2026-11-18T23:58:15+00:00",
@@ -2431,6 +2457,14 @@
       "url": "https://www.bbc.co.uk/sounds/play/w3ct8jyw?at_medium=RSS&at_campaign=rss",
       "date": "2026-11-17T20:30:00+00:00",
       "source": "BBC Technology"
+    },
+    {
+      "title": "Injective Partners With the University of Tokyo, Japan’s Top-Ranked University, to Advance Blockchain Innovation Injective is now a partner of the Endowed Chair for Blockchain Innovation at the University of Tokyo. The two sides will also explore potential collaboration across joint research, educational events, and talent development.",
+      "url": "https://injective.com/blog/university-of-tokyo",
+      "date": "2026-11-16T00:00:00+00:00",
+      "source": "Injective Official",
+      "project": "INJ",
+      "datePrecision": "day"
     },
     {
       "title": "Tech Now",
@@ -2487,6 +2521,14 @@
       "source": "Federal Reserve"
     },
     {
+      "title": "Injective Mainnet 5 Year Anniversary: A Year in Review Injective mainnet went live on November 8, 2021. Five years on, it is a blockchain where you can trade crypto, (public & Pre-IPO) stocks, FX and commodities onchain, settle in USDC natively, earn a share of ecosystem revenue and get INJ exposure through a U.S. ETF.",
+      "url": "https://injective.com/blog/5-year-injective-anniversary",
+      "date": "2026-11-08T00:00:00+00:00",
+      "source": "Injective Official",
+      "project": "INJ",
+      "datePrecision": "day"
+    },
+    {
       "title": "The engine parts that 'fight the laws of the universe'",
       "url": "https://www.bbc.co.uk/news/articles/cwe9lmp1pyyxo?at_medium=RSS&at_campaign=rss",
       "date": "2026-11-06T00:06:06+00:00",
@@ -2499,6 +2541,14 @@
       "source": "Federal Reserve"
     },
     {
+      "title": "INJC, The Canary Staked INJ ETF, Is Now Live on Nasdaq",
+      "url": "https://injective.com/blog/injc",
+      "date": "2026-11-05T00:00:00+00:00",
+      "source": "Injective Official",
+      "project": "INJ",
+      "datePrecision": "day"
+    },
+    {
       "title": "Graduates are managing AI - but are they learning much else?",
       "url": "https://www.bbc.co.uk/news/articles/c820vz6wyp65o?at_medium=RSS&at_campaign=rss",
       "date": "2026-11-04T00:04:35+00:00",
@@ -2509,6 +2559,14 @@
       "url": "https://www.bbc.co.uk/sounds/play/w3ct8jyt?at_medium=RSS&at_campaign=rss",
       "date": "2026-11-03T20:30:00+00:00",
       "source": "BBC Technology"
+    },
+    {
+      "title": "Introducing Injective Institutional Rail Injective Institutional Rail is a dedicated, institutional-grade gateway into Injective block production for banks, trading firms and enterprise applications, delivering predictable transaction inclusion with instant finality.",
+      "url": "https://injective.com/blog/introducing-injective-institutional-rail",
+      "date": "2026-11-02T00:00:00+00:00",
+      "source": "Injective Official",
+      "project": "INJ",
+      "datePrecision": "day"
     },
     {
       "title": "How video game remakes tap the power of nostalgia",
