@@ -3739,7 +3739,12 @@ async function answerProjectCryptoNews(request,signal){
     else if(failed&&!archive)result+='La ricerca web e l’archivio delle testate non sono raggiungibili in questo momento.';
     if(failed&&archive&&!hits.length)result+='\nRicerca web diretta non disponibile; consultato l’archivio delle testate'+(Number.isFinite(Date.parse(archive.updatedAt))?' aggiornato il '+dateFmt.format(new Date(archive.updatedAt)):'')+'.';
     if(officialHits.length)result+='\n\nLe fonti del progetto o degli sviluppatori sono fonti primarie; le loro affermazioni non costituiscono una verifica indipendente.';
-    if(!hits.length&&projectFeed?.checkedAt)result+='\n\nUltimo controllo dedicato: '+dateFmt.format(new Date(projectFeed.checkedAt))+(projectFeed.ok?' (nessun titolo pertinente nel periodo).':' (servizio di ricerca non raggiungibile).');
+    if(projectFeed?.checkedAt)result+='\n\nUltimo controllo dedicato: '+dateFmt.format(new Date(projectFeed.checkedAt))+(projectFeed.ok?' (ricerca completata).':' (ultimo tentativo non riuscito; eventuali risultati precedenti conservati).');
+    else if(!hits.length)result+='\n\nLa ricerca dedicata a '+name+' non risulta ancora completata nell’archivio.';
+    if(!hits.length){
+      const term=publicWebTopic(name);
+      if(term){const search=new URL('https://news.google.com/search');search.search=new URLSearchParams({q:'"'+term.replace(/["'’]/g,' ')+'" '+(symbol==='ORE'?'Solana ':'')+'(crypto OR blockchain OR token) when:'+request.newsDays+'d',hl:'it',gl:'IT',ceid:'IT:it'}).toString();result+='\nRicerca pubblica alternativa (apri nel browser): '+search.href;}
+    }
     if(!hits.length&&symbol==='INJ')result+='\n\nBlog ufficiale Injective: https://injective.com/blog';
     if(failed&&hits.length)result+='\n\nRisultati dalle fonti alternative: la ricerca web diretta non ha risposto.';
     if(sec.length)result+='\n\nComunicati ufficiali SEC:\n'+sec.map(a=>a.title+'\n'+dateFmt.format(new Date(a.date))+'\n'+a.url).join('\n');
