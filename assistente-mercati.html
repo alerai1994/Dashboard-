@@ -2488,46 +2488,72 @@ function cancelSpeech(keepLocalWorker=false){
   stopLocalSpeech(keepLocalWorker);
   try{window.speechSynthesis?.cancel();}catch{}
 }
-// Normalize only the spoken copy, never the displayed answer or stored values.
+// Normalize only speech, preserving exact written values and original sources.
+function vertexItalianSpokenNumber(raw){
+ const input=String(raw),negative=/^[-−]/.test(input),positive=input.startsWith('+');
+ let n=input.replace(/^[+−-]/,''),whole=n,decimal='';
+ if(n.includes(',')){const p=n.split(',');if(p.length===2){whole=p[0].replace(/\./g,'');decimal=p[1];}}
+ else if(/^\d{1,3}(?:\.\d{3})+$/.test(n)&&!n.startsWith('0.'))whole=n.replace(/\./g,'');
+ else if(/^\d+\.\d+$/.test(n)){[whole,decimal]=n.split('.');}
+ if(!/^\d+$/.test(whole)||decimal&&!/^\d+$/.test(decimal))return input;
+ const small=['zero','uno','due','tre','quattro','cinque','sei','sette','otto','nove','dieci','undici','dodici','tredici','quattordici','quindici','sedici','diciassette','diciotto','diciannove'];
+ const tens=['','','venti','trenta','quaranta','cinquanta','sessanta','settanta','ottanta','novanta'];
+ function integer(v){
+  if(v<20)return small[v];
+  if(v<100){const u=v%10,t=tens[Math.floor(v/10)];return (u===1||u===8?t.slice(0,-1):t)+(u?small[u]:'');}
+  if(v<1000){const h=Math.floor(v/100),rest=v%100;return (h===1?'':small[h])+(rest>=80&&rest<90?'cent':'cento')+(rest?integer(rest):'');}
+  for(const [scale,single,plural] of [[1e12,'un bilione',' bilioni'],[1e9,'un miliardo',' miliardi'],[1e6,'un milione',' milioni'],[1000,'mille','mila']]){
+   if(v>=scale){const count=Math.floor(v/scale),rem=v%scale;return (count===1?single:integer(count)+plural)+(rem?(scale===1000?'':' ')+integer(rem):'');}
+  }
+  return String(v);
+ }
+ const digits=s=>[...s].map(x=>small[Number(x)]).join(' ');
+ const head=whole.length>15||(/^0\d/.test(whole))?digits(whole):integer(Number(whole));
+ return (negative?'meno ':positive?'più ':'')+head+(decimal?' virgola '+digits(decimal):'');
+}
 function naturalSpeechText(value){
-  const acronyms={DEFI:'dèfi',CEFI:'sèfi',TECHBIG:'tech big',BTC:'bi ti ci',ETH:'i ti acca',INJ:'i enne gi',SOL:'Sol',ETF:'e ti effe',RSI:'erre esse i',MACD:'mac di',APY:'a pi ipsilon',APR:'a pi erre',TVL:'ti vu elle',DEX:'dex',CEX:'cex',USDC:'u esse di ci',USDT:'u esse di ti',FDV:'effe di vu','S&P':'esse e pi'};
-  const currencies={EUR:'euro',USD:'dollaro USA',GBP:'sterlina',JPY:'yen',CHF:'franco svizzero',CAD:'dollaro canadese',AUD:'dollaro australiano',NZD:'dollaro neozelandese'};
-  return String(value||'')
-    .replace(/!\[([^\]]*)\]\([^)]+\)/g,'$1')
-    .replace(/\[([^\]]+)\]\(https?:\/\/[^)]+\)/g,'$1')
-    .replace(/https?:\/\/[^\s]+/g,'')
-    .replace(/^[ \t]*(?:#{1,6}[ \t]*|[-*•][ \t]+|\d+[.)][ \t]+)/gm,'')
-    .replace(/[*#\x60]/g,'')
-    .replace(/\r\n?/g,'\n')
-    .replace(/^[ \t]*(?:Fonte|Fonti|Link|URL):[ \t]*$/gim,'')
-    .replace(/\b(?:ad es\.|p\. es\.)/gi,'per esempio')
-    .replace(/\becc\.(?=\s|$)/gi,'eccetera')
-    .replace(/(\d)[ \t]*%/g,'$1 per cento')
-    .replace(/€[ \t]*(?=\d)/g,'euro ')
-    .replace(/(\d)[ \t]*€/g,'$1 euro')
-    .replace(/\$[ \t]*(?=\d)/g,'dollari ')
-    .replace(/(\d)[ \t]*\$/g,'$1 dollari')
-    .replace(/(^|[\s(=:])([+\u2212-])(?=\d)/g,(_,before,sign)=>before+(sign==='+'?'più ':'meno '))
-    .replace(/\b(EUR|USD|GBP|JPY|CHF|CAD|AUD|NZD)\/(EUR|USD|GBP|JPY|CHF|CAD|AUD|NZD)\b/g,(_,a,b)=>currencies[a]+' contro '+currencies[b])
-    .replace(/\b(?:DeFi|CeFi|TechBig)\b/gi,t=>acronyms[t.toUpperCase()])
-    .replace(/\b(?:BTC|ETH|SOL|INJ|ETF|RSI|MACD|APY|APR|TVL|DEX|CEX|USDC|USDT|FDV|S&P)\b/g,t=>acronyms[t])
-    .replace(/[ \t]+/g,' ').replace(/ *\n */g,'\n').trim();
+ const acronyms={DEFI:'dèfi',CEFI:'sèfi',TECHBIG:'tech big',BTC:'bi ti ci',ETH:'e ti acca',INJ:'i enne gi',SOL:'Sol',BNB:'bi enne bi',XRP:'ics erre pi',ADA:'Ada',ORE:'o erre e',VRA:'vi erre a',LUNC:'elle u enne ci',WLFI:'doppia vu elle effe i',TAI:'Tai',ETF:'e ti effe',ETN:'e ti enne',ETP:'e ti pi',BTP:'bi ti pi',BCE:'bi ci e',FED:'Fed',FOMC:'effe o emme ci',PIL:'pil',GDP:'gi di pi',RSI:'erre esse i',MACD:'mac di',EMA:'e emme a',SMA:'esse emme a',VWAP:'vi uap',APY:'a pi ipsilon',APR:'a pi erre',TVL:'ti vu elle',DEX:'dex',CEX:'cex',USDC:'u esse di ci',USDT:'u esse di ti',FDV:'effe di vu',NFT:'enne effe ti',SEC:'esse e ci','S&P':'esse e pi'};
+ const currencies={EUR:'euro',USD:'dollari statunitensi',GBP:'sterline',JPY:'yen',CHF:'franchi svizzeri',CAD:'dollari canadesi',AUD:'dollari australiani',NZD:'dollari neozelandesi'};
+ const months=['','gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
+ return String(value||'')
+  .replace(/!\[([^\]]*)\]\([^)]+\)/g,'$1')
+  .replace(/\[([^\]]+)\]\(https?:\/\/[^)]+\)/g,'$1')
+  .replace(/https?:\/\/[^\s]+/g,'')
+  .replace(/\r\n?/g,'\n')
+  .replace(/^[ \t]*(?:#{1,6}[ \t]*|[-*•][ \t]+|\d+[.)][ \t]+)/gm,'')
+  .replace(/[*#\x60]/g,'')
+  .replace(/^[ \t]*(?:Fonte|Fonti|Link|URL):[ \t]*$/gm,'')
+  .replace(/\b(?:ad es\.|p\. es\.)/gi,'per esempio')
+  .replace(/\becc\.(?=\s|$)/gi,'eccetera')
+  .replace(/\b(EUR|USD|GBP|JPY|CHF|CAD|AUD|NZD)\/(EUR|USD|GBP|JPY|CHF|CAD|AUD|NZD)\b/g,(_,a,b)=>currencies[a]+' contro '+currencies[b])
+  .replace(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/g,(all,d,m,y)=>Number(d)>=1&&Number(d)<=31&&months[Number(m)]?d+' '+months[Number(m)]+' '+y:all)
+  .replace(/\b(\d{1,2}):([0-5]\d)\b/g,(_,h,m)=>'ore '+h+(m==='00'?' in punto':' e '+Number(m)))
+  .replace(/€[ \t]*([+−-]?\d[\d.,]*\d|[+−-]?\d)/g,'$1 euro')
+  .replace(/\$[ \t]*([+−-]?\d[\d.,]*\d|[+−-]?\d)/g,'$1 dollari')
+  .replace(/(\d)[ \t]*€/g,'$1 euro')
+  .replace(/(\d)[ \t]*\$/g,'$1 dollari')
+  .replace(/(\d)[ \t]*%/g,'$1 per cento')
+  .replace(/(\d)\s*[×x](?![\p{L}\p{N}])/gu,'$1 volte')
+  .replace(/\b(?:DeFi|CeFi|TechBig)\b/gi,t=>acronyms[t.toUpperCase()])
+  .replace(/\b(?:BTC|ETH|INJ|SOL|BNB|XRP|ADA|ORE|VRA|LUNC|WLFI|TAI|ETF|ETN|ETP|BTP|BCE|FED|FOMC|PIL|GDP|RSI|MACD|EMA|SMA|VWAP|APY|APR|TVL|DEX|CEX|USDC|USDT|FDV|NFT|SEC|S&P)\b/g,t=>acronyms[t])
+  .replace(/\b(?:EUR|USD|GBP|JPY|CHF|CAD|AUD|NZD)\b/g,t=>currencies[t])
+  .replace(/(^|[\s(=:])([+−-]?\d+(?:[.,]\d+)*)(?![\p{L}\p{N}.,])/gu,(_,prefix,num)=>prefix+vertexItalianSpokenNumber(num))
+  .replace(/(^|[\s(=:])([+−-]?\d+(?:[.,]\d+)*)(?=[.,](?:\s|$))/gu,(_,prefix,num)=>prefix+vertexItalianSpokenNumber(num))
+  .replace(/[ \t]+/g,' ').replace(/ *\n */g,'\n').trim();
 }
 function speechChunks(value){
-  // Short complete clauses avoid long-utterance stalls in mobile and Chromium.
-  const chunks=[];let part='';
-  function flush(){if(part.trim())chunks.push(part.trim());part='';}
-  for(const paragraph of naturalSpeechText(value).split('\n').filter(Boolean)){
-    for(const word of paragraph.split(/\s+/)){
-      if(part&&part.length+word.length+1>180)flush();
-      part+=(part?' ':'')+word;
-      const sentence=/[!?]$/.test(word)||(/\.$/.test(word)&&!/(?:\b(?:sig|dott|dr|prof|ecc|es|ca|art|n|vs|fig)|\b[A-Z])\.$/i.test(word));
-      if(sentence&&part.length>=55)flush();
-      else if(/[;:,]$/.test(word)&&part.length>=125)flush();
-    }
-    if(part){if(!/[.!?;:]$/.test(part))part+='.';flush();}
+ const chunks=[];let part='';
+ function flush(){if(part.trim())chunks.push(part.trim());part='';}
+ for(const paragraph of naturalSpeechText(value).split('\n').filter(Boolean)){
+  for(const word of paragraph.split(/\s+/)){
+   if(part&&part.length+word.length+1>190)flush();
+   part+=(part?' ':'')+word;
+   if(/[.!?]["»”]?$/.test(word)&&!/\b(?:sig|dott|dr|prof|ecc|es|ca|art|n|vs|fig)\.$/i.test(word)&&part.length>=45)flush();
+   else if(/[;:,]$/.test(word)&&part.length>=105)flush();
   }
-  return chunks;
+  if(part){if(!/[.!?;:]["»”]?$/.test(part))part+='.';flush();}
+ }
+ return chunks;
 }
 function italianSpeechVoice(voices){
   const italian=voices.filter(v=>/^it(?:[-_]|$)/i.test(v.lang||''));
@@ -2540,7 +2566,7 @@ function vertexSpeechProsody(chunk){
  const phrase=String(chunk||'').trim();
  const question=/\?["»”]?$/.test(phrase),exclaim=/!["»”]?$/.test(phrase);
  const numeric=(phrase.match(/\d+(?:[.,]\d+)*/g)||[]).length>=3;
- return {rate:numeric?.93:question?.97:.98,pitch:question?1.035:exclaim?1.025:1, pause:question?210:/[.!]["»”]?$/.test(phrase)?180:/[;:]$/.test(phrase)?115:/,$/.test(phrase)?75:20};
+ return {rate:numeric?.93:question?.97:.98,pitch:question?1.035:exclaim?1.025:1, pause:question?170:/[.!]["»”]?$/.test(phrase)?180:/[;:]$/.test(phrase)?115:/,$/.test(phrase)?75:20};
 }
 function naturalSpeechPause(chunk){return vertexSpeechProsody(chunk).pause;}
 function speakAnswer(answer,resumeIndex=0){
@@ -2598,11 +2624,11 @@ function speakAnswer(answer,resumeIndex=0){
       refreshSpeechVoices();
       const voice=italianSpeechVoice(availableSpeechVoices);
       // If the selected system voice fails, let the browser choose an Italian voice.
-      if(voice&&attempt===0)u.voice=voice;
+      if(voice)u.voice=voice;
       u.onstart=()=>{
         if(generation!==speechGeneration||activeUtterance!==u)return;
         clearTimeout(speechTimer);
-        speechTimer=setTimeout(retryChunk,45000);
+        speechTimer=setTimeout(retryChunk,Math.max(45000,chunks[index].length*260));
       };
       u.onend=()=>{
         if(generation!==speechGeneration||activeUtterance!==u)return;
@@ -2619,7 +2645,7 @@ function speakAnswer(answer,resumeIndex=0){
         }else {try{synth.cancel();}catch{}useLocal=true;next();}
       }
       u.onerror=retryChunk;
-      speechTimer=setTimeout(retryChunk,8000);
+      speechTimer=setTimeout(retryChunk,15000);
       if(synth.paused)synth.resume();
       synth.speak(u);
     }catch{useLocal=true;next();}
