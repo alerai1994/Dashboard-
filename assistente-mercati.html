@@ -2913,18 +2913,35 @@ async function vertexGatherResearch(intent,signal){
 }
 async function fetchCryptoFile(path,signal){
   if(signal?.aborted)throw Error('Annullato');
-  const key='feed:'+path;
-  const cached=vertexCachedPublic(key);if(cached!==undefined)return cached;
+  if(!/^[a-z0-9-]+\.json$/.test(path))throw Error('Feed non valido');
+  const key='feed:'+path,cached=vertexCachedPublic(key);if(cached!==undefined)return cached;
   const controller=new AbortController(),abort=()=>controller.abort();
   signal?.addEventListener('abort',abort,{once:true});
-  const timer=setTimeout(abort,5000);
+  const timer=setTimeout(abort,8500);
+  const version=Math.floor(Date.now()/60000);
+  const sources=['./'+path+'?v='+version,'https://raw.githubusercontent.com/alerai1994/Dashboard-/main/'+path+'?v='+version];
+  const load=async url=>{
+    const response=await fetch(url,{cache:'no-store',signal:controller.signal,credentials:'omit',referrerPolicy:'no-referrer'});
+    if(!response.ok)throw Error('Feed non disponibile');
+    const data=await response.json();
+    if(!data||typeof data!=='object')throw Error('Feed non valido');
+    return data;
+  };
   try{
-    const r=await fetch('./'+path+'?v='+Math.floor(Date.now()/60000),{cache:'no-store',signal:controller.signal});
-    if(!r.ok)throw Error('Feed non disponibile');
-    const data=await r.json();
-    if(controller.signal.aborted)throw Error('Annullato');
+    let data;
+    if(path==='crypto-news.json'||path==='sec-news.json'){
+      // Prefer the newest archive, independently of the browser and deployment cache.
+      const results=await Promise.allSettled(sources.map(load));
+      const available=results.filter(r=>r.status==='fulfilled').map(r=>r.value);
+      if(!available.length)throw Error('Archivi non raggiungibili');
+      const freshness=d=>{const t=Date.parse(d.updatedAt||d.generatedAt||'');return Number.isFinite(t)?t:Math.max(0,...(Array.isArray(d.items)?d.items.slice(0,20).map(x=>Date.parse(x.date)||0):[]));};
+      data=available.sort((a,b)=>freshness(b)-freshness(a))[0];
+    }else{
+      try{data=await Promise.any(sources.map(load));}catch{throw Error('Feed non disponibile');}
+    }
+    if(signal?.aborted)throw Error('Annullato');
     return vertexCachePublic(key,data,12000);
-  }finally{clearTimeout(timer);signal?.removeEventListener('abort',abort);}
+  }finally{clearTimeout(timer);controller.abort();signal?.removeEventListener('abort',abort);}
 }
 function publicWebTopic(text){
   const value=String(text).trim();
@@ -2957,24 +2974,41 @@ function cleanWebText(value,max=450){
 async function webNews(topic,signal){
   const clean=publicWebTopic(topic);
   if(!clean)return [];
-  const url=new URL('https://api.gdeltproject.org/api/v2/doc/doc');
-  const terms=clean.replace(/["'’]/g,' ').trim();
-  url.search=new URLSearchParams({query:'"'+terms+'" sourcelang:italian',mode:'artlist',format:'json',maxrecords:'10',timespan:'7d',sort:'datedesc'}).toString();
-  const data=await publicWebJSON(url,signal);
-  const seen=new Set();
-  return (Array.isArray(data.articles)?data.articles:[]).flatMap(a=>{
-    const link=safeArticleURL(a.url),title=cleanWebText(a.title,260);
-    if(!link||!title||seen.has(title.toLocaleLowerCase('it')))return [];
-    const domain=new URL(link).hostname;
-    const date=String(a.seendate||'').match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/);
-    const stamp=date?Date.parse(date[1]+'-'+date[2]+'-'+date[3]+'T'+date[4]+':'+date[5]+':'+date[6]+'Z'):NaN;
-    if(!Number.isFinite(stamp)||stamp>Date.now()+300000||Date.now()-stamp>8*86400000)return [];
-    seen.add(title.toLocaleLowerCase('it'));
-    return [{title,link,domain,date:new Intl.DateTimeFormat('it-IT',{dateStyle:'short',timeZone:'Europe/Rome'}).format(new Date(stamp))}];
-  }).slice(0,4);
+  const keywords=marketFold(clean).split(' ').filter(Boolean);
+  const rows=await researchPublicNews({keywords,current:true},signal);
+  return rows.filter(a=>Date.now()-a.stamp<=7*86400000).map(a=>({...a,date:new Intl.DateTimeFormat('it-IT',{dateStyle:'short',timeZone:'Europe/Rome'}).format(new Date(a.stamp))})).slice(0,6);
+}
+// Published headlines and search-index records use the same normalized structure.
+function vertexArchiveRows(feed,{days=7,hours=null,today=false,match=()=>true}={},now=Date.now()){
+  const limit=(hours?hours/24:days)*86400000;
+  const day=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit'});
+  return (Array.isArray(feed?.items)?feed.items:[]).flatMap(a=>{
+    const stamp=Date.parse(a.date),link=safeArticleURL(a.url),title=cleanWebText(a.title,350);
+    if(!link||!title||!Number.isFinite(stamp)||stamp>now+300000||now-stamp>limit||today&&day.format(new Date(stamp))!==day.format(new Date(now))||!match(title,a))return [];
+    return [{title,link,stamp,domain:new URL(link).hostname,source:cleanWebText(a.source,100)||new URL(link).hostname,published:true}];
+  });
+}
+function vertexMergeNews(rows,limit=8){
+  const seen=new Set(),urls=new Set(),domains=new Map(),result=[];
+  for(const a of [...rows].sort((a,b)=>b.stamp-a.stamp)){
+    const title=marketFold(a.title),url=a.link.split(/[?#]/)[0],domain=a.domain.replace(/^www\./,'');
+    if(seen.has(title)||urls.has(url)||(domains.get(domain)||0)>=3)continue;
+    seen.add(title);urls.add(url);domains.set(domain,(domains.get(domain)||0)+1);result.push(a);
+    if(result.length>=limit)break;
+  }
+  return result;
+}
+function vertexMarketArchiveMatch(title,intent){
+  const key=marketFold(title);
+  const specific=intent.assets.length||intent.coins.length||intent.specificMacro.length;
+  const terms=intent.terms.map(marketFold).filter(t=>t.length>=3);
+  if(terms.some(t=>containsMarketPhrase(key,t)))return true;
+  if(specific)return false;
+  const categories={crypto:/\b(?:crypto|cripto|bitcoin|ethereum|solana|blockchain|stablecoin|defi|token)\b/,forex:/\b(?:forex|currency|currencies|dollar|dollaro|euro|yen|sterling|exchange rate)\b/,etf:/\b(?:etf|etfs|exchange traded fund)\b/,commodities:/\b(?:oil|petrolio|gold|oro|silver|argento|copper|gas|commodities)\b/,bigtech:/\b(?:technology|tech|ai|nvidia|apple|microsoft|alphabet|amazon|meta|semiconductor)\b/,mercati:/\b(?:market|markets|stock|stocks|shares|borsa|mercati|azioni|crypto|bitcoin|etf|forex|inflation|fed|bce|oil|gold|bond|economy|economia|dollar|rates|trade)\b/,azioni:/\b(?:stock|stocks|shares|equity|earnings|borsa|azioni|nasdaq|dow jones)\b/,indici:/\b(?:nasdaq|dow jones|s p 500|ftse|dax|indices|index|indici)\b/};
+  return intent.groups.some(g=>categories[g]?.test(key));
 }
 function formatWebNews(articles){
-  return articles.length?'Titoli trovati sul web negli ultimi 7 giorni (indicizzati da GDELT; non verificati nel testo integrale):\n'+articles.map(a=>a.date+' — '+a.domain+': '+a.title+'\n'+a.link).join('\n'):'Nessun titolo pertinente restituito dalla ricerca web. Non significa che non esistano altre notizie.';
+  return articles.length?'Titoli trovati nelle fonti disponibili negli ultimi 7 giorni (testo integrale non verificato):\n'+articles.map(a=>a.date+(a.published?' (pubblicazione)':' (indicizzazione)')+' — '+(a.source||a.domain)+': '+a.title+'\n'+a.link).join('\n'):'Nessun titolo pertinente restituito dalla ricerca web. Non significa che non esistano altre notizie.';
 }
 function webQuestionIntent(text){
   const q=String(text).trim().replace(/^(?:search|look up|check) (?:the web for|online for|online)\s+/i,'cerca sul web ').replace(/^(?:latest news|news|updates) (?:on|about)\s+/i,'notizie su ').replace(/^(?:what is|what are|what's|who is|who's)\s+/i,'cosa è ');
@@ -3048,18 +3082,23 @@ async function researchWikipedia(intent,signal){
   }).slice(0,2);
 }
 async function researchPublicNews(intent,signal){
-  const terms=publicResearchTerms(intent);if(!terms.length)return [];
-  const url=new URL('https://api.gdeltproject.org/api/v2/doc/doc');
-  const query=terms.map(t=>'"'+t+'"').join(' ');
-  url.search=new URLSearchParams({query,mode:'artlist',format:'json',maxrecords:'35',timespan:intent.current?'30d':'90d',sort:'datedesc'}).toString();
-  const data=await publicWebJSON(url,signal,5500);
-  const seen=new Set();
-  return (Array.isArray(data?.articles)?data.articles:[]).flatMap(a=>{
-    const link=safeArticleURL(a.url),title=cleanWebText(a.title,280),stamp=marketNewsDate(a.seendate);
-    if(!link||!title||!Number.isFinite(stamp)||stamp>Date.now()+300000||Date.now()-stamp>(intent.current?30:90)*86400000||!publicResearchRelevant(title,intent)||seen.has(questionKey(title)))return [];
-    seen.add(questionKey(title));
-    return [{title,link,source:new URL(link).hostname,stamp,kind:'headline'}];
-  }).sort((a,b)=>b.stamp-a.stamp).slice(0,4);
+  const terms=publicResearchTerms(intent);
+  const live=async()=>{
+    const url=new URL('https://api.gdeltproject.org/api/v2/doc/doc');
+    const query=terms.map(t=>'"'+t+'"').join(' ');
+    if(!query)return [];
+    url.search=new URLSearchParams({query,mode:'artlist',format:'json',maxrecords:'35',timespan:intent.current?'30d':'90d',sort:'datedesc'}).toString();
+    const data=await publicWebJSON(url,signal,6500);
+    return (Array.isArray(data?.articles)?data.articles:[]).flatMap(a=>{
+      const link=safeArticleURL(a.url),title=cleanWebText(a.title,280),stamp=marketNewsDate(a.seendate);
+      if(!link||!title||!Number.isFinite(stamp)||stamp>Date.now()+300000||Date.now()-stamp>(intent.current?30:90)*86400000||!publicResearchRelevant(title,intent))return [];
+      return [{title,link,domain:new URL(link).hostname,stamp}];
+    });
+  };
+  const [web,archive]=await Promise.allSettled([live(),fetchCryptoFile('crypto-news.json',signal)]);
+  if(web.status==='rejected'&&archive.status==='rejected')throw Error('Fonti non raggiungibili');
+  const rows=archive.status==='fulfilled'?vertexArchiveRows(archive.value,{days:intent.current?30:90,match:title=>publicResearchRelevant(title,intent)}):[];
+  return vertexMergeNews([...rows,...(web.status==='fulfilled'?web.value:[])],6).map(a=>({...a,source:a.source||a.domain,kind:'headline'}));
 }
 async function researchCrossref(intent,signal){
   const url=new URL('https://api.crossref.org/works');
@@ -3096,8 +3135,8 @@ function formatGeneralResearch(intent,settled){
     spoken.push(lead+' '+first.extract);
   }
   if(news.length){
-    const lead='Per quanto riguarda le notizie, ho trovato '+news.length+(news.length===1?' titolo pertinente.':' titoli pertinenti.')+' Le date si riferiscono all’indicizzazione, non necessariamente alla pubblicazione.';
-    parts.push(lead+'\n'+news.map(r=>r.title+'\nFonte: '+r.source+' — '+date.format(new Date(r.stamp))+'\n'+r.link).join('\n\n'));
+    const lead='Per quanto riguarda le notizie, ho trovato '+news.length+(news.length===1?' titolo pertinente.':' titoli pertinenti.')+' Le date indicano la pubblicazione se disponibile, altrimenti l’indicizzazione.';
+    parts.push(lead+'\n'+news.map(r=>r.title+'\nFonte: '+r.source+' — '+date.format(new Date(r.stamp))+(r.published?' (pubblicazione)':' (indicizzazione)')+'\n'+r.link).join('\n\n'));
     spoken.push(lead+' Il più recente è: '+news[0].title+'.');
   }else if(intent.current){
     parts.push('Non ho trovato abbastanza notizie recenti per dirti con certezza com’è la situazione adesso.');
@@ -3469,11 +3508,19 @@ function marketNewsArticles(data,intent,now=Date.now()){
 }
 async function queryMarketNews(intent,signal){
   const terms=intent.terms.map(t=>publicWebTopic(t)).filter(Boolean).map(t=>'"'+t.replace(/["'’]/g,' ').trim()+'"');
-  if(!terms.length)return [];
-  const url=new URL('https://api.gdeltproject.org/api/v2/doc/doc');
-  const query=terms.length===1?terms[0]:'('+terms.join(' OR ')+')';
-  url.search=new URLSearchParams({query,mode:'artlist',format:'json',maxrecords:'40',timespan:intent.requestedHours?Math.max(1,Math.min(720,intent.requestedHours))+'h':intent.newsDays+'d',sort:'datedesc'}).toString();
-  return marketNewsArticles(await publicWebJSON(url,signal,8000),intent);
+  const live=async()=>{
+    if(!terms.length)return [];
+    const url=new URL('https://api.gdeltproject.org/api/v2/doc/doc');
+    const query=terms.length===1?terms[0]:'('+terms.join(' OR ')+')';
+    url.search=new URLSearchParams({query,mode:'artlist',format:'json',maxrecords:'40',timespan:intent.requestedHours?Math.max(1,Math.min(720,intent.requestedHours))+'h':intent.newsDays+'d',sort:'datedesc'}).toString();
+    return marketNewsArticles(await publicWebJSON(url,signal,8000),intent);
+  };
+  const [web,archive]=await Promise.allSettled([live(),fetchCryptoFile('crypto-news.json',signal)]);
+  if(web.status==='rejected'&&archive.status==='rejected')throw Error('Fonti non raggiungibili');
+  const rows=archive.status==='fulfilled'?vertexArchiveRows(archive.value,{days:intent.newsDays,hours:intent.requestedHours,today:intent.today,match:title=>vertexMarketArchiveMatch(title,intent)}):[];
+  const result=vertexMergeNews([...rows,...(web.status==='fulfilled'?web.value:[])],8);
+  result.coverage={web:web.status==='fulfilled',archive:archive.status==='fulfilled',updatedAt:archive.value?.updatedAt};
+  return result;
 }
 function marketOfficialNews(feed,intent,now=Date.now()){
   const terms=intent.terms.map(marketFold);
@@ -3528,7 +3575,8 @@ async function answerAllMarkets(intent,signal){
     const period=intent.today?'di oggi (ora italiana)':intent.requestedHours?'delle ultime '+intent.requestedHours+' ore':'degli ultimi '+intent.newsDays+' giorni';
     const hits=news.status==='fulfilled'?news.value:[];
     parts.push('Notizie '+period+' — '+(intent.terms.slice(0,4).join(', ')||'mercati')+'.');
-    parts.push(news.status!=='fulfilled'?'Ricerca web non disponibile in questo momento.':hits.length?'Titoli indicizzati da GDELT (data e ora di indicizzazione, non necessariamente di pubblicazione; testo integrale non verificato):\n'+hits.map(a=>dateFmt.format(new Date(a.stamp))+' — '+a.domain+': '+a.title+'\n'+a.link).join('\n'):'Nessun titolo pertinente restituito dalle fonti consultate. Questo non significa che non ci siano notizie.');
+    parts.push(news.status!=='fulfilled'?'Ricerca web non disponibile in questo momento.':hits.length?'Titoli dalle fonti disponibili (testo integrale non verificato):\n'+hits.map(a=>dateFmt.format(new Date(a.stamp))+(a.published?' (pubblicazione)':' (indicizzazione)')+' — '+(a.source||a.domain)+': '+a.title+'\n'+a.link).join('\n'):'Nessun titolo pertinente restituito dalle fonti consultate. Questo non significa che non ci siano notizie.');
+    if(hits.coverage&&!hits.coverage.web&&hits.coverage.archive)parts.push('Ricerca web diretta non disponibile; consultato l’archivio delle testate'+(Number.isFinite(Date.parse(hits.coverage.updatedAt))?' aggiornato il '+dateFmt.format(new Date(hits.coverage.updatedAt)):'')+'.');
     const official=marketOfficialNews(sec.status==='fulfilled'?sec.value:null,intent);
     if(official.length)parts.push('Comunicati ufficiali SEC:\n'+official.map(a=>dateFmt.format(new Date(a.date))+' — '+a.title+'\n'+a.url).join('\n'));
     else if(sec.status==='rejected')parts.push('Archivio SEC non raggiungibile.');
@@ -3618,7 +3666,7 @@ function mergeCryptoHeadlines(publisher,web){
 function cryptoNewsNarrative(coin,request,hits,sec,unavailable){
   const name=coin.name;
   const period=request.today?'oggi':request.requestedHours?'nelle ultime '+request.requestedHours+' ore':'negli ultimi '+request.newsDays+' giorni';
-  if(!hits.length&&!sec.length)return unavailable?'Per '+name+', non riesco a consultare tutte le fonti delle notizie in questo momento. Non posso confermare novità recenti.':'Su '+name+' non ho trovato novità pertinenti '+period+'. Potrebbero esserci aggiornamenti che le fonti consultate non riportano.';
+  if(!hits.length&&!sec.length)return unavailable?'Per '+name+', non ho trovato titoli pertinenti nelle fonti disponibili; una parte della ricerca non è raggiungibile. Non posso confermare novità recenti.':'Su '+name+' non ho trovato novità pertinenti '+period+'. Potrebbero esserci aggiornamenti che le fonti consultate non riportano.';
   const topics=[
     [/delist|rimozione dalla quotazione/,'possibili rimozioni dagli exchange'],
     [/\b(?:listing|listed|lists|quotazione|quotato|quotata)\b/,'quotazioni sugli exchange'],
@@ -3876,7 +3924,7 @@ async function submitQuestion(fromVoice=false){
   const research=requestedResearch;
   if(research){
     const controller=new AbortController();cryptoUpdateController=controller;
-    const timeout=setTimeout(()=>controller.abort(),8500);
+    const timeout=setTimeout(()=>controller.abort(),14000);
     statusLine.textContent='Ricerca e confronto delle fonti pubbliche…';
     try{
       const answer=await answerGeneralResearch(research,controller.signal);
