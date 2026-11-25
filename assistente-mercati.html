@@ -61,11 +61,11 @@ main{padding-bottom:4rem}.lightbar{position:fixed;bottom:0;left:0;right:0;height
 #mic,#cancel-voice,#send,#stop{min-height:44px;touch-action:manipulation}#question{font-size:16px}button:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}#status{overflow-wrap:anywhere}main{padding-bottom:calc(4rem + env(safe-area-inset-bottom,0px))}
 
 #download-agent{min-height:44px;touch-action:manipulation;margin:.25rem 0}
-.chat-memory-actions{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}.chat-memory-actions button{min-height:44px;touch-action:manipulation}#memory-status{font-size:.82rem;opacity:.85;margin:.5rem 0 1rem}#close-assistant{flex-shrink:0}
+.chat-memory-actions{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}.chat-memory-actions button{min-height:44px;touch-action:manipulation}#memory-status{display:none!important}#close-assistant{flex-shrink:0}
 </style></head><body><header><div class="chat-memory-actions"><button id="reset">Nuova chat</button><button id="clear-memory" type="button">Cancella memoria</button></div><a id="close-assistant" href="./index.html?from=assistant" aria-label="Chiudi assistente vocale" title="Chiudi assistente vocale">×</a></header>
 <main>
 <h1>Assistente mercati</h1><p>Parla con Vertex di azioni, indici, ETF, obbligazioni, valute, materie prime e cripto. Per un’analisi attuale, includi la quotazione e la data.</p>
-<p id="memory-status" role="status"></p><section id="log" role="log" aria-label="Conversazione"></section>
+<p id="memory-status" hidden aria-hidden="true" style="display:none!important"></p><section id="log" role="log" aria-label="Conversazione"></section>
 <form id="chat"><label for="question">La tua domanda</label><textarea id="question" rows="3" placeholder="Che differenza c’è tra un BTP e un ETF obbligazionario?" required></textarea>
 <small>La dettatura locale scarica il modello vocale al primo utilizzo e mantiene audio e trascrizione sul dispositivo. Al primo invio il browser scarica il modello (circa 512 MB) e i componenti necessari.</small>
 
