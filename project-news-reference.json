@@ -1,0 +1,22 @@
+{
+  "items": [
+    {
+      "title": "INJ è disponibile sulla rete Base",
+      "url": "https://injective.com/blog/inj-on-base",
+      "date": "2026-11-24",
+      "source": "Injective Official",
+      "project": "INJ",
+      "datePrecision": "day",
+      "summary": "Injective ha annunciato il lancio di INJ su Base, con Aero come fonte iniziale di liquidità e diverse applicazioni partner."
+    },
+    {
+      "title": "Injective: oltre 1,5 miliardi di dollari di mutui tokenizzati da Pentiv",
+      "url": "https://injective.com/blog/injective-becomes-the-largest-blockchain-for-tokenized-real-estate-as-publicly-traded-company-pentiv-surpasses-1-5-billion-in-onchain-mortgages",
+      "date": "2026-11-19",
+      "source": "Injective Official",
+      "project": "INJ",
+      "datePrecision": "day",
+      "summary": "Secondo il progetto, Pentiv ha aggiunto 524,8 milioni di dollari di registrazioni di mutui alla blockchain."
+    }
+  ]
+}
