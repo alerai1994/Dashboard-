@@ -738,13 +738,15 @@ const definitionPhrasePatterns=[...definitionPhrasesIT,...definitionPhrasesEN].m
   return new RegExp('^'+questionKey(before)+'\\s+(.+?)'+(after.trim()?'\\s+'+questionKey(after):'')+'$');
 });
 const linguisticWrappers={"it":{"prefix":["","vertex","ciao vertex","ehi vertex","buongiorno vertex","buonasera vertex","ascolta vertex","scusa vertex"],"suffix":["","per favore","grazie","se puoi","se ti è possibile"]},"en":{"prefix":["","vertex","hello vertex","hey vertex","good morning vertex","good evening vertex","listen vertex","excuse me vertex"],"suffix":["","please","thank you","if you can","if possible"]}};
+const linguisticLeadins={"it":["","ho una domanda","avrei una domanda","ho un dubbio","avrei un dubbio","ho bisogno di un chiarimento","vorrei un chiarimento","mi serve un chiarimento","mi serve un informazione","vorrei un informazione","ti faccio una domanda","ti chiedo una cosa","ti posso chiedere una cosa","posso farti una domanda","posso chiederti una cosa","una domanda veloce","una domanda semplice","una piccola domanda","una domanda per te","un piccolo dubbio","a proposito","a proposito di questo","cambiando argomento","passando a un altro argomento","ora un altra domanda","adesso una domanda","ancora una domanda","una curiosità","per curiosità","per capire meglio","per imparare","per approfondire","per informarmi","per orientarmi","per chiarire un dubbio","per farmi un idea","per avere un quadro più chiaro","per capire il concetto","mi aiuti con una domanda","mi interessa una cosa"],"en":["","i have a question","i have a quick question","i have a simple question","i have a small question","i have another question","i have one more question","i have a doubt","i need some clarification","i would like some clarification","i need some information","i would like some information","let me ask you something","can i ask you something","may i ask you something","can i ask a question","a quick question","a simple question","a small question","a question for you","one more thing","by the way","on another topic","changing the subject","moving to another topic","now another question","here is a question","just out of curiosity","out of curiosity","for my understanding","to understand better","to learn more","for reference","for my information","to clarify something","to get a better idea","to get a clearer picture","to understand the concept","help me with a question","i am curious about something"]};
+const definitionPrefixes=[...new Set(Object.values(linguisticWrappers).flatMap(x=>x.prefix).filter(Boolean).map(questionKey))].sort((a,b)=>b.length-a.length);
+const definitionSuffixes=[...new Set(Object.values(linguisticWrappers).flatMap(x=>x.suffix).filter(Boolean).map(questionKey))].sort((a,b)=>b.length-a.length);
+const definitionLeadins=[...new Set(Object.values(linguisticLeadins).flat().filter(Boolean).map(questionKey))].sort((a,b)=>b.length-a.length);
 function stripDefinitionWrappers(question){
   let key=questionKey(question);
-  const all=Object.values(linguisticWrappers);
-  const prefixes=all.flatMap(x=>x.prefix).filter(Boolean).map(questionKey).sort((a,b)=>b.length-a.length);
-  const suffixes=all.flatMap(x=>x.suffix).filter(Boolean).map(questionKey).sort((a,b)=>b.length-a.length);
-  for(const prefix of prefixes){if(key.startsWith(prefix+' ')){key=key.slice(prefix.length+1);break;}}
-  for(const suffix of suffixes){if(key.endsWith(' '+suffix)){key=key.slice(0,-suffix.length-1);break;}}
+  for(const prefix of definitionPrefixes){if(key.startsWith(prefix+' ')){key=key.slice(prefix.length+1);break;}}
+  for(const lead of definitionLeadins){if(key.startsWith(lead+' ')){key=key.slice(lead.length+1);break;}}
+  for(const suffix of definitionSuffixes){if(key.endsWith(' '+suffix)){key=key.slice(0,-suffix.length-1);break;}}
   return key;
 }
 const glossaryByKey=new Map();
@@ -1096,9 +1098,10 @@ function voiceAliasKey(value){return String(value).trim().toLocaleLowerCase('it'
 const extraPronunciationVocabulary=[["Bitcoin","bit koin","bit coìn"],["Ethereum","i ti rium","i tirium","ether eum","e te reum"],["Solana","so lana","sol ana"],["Injective","in gective","in gettiv","in jectiv"],["Chainlink","cein link","chein link"],["Cardano","car dano","kar dano"],["Avalanche","ava lanche","aval ance"],["Polkadot","polka dott"],["Dogecoin","doge koin","doggie coin"],["Uniswap","iuni swap","uni suap"],["PancakeSwap","pan cake swap","pankake swap"],["Raydium","rei dium"],["Arbitrum","arbi trum","arbit ram"],["Optimism","opti mism"],["Litecoin","light coin","lait coin"],["Filecoin","fail coin"],["Holochain","olo cein"],["Tars AI","tars a i","tars ei ai","tars ay eye"],["Verasity","veras iti"],["CoinGecko","coin gekko","koin geko"],["CoinMarketCap","koin market cap"],["TradingView","treiding viu","trading viu"],["KuCoin","koo coin"],["Bitget","bit ghet"],["Bybit","bai bit"],["Coinbase","koin beis"],["MetaMask","meta masch"],["blockchain","blok cein","bloc chain"],["stablecoin","steibol coin","steibol koin"],["staking","stake ing","steiking","stei king"],["smart contract","smart kontrakt","smart con tract"],["hash rate","ash reit","hash reit"],["market cap","market kep","marchet cap"],["order book","order buk","order bouk"],["stop loss","stop los","stop lo ss"],["take profit","teik profit","teic profit"],["drawdown","dro daun"],["slippage","slip page","slippege"],["spread","spred","s pread"],["breakout","breik aut"],["pullback","pul bec"],["backtesting","bec testing"],["funding rate","fanding reit"],["open interest","open inter est"],["halving","halv ing","alving"],["airdrop","er drop"],["mainnet","mein net"],["tokenomics","token omiks"],["market maker","market meiker"],["market taker","market teiker"],["liquidity pool","liquidity pul"],["yield farming","yild farming"],["proof of stake","proof of steik","pruf of stake"],["proof of work","pruf of work","proof of uork"],["cash flow","cash flo"],["free cash flow","fri cash flo"],["bull market","bul market"],["bear market","ber market"],["short squeeze","short squiz"],["long squeeze","long squiz"],["moving average","muving avereg"],["trailing stop","treiling stop"],["hardware wallet","arduer wallet"],["self-custody","self castodi"]];
 const advancedPronunciationVocabulary=[["S&P 500","esse e pi cinquecento","ess and pee five hundred","s and p five hundred","esse pi cinquecento"],["Nasdaq","nas dac","nas dak","naz dac"],["Dow Jones","dau gions","dow jones index","dau jones"],["Euro Stoxx 50","euro stocks cinquanta","euro stox cinquanta"],["FTSE MIB","futsi mib","fut si mib","effe ti esse e mib"],["Nikkei 225","nicchei duecentoventicinque","nik kei two twenty five"],["price action","prais action","price ac tion","praice action"],["risk management","risk menegment","risk man agement"],["position sizing","position saizing","posi tion sizing"],["dollar cost averaging","dollar cost avereging","dollar cost av eraging"],["market capitalization","market capitalisation","market capital iz ation"],["bid ask spread","bid ask spred","bid ask spread"],["market depth","market dept","market dep th"],["margin call","margin col","mar gin call"],["isolated margin","isolated mar gin","aisolated margin"],["cross margin","cross mar gin","cros margin"],["mark price","mark prais"],["funding rate","funding reit","fund ing rate"],["open interest","open int erest"],["futures","fiu chers","fiu ciurs","future s"],["perpetual futures","perpetual fiucers","perpetual future s"],["liquid staking","liquid steiking","liquid stake ing"],["restaking","re staking","ri steiking"],["slashing","slash ing","slascing"],["unbonding","un bonding","an bonding"],["token unlock","token anlock","token un lock"],["vesting","vest ing","vestin g"],["buyback","buy back","bai beck"],["yield curve","yild curve","yield cur ve"],["yield to maturity","yild to maturity"],["credit spread","credit spred"],["quantitative easing","quantitative iising","quantitative easing"],["quantitative tightening","quantitative taitening"],["consumer price index","consumer prais index"],["producer price index","producer prais index"],["price earnings ratio","price earning s ratio"],["return on equity","return on equiti"],["return on investment","return on invest ment"],["free cash flow","free cash flo"],["enterprise value","enterprise valiu"],["discounted cash flow","discounted cash flo"],["dividend yield","dividend yild"],["net present value","net present valiu"],["proof of work","pruf ov work"],["proof of stake","pruf ov stake"],["smart contract","smart contr act"],["zero knowledge proof","zero noledge proof","zero knowledge pruf"],["multisig","multi sig","multi sign"],["cold wallet","cold uallet","cold wal let"],["hot wallet","hot uallet","hot wal let"],["block explorer","block explor er"],["chain abstraction","chain abstrac tion"],["gas fee","gas fii","gas fi"],["cross chain","cross cein","crosschain"],["layer one","leier one","layer wan"],["layer two","leier two","layer tu"],["liquidity pool","liquidity puul"],["automated market maker","automated market meiker"],["decentralized exchange","decentralised exchange","decentralized ex change"],["centralized exchange","centralised exchange","centralized ex change"],["total value locked","total valiu locked"],["market maker","market ma ker"],["market taker","market ta ker"],["Bollinger Bands","bol linger bands","bollinger bends"],["moving average","moving aver age"],["exponential moving average","exponential moving avereg"],["relative strength index","relative strenght index"],["average true range","average tru range"],["Sharpe ratio","sharp ratio","shar pe ratio"],["trailing stop","trailing st op"],["stop limit","stoplimit","stop li mit"],["candlestick","candle stick","candel stick"],["timeframe","time frame","taim frame"],["backtest","back test","bec test"],["break even","breik even","breakeven"],["drawdown","draw daun"],["pullback","pull beck"],["short squeeze","short squiis"],["long squeeze","long squiis"],["WebGPU","web gi pi u","web gee pee you","web gpu"],["WebAssembly","web assembly","web assembl i"],["CoinGecko","koin gecko","coin ge ko"],["CoinMarketCap","coin market kep"],["TradingView","treiding view"],["MetaMask","meta mas k"],["Phantom","phan tom","fantom wallet"],["Ledger","led ger","ledger wallet"],["Trezor","tre sor","trez or"],["Binance","bi nance","bainance"],["Kraken","kra ken","craken"],["Gate.io","gate punto io","gate dot io"],["Bitfinex","bit finex","bit fine x"],["OKX","oh kay ex","o k ics"],["Hyperliquid","hyper liquid","haiper liquid"],["Celestia","cele stia","selestia"],["Aptos","ap tos","apt os"],["Sui","sui token","swee token"],["Render","render token"],["Jupiter","jup iter","giupiter token"],["Jito","gi to token","jito token"],["Arweave","ar weave","ar uiv"],["Kaspa","kas pa","caspa token"],["Sei","sei network","sey network"],["Ondo","on do finance","ondo finance"],["Starknet","stark net","stark nett"],["Worldcoin","world coin","uorld coin"],["Pepe","pe pe token","pepe coin"],["Shiba Inu","shiba i nu","sciba inu"],["Toncoin","ton coin","ton koin"],["Cosmos","cos mos token"],["Aave","a ave token","aave token"],["Lido","lido finance","lido token"],["Rocket Pool","rocketpool","roket pool"],["The Graph","the graf","the graph token"],["Immutable","im mutable","immut able"],["Pyth Network","pyth net work","pith network"]];
 const comprehensivePronunciationVocabulary=[["market cycle","market saicol","market cy cle"],["market rally","market ralli"],["market breadth","market bredth"],["price momentum","prais momentum"],["resistance level","resistence level"],["trend line","trendline","trend lain"],["point of control","point ov control"],["tick size","tick saiz"],["lot size","lot saiz"],["fill price","fill prais"],["entry price","entry prais"],["exit price","exit prais"],["trading volume","treiding volume"],["maximum drawdown","max draw daun"],["annualized return","annualised return"],["risk free rate","risk free reit"],["expected return","expected ri turn"],["scenario analysis","scenario analisis"],["stress test","stres test"],["overfitting","over fitting"],["walk forward","walkforward"],["paper trading","peiper trading"],["counterparty risk","counter party risk"],["brokerage fee","brokerage fii"],["management fee","management fii"],["performance fee","performance fii"],["trading halt","trading holt"],["spot price","spot prais"],["contango","con tango"],["backwardation","back wardation"],["safe haven","safe heiven"],["retail sales","retail seils"],["nonfarm payrolls","non farm payrolls","nonfarm pay rolls"],["loan to value","loan to valiu"],["annual percentage yield","annual percentage yild"],["vesting cliff","vesting clif"],["hard fork","hardfork","ard fork"],["soft fork","softfork"],["mempool","mem pool"],["block height","block hait"],["block time","block taim"],["transaction nonce","transaction nons"],["liquidity mining","liquidity mai ning"],["borrowing rate","borrowing reit"],["health factor","healt factor"],["wrapped token","rapt token"],["atomic swap","atomic suap"],["cross chain messaging","cross cein messaging"],["fraud proof","fraud pruf"],["validity proof","validity pruf"],["passkey","pass key"],["data synchronization","data synchronisation"],["word error rate","word error reit"],["quantization","quantisation"],["tokenization","tokenisation"],["embedding","em bedding"],["semantic search","semantic serch"],["model weights","model weits"],["rate limit","ratelimit","reit limit"],["timeout","time out"],["fallback","fall back"],["screen reader","screen riider"],["full screen mode","fullscreen mode"],["wireless connection","wire less connection"],["Polymarket","poly market","poli market"],["Hyperliquid","haiper liquid","hyper liqu id"],["Ethena","e thena","etena token"],["Pendle","pen dle","pendol token"],["Aerodrome","aero drome","aerodrom"],["EigenLayer","eigen layer","aigen layer"],["Wormhole","worm hole","uorm hol"],["LayerZero","layer zero","leier zero"],["Axelar","ax elar","akselar"],["Osmosis","osmo sis","osmosis token"],["Akash","a kash","acash network"],["Bittensor","bit tensor","bit tens or"],["Filecoin","fail koin"],["Livepeer","live peer","laiv pir"],["Immutable X","immutable ex","immutable ics"],["Internet Computer","internet computer token"],["NEAR Protocol","near protocol token","nir protocol"],["Stacks","stacks token","staks token"],["VeChain","ve chain","vi cein"],["Theta Network","theta network token","teta network"],["Flow","flow token"],["Fantom","fantom token"],["Sonic","sonic token"],["Algorand","algo rand","algor and"],["Tezos","te zos","tez os"],["Zcash","z cash","zed cash"],["Monero","mo nero","mon ero"],["Dash","dash token"],["Chiliz","chili z","chiliz token"],["Enjin","en jin","engin coin"],["Decentraland","decentral land","decentral and"],["The Sandbox","the sand box","sandbox token"],["Gala","gala token"],["ApeCoin","ape coin","eip coin"],["Axie Infinity","axie infinity token","axi infinity"],["Flare","flare token","fler token"],["Quant","quant token"],["Helium","helium token"],["IoTeX","io tex","io teks"],["Kava","kava token"],["Celo","celo token"],["Zilliqa","zil liqa","zill iqa"],["Waves","waves token"],["Gnosis","gno sis","gnosis token"],["Balancer","balan cer","balancer token"],["Curve DAO","curve dao token","curve da o"],["Maker","maker token"],["Compound","compound token"],["Yearn Finance","yearn finance token","yern finance"],["1inch","one inch","one inch token"],["dYdX","di y di x","dee why dee ex"],["GMX","gee em ex","gi emme ics"],["SushiSwap","sushi swap","sushi suap"],["JasmyCoin","jasmy coin","jasmi coin"],["Jupiter","giupiter exchange"],["Pyth Network","pith network token"],["Ondo Finance","ondo finans"],["Worldcoin","world koin"],["Arbitrum","arbit rum"],["Optimism","opti mism token"],["NFP","en effe pi","enne effe pi"],["PMI","pi em ai","pi emme i"],["RAG","ar ay gee","erre a gi"],["WER","double u ee ar","doppia vu e erre"]];
+const extraFortyPronunciations=[["AI","ei ai","ay eye"],["ETF","i ti effe","ee tee eff","e ti ef"],["API","ay pee eye","a pi i"],["OCR","oh see ar","o ci erre"],["ASR","ay ess ar","a esse erre"],["LLM","el el em","elle elle emme"],["NLP","en el pee","enne elle pi"],["CORS","cors protocol","c o r s"],["WebRTC","web erre ti ci","web ar tee see"],["WebGPU","web gee pee you","web gi pi u"],["WebAssembly","web assemblì","web assembli"],["WASM","uasm","was em"],["WAV","wave file","vu a vu"],["FLAC","flac audio","effe elle a ci"],["MP3","emme pi tre","em pee three"],["GPT","gi pi ti","gee pee tee"],["BPE","bi pi e","bee pee ee"],["ONNX","o enne enne ics","oh en en ex"],["FP32","effe pi trentadue","ef pee thirty two"],["FP16","effe pi sedici","ef pee sixteen"],["INT8","int otto","int eight"],["Q4","cu quattro","cue four"],["Q8","cu otto","cue eight"],["UTF-8","u ti effe otto","you tee eff eight"],["IPv4","i pi vu quattro","eye pee vee four"],["IPv6","i pi vu sei","eye pee vee six"],["Wi-Fi","wai fai","wi fi"],["Bluetooth","blu tuth","blu tut"],["GitHub","git hab","git hub"],["JavaScript","java script","giava script"],["TypeScript","type script","taip script"],["Python","paiton","pai ton"],["JSON","geison","jay son"],["YAML","yam el","iaml"],["SQL","sequel query","esse cu elle"],["SQLite","s q lite","sequel lite"],["PostgreSQL","post gres sequel","post gre sql"],["IndexedDB","indexed di bi","indexed dee bee"],["Service Worker","service uorker","servis worker"],["AudioWorklet","audio work let","audio uorklet"],["SpeechRecognition","speech recognition","spic recognition"],["Whisper","uisper","wis per"],["Qwen","cuen","q wen"],["Piper TTS","paiper ti ti esse","piper tee tee ess"],["Hugging Face","huggingface","hagg ing face"],["Transformers","transform ers","trans formers"],["Cloudflare","cloud flare","claud fler"],["CoinGecko","coin gheco","coin gheko"],["CoinMarketCap","coin marketcap","coin market kep"],["DeFi","di fai","dee fie"],["CeFi","si fai","see fie"],["TradFi","trad fai","trad fie"],["GameFi","game fai","game fie"],["SocialFi","social fai","social fie"],["NFT","enne effe ti","en ef tee"],["zkSync","zi kei sinc","zed kay sync"],["zkEVM","zed kay ee vee em","zeta cappa e vu emme"],["ERC-20","erre ci venti","ee ar see twenty"],["ERC-721","erre ci settecentoventuno","ee ar see seven twenty one"],["SPL","esse pi elle","ess pee el"],["BEP-20","bi e pi venti","bee ee pee twenty"],["BRC-20","bi erre ci venti","bee ar see twenty"],["EIP-1559","e i pi millecinquecentocinquantanove","ee eye pee fifteen fifty nine"],["ISO 20022","iso ventimilaventidue","eye ess oh twenty thousand twenty two"],["MiCA","mica regolamento","mi ca regulation"],["FOMC","effe o emme ci","ef oh em see"],["ECB","ee see bee","e ci bi"],["BCE","bi ci e","bee see ee"],["SEC","esse e ci","ess ee see"],["CFTC","ci effe ti ci","see ef tee see"],["ESMA","es ma","ee ess em ay"],["PCE","pi ci e","pee see ee"],["DXY","di ics ipsilon","dee ex why"],["VIX","vi ics","vee eye ex"],["S&P 500","esse pi cinque cento","ess and pee five hundred index"],["FTSE MIB","futsi emme i bi","footsie mib"],["NASDAQ 100","nas dac cento","nas dak one hundred"],["Russell 2000","rassel duemila","russell two thousand"],["Dow Jones","dau gionz","dow jonz"],["Euro Stoxx 50","euro stoxx fifty","euro stocks fifty"],["Nikkei 225","nikkei two two five","nikkei due due cinque"],["Hang Seng","hang seng index","ang seng"],["MSCI World","emme esse ci i world","em ess see eye world"],["MSCI Emerging Markets","msci emerging market","emme esse ci i emerging markets"]];
 function createVoiceAliasMap(){
   const map=new Map();
-  for(const [term,...aliases] of [...voiceVocabulary,...extendedVoiceVocabulary,...additionalVoiceVocabulary,...extraPronunciationVocabulary,...advancedPronunciationVocabulary,...comprehensivePronunciationVocabulary]){
+  for(const [term,...aliases] of [...voiceVocabulary,...extendedVoiceVocabulary,...additionalVoiceVocabulary,...extraPronunciationVocabulary,...advancedPronunciationVocabulary,...comprehensivePronunciationVocabulary,...extraFortyPronunciations]){
     for(const alias of aliases){
       const key=voiceAliasKey(alias);
       // Never replace short, ordinary words on the strength of a fuzzy match.
@@ -2197,7 +2200,7 @@ function lexicalIntent(question){
   const q=String(question).trim();
   const plain=stripDefinitionWrappers(q);
   const pron=plain.match(/^(?:come si pronuncia|pronuncia di|pronuncia|how do you pronounce|how to pronounce|pronunciation of)\s+(.+)$/u);
-  if(pron)return {kind:'pronunciation',topic:pron[1],language:/(?:in inglese|in english)$/.test(pron[1])?'en':/(?:in italiano|in italian)$/.test(pron[1])?'it':voiceLanguage};
+  if(pron)return {kind:'pronunciation',topic:pron[1],language:/(?:in italiano|in italian)$/.test(pron[1])?'it':/(?:in inglese|in english)$/.test(pron[1])||/^(?:how do you pronounce|how to pronounce|pronunciation of)\b/.test(plain)?'en':voiceLanguage};
   const tr=plain.match(/^(?:come si dice|traduci|traducimi|translate|how do you say)\s+(.+?)\s+(?:in|into|to)\s+(inglese|english|italiano|italian)$/u);
   if(tr)return {kind:'translation',topic:tr[1],language:/^(?:inglese|english)$/.test(tr[2])?'it':'en'};
   for(const pattern of definitionPhrasePatterns){
@@ -2305,16 +2308,80 @@ async function answerEnglishPronunciation(topic,signal){
   return 'Pronuncia inglese americana (notazione fonetica ARPABET; 1 = accento primario, 2 = secondario, 0 = non accentato):\n'+lines.join('\n')+'\nFonte: CMU Pronouncing Dictionary, Carnegie Mellon University.\nhttps://github.com/cmusphinx/cmudict\nLicenza: https://github.com/cmusphinx/cmudict/blob/master/LICENSE';
 }
 
+
+// Public dictionary fallback. Request the exact word; never send conversation context or audio.
+function wiktionaryRequest(topic,edition,extra={}){
+  const url=new URL('https://'+edition+'.wiktionary.org/w/api.php');
+  url.search=new URLSearchParams({action:'parse',page:topic,prop:'sections',redirects:'1',format:'json',formatversion:'2',origin:'*',...extra}).toString();
+  return url.href;
+}
+function selectWiktionarySections(sections,language,edition){
+  const names=edition==='it'?(language==='en'?['inglese','english']:['italiano','italian']):(language==='en'?['english']:['italian']);
+  return (Array.isArray(sections)?sections:[]).filter(section=>{
+    const heading=String(section.line||'').replace(/<[^>]*>/g,'').trim().toLowerCase();
+    return names.includes(heading)&&/^\d+$/.test(String(section.index));
+  }).map(section=>String(section.index)).slice(0,2);
+}
+function parseWiktionarySection(html){
+  // Parse as inert markup; render only text, never execute or insert external HTML.
+  if(typeof html!=='string'||html.length>1200000||typeof DOMParser!=='function')return {definitions:[],ipa:[]};
+  const doc=new DOMParser().parseFromString(html,'text/html');
+  const definitions=[],ipa=[];
+  for(const node of doc.querySelectorAll('ol > li')){
+    if(node.closest('table,.translations,.derivedterms,.nyms,.NavFrame,.quotations,.references')||node.parentElement?.closest('li'))continue;
+    const clone=node.cloneNode(true);
+    clone.querySelectorAll('ul,ol,dl,table,sup,.reference,.h-usage-example,.quotation,.nyms,.mw-editsection,.citation-whole').forEach(x=>x.remove());
+    const value=cleanWebText(clone.textContent,240);
+    if(value&&value.length>=5&&!definitions.includes(value))definitions.push(value);
+    if(definitions.length>=3)break;
+  }
+  for(const node of doc.querySelectorAll('.IPA')){
+    const value=cleanWebText(node.textContent,100);
+    if(value&&/^[\/\[]/.test(value)&&!ipa.includes(value))ipa.push(value);
+    if(ipa.length>=8)break;
+  }
+  return {definitions,ipa};
+}
+async function wiktionaryLookup(intent,topic,signal){
+  if(!topic||topic.length>65||topic.split(/\s+/).length>5)return '';
+  // Italian edition for definitions in Italian; English edition for English terms or IPA fallback.
+  const editions=intent.language==='en'?['it','en']:['it','en'];
+  for(const edition of editions){
+    if(signal?.aborted)return '';
+    try{
+      const header=await publicWebJSON(wiktionaryRequest(topic,edition),signal,3500);
+      const sections=selectWiktionarySections(header?.parse?.sections,intent.language,edition);
+      for(const index of sections){
+        const page=await publicWebJSON(wiktionaryRequest(topic,edition,{section:index,prop:'text|revid'}),signal,3500);
+        const parsed=parseWiktionarySection(page?.parse?.text);
+        if(intent.kind==='pronunciation'&&!parsed.ipa.length)continue;
+        if(intent.kind==='definition'&&!parsed.definitions.length)continue;
+        if(intent.kind==='translation')continue;
+        const title=cleanWebText(page?.parse?.title||topic,100);
+        const link='https://'+edition+'.wiktionary.org/wiki/'+encodeURIComponent(title);
+        const body=intent.kind==='pronunciation'?'Pronuncia IPA: '+parsed.ipa.join(' · '):
+          (edition==='en'?'Definizioni originali in inglese: ':'Definizioni: ')+'\n'+parsed.definitions.join('\n')+(parsed.ipa.length?'\nIPA: '+parsed.ipa.join(' · '):'');
+        return title+'\n'+body+'\nFonte: '+(edition==='it'?'Wikizionario':'Wiktionary')+' (estratto, CC BY-SA 4.0).\n'+link+'\nhttps://creativecommons.org/licenses/by-sa/4.0/';
+      }
+    }catch{/* Try the other public dictionary if time remains. */}
+  }
+  return '';
+}
+
 async function answerExtendedLexicon(intent,signal){
   const topic=lexicalTopic(intent);
   // Search dictionary terms only, never send audio or conversation history.
   if(!topic||topic.length>65||topic.split(/\s+/).length>5)return '';
-  if(intent.kind==='pronunciation'&&intent.language==='en')return answerEnglishPronunciation(topic,signal);
-  const manifest=await lexicalJSON('data/index.json',signal);
-  if(!manifest?.buckets||!Number.isFinite(manifest?.totals?.entries))return '';
+  if(intent.kind==='pronunciation'&&intent.language==='en'){
+    try{const answer=await answerEnglishPronunciation(topic,signal);if(answer&&!answer.includes('pronuncia non presente nel dizionario'))return answer;}catch{}
+    return wiktionaryLookup(intent,topic,signal);
+  }
+  let manifest;
+  try{manifest=await lexicalJSON('data/index.json',signal);}catch{return wiktionaryLookup(intent,topic,signal);}
+  if(!manifest?.buckets||!Number.isFinite(manifest?.totals?.entries))return wiktionaryLookup(intent,topic,signal);
   let entries=intent.language==='en'?await lookupEnglishWord(manifest,topic,signal):[await lookupItalianWord(manifest,topic,signal)].filter(Boolean);
   if(!entries.length&&intent.kind==='definition'&&intent.language==='en')entries=[await lookupItalianWord(manifest,topic,signal)].filter(Boolean);
-  if(!entries.length)return '';
+  if(!entries.length)return wiktionaryLookup(intent,topic,signal);
   const results=entries.map(entry=>{
     const word=cleanWebText(entry.word,100);
     const glosses=(entry.en||[]).flatMap(g=>g.glosses||[]).filter(Boolean).slice(0,3).map(x=>cleanWebText(x,180));
@@ -2326,7 +2393,7 @@ async function answerExtendedLexicon(intent,signal){
       (intent.kind!=='pronunciation'&&senses.length?'\n'+senses.join('\n'):'')+
       '\nFonte: Wikizionario, CC BY-SA 4.0, estratto modificato da itadict.\nhttps://it.wiktionary.org/wiki/'+encodeURIComponent(word);
   }).filter(Boolean);
-  if(!results.length)return '';
+  if(!results.length)return wiktionaryLookup(intent,topic,signal);
   return results.join('\n\n')+'\nDati del dizionario: https://github.com/maxArturo/itadict · https://creativecommons.org/licenses/by-sa/4.0/';
 }
 
@@ -2366,7 +2433,7 @@ async function submitQuestion(fromVoice=false){
   const lexical=lexicalIntent(question);
   if(lexical){
     const controller=new AbortController();cryptoUpdateController=controller;
-    const timeout=setTimeout(()=>controller.abort(),10000);
+    const timeout=setTimeout(()=>controller.abort(),16000);
     statusLine.textContent='Consultazione del dizionario bilingue…';
     try{
       const answer=await answerExtendedLexicon(lexical,controller.signal);
