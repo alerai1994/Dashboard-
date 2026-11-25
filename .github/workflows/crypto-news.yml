@@ -14,14 +14,14 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 14
     steps:
       - uses: actions/checkout@v4
       - name: Fetch public publisher RSS feeds
         shell: bash
         run: |
           python3 - <<'PY'
-          import concurrent.futures, datetime as dt, email.utils, json, pathlib, urllib.request, urllib.parse, xml.etree.ElementTree as ET, re
+          import concurrent.futures, datetime as dt, email.utils, json, pathlib, urllib.request, urllib.parse, xml.etree.ElementTree as ET, re, os
           from html.parser import HTMLParser
           sources = {
               "Injective Official": ("https://injective.com/blog", "injective.com"),
@@ -180,13 +180,13 @@ jobs:
           path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
           print("Archived", len(payload["items"]), "headlines")
           # Targeted news search runs on the server, not in the user's browser.
-          # Rotate through the exact app catalogue; prioritize commonly requested projects.
+          # Initial/manual runs check every distinct asset. Scheduled runs rotate evenly.
           project_path = pathlib.Path("crypto-project-news.json")
           html = pathlib.Path("assistente-mercati.html").read_text(encoding="utf-8")
           catalog_match = re.search(r"voiceCryptoCatalog=(\[\[.*?\]\]);", html, re.S)
           if not catalog_match:
               raise SystemExit("Project catalogue not found")
-          catalogue = list(dict.fromkeys(tuple(row) for row in json.loads(catalog_match[1])))
+          catalogue = list({row[1]: tuple(row) for row in json.loads(catalog_match[1])}.values())
           priority = {"BTC","ETH","SOL","INJ","ORE","BNB","XRP","LUNC","VRA","TAI","HOT","RAY","WLFI"}
           aliases = {"ORE":"ORE Solana","HOT":"Holochain","TAI":"TARS AI","LUNC":"Terra Luna Classic","GRAM":"Toncoin","POL":"Polygon","VRA":"Verasity","WLFI":"World Liberty Financial","NEAR":"NEAR Protocol"}
           try:
@@ -195,7 +195,13 @@ jobs:
               old = {}
           remaining = [row for row in catalogue if row[1] not in priority]
           cursor = int(old.get("cursor",0)) % max(1,len(remaining))
-          batch = [row for row in catalogue if row[1] in priority] + [remaining[(cursor+i)%len(remaining)] for i in range(min(24,len(remaining)))]
+          # A push/manual dispatch performs a full sweep; regular runs cover the whole
+          # catalogue in four scheduled cycles without hammering the provider every 15 minutes.
+          full_scan = os.environ.get("GITHUB_EVENT_NAME") in ("push","workflow_dispatch") or not old.get("projects")
+          size = max(1,(len(remaining)+3)//4)
+          batch = catalogue if full_scan else [row for row in catalogue if row[1] in priority] + [remaining[(cursor+i)%len(remaining)] for i in range(min(size,len(remaining)))]
+          next_cursor = 0 if full_scan else (cursor+size)%max(1,len(remaining))
+          print("Coverage mode", "full" if full_scan else "scheduled rotation", "assets",len(batch))
           def fold(text):
               return " ".join(re.findall(r"\w+", text.casefold(), re.UNICODE))
           def project_search(row):
@@ -235,9 +241,9 @@ jobs:
                   return symbol,rows[:15],None
               except Exception as error:
                   return symbol,[],type(error).__name__
-          with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+          with concurrent.futures.ThreadPoolExecutor(max_workers=10) as pool:
               project_results=list(pool.map(project_search,batch))
-          projects=old.get("projects",{})
+          projects={symbol: old.get("projects",{}).get(symbol,{"checkedAt":None,"ok":None,"items":[]}) for _,symbol in catalogue}
           for symbol,items,error in project_results:
               previous_items=projects.get(symbol,{}).get("items",[])
               merged={}
@@ -247,7 +253,9 @@ jobs:
                           merged.setdefault(item["url"],item)
                   except (ValueError,TypeError,KeyError): continue
               projects[symbol]={"checkedAt":now.isoformat(),"ok":error is None,"error":error,"items":sorted(merged.values(),key=lambda x:x["date"],reverse=True)[:15]}
-          project_path.write_text(json.dumps({"updatedAt":now.isoformat(),"catalogueSize":len(catalogue),"cursor":(cursor+24)%max(1,len(remaining)),"projects":projects},ensure_ascii=False,separators=(",",":"))+"\n",encoding="utf-8")
+          checked=sum(bool(p.get("checkedAt")) for p in projects.values())
+          successful=sum(p.get("ok") is True for p in projects.values())
+          project_path.write_text(json.dumps({"updatedAt":now.isoformat(),"catalogueSize":len(catalogue),"checkedCount":checked,"successfulCount":successful,"cursor":next_cursor,"projects":projects},ensure_ascii=False,separators=(",",":"))+"\n",encoding="utf-8")
           print("Targeted projects checked",len(project_results),"successful",sum(error is None for _,_,error in project_results))
 
           PY
