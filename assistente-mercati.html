@@ -2152,7 +2152,7 @@ async function fetchCryptoFile(path,signal){
 }
 function publicWebTopic(text){
   const value=String(text).trim();
-  if(!value||value.length>140||/https?:|@|[\r\n]|\b(?:password|seed phrase|chiave privata|codice fiscale|iban|numero di telefono|indirizzo wallet|mia|mio|mie|miei|nostr[oaie]|personale)\b|0x[a-f0-9]{12,}|\d{7,}/iu.test(value))return '';
+  if(!value||value.length>140||/https?:|@|[\r\n]|\b(?:password|seed phrase|chiave privata|codice fiscale|iban|numero di telefono|indirizzo wallet|private key|wallet address|phone number|account number|social security|my|mine|our|personal|mia|mio|mie|miei|nostr[oaie]|personale)\b|0x[a-f0-9]{12,}|\d{7,}/iu.test(value))return '';
   return value.replace(/[^\p{L}\p{N}\s.'’\-]/gu,' ').replace(/\s+/g,' ').trim();
 }
 async function publicWebJSON(url,signal,ms=6500){
@@ -2211,7 +2211,7 @@ async function wikiWebAnswer(topic,signal){
   const data=await publicWebJSON(url,signal);
   const pages=(Array.isArray(data?.query?.pages)?data.query.pages:[]).sort((a,b)=>(a.index??99)-(b.index??99));
   const tokens=questionKey(topic).split(' ').filter(x=>x.length>=3);
-  const page=pages.find(p=>p.extract&&!p.pageprops?.disambiguation&&tokens.some(t=>questionKey(String(p.title)).split(' ').includes(t)));
+  const page=pages.find(p=>p.extract&&!Object.prototype.hasOwnProperty.call(p.pageprops||{},'disambiguation')&&tokens.some(t=>questionKey(String(p.title)).split(' ').includes(t)));
   if(!page)return 'Non ho trovato una voce enciclopedica sufficientemente pertinente. Prova a precisare l’argomento.';
   const link=safeArticleURL(page.fullurl);
   if(!link||new URL(link).hostname!=='it.wikipedia.org')return 'Non riesco a verificare la fonte enciclopedica.';
@@ -2459,14 +2459,199 @@ async function answerExtendedLexicon(intent,signal){
   return results.join('\n\n')+'\nDati del dizionario: https://github.com/maxArturo/itadict · https://creativecommons.org/licenses/by-sa/4.0/';
 }
 
+
+const allMarketAssets=[["sp500","S&P 500","indici","sp500;s p 500;s and p 500;gspc"],["nasdaq","Nasdaq Composite","indici","nasdaq;nasdaq composite;ixic"],["tsx","S&P/TSX Composite","indici","tsx;borsa canadese"],["ibov","Bovespa","indici","ibov;ibovespa;bovespa"],["ftse","FTSE 100","indici","ftse 100;ftse;borsa di londra"],["dax","DAX","indici","dax;borsa tedesca"],["cac","CAC 40","indici","cac 40;cac"],["jse","FTSE/JSE Top 40","indici","jse"],["tadawul","Tadawul","indici","tadawul;tasi"],["nikkei","Nikkei 225","indici","nikkei;nikkei 225"],["hsi","Hang Seng","indici","hang seng;hsi"],["nifty","Nifty 50","indici","nifty;nifty 50"],["kospi","KOSPI","indici","kospi"],["asx","S&P/ASX 200","indici","asx;asx 200"],["ndx","Nasdaq 100","indici","nasdaq 100;ndx"],["sox","PHLX Semiconductor","indici","sox;indice semiconduttori"],["xlk","Technology Select Sector SPDR","etf","xlk"],["qqq","Invesco QQQ","etf","qqq"],["smh","VanEck Semiconductor ETF","etf","smh"],["nvda","NVIDIA","azioni","nvidia;nvda"],["msft","Microsoft","azioni","microsoft;msft"],["aapl","Apple","azioni","apple;aapl"],["googl","Alphabet","azioni","alphabet;google;googl"],["amzn","Amazon","azioni","amazon;amzn"],["meta","Meta Platforms","azioni","meta platforms;meta;facebook"],["tsla","Tesla","azioni","tesla;tsla"],["avgo","Broadcom","azioni","broadcom;avgo"],["amd","AMD","azioni","amd;advanced micro devices"],["orcl","Oracle","azioni","oracle;orcl"],["tsm","TSMC","azioni","tsmc;tsm"],["asml","ASML","azioni","asml"],["gold","Oro (future)","materie prime","oro;gold;future oro"],["silver","Argento (future)","materie prime","argento;silver"],["brent","Petrolio Brent (future)","materie prime","brent;petrolio brent"],["wti","Petrolio WTI (future)","materie prime","wti;petrolio wti;crude oil"],["naturalgas","Gas naturale (future)","materie prime","gas naturale;natural gas"],["copper","Rame (future)","materie prime","rame;copper"],["eurusd","EUR/USD","forex","eur usd;eurusd;euro dollaro;euro contro dollaro"],["gbpusd","GBP/USD","forex","gbp usd;gbpusd;sterlina dollaro"],["usdjpy","USD/JPY","forex","usd jpy;usdjpy;dollaro yen"],["usdchf","USD/CHF","forex","usd chf;usdchf;dollaro franco svizzero"],["audusd","AUD/USD","forex","aud usd;audusd"],["usdcny","USD/CNY","forex","usd cny;usdcny;dollaro yuan"],["etf-ibit","iShares Bitcoin Trust ETF","etf","ibit;ishares bitcoin trust"],["etf-fbtc","Fidelity Wise Origin Bitcoin Fund","etf","fbtc"],["etf-gbtc","Grayscale Bitcoin Trust ETF","etf","gbtc"],["etf-etha","iShares Ethereum Trust ETF","etf","etha"],["etf-feth","Fidelity Ethereum Fund","etf","feth"],["etf-ethe","Grayscale Ethereum Trust ETF","etf","ethe"],["etf-bsol","BSOL","etf","bsol"],["etf-fsol","FSOL","etf","fsol"],["etf-gsol","GSOL","etf","gsol"],["etf-ainj-amsterdam","AINJ Amsterdam","etf","ainj amsterdam;ainj as"],["etf-ainj-paris","AINJ Parigi","etf","ainj parigi;ainj paris;ainj pa"]].map(([id,name,group,aliases])=>({id,name,group,aliases:[name,...aliases.split(';')]}));
+const marketFold=value=>questionKey(String(value)).normalize('NFD').replace(/\p{M}/gu,'');
+const containsMarketPhrase=(key,term)=>(' '+key+' ').includes(' '+marketFold(term)+' ');
+const marketNewsGroups={
+  indici:['stock markets','equity markets','borsa','indici azionari'],
+  azioni:['stock market','corporate earnings','azioni','risultati trimestrali'],
+  etf:['ETF','exchange traded funds','fondi indicizzati'],
+  forex:['forex','currency markets','foreign exchange','mercato valutario'],
+  'materie prime':['commodities','oil prices','gold prices','materie prime'],
+  obbligazioni:['bond markets','government bonds','bond yields','obbligazioni'],
+  macro:['Federal Reserve','European Central Bank','interest rates','inflation','politica monetaria'],
+  crypto:['cryptocurrency','Bitcoin','crypto market','criptovalute'],
+  mercati:['financial markets','stock markets','mercati finanziari','global economy']
+};
+const marketGroupPatterns=[
+ ['crypto',/\b(?:crypto|cripto|criptovalute?|cryptocurrency|cryptocurrencies|altcoin|blockchain|defi)\b/],
+ ['indici',/\b(?:indici|indice azionario|indices|indexes|borse|borsa|stock markets)\b/],
+ ['azioni',/\b(?:azioni|azionari[oa]|titoli tecnologici|big tech|bigtech|stocks|equities|trimestrali|earnings)\b/],
+ ['etf',/\b(?:etf|etp|fondi indicizzati|exchange traded funds)\b/],
+ ['forex',/\b(?:forex|valute|cambi valutari|currency markets|foreign exchange)\b/],
+ ['materie prime',/\b(?:materie prime|commodities|petrolio|oil prices|metalli preziosi)\b/],
+ ['obbligazioni',/\b(?:obbligazioni|bond|bonds|btp|bund|treasury|rendimenti obbligazionari|titoli di stato)\b/],
+ ['macro',/\b(?:fed|fomc|federal reserve|bce|ecb|banche centrali|central banks|inflazione|inflation|tassi di interesse|interest rates|pil|gdp|macroeconomia|macroeconomy|economia mondiale)\b/],
+ ['mercati',/\b(?:mercati|mercato finanziario|financial markets|market news|wall street|mercati finanziari)\b/]
+];
+const macroTopics=[['Federal Reserve',/\b(?:fed|fomc|federal reserve)\b/],['European Central Bank',/\b(?:bce|ecb|banca centrale europea|european central bank)\b/],['inflation',/\b(?:inflazione|inflation)\b/],['interest rates',/\b(?:tassi di interesse|interest rates)\b/],['FTSE MIB',/\b(?:ftse mib|futsi mib)\b/],['Dow Jones',/\b(?:dow jones|dau gions)\b/],['Euro Stoxx 50',/\b(?:euro stoxx 50|euro stox 50)\b/]];
+function marketAssetMatches(key){
+  const hits=[];
+  for(const asset of allMarketAssets){
+    const score=Math.max(0,...asset.aliases.filter(a=>containsMarketPhrase(key,a)).map(a=>marketFold(a).length));
+    if(score)hits.push({...asset,score});
+  }
+  hits.sort((a,b)=>b.score-a.score);
+  return hits.filter((a,i)=>!hits.slice(0,i).some(b=>b.group===a.group&&b.score>a.score&&b.aliases.some(x=>a.aliases.some(y=>marketFold(x)!==marketFold(y)&&containsMarketPhrase(marketFold(x),y))))).slice(0,5);
+}
+function marketCryptoMatches(key){
+  const ambiguous=new Set('in on one me ai no sei gas ora ore ton near op a i e l us s pi etc amp not come di su un la il link flow dash render move gold silver apple meta oracle'.split(' '));
+  const result=[];
+  for(const [name,symbol] of voiceCryptoCatalog){
+    const keys=[name,symbol].map(marketFold);
+    const valid=keys.filter(k=>{
+      if(k.length<2||!containsMarketPhrase(key,k))return false;
+      if(!ambiguous.has(k))return true;
+      if(['token','cripto','crypto','criptovaluta'].some(prefix=>containsMarketPhrase(key,prefix+' '+k)))return true;
+      return k==='ore'&&/\b(?:prezzo di|quanto vale|quanto sta|notizie su|aggiornamenti su) ore(?: oggi)?$/.test(key);
+    });
+    if(valid.length)result.push({name,symbol,score:Math.max(...valid.map(k=>k.length))});
+  }
+  result.sort((a,b)=>b.score-a.score);
+  return result.filter((a,i)=>!result.slice(0,i).some(b=>containsMarketPhrase(marketFold(b.name),a.name)&&b.score>a.score)).slice(0,5);
+}
+function allMarketIntent(raw,previous=''){
+  if(!publicWebTopic(raw))return null;
+  const key=marketFold(bilingualMarketQuestion(raw));
+  if(/\b(?:previsioni|previsione|forecast|prediction|target|domani|tomorrow|come funziona|come comprare|come acquistare|cosa significa|che significa|definisci|what does|calcola|calcolami|calculate|traduci|translate|pronuncia|pronounce)\b/.test(key))return null;
+  const news=/\b(?:notizi[ae]|news|novita|aggiornament[oi]|aggiornami|annunci|roadmap|listing|ultim[ei] sviluppi|cosa succede|che succede|cosa sta succedendo|what s happening|what is happening|latest developments|breaking news|earnings|trimestrali)\b/.test(key);
+  const causal=/\b(?:perche|why|motivo|causa|ragioni)\b/.test(key);
+  const quote=/\b(?:prezz[oi]|quotazion[ei]|quanto (?:vale|sta|costa|quota)|a quanto|valore attuale|andamento|variazione|rialz[oi]|ribass[oi]|sces[oaie]|salit[oaie]|calat[oaie]|pers[oaie]|guadagnat[oaie]|sta (?:salendo|scendendo)|come (?:va|vanno|sta andando|stanno andando)|performing|performance|up|down|dropped|fallen|risen)\b/.test(key);
+  const today=/\b(?:oggi|adesso|ora|in questo momento|attuale|today|right now)\b/.test(key);
+  let assets=marketAssetMatches(key),coins=marketCryptoMatches(key);
+  const groups=marketGroupPatterns.filter(([,pattern])=>pattern.test(key)).map(([group])=>group);
+  const specificMacro=macroTopics.filter(([,p])=>p.test(key)).map(([name])=>name);
+  if(assets.some(a=>a.group==='etf')&&!/\b(?:confronta|confronto|compare|versus|vs)\b/.test(key))coins=[];
+  if(assets.length&&!groups.includes('crypto'))coins=coins.filter(c=>!assets.some(a=>a.aliases.some(x=>marketFold(x)===marketFold(c.name)||marketFold(x)===marketFold(c.symbol))));
+  const follow=key.match(/^(?:e invece|e|invece)\s+(.+?)(?:\s+invece)?$/);
+  if(follow&&!news&&!quote&&!today&&previous&&(assets.length||coins.length||groups.length||specificMacro.length)){
+    const prev=allMarketIntent(previous);
+    if(prev)return allMarketIntent((prev.news?'notizie su ':'andamento di ')+follow[1]);
+  }
+  if(!news&&!quote&&!today&&!causal)return null;
+  if(!assets.length&&!coins.length&&!groups.length&&!specificMacro.length)return null;
+  const hours=key.match(/\bultime (\d+) ore\b/),days=key.match(/\bultim[ei] (\d+) giorni\b/);
+  const previousPeriod=/\b(?:ieri|settimana scorsa|mese scorso|last week|last month)\b/.test(marketFold(raw));
+  const newsDays=hours?Math.min(30,Math.max(1,Math.ceil(Number(hours[1])/24))):days?Math.max(1,Math.min(30,Number(days[1]))):/\b(?:mese|month)\b/.test(key)?30:today?1:7;
+  const historical=/\b(?:ieri|settimana|mese|anno|anni|mensile|annuale|ultim[ei] \d+ giorni)\b/.test(key)||!!hours;
+  const topics=[...assets.map(x=>x.name.replace(/ \(future\)$/,'')),...coins.map(x=>x.name),...specificMacro];
+  const topicGroups=groups.filter(g=>g!=='mercati'||groups.length===1);
+  if(groups.includes('mercati')&&groups.includes('crypto')&&!topics.length)topicGroups.push('mercati');
+  const terms=[...new Set(topics.length?topics:topicGroups.flatMap(g=>marketNewsGroups[g]||[]))].slice(0,8);
+  return {key,assets,coins,groups,specificMacro,terms,news:news||causal,quote:quote||(!news&&!causal&&today),causal,historical,newsDays,requestedHours:hours?Number(hours[1]):null,requestedDays:days?Number(days[1]):null,previousPeriod,today};
+}
+function marketQuoteLine(asset,q,now=Date.now()){
+  const stamp=Date.parse(q?.time);
+  if(!q||typeof q.value!=='number'||!Number.isFinite(q.value)||!Number.isFinite(stamp)||stamp>now+300000)return asset.name+': quotazione verificata non disponibile.';
+  const value=new Intl.NumberFormat('it-IT',{maximumFractionDigits:asset.group==='forex'?6:4}).format(q.value);
+  const change=typeof q.change==='number'&&Number.isFinite(q.change)?(q.change>=0?'+':'')+q.change.toFixed(2).replace('.',',')+'%':'non disponibile';
+  const date=new Intl.DateTimeFormat('it-IT',{dateStyle:'short',timeStyle:'short',timeZone:'Europe/Rome'}).format(new Date(stamp));
+  return asset.name+': '+value+' '+(asset.group==='indici'?'punti':q.currency||'')+'; variazione indicata dal feed '+change+'. '+(now-stamp>86400000?'Rilevazione precedente (oltre 24 ore). ':'Ultima rilevazione disponibile, potenzialmente ritardata. ')+'Fonte: '+(q.source||'feed mercati')+', '+date+' (ora italiana).';
+}
+function marketNewsDate(value){
+  const m=String(value||'').match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/);
+  return m?Date.parse(m[1]+'-'+m[2]+'-'+m[3]+'T'+m[4]+':'+m[5]+':'+m[6]+'Z'):NaN;
+}
+function marketNewsArticles(data,intent,now=Date.now()){
+  const seen=new Set(),rows=[];
+  const limitMs=intent.requestedHours?intent.requestedHours*3600000:intent.newsDays*86400000;
+  const dayKey=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit'});
+  for(const a of Array.isArray(data?.articles)?data.articles:[]){
+    const link=safeArticleURL(a.url),title=cleanWebText(a.title,250),stamp=marketNewsDate(a.seendate);
+    if(!link||!title||!Number.isFinite(stamp)||stamp>now+300000||now-stamp>limitMs)continue;
+    if(intent.today&&dayKey.format(new Date(stamp))!==dayKey.format(new Date(now)))continue;
+    const normalized=marketFold(title);if(seen.has(normalized))continue;
+    const titleTerms=intent.terms.flatMap(t=>[marketFold(t),...marketFold(t).split(' ').filter(w=>w.length>=5&&!['market','markets','trust','future','financial','global','prices','funds'].includes(w))]);
+    const general=/\b(?:stock|stocks|shares|market|markets|borsa|mercati|azioni|crypto|cripto|bitcoin|ethereum|solana|etf|forex|inflation|inflazione|fed|bce|petrolio|oil|gold|oro|bond|bonds|obbligazioni|economy|economia|dollar|dollaro)\b/.test(normalized);
+    const specific=intent.assets.length||intent.coins.length||intent.specificMacro.length;
+    if(!titleTerms.some(t=>t.length>=3&&containsMarketPhrase(normalized,t))&&(specific||!general))continue;
+    seen.add(normalized);rows.push({title,link,stamp,domain:new URL(link).hostname});
+  }
+  rows.sort((a,b)=>b.stamp-a.stamp);
+  const diversified=[],domains=new Map();
+  for(const a of rows){const count=domains.get(a.domain)||0;if(count>=2)continue;diversified.push(a);domains.set(a.domain,count+1);if(diversified.length===6)break;}
+  return diversified;
+}
+async function queryMarketNews(intent,signal){
+  const terms=intent.terms.map(t=>publicWebTopic(t)).filter(Boolean).map(t=>'"'+t.replace(/["'’]/g,' ').trim()+'"');
+  if(!terms.length)return [];
+  const url=new URL('https://api.gdeltproject.org/api/v2/doc/doc');
+  const query=terms.length===1?terms[0]:'('+terms.join(' OR ')+')';
+  url.search=new URLSearchParams({query,mode:'artlist',format:'json',maxrecords:'40',timespan:intent.requestedHours?Math.max(1,Math.min(720,intent.requestedHours))+'h':intent.newsDays+'d',sort:'datedesc'}).toString();
+  return marketNewsArticles(await publicWebJSON(url,signal,8000),intent);
+}
+function marketOfficialNews(feed,intent,now=Date.now()){
+  const terms=intent.terms.map(marketFold);
+  const maxMs=intent.requestedHours?intent.requestedHours*3600000:intent.newsDays*86400000;
+  const dayKey=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit'});
+  return (Array.isArray(feed?.items)?feed.items:[]).filter(x=>{
+    const t=Date.parse(x.date);
+    if(!Number.isFinite(t)||t>now+300000||now-t>maxMs||typeof x.title!=='string'||typeof x.url!=='string'||!x.url.startsWith('https://www.sec.gov/'))return false;
+    if(intent.today&&dayKey.format(new Date(t))!==dayKey.format(new Date(now)))return false;
+    const title=marketFold(x.title);
+    if(terms.some(term=>term.length>=3&&containsMarketPhrase(title,term)))return true;
+    if(intent.assets.length||intent.coins.length||intent.specificMacro.length)return false;
+    if(intent.groups.includes('mercati'))return true;
+    return intent.groups.includes('crypto')&&/\b(?:crypto|bitcoin|ethereum|digital assets?|stablecoins?|tokenization|blockchain)\b/.test(title)||
+      intent.groups.includes('etf')&&/\b(?:etf|exchange traded|investment company)\b/.test(title)||
+      intent.groups.includes('azioni')&&/\b(?:securities|stock|equity|issuer|corporate)\b/.test(title);
+  }).sort((a,b)=>Date.parse(b.date)-Date.parse(a.date)).slice(0,3);
+}
+async function answerAllMarkets(intent,signal){
+  if(intent.previousPeriod&&intent.news)return 'La ricerca per date passate specifiche non è ancora disponibile. Posso consultare le notizie di oggi o degli ultimi 7 o 30 giorni.';
+  if(intent.requestedHours>720||intent.requestedDays>30)return 'La ricerca di notizie è limitata agli ultimi 30 giorni.';
+  const wantsQuotes=intent.quote||intent.causal;
+  const [quotes,heat,sec,news]=await Promise.allSettled([
+    wantsQuotes?fetchCryptoFile('market-quotes.json',signal):Promise.resolve(null),
+    wantsQuotes&&(intent.coins.length||intent.groups.includes('crypto'))?fetchCryptoFile('crypto-heatmap-data.json',signal):Promise.resolve(null),
+    intent.news?fetchCryptoFile('sec-news.json',signal):Promise.resolve(null),
+    intent.news?queryMarketNews(intent,signal):Promise.resolve(null)
+  ]);
+  const parts=[];
+  if(wantsQuotes){
+    if(intent.historical)parts.push('Non posso verificare il rendimento per il periodo richiesto: il feed riporta soltanto l’ultima rilevazione e la sua variazione.');
+    else{
+      const feed=quotes.status==='fulfilled'?quotes.value:null;
+      const items=['markets','bigtech','commodities','forex','etfs'].flatMap(k=>Array.isArray(feed?.[k])?feed[k]:[]);
+      let assets=intent.assets;
+      if(!assets.length&&!intent.coins.length&&!intent.specificMacro.length){
+        const group=intent.groups.includes('mercati')?null:intent.groups;
+        assets=allMarketAssets.filter(a=>!group||group.includes(a.group)).slice(0,6);
+      }
+      const lines=assets.map(a=>marketQuoteLine(a,items.find(q=>q.id===a.id)));
+      if(intent.coins.length||intent.groups.includes('crypto')){
+        const catalog=cryptoCatalog(heat.status==='fulfilled'?heat.value:null,feed);
+        const selected=intent.coins.length?intent.coins.map(c=>catalog.find(x=>marketFold(x.name)===marketFold(c.name)||marketFold(x.symbol)===marketFold(c.symbol))).filter(Boolean):catalog.filter(c=>['btc','eth','sol','inj','bnb'].includes(c.localId));
+        lines.push(...selected.slice(0,5).map(c=>cryptoQuoteLine(c,Date.now(),true)));
+        if(intent.coins.length>selected.length||!selected.length)lines.push('Una o più quotazioni crypto non sono disponibili nel feed.');
+      }
+      parts.push(lines.length?'Ultime quotazioni disponibili:\n'+lines.join('\n'):'Non dispongo di una quotazione verificata per lo strumento richiesto.');
+    }
+  }
+  if(intent.news){
+    const dateFmt=new Intl.DateTimeFormat('it-IT',{dateStyle:'short',timeStyle:'short',timeZone:'Europe/Rome'});
+    const period=intent.today?'di oggi (ora italiana)':intent.requestedHours?'delle ultime '+intent.requestedHours+' ore':'degli ultimi '+intent.newsDays+' giorni';
+    const hits=news.status==='fulfilled'?news.value:[];
+    parts.push('Notizie '+period+' — '+(intent.terms.slice(0,4).join(', ')||'mercati')+'.');
+    parts.push(news.status!=='fulfilled'?'Ricerca web non disponibile in questo momento.':hits.length?'Titoli indicizzati da GDELT (data e ora di indicizzazione, non necessariamente di pubblicazione; testo integrale non verificato):\n'+hits.map(a=>dateFmt.format(new Date(a.stamp))+' — '+a.domain+': '+a.title+'\n'+a.link).join('\n'):'Nessun titolo pertinente restituito dalle fonti consultate. Questo non significa che non ci siano notizie.');
+    const official=marketOfficialNews(sec.status==='fulfilled'?sec.value:null,intent);
+    if(official.length)parts.push('Comunicati ufficiali SEC:\n'+official.map(a=>dateFmt.format(new Date(a.date))+' — '+a.title+'\n'+a.url).join('\n'));
+    else if(sec.status==='rejected')parts.push('Archivio SEC non raggiungibile.');
+    parts.push(intent.causal?'Questi titoli possono indicare eventi da approfondire, ma non dimostrano la causa del movimento di prezzo.':'Le notizie possono essere in italiano o inglese secondo la fonte. Non sono una previsione né un consiglio di investimento.');
+  }
+  return parts.join('\n\n')||'Non ho dati verificabili per questa richiesta.';
+}
+
 async function submitQuestion(fromVoice=false){
   if(!memoryReady||recording||question||speakingAnswer||!input.value.trim())return;
   voiceQuestion=fromVoice;
   el('speak-retry').hidden=true;
   question=input.value.trim();
   const previous=memoryPairs.filter(p=>p.chat===memoryChat).at(-1)?.q||'';
-  const intent=cryptoUpdateIntent(question,previous);
-  const quickAnswer = agentAction(question) || bilingualTranslation(question) || directDefinition(question) || (!intent&&!webQuestionIntent(question)&&!lexicalIntent(question)?(instantConversation(question) || recallMemory(question,memoryPairs) || answerIndex.get(questionKey(question))):'');
+  const marketIntent=allMarketIntent(question,previous);
+  const intent=marketIntent?null:cryptoUpdateIntent(question,previous);
+  const quickAnswer = agentAction(question) || bilingualTranslation(question) || directDefinition(question) || (!marketIntent&&!intent&&!webQuestionIntent(question)&&!lexicalIntent(question)?(instantConversation(question) || recallMemory(question,memoryPairs) || answerIndex.get(questionKey(question))):'');
   if (quickAnswer) {
     acceptAnswer(quickAnswer);
     return;
@@ -2475,6 +2660,18 @@ async function submitQuestion(fromVoice=false){
   input.readOnly = true;
   el('send').disabled = true;
   el('stop').hidden = false;
+  if(marketIntent){
+    const controller=new AbortController();cryptoUpdateController=controller;
+    const timeout=setTimeout(()=>controller.abort(),13000);
+    statusLine.textContent='Consultazione quotazioni e notizie dei mercati…';
+    try{
+      const answer=await answerAllMarkets(marketIntent,controller.signal);
+      if(cryptoUpdateController===controller)acceptAnswer(answer);
+    }catch{
+      if(cryptoUpdateController===controller)acceptAnswer('Non riesco a verificare le informazioni finanziarie in questo momento. Riprova più tardi.');
+    }finally{clearTimeout(timeout);if(cryptoUpdateController===controller)cryptoUpdateController=null;}
+    return;
+  }
   if(intent){
     const controller=new AbortController();cryptoUpdateController=controller;
     const timeout=setTimeout(()=>controller.abort(),12000);
