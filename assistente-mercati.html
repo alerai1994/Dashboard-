@@ -2847,11 +2847,46 @@ function cryptoNewsRequest(raw,previous=''){
   const requestedHours=hours?Number(hours[1]):null,requestedDays=days?Number(days[1]):null;
   const newsDays=hours?Math.ceil(requestedHours/24):days?requestedDays:/\b(?:mese|month)\b/.test(q)?30:today?1:7;
   const focus=['listing','roadmap','partnership','mainnet','upgrade'].find(t=>containsMarketPhrase(q,t))||'';
-  const generic=/^(?:cripto|crypto|criptovalut[ae]|token|coin|mercato|mercato crypto|mercato cripto)$/.test(target);
+  const generic=/^(?:cripto|crypto|criptovalut[ae]|token|coin|mercato|mercato crypto|mercato cripto|oggi|adesso|ora|di oggi|questa settimana|questo mese|in questo momento|per favore)$/.test(target);
   if(!found.length&&(!target||generic)&&prior)return {...prior,today:today||prior.today,newsDays:today?1:newsDays,requestedHours,requestedDays,focus:focus||prior.focus};
   if(!found.length&&(!target||generic))return null;
   if(!found.length&&(!explicit||!publicWebTopic(target)||target.split(' ').length>5))return null;
   return {coins:found.slice(0,3),target:found.length?'':target,today,newsDays:Math.max(1,Math.min(30,newsDays)),requestedHours,requestedDays,focus,previousPeriod:/\b(?:ieri|settimana scorsa|mese scorso)\b/.test(q)};
+}
+function cryptoPublisherHeadlines(feed,request,coin,now=Date.now()){
+  const full=marketFold(coin.name),ticker=marketFold(coin.symbol||'');
+  const aliases={HOT:['holochain'],LUNC:['luna classic','terra classic'],TAI:['tars ai'],GRAM:['toncoin'],POL:['polygon','matic'],WLFI:['world liberty financial']};
+  const names=[full,...(aliases[String(coin.symbol||'').toUpperCase()]||[])];
+  const weak=/^(?:ore|rain|grass|gate|sky|sun|cap|beam|band|flux|stable|terra|render|dash|link|near|sei|gas|quant|jupiter|plasma|one|ai|pi|amp|not|me)$/;
+  const limit=(request.requestedHours?request.requestedHours/24:request.newsDays)*86400000;
+  const day=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit'});
+  const focusPatterns={listing:/\b(?:listing|listed|lists|quotazione|quotato|quotata|exchange|delisting|delisted)\b/,roadmap:/\b(?:roadmap|milestone|development|sviluppo|piano)\b/,partnership:/\b(?:partner|partners|partnership|collaboration|collaborazione|accordo|integration|integrazione)\b/,mainnet:/\b(?:mainnet|network launch|lancio|rete)\b/,upgrade:/\b(?:upgrade|update|fork|aggiornamento|aggiornamenti)\b/};
+  const rows=[];
+  for(const item of Array.isArray(feed?.items)?feed.items:[]){
+    const stamp=Date.parse(item.date),link=safeArticleURL(item.url),title=cleanWebText(item.title,350);
+    if(!link||!title||!Number.isFinite(stamp)||stamp>now+300000||now-stamp>limit)continue;
+    if(request.today&&day.format(new Date(stamp))!==day.format(new Date(now)))continue;
+    const key=marketFold(title);
+    const context=/\b(?:crypto|cripto|criptovalut[ae]|cryptocurrency|blockchain|token|coin|defi|staking|airdrop|exchange|bitcoin|altcoin|mainnet|on chain|solana)\b/.test(key);
+    const named=names.some(n=>n.length>=3&&containsMarketPhrase(key,n)&&(!weak.test(n)||context));
+    const symbol=ticker.length>=3&&containsMarketPhrase(key,ticker)&&(!weak.test(ticker)||context);
+    if(!named&&!symbol)continue;
+    if(request.focus&&focusPatterns[request.focus]&&!focusPatterns[request.focus].test(key))continue;
+    rows.push({title,link,stamp,domain:link.match(/^https:\/\/([^/]+)/i)[1],source:cleanWebText(item.source,60),published:true});
+  }
+  return rows.sort((a,b)=>b.stamp-a.stamp);
+}
+function mergeCryptoHeadlines(publisher,web){
+  const rows=[],urls=new Set(),titles=new Set(),domains=new Map();
+  for(const item of [...publisher,...web]){
+    const title=marketFold(item.title),url=item.link.split(/[?#]/)[0];
+    if(urls.has(url)||titles.has(title))continue;
+    urls.add(url);titles.add(title);rows.push(item);
+  }
+  return rows.sort((a,b)=>b.stamp-a.stamp).filter(item=>{
+    const domain=item.domain.replace(/^www\./,'');const n=domains.get(domain)||0;
+    domains.set(domain,n+1);return n<2;
+  }).slice(0,4);
 }
 async function answerProjectCryptoNews(request,signal){
   if(request.previousPeriod)return 'La ricerca per date passate specifiche non è ancora disponibile. Posso cercare le notizie di oggi o degli ultimi 7 o 30 giorni.';
@@ -2867,6 +2902,7 @@ async function answerProjectCryptoNews(request,signal){
   }
   const dateFmt=new Intl.DateTimeFormat('it-IT',{dateStyle:'short',timeStyle:'short',timeZone:'Europe/Rome'});
   const official=fetchCryptoFile('sec-news.json',signal).catch(()=>null);
+  const publisher=fetchCryptoFile('crypto-news.json',signal).catch(()=>null);
   const parts=await Promise.all(coins.map(async coin=>{
     const name=coin.name,symbol=String(coin.symbol||'').toUpperCase();
     const terms=[name,...(symbol.length>=3&&marketFold(name)!==marketFold(symbol)?[symbol]:[])];
@@ -2887,11 +2923,14 @@ async function answerProjectCryptoNews(request,signal){
         return (full.length>=3&&containsMarketPhrase(title,full)&&(!/^(?:ore|rain|grass|gate|sky|sun|cap|beam|band|flux|stable|terra|render|dash|link|near|sei|gas|quant|jupiter|plasma)$/.test(full)||context))||(ticker.length>=3&&containsMarketPhrase(title,ticker)&&context);
       });
     }catch{failed=true;}
+    const archive=await publisher;
+    hits=mergeCryptoHeadlines(cryptoPublisherHeadlines(archive,request,coin),hits);
     const sec=marketOfficialNews(await official,intent).filter(a=>containsMarketPhrase(marketFold(a.title),marketFold(name)));
     const period=request.today?'di oggi':request.requestedHours?'delle ultime '+request.requestedHours+' ore':'degli ultimi '+request.newsDays+' giorni';
     let result='Novità '+period+' su '+name+(symbol&&marketFold(name)!==marketFold(symbol)?' ('+symbol+')':'')+'.\n';
-    if(hits.length)result+='Ho trovato '+hits.length+(hits.length===1?' titolo pertinente':' titoli pertinenti')+' nelle fonti indicizzate:\n'+hits.slice(0,4).map(a=>a.title+'\nFonte: '+a.domain+', '+dateFmt.format(new Date(a.stamp))+' (indicizzazione)\n'+a.link).join('\n\n');
-    else result+=failed?'La ricerca web non è raggiungibile in questo momento.':'Non ho trovato notizie pertinenti nel periodo e nelle fonti consultate. Non significa che non ci siano novità.';
+    if(hits.length)result+='Ho trovato '+hits.length+(hits.length===1?' titolo pertinente':' titoli pertinenti')+' nelle fonti indicizzate:\n'+hits.slice(0,4).map(a=>a.title+'\nFonte: '+(a.source||a.domain)+', '+dateFmt.format(new Date(a.stamp))+(a.published?' (pubblicazione)':' (indicizzazione)')+'\n'+a.link).join('\n\n');
+    else result+=failed&&!archive?'La ricerca web e l’archivio delle testate non sono raggiungibili in questo momento.':'Non ho trovato notizie pertinenti nel periodo e nelle fonti raggiungibili. Non significa che non ci siano novità.';
+    if(failed&&archive)result+='\nRicerca web non disponibile; consultato l’archivio delle testate'+(Number.isFinite(Date.parse(archive.updatedAt))?' aggiornato il '+dateFmt.format(new Date(archive.updatedAt)):'')+'.';
     if(sec.length)result+='\n\nComunicati ufficiali SEC:\n'+sec.map(a=>a.title+'\n'+dateFmt.format(new Date(a.date))+'\n'+a.url).join('\n');
     return result;
   }));
