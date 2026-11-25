@@ -547,6 +547,19 @@ function vertexAbortPreparation(message,block=true){
  statusLine.textContent=message;
  if(!vertexBlockedTier)restorePreferredWake();
 }
+function vertexNeedsVoiceMemoryRoom(readyTier,memory,nativeLocal){
+ return !!readyTier&&readyTier!=='base'&&!nativeLocal&&!(Number.isFinite(memory)&&memory>=8);
+}
+function vertexVoiceMemoryRoom(){
+ return vertexNeedsVoiceMemoryRoom(vertexReadyTier,Number(navigator.deviceMemory),!!localRecognitionLanguages[voiceLanguage]);
+}
+function vertexReleaseHeavyForVoice(){
+ if(!vertexVoiceMemoryRoom())return;
+ vertexLoadEpoch++;vertexClearLoadTimer();vertexLoadTouch=null;
+ if(worker){worker.terminate();worker=null;}
+ vertexReadyTier='';vertexPreparingTier='';vertexSetMarker('');syncVertexTier();
+ el('ai-model-note').textContent=vertexTierNotes[vertexTier]+' Modello sospeso per liberare memoria al microfono; verrà riaperto quando necessario.';
+}
 function vertexMayRestoreWake(blocked,loading,batch){return !blocked&&!loading&&!batch;}
 function vertexModelEvent(data){
  if(data.modelProgress&&vertexLoadTouch)vertexLoadTouch();
@@ -1932,6 +1945,7 @@ mic.onclick=()=>{
     return;
   }
   if(continuousTalk){setContinuousTalk(false);statusLine.textContent='Microfono disattivato.';return;}
+  vertexReleaseHeavyForVoice();
   prepareSpeechFromGesture();
   prepareAnswerEngine(false);
   setContinuousTalk(false);setWakePreference(true);setWakeMode(true);
@@ -2082,13 +2096,14 @@ function vertexWakeCanRestore(preferred,visible,busy,granted){
  return preferred&&visible&&!busy&&granted;
 }
 async function restorePreferredWake(){
+ if(vertexVoiceMemoryRoom())return;
  if(!vertexMayRestoreWake(vertexBlockedTier,vertexLoading,vertexBatchRunning)||!vertexWakePreferred||vertexWakeRestorePending||vertexWakeEnabled||document.hidden||!memoryReady||recording||question||speakingAnswer||!window.isSecureContext||!navigator.mediaDevices?.getUserMedia)return;
  vertexWakeRestorePending=true;const epoch=vertexWakeRestoreEpoch;
  try{
   let granted=vertexWakeAuthorized;
   try{const permission=await navigator.permissions?.query?.({name:'microphone'});if(permission)granted=permission.state==='granted';}catch{}
   if(epoch!==vertexWakeRestoreEpoch)return;
-  if(vertexMayRestoreWake(vertexBlockedTier,vertexLoading,vertexBatchRunning)&&vertexWakeCanRestore(vertexWakePreferred,!document.hidden,!!(recording||question||speakingAnswer||vertexWakeEnabled),granted)){
+  if(!vertexVoiceMemoryRoom()&&vertexMayRestoreWake(vertexBlockedTier,vertexLoading,vertexBatchRunning)&&vertexWakeCanRestore(vertexWakePreferred,!document.hidden,!!(recording||question||speakingAnswer||vertexWakeEnabled),granted)){
    setWakeMode(true);beginVoiceListening();
   }else if(vertexWakePreferred&&!document.hidden&&!recording&&!question&&!speakingAnswer&&!vertexWakeEnabled){
    statusLine.textContent='Tocca il microfono una volta per abilitare «Hey Vertex».';
@@ -2378,7 +2393,7 @@ function speakAnswer(answer){
   function next(){
     if(generation!==speechGeneration)return;
     if(index>=chunks.length){finish(false);return;}
-    if(useLocal){localNext();return;}
+    if(useLocal){vertexReleaseHeavyForVoice();localNext();return;}
     try{
       const u=new SpeechSynthesisUtterance(chunks[index]);
       activeUtterance=u;
@@ -3551,7 +3566,7 @@ function getAnswerWorker(){
     vertexReadyTier='';vertexPreparingTier='';
     const current=worker;
     current.onmessage=({data})=>{if(worker===current)vertexModelEvent(data);};
-    current.onerror=()=>{if(worker===current){current.terminate();worker=null;vertexReadyTier='';vertexPreparingTier='';syncVertexTier();}};
+    current.onerror=()=>{if(worker===current){if(vertexLoading){vertexAbortPreparation('Il browser ha interrotto il motore. Riprova manualmente.');return;}current.terminate();worker=null;vertexReadyTier='';vertexPreparingTier='';vertexSetMarker('');syncVertexTier();}};
   }
   return worker;
 }
@@ -3757,10 +3772,13 @@ function vertexBatchEvent(data){
  if(!vertexBatchRunning)return;
  if(data.batchState&&Object.prototype.hasOwnProperty.call(vertexBatchStatus,data.loadingTier)){
   vertexBatchStatus[data.loadingTier]=data.batchState==='verified'?'verificato':data.batchState==='failed'?'non riuscito':'caricamento';
-  if(data.batchState==='loading')vertexSetMarker(data.loadingTier);
+  if(data.batchState==='loading'){
+   vertexSetMarker(data.loadingTier);const engine=worker;
+   vertexLoadTouch=vertexArmLoadWatchdog(data.loadingTier,engine,()=>{if(worker===engine){engine?.terminate();worker=null;vertexBatchStatus[data.loadingTier]='interrotto';finishVertexBatch('Caricamento fermo. Riprova il singolo modello.');}});
+  }
   vertexBatchReport();
  }
- if(data.modelProgress)vertexBatchReport(data.modelProgress);
+ if(data.modelProgress){if(vertexLoadTouch)vertexLoadTouch();vertexBatchReport(data.modelProgress);}
  if(data.batchDone){
   const count=Object.values(data.results||{}).filter(v=>v===true).length;
   finishVertexBatch(data.busy?'Motore occupato. Riprova.':count+' modelli su 3 verificati.',data.activeTier||'');
