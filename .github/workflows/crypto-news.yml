@@ -21,8 +21,10 @@ jobs:
         shell: bash
         run: |
           python3 - <<'PY'
-          import concurrent.futures, datetime as dt, email.utils, json, pathlib, urllib.request, urllib.parse, xml.etree.ElementTree as ET
+          import concurrent.futures, datetime as dt, email.utils, json, pathlib, urllib.request, urllib.parse, xml.etree.ElementTree as ET, re
+          from html.parser import HTMLParser
           sources = {
+              "Injective Official": ("https://injective.com/blog", "injective.com"),
               "CoinDesk": ("https://www.coindesk.com/arc/outboundfeeds/rss/", "coindesk.com"),
               "Cointelegraph": ("https://cointelegraph.com/rss", "cointelegraph.com"),
               "The Block": ("https://www.theblock.co/rss.xml", "theblock.co"),
@@ -49,14 +51,63 @@ jobs:
               except (TypeError, ValueError):
                   parsed = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
               return parsed.replace(tzinfo=dt.timezone.utc) if parsed.tzinfo is None else parsed.astimezone(dt.timezone.utc)
+          class BlogLinks(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.active = None
+                  self.links = []
+              def handle_starttag(self, tag, attrs):
+                  if tag == "a":
+                      url = urllib.parse.urljoin("https://injective.com/", dict(attrs).get("href", ""))
+                      parsed = urllib.parse.urlsplit(url)
+                      if parsed.hostname == "injective.com" and re.fullmatch(r"/blog/[a-z0-9-]+/?", parsed.path) and not parsed.query:
+                          self.active = [url, []]
+              def handle_data(self, data):
+                  if self.active:
+                      self.active[1].append(data)
+              def handle_endtag(self, tag):
+                  if tag == "a" and self.active:
+                      self.links.append(self.active)
+                      self.active = None
+          def injective_blog(raw):
+              parser = BlogLinks()
+              parser.feed(raw.decode("utf-8", "replace"))
+              items = []
+              for url, chunks in parser.links:
+                  text = " ".join(" ".join(chunks).split())
+                  match = re.search(r"\b([A-Za-z]{3,9}\s+\d{1,2},\s+\d{4})\s+\d+\s+min(?:ute)?s?\s+read\s+(.+)", text, re.I)
+                  if not match:
+                      continue
+                  try:
+                      stamp = next(dt.datetime.strptime(match[1], fmt).replace(tzinfo=dt.timezone.utc) for fmt in ("%B %d, %Y", "%b %d, %Y") if _date_valid(match[1], fmt))
+                  except (StopIteration, ValueError):
+                      continue
+                  if not now - dt.timedelta(days=30) <= stamp <= now + dt.timedelta(minutes=5):
+                      continue
+                  title = re.sub(r"\s+(?:Featured|Community|Tokenization|Infrastructure|Ecosystem|Learn|Research)(?:\s+(?:Community|Tokenization|Infrastructure|Ecosystem|Learn|Research|Read More))*\s*$", "", match[2]).strip()
+                  # Use the visible headline; a card may also contain an excerpt.
+                  if title:
+                      items.append({"title": title[:350], "url": url, "date": stamp.isoformat(), "source": "Injective Official", "project": "INJ", "datePrecision": "day"})
+              return list({item["url"]: item for item in items}.values())
+          def _date_valid(value, fmt):
+              try:
+                  dt.datetime.strptime(value, fmt)
+                  return True
+              except ValueError:
+                  return False
           def fetch(pair):
               source, (url, domain) = pair
               try:
-                  request = urllib.request.Request(url, headers={"User-Agent": "Vertex-News/1.0 (public RSS reader)", "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml"})
+                  request = urllib.request.Request(url, headers={"User-Agent": "Vertex-News/1.0 (public RSS reader)", "Accept": "text/html, application/rss+xml, application/atom+xml, application/xml, text/xml"})
                   with urllib.request.urlopen(request, timeout=15) as response:
                       raw = response.read(4_000_001)
                   if len(raw) > 4_000_000:
                       raise ValueError("Feed too large")
+                  if source == "Injective Official":
+                      items = injective_blog(raw)
+                      if not items:
+                          raise ValueError("No dated project entries parsed")
+                      return source, items, None
                   root = ET.fromstring(raw)
                   items = []
                   for item in root.iter():
