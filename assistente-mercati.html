@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light dark"><meta name="vertex-build" content="ai-tiers-20261125-r16"><meta name="theme-color" content="#f5f8f8"><script>(() => {
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light dark"><meta name="vertex-build" content="ai-tiers-20261125-r17"><meta name="theme-color" content="#f5f8f8"><script>(() => {
   // Palette values match the dashboard's background, panel, border, text and brand.
   const palettes = {
     light: ["light","#edf1f0","#f3f5f2","#c2cfcb","#1f2427","#457384"],
@@ -607,7 +607,7 @@ async function vertexConfirmRuntime(tier){
  let gpu=false;
  if(!vertexForceCPU&&navigator.gpu){try{const adapter=await Promise.race([navigator.gpu.requestAdapter(),new Promise(r=>setTimeout(()=>r(null),1500))]);gpu=!!adapter?.features?.has('shader-f16');}catch{}}
  if(vertexHeavyCPUConsentNeeded(tier,Number(navigator.deviceMemory),vertexIsMobile(),gpu)&&!vertexHeavyConsent.has(tier)){
-  const ok=window.confirm('Il modello '+vertexTierNames[tier]+' richiede molta memoria. Su questo browser manca l’accelerazione WebGPU FP16 o non è disponibile. Tentare l’avvio su CPU può causare un arresto della pagina. Vuoi provare una sola volta? Nessun passaggio automatico a Base.');
+  const ok=window.confirm('Il modello '+vertexTierNames[tier]+' richiede molta memoria. Su questo browser manca l’accelerazione WebGPU FP16 o non è disponibile. Tentare l’avvio su CPU può causare un arresto della pagina. Vuoi provare una sola volta?');
   if(!ok)return false;vertexHeavyConsent.add(tier);
  }
  return true;
@@ -686,7 +686,7 @@ function setVertexTier(tier){
  if(vertexReadyTier===tier)el('ai-model-note').textContent=vertexTierNotes[tier]+' Modello pronto.';
  else if(vertexDownloaded.has(tier))el('ai-model-note').textContent=vertexDownloadNotice(tier);
  if(tier==='base'&&!question&&!speakingAnswer&&(!recording||recording.wakeMode==='standby'))prepareSelectedVertexModel();
- if(tier!=='base'&&!vertexDownloaded.has(tier))el('ai-model-note').textContent=vertexTierNotes[tier]+' Il modello scelto verrà avviato alla prima richiesta AI. Nessun passaggio automatico a Base.';
+ if(tier!=='base'&&!vertexDownloaded.has(tier))el('ai-model-note').textContent=vertexTierNotes[tier];
  return 'Modello '+vertexTierNames[tier]+' selezionato. '+(tier==='base'?'Userò il modello più leggero.':'Lo userò per le domande che richiedono AI locale, se le risorse lo consentono. Il primo download può richiedere tempo.');
 }
 function setVertexComputeMode(enabled,force=false){return setVertexTier(enabled&&force?'media':'base');}
