@@ -1,10 +1,10 @@
-name: Vertex Crypto News
+name: Vertex Multi-source News
 on:
   push:
     branches: [main]
     paths: [.github/workflows/crypto-news.yml]
   schedule:
-    - cron: '7,37 * * * *'
+    - cron: '7,22,37,52 * * * *'
   workflow_dispatch:
 permissions:
   contents: write
@@ -28,6 +28,18 @@ jobs:
               "The Block": ("https://www.theblock.co/rss.xml", "theblock.co"),
               "Decrypt": ("https://decrypt.co/feed", "decrypt.co"),
               "CryptoSlate": ("https://cryptoslate.com/feed/", "cryptoslate.com"),
+              "CNBC Finance": ("https://www.cnbc.com/id/10000664/device/rss/rss.html", "cnbc.com"),
+              "CNBC Economy": ("https://www.cnbc.com/id/20910258/device/rss/rss.html", "cnbc.com"),
+              "CNBC Top News": ("https://www.cnbc.com/id/100003114/device/rss/rss.html", "cnbc.com"),
+              "BBC Business": ("https://feeds.bbci.co.uk/news/business/rss.xml", "bbc.co.uk"),
+              "BBC World": ("https://feeds.bbci.co.uk/news/world/rss.xml", "bbc.co.uk"),
+              "BBC Technology": ("https://feeds.bbci.co.uk/news/technology/rss.xml", "bbc.co.uk"),
+              "Financial Times": ("https://www.ft.com/rss/home/international", "ft.com"),
+              "Federal Reserve": ("https://www.federalreserve.gov/feeds/press_all.xml", "federalreserve.gov"),
+              "NY Times Business": ("https://rss.nytimes.com/services/xml/rss/nyt/Business.xml", "nytimes.com"),
+              "NY Times World": ("https://rss.nytimes.com/services/xml/rss/nyt/World.xml", "nytimes.com"),
+              "NY Times Technology": ("https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml", "nytimes.com"),
+              "MIT Technology Review": ("https://www.technologyreview.com/feed/", "technologyreview.com"),
           }
           now = dt.datetime.now(dt.timezone.utc)
           path = pathlib.Path("crypto-news.json")
@@ -58,7 +70,7 @@ jobs:
                       url = (link.get("href") or link.text or "").strip()
                       parsed = urllib.parse.urlsplit(url)
                       host = parsed.hostname or ""
-                      if parsed.scheme != "https" or parsed.username or parsed.password or not (host == domain or host.endswith("." + domain)):
+                      if parsed.scheme != "https" or parsed.username or parsed.password or not (host == domain or host.endswith("." + domain) or (domain == "bbc.co.uk" and (host == "bbc.com" or host.endswith(".bbc.com")))):
                           continue
                       date = next((fields[key].text for key in ("pubDate", "published", "date") if key in fields and fields[key].text), "")
                       try:
@@ -75,7 +87,7 @@ jobs:
               previous = json.loads(path.read_text())
           except (OSError, ValueError):
               previous = {}
-          with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
+          with concurrent.futures.ThreadPoolExecutor(max_workers=10) as pool:
               results = list(pool.map(fetch, sources.items()))
           status = {}
           fresh = []
@@ -94,7 +106,7 @@ jobs:
                       rows.setdefault(item["url"], item)
               except (KeyError, ValueError, TypeError):
                   continue
-          payload = {"updatedAt": now.isoformat(), "sources": status, "items": sorted(rows.values(), key=lambda x: x["date"], reverse=True)[:2500]}
+          payload = {"updatedAt": now.isoformat(), "sources": status, "items": sorted(rows.values(), key=lambda x: x["date"], reverse=True)[:8000]}
           path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
           print("Archived", len(payload["items"]), "headlines")
           PY
@@ -105,7 +117,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add crypto-news.json
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m "data: refresh crypto publisher headlines"
+          git commit -m "data: refresh multi-source publisher headlines"
           for attempt in 1 2 3 4; do
             git fetch origin main
             git rebase origin/main
