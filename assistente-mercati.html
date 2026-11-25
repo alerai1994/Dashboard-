@@ -1905,6 +1905,10 @@ function vertexOwnsVoiceDraft(session,value){
 }
 function updateDictation(session,text){
  if(recording!==session||!vertexOwnsVoiceDraft(session,input.value))return;
+ if(session.wakeMode==='standby'&&vertexWakePhrase(text).matched){
+  session.wakeDetected=true;
+  if(session.phase==='listening')statusLine.textContent='Ti ascolto…';
+ }
  const corrected=normalizeVoiceTranscript(vertexLiveDraft(session.wakeMode,text),session.language);
  if(!corrected){
   if(session.wakeMode&&session.liveDraft!==undefined&&input.value===session.liveDraft){
@@ -2132,7 +2136,7 @@ mic.onclick=()=>{
   vertexReleaseHeavyForVoice();
   prepareSpeechFromGesture();
   prepareAnswerEngine(false);
-  setContinuousTalk(false);setWakePreference(true);setWakeMode(true);
+  setContinuousTalk(false);setWakePreference(true);setWakeMode(true,true);
   beginVoiceListening();
 };
 async function beginVoiceListening(){
@@ -2145,7 +2149,7 @@ async function beginVoiceListening(){
   mic.disabled = false;
   input.readOnly = !session.wakeMode;
   el('send').disabled = !session.wakeMode;
-  statusLine.textContent = 'Consenti l’accesso al microfono per ascoltare «Hey Vertex».';
+  statusLine.textContent = session.wakeMode==='standby'?'Consenti l’accesso al microfono per ascoltare «Hey Vertex».':'Attivazione microfono…';
   try {
     const Audio = window.AudioContext || window.webkitAudioContext;
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia || !Audio) throw Object.assign(new Error('Microfono non disponibile'),{name:'UnsupportedAudio'});
@@ -2251,6 +2255,10 @@ function vertexWakePhrase(value){
  const match=raw.match(/^[\s"'“”«».,!?;:–—-]*(?:hey|ehi|hei|ei|hé|eh|he[yìí])[\s,.:!?;–—-]+(?:vertex|ver[\s-]+tex|vèrtex)(?![\p{L}\p{N}])[\s,.:!?;–—-]*/iu);
  return match?{matched:true,command:raw.slice(match[0].length).trim()}:{matched:false,command:''};
 }
+// After 45 seconds without speech, return to standby instead of recording indefinitely.
+function vertexWakeNextCommand(mode,action,hadSpeech){
+ return action==='listen'||action==='submit'||(mode==='command'&&action==='wait'&&!!hadSpeech);
+}
 function vertexWakeDecision(mode,text,reliable=true){
  if(!reliable)return {action:'wait',command:''};
  const phrase=vertexWakePhrase(text);
@@ -2271,8 +2279,8 @@ function setWakePreference(enabled){
  vertexWakePreferred=!!enabled;vertexWakeRestoreEpoch++;
  try{localStorage.setItem('vertex-wake-preferred',String(vertexWakePreferred));}catch{}
 }
-function setWakeMode(enabled){
- vertexWakeEnabled=!!enabled;vertexWakeAwaitCommand=false;
+function setWakeMode(enabled,listenNow=false){
+ vertexWakeEnabled=!!enabled;vertexWakeAwaitCommand=!!enabled&&!!listenNow;
  mic.dataset.wakeMode=enabled?'on':'off';
  if(!recording)setMicState('off');
 }
@@ -2294,7 +2302,7 @@ async function restorePreferredWake(){
   }
  }finally{vertexWakeRestorePending=false;}
 }
-function wakeStatus(){return vertexWakeAwaitCommand?'Ti ascolto. Fai la tua domanda.':'In attesa di «Hey Vertex»…';}
+function wakeStatus(){return vertexWakeAwaitCommand||recording?.wakeDetected?'Ti ascolto. Fai la tua domanda.':'In attesa di «Hey Vertex»…';}
 function resumeWakeListening(){
  if(!vertexWakeEnabled||document.hidden)return;
  clearTimeout(continuousTimer);
@@ -2313,11 +2321,11 @@ function handleWakeTranscript(session,raw,reliable){
  if(!reliable&&session.lastTranscript){input.value=draft;setWakeMode(false);statusLine.textContent='Controlla la trascrizione prima di inviarla.';return true;}
  if(!vertexWakeEnabled)return true;
  if(decision.action==='submit'){
-  vertexWakeAwaitCommand=false;
+  vertexWakeAwaitCommand=true;
   const command=normalizeVoiceTranscript(decision.command,session.language);
   if(command){input.value=command;submitQuestion(true);return true;}
  }
- vertexWakeAwaitCommand=decision.action==='listen';
+ vertexWakeAwaitCommand=vertexWakeNextCommand(session.wakeMode,decision.action,session.speechStarted);
  statusLine.textContent=wakeStatus();resumeWakeListening();
  return true;
 }
@@ -2329,7 +2337,7 @@ function setContinuousTalk(enabled){
   continuousTimer=0;
 }
 function continueAfterSpeech(){
-  if(vertexWakeEnabled){vertexWakeAwaitCommand=false;resumeWakeListening();return;}
+  if(vertexWakeEnabled){statusLine.textContent=wakeStatus();resumeWakeListening();return;}
   if(!continuousTalk||document.hidden)return;
   clearTimeout(continuousTimer);
   continuousTimer=setTimeout(()=>{
@@ -2543,7 +2551,7 @@ function speakAnswer(answer){
   const synth=window.speechSynthesis;
   const nativeSupported=!!synth&&typeof window.SpeechSynthesisUtterance==='function';
   const chunks=speechChunks(lastSpokenAnswer);
-  if(!chunks.length)return;
+  if(!chunks.length){continueAfterSpeech();return;}
   const generation=speechGeneration;
   let index=0,attempt=0,useLocal=!nativeSupported;
   speakingAnswer=true;
