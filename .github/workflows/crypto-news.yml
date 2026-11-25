@@ -202,6 +202,8 @@ jobs:
               name,symbol = row
               term = aliases.get(symbol,re.sub(r"\s*\([^)]*\)", "", name).strip())
               query = '"' + term.replace('"','') + '" (crypto OR blockchain OR token OR cryptocurrency) when:30d'
+              if symbol == "ORE":
+                  query = '"ORE" Solana (token OR mining OR crypto OR staking) when:30d'
               url = "https://news.google.com/rss/search?" + urllib.parse.urlencode({"q":query,"hl":"en-US","gl":"US","ceid":"US:en"})
               try:
                   req=urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0","Accept":"application/rss+xml, text/xml"})
@@ -224,6 +226,7 @@ jobs:
                       matched=any(t and " "+t+" " in key for t in tokens)
                       crypto=bool(re.search(r"\b(crypto|blockchain|token|solana|coin|bitcoin|ethereum|defi|staking|exchange)\b",key))
                       ambiguous=symbol in {"ORE","HOT","ONE","NEAR","OP","GAS","PI","SEI","LINK","RAIN","GRASS","GATE","SKY","SUN","CAP","BEAM","FLUX","STABLE","TERRA","RENDER","DASH","JUP","X","S","M","U","Q"}
+                      if symbol=="ORE" and not re.search(r"\b(solana|mining|staking|token|crypto)\b",key): continue
                       if not matched or ambiguous and not crypto: continue
                       try: stamp=timestamp(item.findtext("pubDate") or "")
                       except (TypeError,ValueError): continue
