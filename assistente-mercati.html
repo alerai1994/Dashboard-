@@ -1756,10 +1756,10 @@ function normalizeMarketTerms(text){
 
 // High-confidence spellings only. Never guess a number, a negation or an asset ticker.
 const vertexDistinctiveSpeechAliases=[
- ['Bitcoin',['bit koin','bitkoin','bit co in','bit coin']],
- ['Ethereum',['eterium','etherium','etereum','eter eum','i ti rium']],
+ ['Bitcoin',['bit koin','bitkoin','bit co in','bit coin','bit coint','bit coine']],
+ ['Ethereum',['eterium','etherium','etereum','eter eum','i ti rium','eterio um','eteri um','e terium']],
  ['Solana',['sol anna','sol ana','so lana']],
- ['Injective',['in jective','in jectiv','in gective','in gettiv','injectiv']],
+ ['Injective',['in jective','in jectiv','in gective','in gettiv','injectiv','in get tiv','in ject ive']],
  ['Raydium',['rei dium','ray dium']],
  ['Holochain',['holo chain','olo cein']],
  ['CoinGecko',['coin gecko','coin gekko','koin geko']],
@@ -1771,13 +1771,33 @@ const vertexDistinctiveSpeechAliases=[
  ['ChatGPT',['chat g p t','chat gi pi ti','chat gpt']],
  ['blockchain',['block chain','blok cein']],
  ['stablecoin',['stable coin','steibol coin']],
- ['staking',['steiking','stei king']],
+ ['staking',['steiking','stei king','stey king']],
+ ['CoinMarketCap',['coinmarket cap','coin marketcap']],
+ ['World Liberty Financial',['world liberty financial','world liberty finanzial']],
  ['order book',['order buk','orderbook']]
 ];
 const vertexDistinctiveAliasMap=new Map(vertexDistinctiveSpeechAliases.flatMap(([canonical,aliases])=>aliases.map(a=>[a,canonical])));
 const vertexDistinctiveAliasPattern=new RegExp('(?<![\\p{L}\\p{N}])(?:'+[...vertexDistinctiveAliasMap.keys()].sort((a,b)=>b.length-a.length).map(a=>a.replace(/[.*+?^\${}()|[\]\\]/g,'\\$&').replace(/ /g,'\\s+')).join('|')+')(?![\\p{L}\\p{N}])','giu');
 function vertexCorrectDistinctiveSpeech(text){
  return String(text).replace(vertexDistinctiveAliasPattern,m=>vertexDistinctiveAliasMap.get(voiceAliasKey(m))||m);
+}
+// Apply narrowly defined contextual repairs, not broad fuzzy substitutions.
+function vertexContextualSpeechRepair(text){
+ let value=String(text);
+ const rules=[
+  [/\b(?:mi\s+)?puoi\s+dire\s+quali\s+sono\b/giu,m=>m],
+  [/\b(?:qual['’]\s*[eè]|qual\s+e)(?=\s+(?:il|la|lo|un|una|l['’]|stato|stati|stata|state|era|sarebbe))/giu,'qual è'],
+  [/\b(?:che\s+cosa|cosa)\s+e(?=\s+(?:il|la|lo|un|una|l['’]|successo|accaduto))/giu,m=>m.replace(/\be$/iu,'è')],
+  [/\b(?:come|cos[ae])\s+e(?=\s+(?:andata|andato|successo|possibile|fatto|fatta|stato|stata))/giu,m=>m.replace(/\be$/iu,'è')],
+  [/\bce\s+(?=(?:stato|stata|ne\s+sono|un|una|qualcuno|qualcosa|ancora)\b)/giu,'c’è '],
+  [/\b(?:un\s+po[’']?|unpo)(?=\s|[.,;:!?]|$)/giu,'un po’'],
+  [/\b(?:daccordo|d\s+accordo)\b/giu,'d’accordo'],
+  [/\b(?:tuttora|tutt['’]\s+ora)\b/giu,'tuttora'],
+  [/\b(?:l['’]\s+|l\s+)(?=(?:andamento|inflazione|economia|azione|analisi|aggiornamento|investimento|indice|ultima|ultimo|apertura|obbligazione|andata|informazione)\b)/giu,'l’'],
+  [/\b(?:nel|sul|del|dal)\s+(?:order\s+buk|order\s+book)\b/giu,m=>m.replace(/order\s+buk/iu,'order book')]
+ ];
+ for(const [pattern,replacement] of rules)value=value.replace(pattern,replacement);
+ return value;
 }
 function correctItalianDictation(text,complete=true){
  const terms=[
@@ -1798,7 +1818,7 @@ function correctItalianDictation(text,complete=true){
   [/\b(?:affinche|affinchè)\b/giu,'affinché'],
   [/\b(?:nonche|nonchè)\b/giu,'nonché']
  ];
- let corrected=normalizeMarketTerms(vertexCorrectDistinctiveSpeech(String(text).trim()));
+ let corrected=vertexContextualSpeechRepair(normalizeMarketTerms(vertexCorrectDistinctiveSpeech(String(text).trim())));
  for(const [pattern,replacement] of terms)corrected=corrected.replace(pattern,replacement);
  corrected=corrected.replace(/[ \t]+/g,' ').replace(/\s+([?!;:])/g,'$1').replace(/^(\p{Ll})/u,l=>l.toLocaleUpperCase('it'));
  if(complete&&/^(?:qual[ei]?|quanto|quanta|quanti|quante|perché|come|quando|dove|chi|cosa|che cosa|mi dici|mi puoi dire|puoi spiegarmi)\s/iu.test(corrected)&&!/[!?…]$/.test(corrected)){
@@ -1861,7 +1881,7 @@ function pauseEndsPhrase(session,rms,count){
  // rather than waiting for the first complete phrase.
 function preferAccurateVoice(){
   // The existing worker flag is named preferSmall: true means use tiny.
-  return vertexTier!=='base'||!(Number(navigator.deviceMemory)>=8&&(navigator.hardwareConcurrency||2)>=6);
+  return !(Number(navigator.deviceMemory)>=8&&(navigator.hardwareConcurrency||2)>=6);
 }
 function getVoiceWorker(){
   if(!voiceWorker){
@@ -1956,8 +1976,9 @@ function updateDictation(session,text,complete=false){
   }
   return;
  }
- input.value=session.original+(session.original&&!/\s$/.test(session.original)?' ':'')+corrected;
- session.liveDraft=input.value;session.lastTranscript=corrected;session.lastRawTranscript=String(text||'');
+ const next=session.original+(session.original&&!/\s$/.test(session.original)?' ':'')+corrected;
+ if(input.value!==next)input.value=next;
+ session.liveDraft=next;session.lastTranscript=corrected;session.lastRawTranscript=String(text||'');
  input.scrollTop=input.scrollHeight;
 }
 function detachLocalRecognition(session,abort=true){
@@ -1977,6 +1998,16 @@ function nativeFallback(session){
     transcribeSoFar(session);
   }
 }
+// Prefer the recognizer's first valid hypothesis; alternatives are only a fallback
+// for malformed or empty results, never a reason to guess values or asset names.
+function vertexRecognitionText(result){
+ if(!result)return '';
+ for(let i=0;i<Math.min(3,result.length||0);i++){
+  const candidate=String(result[i]?.transcript||'').trim();
+  if(validItalianTranscript(candidate)&&!hasRecognitionLoop(candidate))return candidate;
+ }
+ return '';
+}
 function startLocalRecognition(session){
   if(!localRecognitionLanguages[session.language]||!LocalRecognition)return false;
   try{
@@ -1984,6 +2015,7 @@ function startLocalRecognition(session){
     recognition.processLocally=true;
     if(recognition.processLocally!==true)return false;
     recognition.lang=session.language==='en'?'en-US':'it-IT';recognition.continuous=true;recognition.interimResults=true;
+    try{recognition.maxAlternatives=3;}catch{}
     session.recognizer=recognition;session.nativeActive=true;
     recognition.onstart=()=>{
       if(recording!==session||session.recognizer!==recognition)return;
@@ -1994,7 +2026,7 @@ function startLocalRecognition(session){
       if(recording!==session||session.recognizer!==recognition)return;
       let text='',final='';
       for(let i=0;i<event.results.length;i++){
-        const value=event.results[i][0]?.transcript||'';
+        const value=vertexRecognitionText(event.results[i]);
         text+=(text?' ':'')+value;
         if(event.results[i].isFinal)final+=(final?' ':'')+value;
       }
