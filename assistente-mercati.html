@@ -2210,7 +2210,7 @@ el('download-agent').onclick=()=>{
   const url=URL.createObjectURL(new Blob([agentExport],{type:'text/plain;charset=utf-8'}));
   const link=document.createElement('a');link.href=url;link.download='vertex-conversazione.txt';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
 };
-function acceptAnswer(answer) {
+function acceptAnswer(answer,spokenAnswer=answer) {
   if(!question)return;
   clearAnswerPreview();
   bubble('Tu', question);
@@ -2219,7 +2219,7 @@ function acceptAnswer(answer) {
   statusLine.textContent = '';
   input.value = '';
   idle();
-  speakAnswer(answer);
+  speakAnswer(spokenAnswer);
 }
 let cryptoUpdateController=null;
 function bilingualMarketQuestion(text){
@@ -2825,23 +2825,30 @@ function cryptoNewsRequest(raw,previous=''){
   const news=/\b(?:notizi[ae]|novita|news|aggiornament[oi]|aggiornami|annunci[oi]?|sviluppi|listing|roadmap|partnership|mainnet|upgrade|lancio|lanciato|cosa (?:succede|sta succedendo|c e di nuovo)|che (?:succede|c e di nuovo))\b/.test(q);
   const follow=q.match(/^(?:e invece|e|invece)\s+(.+?)(?:\s+invece)?$/);
   const prior=previous?cryptoNewsRequest(previous):null;
-  if(follow&&!news&&prior)return cryptoNewsRequest('novità sulla cripto '+follow[1]);
+  if(follow&&!news&&prior&&!prior.ambiguous)return cryptoNewsRequest('novità sulla cripto '+follow[1]);
   if(!news)return null;
   const explicit=/\b(?:cripto|crypto|criptovalut[ae]|token|coin)\b/.test(q);
   const names=new Map();
   const aliases={ORE:['ore'],LUNC:['luna classic','terra classic'],HOT:['holochain'],TAI:['tars ai','tars'],GRAM:['toncoin','ton'],INJ:['injective','injectiv'],VRA:['verasity'],POL:['polygon','matic'],BTC:['bit coin'],ETH:['eterium','ether'],WLFI:['world liberty financial']};
-  const target=q.replace(/^(?:ciao vertex|vertex|ehi vertex)\s+/,'').replace(/^(?:(?:mi|puoi|mi puoi|potresti|vorrei|voglio|dimmi|dammi|trovami|cerca|mostrami|hai|ci sono|c e|qualche|una|un|le|ultime|ultimi|ultima|ultimo|nuove|nuovi|delle|della|del|di|sulla|sul|su|riguardo|a|notizia|notizie|novita|news|aggiornamento|aggiornamenti|annuncio|annunci|sviluppi|listing|roadmap|partnership|mainnet|upgrade|lancio|aggiornami|cosa|sta|succedendo|succede|che|nuovo|cripto|crypto|criptovaluta|token|coin|il|la|lo)\s+)+/,'').replace(/\s+(?:oggi|adesso|ora|in questo momento|di oggi|questa settimana|questo mese|per favore|nelle ultime \d+ ore|negli ultimi \d+ giorni)$/,'').trim();
+  const extractTarget=value=>value.replace(/^(?:ciao vertex|vertex|ehi vertex)\s+/,'').replace(/^(?:(?:mi|puoi|mi puoi|potresti|vorrei|voglio|dimmi|dammi|trovami|cerca|mostrami|hai|ci sono|c e|qualche|una|un|le|ultime|ultimi|ultima|ultimo|nuove|nuovi|delle|della|del|di|sulla|sul|su|riguardo|a|notizia|notizie|novita|news|aggiornamento|aggiornamenti|annuncio|annunci|sviluppi|listing|roadmap|partnership|mainnet|upgrade|lancio|aggiornami|cosa|sta|succedendo|succede|che|nuovo|cripto|crypto|criptovaluta|token|coin|chiamata|chiamato|denominata|denominato|il|la|lo)\s+)+/,'').replace(/\s+(?:oggi|adesso|ora|in questo momento|di oggi|questa settimana|questo mese|per favore|nelle ultime \d+ ore|negli ultimi \d+ giorni)$/,'').trim();
+  const target=extractTarget(q);
+  const rawTarget=extractTarget(marketFold(bilingualMarketQuestion(String(raw))));
+  const exactTarget=rawTarget||target;
+  const exact=voiceCryptoCatalog.filter(([name,symbol])=>[name,symbol,...(aliases[symbol]||[])].map(marketFold).includes(exactTarget));
+  const exactNames=exact.filter(([name])=>marketFold(name)===exactTarget);
+  const exactRows=exactNames.length?exactNames:exact;
+  for(const [name,symbol] of exactRows)names.set(symbol,{name,symbol,score:10000});
   const weak=new Set('ore ton near op gas sei pi etc amp not one ai me link flow dash render move gold silver apple meta oracle terra rain grass gate sky sun cap beam band flux stable'.split(' '));
-  for(const [name,symbol] of voiceCryptoCatalog){
+  if(!exactRows.length)for(const [name,symbol] of voiceCryptoCatalog){
     const candidates=[name,symbol,...(aliases[symbol]||[])].map(marketFold);
     const matches=candidates.filter(k=>k.length>=2&&containsMarketPhrase(q,k)&&(!weak.has(k)||target===k||containsMarketPhrase(q,'cripto '+k)||containsMarketPhrase(q,'token '+k)));
     if(matches.length)names.set(symbol,{name,symbol,score:Math.max(...matches.map(k=>k.length))});
   }
   const found=[...names.values()].sort((a,b)=>b.score-a.score).filter((a,i,all)=>!all.slice(0,i).some(b=>containsMarketPhrase(marketFold(b.name),marketFold(a.name))&&b.score>a.score));
   // Preserve the normal market route for non-crypto requests, including company names.
-  if(!explicit&&marketAssetMatches(q).length)return null;
+  if(!explicit&&marketAssetMatches(q).length&&!exactRows.some(([name,symbol])=>marketFold(name)===exactTarget&&marketFold(name)!==marketFold(symbol)))return null;
   if(!found.length&&!explicit&&!prior)return null;
-  if(found.length>1&&found[0].score===found[1].score&&marketFold(found[0].symbol)===marketFold(found[1].symbol))return null;
+  if(exactRows.length>1&&new Set(exactRows.map(x=>x[1])).size>1)return {ambiguous:exactRows.map(([name,symbol])=>name+' ('+symbol+')'),coins:[]};
   const hours=q.match(/\bultime (\d+) ore\b/),days=q.match(/\bultim[ei] (\d+) giorni\b/);
   const today=/\b(?:oggi|adesso|ora|in questo momento)\b/.test(q);
   const requestedHours=hours?Number(hours[1]):null,requestedDays=days?Number(days[1]):null;
@@ -2888,7 +2895,33 @@ function mergeCryptoHeadlines(publisher,web){
     domains.set(domain,n+1);return n<2;
   }).slice(0,4);
 }
+// Italian spoken overview based only on the evidence actually returned, not invented events.
+function cryptoNewsNarrative(coin,request,hits,sec,unavailable){
+  const name=coin.name;
+  const period=request.today?'oggi':request.requestedHours?'nelle ultime '+request.requestedHours+' ore':'negli ultimi '+request.newsDays+' giorni';
+  if(!hits.length&&!sec.length)return unavailable?'Per '+name+', non riesco a consultare tutte le fonti delle notizie in questo momento. Non posso confermare novità recenti.':'Per '+name+', '+period+', non ho trovato nuove notizie pertinenti nelle fonti raggiungibili. Questo non esclude aggiornamenti del progetto.';
+  const topics=[
+    [/delist|rimozione dalla quotazione/,'possibili rimozioni dagli exchange'],
+    [/\b(?:listing|listed|lists|quotazione|quotato|quotata)\b/,'quotazioni sugli exchange'],
+    [/\b(?:partnership|partner|collaboration|collaborazione|accordo|integration|integrazione)\b/,'collaborazioni e integrazioni'],
+    [/\b(?:upgrade|hard fork|mainnet|network launch|aggiornamento|roadmap|milestone)\b/,'sviluppi della rete e del progetto'],
+    [/\b(?:burn|burned|burning|token unlock|vesting|emission|supply|offerta)\b/,'offerta e distribuzione dei token'],
+    [/\b(?:hack|exploit|breach|vulnerability|security|attacco|vulnerabilita)\b/,'sicurezza'],
+    [/\b(?:staking|yield|defi|liquidity|liquidita|lending)\b/,'staking, liquidità o DeFi'],
+    [/\b(?:etf|sec|regulation|regulatory|regolamentazione|lawsuit)\b/,'regolamentazione e prodotti finanziari'],
+    [/\b(?:price|rally|surge|falls|drops|gains|market cap|prezzo|rialzo|ribasso|volume|trading)\b/,'andamento di mercato']
+  ];
+  const labels=new Set();
+  for(const article of [...hits,...sec]){
+    const key=marketFold(article.title);
+    for(const [pattern,label] of topics)if(pattern.test(key))labels.add(label);
+  }
+  const count=hits.length+sec.length;
+  const scope=labels.size?' I titoli riguardano soprattutto '+[...labels].slice(0,4).join(', ')+'.':'';
+  return 'Su '+name+', '+period+', ho trovato '+count+(count===1?' aggiornamento pertinente.':' aggiornamenti pertinenti.')+scope+' La notizia più recente che posso riportarti è: «'+([...hits,...sec.map(a=>({...a,stamp:Date.parse(a.date)}))].sort((a,b)=>b.stamp-a.stamp)[0].title)+'». Ti indico le fonti per verificare i dettagli.';
+}
 async function answerProjectCryptoNews(request,signal){
+  if(request.ambiguous)return 'Ci sono più criptovalute con questo simbolo: '+request.ambiguous.join(', ')+'. Quale intendi?';
   if(request.previousPeriod)return 'La ricerca per date passate specifiche non è ancora disponibile. Posso cercare le notizie di oggi o degli ultimi 7 o 30 giorni.';
   if(request.requestedHours>720||request.requestedDays>30)return 'La ricerca di notizie è limitata agli ultimi 30 giorni.';
   let coins=request.coins;
@@ -2927,14 +2960,15 @@ async function answerProjectCryptoNews(request,signal){
     hits=mergeCryptoHeadlines(cryptoPublisherHeadlines(archive,request,coin),hits);
     const sec=marketOfficialNews(await official,intent).filter(a=>containsMarketPhrase(marketFold(a.title),marketFold(name)));
     const period=request.today?'di oggi':request.requestedHours?'delle ultime '+request.requestedHours+' ore':'degli ultimi '+request.newsDays+' giorni';
-    let result='Novità '+period+' su '+name+(symbol&&marketFold(name)!==marketFold(symbol)?' ('+symbol+')':'')+'.\n';
-    if(hits.length)result+='Ho trovato '+hits.length+(hits.length===1?' titolo pertinente':' titoli pertinenti')+' nelle fonti indicizzate:\n'+hits.slice(0,4).map(a=>a.title+'\nFonte: '+(a.source||a.domain)+', '+dateFmt.format(new Date(a.stamp))+(a.published?' (pubblicazione)':' (indicizzazione)')+'\n'+a.link).join('\n\n');
-    else result+=failed&&!archive?'La ricerca web e l’archivio delle testate non sono raggiungibili in questo momento.':'Non ho trovato notizie pertinenti nel periodo e nelle fonti raggiungibili. Non significa che non ci siano novità.';
+    let result=cryptoNewsNarrative(coin,request,hits,sec,failed)+'\n\n';
+    if(hits.length)result+='Fonti e notizie:\n'+hits.slice(0,4).map(a=>a.title+'\nFonte: '+(a.source||a.domain)+', '+dateFmt.format(new Date(a.stamp))+(a.published?' (pubblicazione)':' (indicizzazione)')+'\n'+a.link).join('\n\n');
+    else if(failed&&!archive)result+='La ricerca web e l’archivio delle testate non sono raggiungibili in questo momento.';
     if(failed&&archive)result+='\nRicerca web non disponibile; consultato l’archivio delle testate'+(Number.isFinite(Date.parse(archive.updatedAt))?' aggiornato il '+dateFmt.format(new Date(archive.updatedAt)):'')+'.';
     if(sec.length)result+='\n\nComunicati ufficiali SEC:\n'+sec.map(a=>a.title+'\n'+dateFmt.format(new Date(a.date))+'\n'+a.url).join('\n');
-    return result;
+    return {text:result,spoken:cryptoNewsNarrative(coin,request,hits,sec,failed)};
   }));
-  return parts.join('\n\n')+'\n\nI titoli web non sono verificati nel testo integrale; consulta i link originali. Non posso confermare un evento o il suo effetto sul prezzo basandomi soltanto su un titolo.';
+  const caveat='I titoli web non sono verificati nel testo integrale; consulta i link originali. Non posso confermare un evento o il suo effetto sul prezzo basandomi soltanto su un titolo.';
+  return {text:parts.map(p=>p.text).join('\n\n')+'\n\n'+caveat,spoken:parts.map(p=>p.spoken).join('\n\n')+'\nLe fonti e i dettagli sono nella risposta scritta.'};
 }
 
 async function submitQuestion(fromVoice=false){
@@ -2959,7 +2993,7 @@ async function submitQuestion(fromVoice=false){
     const controller=new AbortController();cryptoUpdateController=controller;
     const timeout=setTimeout(()=>controller.abort(),18000);
     statusLine.textContent='Ricerca delle ultime notizie crypto…';
-    try{const answer=await answerProjectCryptoNews(projectNews,controller.signal);if(cryptoUpdateController===controller)acceptAnswer(answer);}
+    try{const answer=await answerProjectCryptoNews(projectNews,controller.signal);if(cryptoUpdateController===controller)acceptAnswer(typeof answer==='string'?answer:answer.text,typeof answer==='string'?answer:answer.spoken);}
     catch{if(cryptoUpdateController===controller)acceptAnswer('Non riesco a verificare le novità su questa criptovaluta in questo momento. Riprova più tardi.');}
     finally{clearTimeout(timeout);if(cryptoUpdateController===controller)cryptoUpdateController=null;}
     return;
