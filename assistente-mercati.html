@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light dark"><meta name="vertex-build" content="ai-tiers-20261125-r15"><meta name="theme-color" content="#f5f8f8"><script>(() => {
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light dark"><meta name="vertex-build" content="ai-tiers-20261125-r16"><meta name="theme-color" content="#f5f8f8"><script>(() => {
   // Palette values match the dashboard's background, panel, border, text and brand.
   const palettes = {
     light: ["light","#edf1f0","#f3f5f2","#c2cfcb","#1f2427","#457384"],
@@ -592,7 +592,7 @@ function setVertexModelMenu(open,restoreFocus=false){
 function syncVertexTier(active){
  el('ai-model-current').textContent=vertexTierNames[vertexTier]+' · '+vertexTierCounts[vertexTier];
  document.querySelectorAll('.ai-model-option').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.tier===vertexTier)));
- el('ai-model-note').textContent=vertexTierNotes[vertexTier]+(active&&active!==vertexTier?' Motore effettivo: '+vertexTierNames[active]+' (compatibilità).':!active&&vertexDownloaded.has(vertexTier)?' Pesi salvati; avvio su richiesta.':'');
+ el('ai-model-note').textContent=vertexTierNotes[vertexTier]+(active&&active!==vertexTier?' Motore effettivo: '+vertexTierNames[active]+' (compatibilità).':'');
 }
 function vertexRuntimeTier(selected){return ['base','media','superiore'].includes(selected)?selected:'base';}
 function vertexDeviceRuntimeTier(selected){return vertexRuntimeTier(selected);}
@@ -614,7 +614,7 @@ async function vertexConfirmRuntime(tier){
 }
 const vertexDownloaded=new Set();
 function vertexDownloadNotice(tier){
- return vertexTierNotes[tier]+' Pesi ONNX salvati. Avvio su richiesta; con WebGPU FP16 i modelli Medio e Avanzato usano il formato MLC, che può richiedere un download distinto al primo utilizzo.';
+ return vertexTierNotes[tier];
 }
 function vertexSetMarker(tier){
  try{if(tier)sessionStorage.setItem(VERTEX_LOAD_MARKER,tier);else sessionStorage.removeItem(VERTEX_LOAD_MARKER);}catch{}
