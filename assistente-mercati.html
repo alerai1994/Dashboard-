@@ -4047,7 +4047,7 @@ async function vertexDailyBrief(signal){
 // Resolve short follow-up questions from public asset names only, never chat text.
 function vertexMarketFollowup(raw,previous=''){
  const key=marketFold(raw);
- if(!previous||!publicWebTopic(raw)||!publicWebTopic(previous)||key.length>90)return raw;
+ if(!previous||key.length>90||!(/^(?:e |invece |oggi\b|adesso\b|ora\b|in questo momento\b|attualmente\b|quanto\b|a quanto\b|qual e\b|il prezzo\b|che prezzo\b|come\b|sta\b|le notizie\b|ultime\b|notizie\b|novita\b|aggiornamenti\b|annunci\b|perche\b)/.test(key))||!publicWebTopic(raw)||!publicWebTopic(previous))return raw;
  const previousKey=marketFold(previous);
  const priorMarket=allMarketIntent(previous);
  const priorCrypto=cryptoNewsRequest(previous);
