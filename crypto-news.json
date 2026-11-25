@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-25T20:27:28.218532+00:00",
+  "updatedAt": "2026-11-25T20:28:10.076983+00:00",
   "sources": {
     "CoinDesk": {
       "ok": true,
@@ -74,6 +74,12 @@
     }
   },
   "items": [
+    {
+      "title": "Study Hard, Get Ahead?",
+      "url": "https://www.nytimes.com/2026/11/25/world/youth-protests-education-tariffs-thanksgiving.html",
+      "date": "2026-11-25T20:25:47+00:00",
+      "source": "NY Times World"
+    },
     {
       "title": "Ripple’s latest banking partnership opens another route to XRP adoption in Turkey",
       "url": "https://cryptoslate.com/ripples-latest-banking-partnership-opens-another-route-to-xrp-adoption-in-turkey/",
