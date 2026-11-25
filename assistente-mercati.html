@@ -279,7 +279,17 @@ function vertexModelChoices(gpu,enhanced,fp16=false,cachedQ4=false){
   const largeGPU={...large,device:'webgpu',dtype:'q4'};
   const compactGPU={...large,device:'webgpu',dtype:'q4f16'};
   const advancedGPU=fp16&&!cachedQ4?[compactGPU,largeGPU]:fp16?[largeGPU,compactGPU]:[largeGPU];
-  return [...(enhanced?(gpu?[...advancedGPU,{...large,device:'wasm',dtype:'q4'}]:[{...large,device:'wasm',dtype:'q4'}]):[]),...(gpu?[{...lite,device:'webgpu',dtype:'q4'}]:[]),{...lite,device:'wasm',dtype:'q4'},{...lite,device:'wasm',dtype:'q8'}];
+  return [...(enhanced?(gpu?[...advancedGPU,{...large,device:'wasm',dtype:'q4'}]:[{...large,device:'wasm',dtype:'q4'}]):[]),...(gpu?[...(fp16?[{...lite,device:'webgpu',dtype:'q4f16'}]:[]),{...lite,device:'webgpu',dtype:'q4'}]:[]),{...lite,device:'wasm',dtype:'q4'},{...lite,device:'wasm',dtype:'q8'}];
+}
+function vertexOrderEngines(choices,cached,forceAdvanced=false){
+  const isAdvanced=c=>c.model.includes('1.5B');
+  const ready=c=>cached.has(c.model+'/onnx/model_'+c.dtype+'.onnx');
+  const advanced=choices.filter(isAdvanced),standard=choices.filter(c=>!isAdvanced(c));
+  const cachedFirst=items=>[...items.filter(ready),...items.filter(c=>!ready(c))];
+  if(forceAdvanced)return [...cachedFirst(advanced),...cachedFirst(standard)];
+  // Do not initiate a gigabyte-scale advanced download on the response's critical path.
+  // A cached advanced model still takes precedence over the smaller model.
+  return [...advanced.filter(ready),...cachedFirst(standard)];
 }
 
 function engineLibrary(){
@@ -296,14 +306,14 @@ async function loadEngine(choice){
     device:choice.device,dtype:choice.dtype,
     progress_callback(event){
       if(event.status==='progress'&&Number.isFinite(event.progress)&&String(event.file||'').endsWith('.onnx')){
-        self.postMessage({status:'Preparazione modello locale · '+Math.round(event.progress)+'%'});
+        self.postMessage({status:'Download '+(choice.model.includes('1.5B')?'modello avanzato':'modello rapido')+' · '+Math.round(event.progress)+'%'});
       }
     }
   });
   mode=choice;
   self.postMessage({status:'Modello locale pronto.'});
 }
-async function engineChoices(enhanced=false){
+async function engineChoices(enhanced=false,forceAdvanced=false){
   if(!adapterPromise)adapterPromise=(async()=>{
     try{if(self.navigator?.gpu){
       const adapter=await Promise.race([self.navigator.gpu.requestAdapter({powerPreference:'high-performance'}),new Promise(r=>setTimeout(()=>r(null),1200))]);
@@ -312,14 +322,21 @@ async function engineChoices(enhanced=false){
     return {gpu:false,fp16:false};
   })();
   const adapter=await adapterPromise;
-  let cachedQ4=false;
-  if(enhanced&&adapter.fp16&&typeof caches!=='undefined'){
+  const choices=vertexModelChoices(adapter.gpu,enhanced,adapter.fp16);
+  const cached=new Set();
+  if(typeof caches!=='undefined'){
     try{
       const cache=await caches.open('transformers-cache');
-      cachedQ4=!!await cache.match('https://huggingface.co/onnx-community/Qwen2.5-1.5B-Instruct/resolve/main/onnx/model_q4.onnx');
+      await Promise.all([...new Set(choices.map(c=>c.model+'/onnx/model_'+c.dtype+'.onnx'))].map(async key=>{
+        // Transformers.js v3 can use the remote request URL as its cache key.
+        // Also recognize same-origin model-path keys used by cache implementations.
+        for(const path of ['https://huggingface.co/'+key.replace('/onnx/','/resolve/main/onnx/'),key]){
+          try{if(await cache.match(path)){cached.add(key);break;}}catch{}
+        }
+      }));
     }catch{}
   }
-  return vertexModelChoices(adapter.gpu,enhanced,adapter.fp16,cachedQ4);
+  return vertexOrderEngines(choices,cached,forceAdvanced);
 }
 function sameEngine(a,b){return !!a&&!!b&&a.model===b.model&&a.device===b.device&&a.dtype===b.dtype;}
 async function disposeModel(){
@@ -328,7 +345,7 @@ async function disposeModel(){
 }
 self.onmessage=async({data})=>{
   if(data?.type==='prepare'){
-    try{const [choices]=await Promise.all([engineChoices(!!data.enhanced),engineLibrary()]);
+    try{const [choices]=await Promise.all([engineChoices(!!data.enhanced,!!data.forceAdvanced),engineLibrary()]);
       if(data.preload&&!generating&&!model&&!preparingModel){
         preparingModel=(async()=>{for(const choice of choices){try{await loadEngine(choice);return;}catch{await disposeModel();}}})().finally(()=>{preparingModel=null;});
         await preparingModel;
@@ -340,9 +357,10 @@ self.onmessage=async({data})=>{
   if(!Array.isArray(turns)||generating)return;
   generating=true;
   try{
-    const [choices]=await Promise.all([engineChoices(!!data.enhanced),engineLibrary()]);
+    const [choices]=await Promise.all([engineChoices(!!data.enhanced,!!data.forceAdvanced),engineLibrary()]);
     if(preparingModel)await preparingModel;
-    if(model&&!sameEngine(mode,choices[0])&&!choices.some(c=>sameEngine(c,mode)))await disposeModel();
+    if(model&&!choices.some(c=>sameEngine(c,mode)))await disposeModel();
+    if(model&&data.forceAdvanced&&choices[0]?.model.includes('1.5B')&&!mode?.model.includes('1.5B'))await disposeModel();
     // The active model remains loaded, including a working fallback after a failed GPU attempt.
     const preferred=mode?[mode,...choices.filter(c=>!sameEngine(c,mode))]:choices;
     for(const choice of preferred){
@@ -376,13 +394,18 @@ self.onmessage=async({data})=>{
 };</script><script>const el = id => document.getElementById(id);
 const form = el('chat'), input = el('question'), log = el('log'), statusLine = el('status');
 let worker, question, voiceQuestion=false;
-let vertexEnhanced=true,vertexEnhancedSessionFallback=false;
-try{vertexEnhanced=localStorage.getItem('vertex-enhanced-compute')!=='false';}catch{}
+let vertexEnhanced=true,vertexEnhancedSessionFallback=false,vertexForceAdvanced=false;
+try{vertexEnhanced=localStorage.getItem('vertex-enhanced-compute')!=='false';vertexForceAdvanced=vertexEnhanced&&localStorage.getItem('vertex-force-advanced')==='true';}catch{}
 function vertexEnhancedAvailable(){return typeof Worker==='function'&&typeof WebAssembly==='object';}
-function setVertexComputeMode(enabled){
+function setVertexComputeMode(enabled,force=false){
   if(enabled&&!vertexEnhancedAvailable())return 'Questo browser non dispone di Worker o WebAssembly. Aggiornalo per usare il modello locale.';
-  if(vertexEnhanced!==enabled||vertexEnhancedSessionFallback){vertexEnhanced=enabled;vertexEnhancedSessionFallback=false;if(worker){worker.terminate();worker=null;}try{localStorage.setItem('vertex-enhanced-compute',String(enabled));}catch{}}
-  return enabled?'Modalità potenziata selezionata. Alla prossima elaborazione locale proverò il modello da 1,5 miliardi di parametri anche su CPU senza WebGPU. Il primo download è consistente; sui dispositivi meno potenti la risposta può richiedere più tempo. Se mancano risorse userò il modello standard.':'Modalità standard selezionata. Userò il modello leggero con accelerazione disponibile.';
+  if(vertexEnhanced!==enabled||vertexForceAdvanced!==force||vertexEnhancedSessionFallback){
+    vertexEnhanced=enabled;vertexForceAdvanced=enabled&&force;vertexEnhancedSessionFallback=false;
+    if(worker){worker.terminate();worker=null;}
+    try{localStorage.setItem('vertex-enhanced-compute',String(enabled));localStorage.setItem('vertex-force-advanced',String(vertexForceAdvanced));}catch{}
+  }
+  if(vertexForceAdvanced)return 'Modalità potenziata selezionata. Alla prossima domanda che richiede il modello locale proverò il modello da 1,5 miliardi di parametri. Il primo download può essere lento; in caso di errore userò il modello compatibile.';
+  return enabled?'Modalità rapida adattiva selezionata. Userò il modello avanzato se già disponibile; altrimenti partirò dal modello leggero senza attendere il download più grande.':'Modalità standard selezionata. Userò il modello leggero.';
 }
 const MEMORY_KEY='vertex-assistant-memory-v1';
 const MEMORY_DB='vertex-assistant-memory-v2';
@@ -929,7 +952,8 @@ function directDefinition(question){
 }
 function vertexConversationReply(raw){
   const key=questionKey(raw).normalize('NFD').replace(/\p{M}/gu,'').replace(/^(?:(?:ciao|ehi|hey) )?vertex /,'').replace(/ vertex$/,'');
-  if(/^(?:cosa|che cosa|che|quali cose|quali domande|che tipo di domande) (?:posso|potrei) (?:chiederti|chiedere|domandarti|domandare|farti|fare)(?: a te)?$/.test(key)||/^(?:cosa|che cosa) (?:sai fare|puoi fare|puoi fare per me|puoi dirmi)|^(?:come (?:funzioni|mi puoi aiutare|puoi aiutarmi)|quali sono le tue capacita|what can i ask you|what can you do)$/.test(key)&&key.split(' ').length<=7)return 'Puoi chiedermi informazioni sui mercati, sulle criptovalute, sulla tecnologia, sulla scienza e sulla vita quotidiana. Posso spiegarti concetti, fare calcoli, aiutarti a scrivere testi e cercare informazioni pubbliche online. Di cosa vuoi parlare?';
+  if(/^(?:ciao|salve|ehi|hey|buongiorno|buonasera)(?: (?:ciao|salve|ehi|hey|amore|caro|cara|carissimo|carissima|tesoro|vertex|assistente|bello|bella)){0,6}$/.test(key))return 'Ciao! Come va? Dimmi pure, ti ascolto.';
+  if(/^(?:cosa|che cosa|che|quali cose|quali domande|che tipo di domande) (?:posso|potrei) (?:chiederti|chiedere|domandarti|domandare|farti|fare)(?: a te)?$/.test(key)||/^(?:cosa|che cosa) (?:sai fare|puoi fare|puoi fare per me|puoi dirmi)$|^(?:come (?:funzioni|mi puoi aiutare|puoi aiutarmi)|quali sono le tue capacita|what can i ask you|what can you do)$/.test(key)&&key.split(' ').length<=7)return 'Puoi chiedermi informazioni sui mercati, sulle criptovalute, sulla tecnologia, sulla scienza e sulla vita quotidiana. Posso spiegarti concetti, fare calcoli, aiutarti a scrivere testi e cercare informazioni pubbliche online. Di cosa vuoi parlare?';
   if(/^(?:(?:vi|ci|si) )?(?:possiamo parlare|possiamo conversare|possiamo fare due chiacchiere|posso parlarti|posso parlare con te|posso farti una domanda|ti posso fare una domanda|ti posso chiedere una cosa|hai un momento|sei disponibile|sei qui|ci sei)(?: un attimo| un po| con te)?$/.test(key))return 'Certo, possiamo parlare. Dimmi pure cosa hai in mente.';
   if(/^(?:mi senti|riesci a sentirmi|mi ascolti|riesci ad ascoltarmi|mi capisci|riesci a capirmi)$/.test(key))return 'Ho ricevuto la tua domanda. Dimmi pure.';
   if(/^(?:come ti chiami|qual e il tuo nome|chi sei|who are you|what is your name|what s your name)$/.test(key))return 'Sono Vertex, il tuo assistente virtuale. Posso aiutarti con domande generali e informazioni finanziarie.';
@@ -2233,7 +2257,8 @@ function agentAction(raw){
     .replace(/^(?:stop listening|turn off (?:the )?microphone|end conversation)[?!.]*$/i,'disattiva microfono');
   const key=questionKey(q);
   const computeCommand=key.replace(/^(?:(?:ciao|ehi|hey) )?vertex /,'');
-  if(/^(?:attiva|abilita|usa|passa alla) (?:la )?modalita (?:potenziata|avanzata|prestazioni elevate)$/.test(computeCommand))return setVertexComputeMode(true);
+  if(/^(?:attiva|abilita|usa|passa alla) (?:la )?modalita (?:potenziata|avanzata|prestazioni elevate)$/.test(computeCommand))return setVertexComputeMode(true,true);
+  if(/^(?:attiva|abilita|usa|passa alla) (?:la )?modalita (?:rapida|adattiva|automatica)$/.test(computeCommand))return setVertexComputeMode(true,false);
   if(/^(?:attiva|abilita|usa|passa alla) (?:la )?modalita (?:standard|leggera|compatibile)$/.test(computeCommand)||/^disattiva (?:la )?modalita potenziata$/.test(computeCommand))return setVertexComputeMode(false);
   if(/^(?:attiva inglese|dettatura inglese|passa all inglese|riconoscimento inglese|switch to english|english mode|enable english)$/.test(key)){
     voiceLanguage='en';try{localStorage.setItem('vertex-voice-language','en');}catch{}
@@ -3259,7 +3284,7 @@ function prepareAnswerEngine(allowModel=false){
   if(worker||question||recording||speakingAnswer||document.hidden||vertexConversationReply(input.value))return;
   const policy=vertexPreloadPolicy(navigator.hardwareConcurrency||2,Number(navigator.deviceMemory),navigator.connection?.saveData,navigator.connection?.effectiveType);
   if(policy==='none')return;
-  try{const engine=getAnswerWorker();engine.onerror=()=>{if(worker===engine&&!question){engine.terminate();worker=null;}};engine.postMessage({type:'prepare',preload:allowModel&&policy==='model'&&!vertexEnhanced,enhanced:false});}catch{}
+  try{const engine=getAnswerWorker();engine.onerror=()=>{if(worker===engine&&!question){engine.terminate();worker=null;}};engine.postMessage({type:'prepare',preload:allowModel&&policy==='model'&&!vertexForceAdvanced,enhanced:vertexEnhanced&&!vertexEnhancedSessionFallback,forceAdvanced:false});}catch{}
 }
 async function submitQuestion(fromVoice=false){
   if(!memoryReady||recording||question||speakingAnswer||!input.value.trim())return;
@@ -3405,8 +3430,8 @@ async function submitQuestion(fromVoice=false){
           acceptAnswer(notice+data.answer.trim());
         }
       };
-      localAnswerTimer=setTimeout(fail,useEnhanced?300000:180000);
-      activeWorker.postMessage({...payload,enhanced:useEnhanced});
+      localAnswerTimer=setTimeout(fail,useEnhanced&&vertexForceAdvanced?300000:180000);
+      activeWorker.postMessage({...payload,enhanced:useEnhanced,forceAdvanced:useEnhanced&&vertexForceAdvanced});
     }
     const prompt = 'Sei Vertex, assistente virtuale personale generalista, specializzato anche nei mercati finanziari. Puoi scrivere bozze, liste, piani, spiegazioni e riepiloghi sulla base della conversazione. Le azioni effettive (calcoli, note, attività, esportazioni e consultazioni) sono gestite da funzioni dedicate, non dichiarare di aver eseguito azioni esterne o modificato dati quando non è avvenuto. Comprendi anche domande informali, sinonimi, sigle e richieste successive riferite alla conversazione. Quando una domanda contiene più punti rispondi a ciascuno; non confondere il nome di un asset con un indicatore o un altro token. Rispondi anche alle domande di cultura generale, tecnologia, scienza, storia, viaggi, studio, lavoro, cucina e vita quotidiana. Adatta il livello di dettaglio alla richiesta. Per domande pratiche dai passaggi utili; per domande ambigue chiedi solo il chiarimento indispensabile. Se non conosci un fatto, dillo e proponi un modo concreto per verificarlo. Per salute, legge e finanza distingui informazioni generali da consulenza professionale. Comprendi italiano, inglese e domande miste; conserva sigle e nomi originali. Rispondi in italiano naturale, chiaro e preciso, come in una conversazione. Usa frasi complete, parole semplici e collegamenti fluidi tra le idee. Dai subito la risposta, poi aggiungi il contesto utile. Evita introduzioni meccaniche, ripetizioni, formule di cortesia automatiche e gergo non spiegato. Non eliminare informazioni o alterare cifre e unità di misura per rendere il discorso più fluido. Tratta azioni, ETF, indici, obbligazioni, forex, materie prime, crypto e macroeconomia. Non disponi di dati live o notizie recenti. Per analisi attuali chiedi prezzo, data e fonte. Non inventare dati o fonti. Per l’andamento usa il periodo richiesto. Se mancano i dati chiedi valori iniziali e finali, date e valuta; per un confronto usa lo stesso periodo. Per le previsioni illustra scenari rialzista, centrale e ribassista, con ipotesi, fattori da osservare e condizioni che li smentirebbero. Evita target e probabilità privi di dati. Rispondi prima alla domanda precisa, poi spiega il ragionamento. Se utile includi formula e un esempio numerico esplicitamente ipotetico. Mantieni nomi e cifre indicati dall’utente; se un nome dettato è ambiguo chiedi conferma. Distingui esempi, fatti e ipotesi.';
     const detailed=/\b(?:dettagliat[oa]|approfondisci|approfondimento|complet[oa]|analisi|confronta|prevision[ei]|scenari|calcola|calcolo|spiega passo)\b/iu.test(question);
