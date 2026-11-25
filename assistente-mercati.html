@@ -1892,11 +1892,29 @@ function normalizeVoiceTranscript(text,language='it'){
   }
   return corrected;
 }
+// Show only speech addressed to Vertex, not unrelated standby speech.
+function vertexLiveDraft(mode,text){
+ if(mode==='standby'||mode==='command'){
+  const decision=vertexWakeDecision(mode,text,true);
+  return decision.action==='submit'?decision.command:'';
+ }
+ return String(text||'').trim();
+}
+function vertexOwnsVoiceDraft(session,value){
+ return !session.userEdited&&(value===session.original||value===session.liveDraft);
+}
 function updateDictation(session,text){
-  if(recording!==session||session.wakeMode)return;
-  const corrected=normalizeVoiceTranscript(text,session.language);if(!corrected)return;
-  input.value=session.original+(session.original&&!/\s$/.test(session.original)?' ':'')+corrected;
-  session.lastTranscript=corrected;input.scrollTop=input.scrollHeight;
+ if(recording!==session||!vertexOwnsVoiceDraft(session,input.value))return;
+ const corrected=normalizeVoiceTranscript(vertexLiveDraft(session.wakeMode,text),session.language);
+ if(!corrected){
+  if(session.wakeMode&&session.liveDraft!==undefined&&input.value===session.liveDraft){
+   input.value=session.original;session.liveDraft=undefined;session.lastTranscript='';
+  }
+  return;
+ }
+ input.value=session.original+(session.original&&!/\s$/.test(session.original)?' ':'')+corrected;
+ session.liveDraft=input.value;session.lastTranscript=corrected;
+ input.scrollTop=input.scrollHeight;
 }
 function detachLocalRecognition(session,abort=true){
   clearTimeout(session.nativeTimer);
@@ -1942,7 +1960,7 @@ function startLocalRecognition(session){
       session.nativeText=text.trim();
       session.nativeLastResultLength=session.length;
       updateDictation(session,text);
-      if(session.phase==='listening')statusLine.textContent=session.wakeMode?wakeStatus():'Sto trascrivendo…';
+      if(session.phase==='listening')statusLine.textContent=session.lastTranscript?'Sto trascrivendo in tempo reale…':session.wakeMode?wakeStatus():'Ti ascolto…';
     };
     recognition.onerror=()=>nativeFallback(session);
     recognition.onend=()=>{
@@ -1965,14 +1983,14 @@ function startLocalRecognition(session){
 function voicePartialInterval(session){
   // One request in flight. Adapt to measured decoding speed, never queue
   // outdated partial audio; final decoding always uses the complete recording.
-  return session.lastSent?Math.max(0.8,Math.min(6,(session.decodeMs||900)/1000*1.15)):1.0;
+  return session.lastSent?Math.max(0.65,Math.min(3,(session.decodeMs||650)/1000*0.85)):0.65;
 }
 function transcribeSoFar(session) {
   const final = session.phase === 'transcribing';
   const rate = session.sampleRate||session.ctx.sampleRate;
   if (recording !== session || session.pending || session.nativeActive) return;
   const interval = voicePartialInterval(session);
-  if (!final && (session.wakeMode==='standby' || session.deferUntilFinal || session.speechSeconds < 0.45 || session.length - session.lastSent < rate * interval || (session.decodeMs>2500&&session.pauseSeconds>0.35))) return;
+  if (!final && (session.deferUntilFinal || session.speechSeconds < 0.35 || session.length - session.lastSent < rate * interval)) return;
   session.pending = true;
   session.lastSent = session.length;
   const sentFinal = final;
@@ -1996,8 +2014,9 @@ function transcribeSoFar(session) {
       if (data.error) {
         if(session.phase==='listening'){
           voiceWorker?.terminate();voiceWorker=null;
+          if(!session.partialRetry){session.partialRetry=true;session.lastSent=0;statusLine.textContent='Ripristino della trascrizione…';return;}
           session.deferUntilFinal=true;
-          statusLine.textContent='Continua a parlare: completerò la trascrizione alla fine.';
+          statusLine.textContent='La trascrizione progressiva non è disponibile: completo la frase alla fine.';
           return;
         }
         if(!session.finalRetry){
@@ -2010,12 +2029,7 @@ function transcribeSoFar(session) {
       const complete = sentFinal && session.phase === 'transcribing' && session.lastSent === session.length;
       const corrected=normalizeVoiceTranscript(data.text,session.language);
       const recognized=!!corrected;
-      if (recognized&&!session.wakeMode) {
-        const space = corrected && session.original && !/\s$/.test(session.original) ? ' ' : '';
-        input.value = session.original + space + corrected;
-        session.lastTranscript=corrected;
-        input.scrollTop = input.scrollHeight;
-      }
+      if(recognized)updateDictation(session,data.text);
       if (complete) {
         if(handleWakeTranscript(session,data.text,recognized&&!data.notice))return;
         endVoice();
@@ -2028,7 +2042,7 @@ function transcribeSoFar(session) {
           setContinuousTalk(false);input.focus();
         }
       } else {
-        if(session.phase==='listening')statusLine.textContent=session.wakeMode?wakeStatus():recognized?'Sto trascrivendo… continua a parlare.':(data.notice||'In ascolto…');
+        if(session.phase==='listening')statusLine.textContent=session.lastTranscript?'Sto trascrivendo in tempo reale… continua a parlare.':session.wakeMode?wakeStatus():(data.notice||'In ascolto…');
         transcribeSoFar(session);
       }
     };
@@ -2037,7 +2051,7 @@ function transcribeSoFar(session) {
       clearTimeout(session.watchdog);session.pending=false;
       if(!session.workerRetry){
         session.workerRetry=true;voiceWorker?.terminate();voiceWorker=null;
-        session.lastSent=0;if(session.phase==='listening'){session.deferUntilFinal=true;statusLine.textContent='Completerò la trascrizione alla fine della frase.';}else transcribeSoFar(session);
+        session.lastSent=0;if(session.phase==='listening'){statusLine.textContent='Ripristino della trascrizione…';}else transcribeSoFar(session);
       }else fail('Motore vocale non disponibile. Puoi scrivere la domanda.');
     };
     const samples = joinedAudio(session);
@@ -2291,11 +2305,12 @@ function resumeWakeListening(){
 function handleWakeTranscript(session,raw,reliable){
  if(!session.wakeMode)return false;
  const decision=vertexWakeDecision(session.wakeMode,raw,reliable);
- // No ambient speech is added to the question field, history or web queries.
+ // A live preview is not a manual edit and must not prevent auto submission.
  const draft=input.value;
- const edited=draft!==session.original||!!draft.trim();
- endVoice();input.value=draft;
+ const edited=!vertexOwnsVoiceDraft(session,draft)||!!session.original.trim();
+ endVoice();input.value=edited?draft:session.original;
  if(edited){vertexWakeAwaitCommand=false;statusLine.textContent=wakeStatus();resumeWakeListening();return true;}
+ if(!reliable&&session.lastTranscript){input.value=draft;setWakeMode(false);statusLine.textContent='Controlla la trascrizione prima di inviarla.';return true;}
  if(!vertexWakeEnabled)return true;
  if(decision.action==='submit'){
   vertexWakeAwaitCommand=false;
@@ -2326,7 +2341,7 @@ function continueAfterSpeech(){
 function cancelVoice() {
   setContinuousTalk(false);
   if (voiceWorker) { voiceWorker.terminate(); voiceWorker = null; }
-  if (recording) {if(!recording.wakeMode)input.value=recording.original;endVoice();}
+  if (recording) {if(!recording.wakeMode||vertexOwnsVoiceDraft(recording,input.value))input.value=recording.original;endVoice();}
 }
 el('cancel-voice').onclick=()=>{if(vertexWakeEnabled)setWakePreference(false);cancelVoice();statusLine.textContent='Dettatura annullata.';};
 window.addEventListener('pagehide',()=>{vertexSetMarker('');cancelVoice();stop();});
@@ -4124,7 +4139,7 @@ el('ai-cancel-preparation').addEventListener('click',()=>{if(vertexBatchRunning)
 el('ai-model-toggle').addEventListener('click',()=>setVertexModelMenu(el('ai-model-selector').hidden));
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!el('ai-model-selector').hidden){event.preventDefault();setVertexModelMenu(false,true);}});
 document.querySelectorAll('.ai-model-option').forEach(button=>button.addEventListener('click',()=>{if(vertexBatchRunning||question||(recording&&recording.wakeMode!=='standby')||speakingAnswer){statusLine.textContent='Termina o annulla la risposta prima di cambiare modello.';return;}clearTimeout(answerPreparationTimer);statusLine.textContent=setVertexTier(button.dataset.tier);setVertexModelMenu(false,true);}));
-input.addEventListener('input',()=>{clearTimeout(answerPreparationTimer);if(input.value.trim().length>=8&&!recording&&!question)answerPreparationTimer=setTimeout(()=>prepareAnswerEngine(true),450);});
+input.addEventListener('input',()=>{if(recording?.wakeMode)recording.userEdited=true;clearTimeout(answerPreparationTimer);if(input.value.trim().length>=8&&!recording&&!question)answerPreparationTimer=setTimeout(()=>prepareAnswerEngine(true),450);});
 form.onsubmit=event=>{event.preventDefault();if(vertexLoading||vertexBatchRunning||question||speakingAnswer||!input.value.trim())return;if(recording?.wakeMode){const draft=input.value;if(recording.pending&&voiceWorker){voiceWorker.terminate();voiceWorker=null;}endVoice();input.value=draft;vertexWakeAwaitCommand=false;}if(!recording)prepareSpeechFromGesture();submitQuestion(false);};
 mic.disabled=true;el('send').disabled=true;
 memoryStatus();
