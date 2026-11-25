@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light dark"><meta name="vertex-build" content="ai-tiers-20261125-r2"><meta name="theme-color" content="#f5f8f8"><script>(() => {
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light dark"><meta name="vertex-build" content="ai-tiers-20261125-r3"><meta name="theme-color" content="#f5f8f8"><script>(() => {
   // Palette values match the dashboard's background, panel, border, text and brand.
   const palettes = {
     light: ["light","#edf1f0","#f3f5f2","#c2cfcb","#1f2427","#457384"],
@@ -270,6 +270,8 @@ self.onmessage = async ({data}) => {
   }
 };</script>
 <script type="text/plain" id="engine">let model,library,mode,adapterPromise,libraryPromise,preparingModel,generating=false;
+const failedPreloads=new Set();
+const engineKey=c=>[c.model,c.device,c.dtype].join('|');
 function vertexComputeThreads(cores,isolated,memory){
   if(!isolated)return 1;
   const count=Math.max(1,Math.floor(Number(cores)||1));
@@ -279,10 +281,33 @@ function vertexComputeThreads(cores,isolated,memory){
 function vertexTierChoices(gpu,tier,fp16=false){
  const models={base:'onnx-community/Qwen2.5-0.5B-Instruct',media:'onnx-community/Qwen2.5-1.5B-Instruct',superiore:'onnx-community/Llama-3.2-3B-Instruct-ONNX'};
  const order=tier==='superiore'?['superiore','media','base']:tier==='media'?['media','base']:['base'];
- return order.flatMap(level=>{const model=models[level];return [...(gpu?[...(fp16?[{model,level,device:'webgpu',dtype:'q4f16'}]:[]),{model,level,device:'webgpu',dtype:'q4'}]:[]),{model,level,device:'wasm',dtype:'q4'},...(level==='base'?[{model,level,device:'wasm',dtype:'q8'}]:[])];});
+ return order.flatMap(level=>{
+   const model=models[level];
+   const gpuChoices=gpu?[...(fp16?[{model,level,device:'webgpu',dtype:'q4f16'}]:[]),{model,level,device:'webgpu',dtype:'q4'}]:[];
+   // Qwen's int8 ONNX files are actually smaller than its q4 FP32 files.
+   const cpuChoices=level==='superiore'?[{model,level,device:'wasm',dtype:'q4'}]:[{model,level,device:'wasm',dtype:'q8'},{model,level,device:'wasm',dtype:'q4'}];
+   return [...gpuChoices,...cpuChoices];
+ });
+}
+function vertexWeightFiles(choice){
+ const base=choice.model+'/onnx/model_'+(choice.dtype==='q8'?'quantized':choice.dtype)+'.onnx';
+ return choice.level==='superiore'?[base,base+'_data',base+'_data_1']:[base];
 }
 function vertexOrderTierChoices(choices,cached){
- return [...new Set(choices.map(c=>c.level))].flatMap(level=>{const rows=choices.filter(c=>c.level===level),ready=c=>cached.has(c.model+'/onnx/model_'+c.dtype+'.onnx');return [...rows.filter(ready),...rows.filter(c=>!ready(c))];});
+ return [...new Set(choices.map(c=>c.level))].flatMap(level=>{
+   const rows=choices.filter(c=>c.level===level);
+   const ready=c=>vertexWeightFiles(c).every(k=>cached.has(k));
+   return [...rows.filter(ready),...rows.filter(c=>!ready(c))];
+ });
+}
+function vertexWeightProgress(files,event){
+ const file=String(event.file||'');
+ if(!/\.onnx(?:_data(?:_\d+)?)?$/.test(file))return null;
+ const total=Number(event.total),loaded=Number(event.loaded);
+ if(!Number.isFinite(total)||total<=0||!Number.isFinite(loaded)||loaded<0)return null;
+ const old=files.get(file);
+ files.set(file,{loaded:Math.max(old?.loaded||0,Math.min(loaded,total)),total});
+ return [...files.values()].reduce((n,v)=>n+v.loaded,0);
 }
 
 function engineLibrary(){
@@ -295,16 +320,21 @@ async function loadEngine(choice){
   env.allowLocalModels=false;
   env.useBrowserCache=typeof caches!=='undefined';
   env.backends.onnx.wasm.numThreads=vertexComputeThreads(self.navigator?.hardwareConcurrency,self.crossOriginIsolated,Number(self.navigator?.deviceMemory));
+  const files=new Map();let lastUpdate=0;
+  self.postMessage({modelProgress:'Preparazione '+choice.level+'…',loadingTier:choice.level});
   model=await pipeline('text-generation',choice.model,{
-    device:choice.device,dtype:choice.dtype,...(choice.level==='superiore'?{use_external_data_format:true}:{}),
+    device:choice.device,dtype:choice.dtype,...(choice.level==='superiore'?{use_external_data_format:2}:{}),
     progress_callback(event){
-      if(event.status==='progress'&&Number.isFinite(event.progress)&&/\.onnx(?:_data(?:_\d+)?)?$/.test(String(event.file||''))){
-        self.postMessage({status:'Download modello '+choice.level+' · '+Math.round(event.progress)+'%'});
-      }
+      if(event.status!=='progress')return;
+      const bytes=vertexWeightProgress(files,event);
+      if(bytes===null||Date.now()-lastUpdate<220)return;
+      lastUpdate=Date.now();
+      const loaded=(bytes/1e6).toLocaleString('it-IT',{maximumFractionDigits:0});
+      self.postMessage({modelProgress:'Preparazione '+choice.level+' · '+loaded+' MB elaborati',loadingTier:choice.level});
     }
   });
   mode=choice;
-  self.postMessage({status:'Modello '+choice.level+' pronto.',activeTier:choice.level});
+  self.postMessage({status:'Modello '+choice.level+' pronto.',activeTier:choice.level,modelReady:true});
 }
 async function engineChoices(tier='base'){
   if(!adapterPromise)adapterPromise=(async()=>{
@@ -320,7 +350,7 @@ async function engineChoices(tier='base'){
   if(typeof caches!=='undefined'){
     try{
       const cache=await caches.open('transformers-cache');
-      await Promise.all([...new Set(choices.map(c=>c.model+'/onnx/model_'+c.dtype+'.onnx'))].map(async key=>{
+      await Promise.all([...new Set(choices.flatMap(vertexWeightFiles))].map(async key=>{
         // Transformers.js v3 can use the remote request URL as its cache key.
         // Also recognize same-origin model-path keys used by cache implementations.
         for(const path of ['https://huggingface.co/'+key.replace('/onnx/','/resolve/main/onnx/'),key]){
@@ -338,12 +368,26 @@ async function disposeModel(){
 }
 self.onmessage=async({data})=>{
   if(data?.type==='prepare'){
-    try{const [choices]=await Promise.all([engineChoices(data.tier||'base'),engineLibrary()]);
-      if(data.preload&&!generating&&!model&&!preparingModel){
-        preparingModel=(async()=>{for(const choice of choices){try{await loadEngine(choice);return;}catch{await disposeModel();}}})().finally(()=>{preparingModel=null;});
-        await preparingModel;
-      }
-    }catch{}return;
+    const tier=data.tier||'base';
+    if(data.preload&&!generating&&!model&&!preparingModel){
+      // Assign the shared promise before awaiting network or GPU detection.
+      preparingModel=(async()=>{
+        let choice;
+        try{
+          const [choices]=await Promise.all([engineChoices(tier),engineLibrary()]);
+          choice=choices.find(c=>c.level===tier);
+          if(!choice)throw Error('Modello non disponibile');
+          await loadEngine(choice);
+        }catch{
+          if(choice)failedPreloads.add(engineKey(choice));
+          await disposeModel();
+          self.postMessage({prepareError:true,loadingTier:tier});
+        }
+      })().finally(()=>{preparingModel=null;});
+      await preparingModel;
+    }else if(model&&mode){self.postMessage({modelReady:true,activeTier:mode.level});}
+    else{try{await Promise.all([engineChoices(tier),engineLibrary()]);}catch{}}
+    return;
   }
   const turns=Array.isArray(data)?data:data.turns;
   const maxTokens=Array.isArray(data)?450:data.maxTokens;
@@ -355,7 +399,9 @@ self.onmessage=async({data})=>{
     if(model&&!choices.some(c=>sameEngine(c,mode)))await disposeModel();
     // Reuse a compatible fallback already loaded for this session.
     // The active model remains loaded, including a working fallback after a failed GPU attempt.
-    const preferred=mode?[mode,...choices.filter(c=>!sameEngine(c,mode))]:choices;
+    const available=choices.filter(c=>!failedPreloads.has(engineKey(c)));
+    const usable=available.length?available:choices;
+    const preferred=mode?[mode,...usable.filter(c=>!sameEngine(c,mode))]:usable;
     for(const choice of preferred){
       try{
         if(!model)await loadEngine(choice);
@@ -387,7 +433,7 @@ self.onmessage=async({data})=>{
 };</script><script>const el = id => document.getElementById(id);
 const form = el('chat'), input = el('question'), log = el('log'), statusLine = el('status');
 let worker, question, voiceQuestion=false;
-let vertexTier='base',vertexEnhancedSessionFallback=false;
+let vertexTier='base',vertexEnhancedSessionFallback=false,vertexReadyTier='',vertexPreparingTier='';
 try{const saved=localStorage.getItem('vertex-ai-tier');vertexTier=['base','media','superiore'].includes(saved)?saved:localStorage.getItem('vertex-force-advanced')==='true'?'media':'base';}catch{}
 const vertexTierNames={base:'Base',media:'Media',superiore:'Superiore'};
 const vertexTierNotes={base:'Base · Qwen 2.5 0,5B. Avvio più leggero.',media:'Media · Qwen 2.5 1,5B. Più capacità, download maggiore.',superiore:'Superiore · Llama 3.2 3B. Richiede più RAM e un download di diversi GB.'};
@@ -396,11 +442,18 @@ function syncVertexTier(active){
  document.querySelectorAll('.ai-model-option').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.tier===vertexTier)));
  el('ai-model-note').textContent=vertexTierNotes[vertexTier]+(active&&active!==vertexTier?' Motore effettivo: '+vertexTierNames[active]+' (compatibilità).':'');
 }
+function vertexModelEvent(data){
+ if(data.modelProgress){vertexPreparingTier=data.loadingTier||vertexTier;el('ai-model-note').textContent=vertexTierNotes[vertexTier]+' '+data.modelProgress+'.';}
+ if(data.modelReady&&data.activeTier){vertexReadyTier=data.activeTier;vertexPreparingTier='';syncVertexTier(data.activeTier);if(data.activeTier===vertexTier)el('ai-model-note').textContent=vertexTierNotes[vertexTier]+' Modello pronto.';}
+ if(data.prepareError){vertexPreparingTier='';el('ai-model-note').textContent=vertexTierNotes[vertexTier]+' Preparazione non riuscita; riprova o invia una domanda.';}
+}
 function setVertexTier(tier){
  if(!Object.prototype.hasOwnProperty.call(vertexTierNames,tier))return '';
  if(!vertexEnhancedAvailable())return 'Il browser non supporta il motore AI locale. Aggiornalo per utilizzare questi modelli.';
- if(vertexTier!==tier||vertexEnhancedSessionFallback){vertexTier=tier;vertexEnhancedSessionFallback=false;if(worker){worker.terminate();worker=null;}try{localStorage.setItem('vertex-ai-tier',tier);}catch{}}
- syncVertexTier();
+ if(vertexTier!==tier||vertexEnhancedSessionFallback){vertexTier=tier;vertexEnhancedSessionFallback=false;if(worker){worker.terminate();worker=null;}vertexReadyTier='';vertexPreparingTier='';try{localStorage.setItem('vertex-ai-tier',tier);}catch{}}
+ syncVertexTier(vertexReadyTier);
+ if(vertexReadyTier===tier)el('ai-model-note').textContent=vertexTierNotes[tier]+' Modello pronto.';
+ if(!question&&!recording&&!speakingAnswer)prepareSelectedVertexModel();
  return 'Modello '+vertexTierNames[tier]+' selezionato. '+(tier==='base'?'Userò il modello più leggero.':'Lo userò per le domande che richiedono AI locale, se le risorse lo consentono. Il primo download può richiedere tempo.');
 }
 function setVertexComputeMode(enabled,force=false){return setVertexTier(enabled&&force?'media':'base');}
@@ -1901,7 +1954,8 @@ function idle() {
   el('stop').hidden = true;
   el('stop').textContent='Annulla';
 }
-function stop() {
+function stop(keepModel=false) {
+  const preserveWorker=keepModel&&!question;
   clearTimeout(answerPreparationTimer);
   clearTimeout(localAnswerTimer);
   clearAnswerPreview();
@@ -1909,8 +1963,7 @@ function stop() {
   if(cryptoUpdateController){cryptoUpdateController.abort();cryptoUpdateController=null;}
   cancelSpeech();
   el('speak-retry').hidden=true;
-  if (worker) worker.terminate();
-  worker = null;
+  if(!preserveWorker){if(worker)worker.terminate();worker=null;vertexReadyTier='';vertexPreparingTier='';syncVertexTier();}
   idle();
 }
 let speakingAnswer=false,speechGeneration=0,speechTimer=0,activeUtterance=null,lastSpokenAnswer='';
@@ -2181,7 +2234,7 @@ function bubble(label, value) {
 el('stop').onclick = () => { const wasSpeaking=speakingAnswer;stop(); statusLine.textContent = wasSpeaking?'Risposta vocale interrotta.':'Operazione annullata.'; };
 el('reset').onclick = () => {
   if(!memoryReady)return;
-  stop();
+  stop(true);
   cancelVoice();
   memoryChat++;
   saveMemory().catch(()=>{});
@@ -2194,7 +2247,7 @@ el('reset').onclick = () => {
 el('clear-memory').onclick=async()=>{
   if(!memoryReady)return;
   if(!window.confirm('Eliminare tutte le domande e risposte memorizzate da Vertex su questo dispositivo?'))return;
-  stop();cancelVoice();
+  stop(true);cancelVoice();
   memoryPairs=[];memoryChat=1;lastSpokenAnswer='';agentExport=null;el('download-agent').hidden=true;
   try{await clearStoredMemory();memoryAvailable=true;}catch{memoryAvailable=false;}
   log.replaceChildren();input.value='';
@@ -3275,15 +3328,27 @@ function getAnswerWorker(){
   if(!worker){
     const url=URL.createObjectURL(new Blob([el('engine').textContent],{type:'text/javascript'}));
     try{worker=new Worker(url,{type:'module'});}finally{URL.revokeObjectURL(url);}
+    vertexReadyTier='';vertexPreparingTier='';
+    const current=worker;
+    current.onmessage=({data})=>{if(worker===current)vertexModelEvent(data);};
+    current.onerror=()=>{if(worker===current){current.terminate();worker=null;vertexReadyTier='';vertexPreparingTier='';syncVertexTier();}};
   }
   return worker;
 }
 let answerPreparationTimer=0;
+function prepareSelectedVertexModel(){
+  if(question||recording||speakingAnswer||document.hidden||vertexReadyTier===vertexTier||vertexPreparingTier===vertexTier)return;
+  if(navigator.connection?.saveData){el('ai-model-note').textContent=vertexTierNotes[vertexTier]+' Risparmio dati attivo: download al primo utilizzo.';return;}
+  // Browser storage persistence is best effort; never delete cached model files.
+  try{navigator.storage?.persist?.().catch(()=>{});}catch{}
+  try{const engine=getAnswerWorker();vertexPreparingTier=vertexTier;el('ai-model-note').textContent=vertexTierNotes[vertexTier]+' Preparazione anticipata…';engine.postMessage({type:'prepare',preload:true,tier:vertexTier});}
+  catch{vertexPreparingTier='';syncVertexTier();}
+}
 function prepareAnswerEngine(allowModel=false){
   if(worker||question||recording||speakingAnswer||document.hidden||vertexConversationReply(input.value))return;
   const policy=vertexPreloadPolicy(navigator.hardwareConcurrency||2,Number(navigator.deviceMemory),navigator.connection?.saveData,navigator.connection?.effectiveType);
   if(policy==='none')return;
-  try{const engine=getAnswerWorker();engine.onerror=()=>{if(worker===engine&&!question){engine.terminate();worker=null;}};engine.postMessage({type:'prepare',preload:allowModel&&policy==='model'&&vertexTier==='base',tier:vertexTier});}catch{}
+  try{const engine=getAnswerWorker();const preload=allowModel&&policy==='model'&&vertexTier==='base';if(preload)vertexPreparingTier=vertexTier;engine.postMessage({type:'prepare',preload,tier:vertexTier});}catch{}
 }
 async function submitQuestion(fromVoice=false){
   if(!memoryReady||recording||question||speakingAnswer||!input.value.trim())return;
@@ -3406,7 +3471,7 @@ async function submitQuestion(fromVoice=false){
       const fail=()=>{
         if(!current())return;
         clearTimeout(localAnswerTimer);
-        activeWorker.terminate();worker=null;
+        activeWorker.terminate();worker=null;vertexReadyTier='';vertexPreparingTier='';
         if(useEnhanced&&!retriedStandard){
           retriedStandard=true;vertexEnhancedSessionFallback=true;
           clearAnswerPreview();
@@ -3420,13 +3485,16 @@ async function submitQuestion(fromVoice=false){
         if(!current())return;
         if(data.resetPreview)clearAnswerPreview();
         if(typeof data.delta==='string')appendAnswerPreview(data.delta);
-        if(data.activeTier){vertexEnhancedSessionFallback=data.activeTier!==vertexTier;syncVertexTier(data.activeTier);}
+        vertexModelEvent(data);
+        if(data.activeTier){vertexEnhancedSessionFallback=data.activeTier!==vertexTier;if(!data.modelReady)syncVertexTier(data.activeTier);}
+        if(data.modelProgress){statusLine.textContent=data.modelProgress;return;}
         if(data.status){statusLine.textContent=data.status;return;}
         if(data.error){fail();return;}
         if(typeof data.answer==='string'){
           clearTimeout(localAnswerTimer);
           if(!data.answer.trim()){fail();return;}
           const notice=localResearchNote?'Non ho trovato fonti web sufficienti; questa risposta si basa sulle mie conoscenze generali.\n\n':'';
+          activeWorker.onmessage=({data})=>{if(worker===activeWorker)vertexModelEvent(data);};
           acceptAnswer(notice+data.answer.trim());
         }
       };
@@ -3444,6 +3512,7 @@ async function submitQuestion(fromVoice=false){
   } catch {
     clearTimeout(localAnswerTimer);
     if(worker){worker.terminate();worker=null;}
+    vertexReadyTier='';vertexPreparingTier='';syncVertexTier();
     if(question)acceptAnswer(vertexLocalFailure(localResearchNote));
   }
 }
