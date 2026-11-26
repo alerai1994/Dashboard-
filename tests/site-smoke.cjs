@@ -1170,8 +1170,7 @@ console.log('PASS themes/fonts/feeds/icons/orderbook/portfolio and average buy p
 
 assert(!settings.includes('crypto-global-alert-overview')&&!settings.includes('Avvisi generali UPPER'),'Settings must not display the global alert overview');
 assert(settings.includes('data-test-click-sound="1"'),'No test for click sound');
-assert(settings.includes('data-test-crypto-alert-sound="above"'),'No UPPER audio preview');
-assert(settings.includes('data-test-crypto-alert-sound="below"'),'No LOWER audio preview');
+for(const marker of ['crypto-bell-settings','cryptoAutoPercentSlider','data-test-crypto-alert-sound','data-crypto-bell-reset','UPPER / LOWER','Monitoraggio automatico crypto'])assert(!settings.includes(marker),'Alert settings must be absent: '+marker);
 const startCount=audioEvents.notes.length;
 app.state.alertSound=true;
 assert.equal(app.playCryptoAlertSound('above'),false,'Alerts should not queue before user unlock');
