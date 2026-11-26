@@ -657,11 +657,12 @@ function vertexHeavyCPUConsentNeeded(tier,memory,mobile,gpu){
 }
 let vertexForceCPU=false;
 const vertexHeavyConsent=new Set();
-async function vertexConfirmRuntime(tier){
+async function vertexConfirmRuntime(tier,voice=false){
  if(tier==='base')return true;
  let gpu=false;
  if(!vertexForceCPU&&navigator.gpu){try{const adapter=await Promise.race([navigator.gpu.requestAdapter(),new Promise(r=>setTimeout(()=>r(null),1500))]);gpu=!!adapter?.features?.has('shader-f16');}catch{}}
  if(vertexHeavyCPUConsentNeeded(tier,Number(navigator.deviceMemory),vertexIsMobile(),gpu)&&!vertexHeavyConsent.has(tier)){
+  if(voice)return false; // Avoid a blocking dialog during spoken conversation.
   const ok=window.confirm('Il modello '+vertexTierNames[tier]+' richiede molta memoria. Su questo browser manca l’accelerazione WebGPU FP16 o non è disponibile. Tentare l’avvio su CPU può causare un arresto della pagina. Vuoi provare una sola volta?');
   if(!ok)return false;vertexHeavyConsent.add(tier);
  }
@@ -1593,7 +1594,7 @@ function releaseAudio(session) {
 }
 function setMicState(state){
   const active=state==='on';
-  const label=active?(recording?.wakeMode?'Disattiva ascolto Hey Vertex':'Disattiva microfono'):state==='request'?'Annulla attivazione microfono':vertexWakeEnabled?'Interrompi ascolto Hey Vertex':'Attiva ascolto Hey Vertex';
+  const label=active?(recording?.wakeMode==='standby'?'Parla ora':recording?.wakeMode?'Disattiva microfono':'Termina dettatura'):state==='request'?'Annulla attivazione microfono':'Attiva ascolto diretto';
   mic.dataset.micState=state;
   mic.setAttribute('aria-pressed',String(active));
   mic.setAttribute('aria-label',label);
@@ -1997,11 +1998,7 @@ function updateDictation(session,text,complete=false){
  }
  const corrected=normalizeVoiceTranscript(vertexLiveDraft(session.wakeMode,text),session.language,complete);
  if(!corrected){
-  // Keep the last usable draft on an empty or invalid interim result.
-  if(!complete)return;
-  if(session.wakeMode&&session.liveDraft!==undefined&&input.value===session.liveDraft){
-   input.value=session.original;session.liveDraft=undefined;session.lastTranscript='';
-  }
+  // Preserve the last usable draft when final recognition fails.
   return;
  }
  const next=session.original+(session.original&&!/\s$/.test(session.original)?' ':'')+corrected;
@@ -2232,17 +2229,20 @@ function finishRecording() {
   statusLine.textContent = 'Completo la trascrizione…';
   transcribeSoFar(session);
 }
+// A tap in standby starts direct listening, rather than turning the microphone off.
+function vertexMicAction(wake,phase,mode){
+ if(wake&&(!phase||mode==='standby'))return 'listen';
+ if(wake||phase==='request')return 'stop';
+ if(phase==='listening')return 'finish';
+ return phase?'stop':'listen';
+}
 mic.onclick=()=>{
   if(vertexBatchRunning||!memoryReady||question||speakingAnswer)return;
   if(vertexLoading)vertexAbortPreparation('Preparazione sospesa per usare il microfono.',false);
-  if(vertexWakeEnabled){setWakePreference(false);cancelVoice();statusLine.textContent='Microfono disattivato.';return;}
-  if(recording){
-    setContinuousTalk(false);
-    if(recording.phase==='request'){cancelVoice();statusLine.textContent='Microfono disattivato.';}
-    else finishRecording();
-    return;
-  }
-  if(continuousTalk){setContinuousTalk(false);statusLine.textContent='Microfono disattivato.';return;}
+  const action=vertexMicAction(vertexWakeEnabled,recording?.phase,recording?.wakeMode);
+  if(action==='stop'){setWakePreference(false);cancelVoice();statusLine.textContent='Microfono disattivato.';return;}
+  if(action==='finish'){finishRecording();return;}
+  if(recording)endVoice();
   vertexReleaseHeavyForVoice();
   prepareSpeechFromGesture();
   prepareAnswerEngine(false);
@@ -2400,7 +2400,7 @@ function vertexWakeCanRestore(preferred,visible,busy,granted){
  return preferred&&visible&&!busy&&granted;
 }
 async function restorePreferredWake(){
- if(vertexVoiceMemoryRoom())return;
+ if(vertexVoiceMemoryRoom())vertexReleaseHeavyForVoice();
  if(!vertexMayRestoreWake(vertexBlockedTier,vertexLoading,vertexBatchRunning)||!vertexWakePreferred||vertexWakeRestorePending||vertexWakeEnabled||document.hidden||!memoryReady||recording||question||speakingAnswer||!window.isSecureContext||!navigator.mediaDevices?.getUserMedia)return;
  vertexWakeRestorePending=true;const epoch=vertexWakeRestoreEpoch;
  try{
@@ -4358,7 +4358,7 @@ async function vertexSubmitQuestion(fromVoice=false){
       return;
     }
     let runtimeTier=vertexBlockedTier?'base':vertexDeviceRuntimeTier(vertexTier);
-    if(runtimeTier!=='base'&&!(await vertexConfirmRuntime(runtimeTier)))runtimeTier='base';
+    if(runtimeTier!=='base'&&!(await vertexConfirmRuntime(runtimeTier,fromVoice)))runtimeTier='base';
     if(runtimeTier!==vertexTier)syncVertexTier(runtimeTier);
     if(question!==activeQuestion||vertexTurnId!==turnId)return;
     const advanced=runtimeTier!=='base';
