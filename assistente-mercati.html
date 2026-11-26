@@ -202,35 +202,30 @@ function ensureVoiceModel(preferSmall){
   }
   return modelLoading;
 }
-async function decodeVoice(clip,final,language='it'){
-  const options={language:language==='en'?'en':'it',task:'transcribe',do_sample:false,num_beams:1,return_timestamps:false,
+async function decodeVoice(clip,final,language='it',beams=1){
+  const options={language:language==='en'?'en':'it',task:'transcribe',do_sample:false,num_beams:beams,return_timestamps:false,
     max_new_tokens:Math.max(32,Math.min(448,Math.ceil(clip.length/16000*12)+24))};
   return transcriber(clip,options);
 }
 async function retryPreciseVoice(clip,language='it',preferSmall=true){
-  try{await transcriber?.dispose();}catch{}
-  transcriber=null;modelName=null;
+  // Reuse the loaded speech model rather than downloading another precision.
   self.postMessage({status:'Verifica della trascrizione…'});
-  let lastError;
-  for(const name of (preferSmall?['tiny']:['base','tiny'])){
-    try{
-      await loadVoiceModel(name,'fp32');
-      const result=await decodeVoice(clip,true,language);
-      const text=cleanDictation(result.text||'');
-      if(validItalianTranscript(text)&&!hasRecognitionLoop(text))return text;
-    }catch(e){lastError=e;}
-    try{await transcriber?.dispose();}catch{}
-    transcriber=null;modelName=null;
-  }
+  try{
+    await ensureVoiceModel(preferSmall);
+    const result=await decodeVoice(clip,true,language,2);
+    const text=cleanDictation(result.text||'');
+    if(validItalianTranscript(text)&&!hasRecognitionLoop(text))return text;
+  }catch{}
   return '';
 }
+let vertexResampleRate=0,vertexResampleKernels=null;
 function speechSamples(audio, rate) {
   if(rate===16000)return audio;
   const ratio=rate/16000;
   const output=new Float32Array(Math.floor(audio.length/ratio));
   // Windowed sinc low-pass avoids aliasing on 44.1/48/96 kHz microphones.
   const half=24, cutoff=Math.min(1,1/ratio)*0.92, phases=128;
-  const kernels=Array.from({length:phases+1},(_,p)=>{
+  const kernels=vertexResampleRate===rate&&vertexResampleKernels?vertexResampleKernels:Array.from({length:phases+1},(_,p)=>{
     const weights=new Float64Array(half*2+1);
     for(let k=-half;k<=half;k++){
       const x=k-p/phases,t=Math.PI*x*cutoff;
@@ -239,6 +234,7 @@ function speechSamples(audio, rate) {
     }
     return weights;
   });
+  vertexResampleRate=rate;vertexResampleKernels=kernels;
   for(let i=0;i<output.length;i++){
     const pos=i*ratio,j=Math.floor(pos),w=kernels[Math.round((pos-j)*phases)];
     let sum=0,weight=0;
@@ -254,7 +250,7 @@ function speechSamples(audio, rate) {
 self.onmessage = async ({data}) => {
   const {samples:rawSamples, rate, final, preferSmall, type,language='it'}=data;
   if(type==='warm'){
-    try{await ensureVoiceModel(preferSmall);}catch{}
+    try{await ensureVoiceModel(preferSmall);self.postMessage({voiceReady:true});}catch{self.postMessage({voiceWarmFailed:true});}
     return;
   }
   try {
@@ -1925,7 +1921,10 @@ function getVoiceWorker(){
 function warmVoice(session){
   try{
     const engine=getVoiceWorker();
+    if(engine.voiceReady)return;
     engine.onmessage=({data})=>{
+      if(voiceWorker!==engine)return;
+      if(data.voiceReady){engine.voiceReady=true;if(recording===session&&!session.lastTranscript)statusLine.textContent='Ti ascolto. Fai la tua domanda.';return;}
       if(recording===session&&data.status&&!session.lastTranscript)statusLine.textContent=data.status;
     };
     engine.onerror=()=>{
@@ -2101,6 +2100,10 @@ function voicePartialInterval(session){
   // outdated partial audio; final decoding always uses the complete recording.
   return session.lastSent?Math.max(0.45,Math.min(2.5,(session.decodeMs||450)/1000*0.85)):0.45;
 }
+function vertexVoiceRequestBudget(ready,decodeMs,final){
+  if(!ready)return 120000;
+  return Math.max(final?15000:8000,Math.min(final?45000:25000,(Number(decodeMs)||1500)*4));
+}
 function transcribeSoFar(session) {
   const final = session.phase === 'transcribing';
   const rate = session.sampleRate||session.ctx.sampleRate;
@@ -2122,9 +2125,12 @@ function transcribeSoFar(session) {
     setWakePreference(false);setContinuousTalk(false);statusLine.textContent = message;
   }
   try {
-    getVoiceWorker();
-    voiceWorker.onmessage = ({data}) => {
-      if (recording !== session) return;
+    const engine=getVoiceWorker();
+    engine.onmessage = ({data}) => {
+      if (recording !== session||voiceWorker!==engine) return;
+      if(data.voiceReady){engine.voiceReady=true;clearTimeout(session.watchdog);session.watchdog=setTimeout(onVoiceTimeout,vertexVoiceRequestBudget(true,session.decodeMs,sentFinal));return;}
+      if(data.voiceWarmFailed)return;
+      if(typeof data.text==='string'&&!data.notice)engine.voiceReady=true;
       if (data.status) { if(!session.lastTranscript)statusLine.textContent=data.status; return; }
       clearTimeout(session.watchdog);
       session.pending = false;
@@ -2164,8 +2170,8 @@ function transcribeSoFar(session) {
         transcribeSoFar(session);
       }
     };
-    voiceWorker.onerror = () => {
-      if(recording!==session)return;
+    engine.onerror = () => {
+      if(recording!==session||voiceWorker!==engine)return;
       clearTimeout(session.watchdog);session.pending=false;
       if(!session.workerRetry){
         session.workerRetry=true;voiceWorker?.terminate();voiceWorker=null;
@@ -2173,8 +2179,8 @@ function transcribeSoFar(session) {
       }else fail('Motore vocale non disponibile. Puoi scrivere la domanda.');
     };
     const samples = joinedAudio(session);
-    session.watchdog=setTimeout(()=>{
-      if(recording!==session)return;
+    function onVoiceTimeout(){
+      if(recording!==session||voiceWorker!==engine)return;
       if(session.phase==='listening'&&!session.watchdogRetry){
         session.watchdogRetry=true;session.pending=false;session.lastSent=0;
         voiceWorker?.terminate();voiceWorker=null;
@@ -2182,8 +2188,9 @@ function transcribeSoFar(session) {
         transcribeSoFar(session);return;
       }
       fail('Il riconoscimento si è fermato. Ho mantenuto il testo disponibile: controllalo e riprova.');
-    },session.decodeMs?Math.max(20000,Math.min(60000,session.decodeMs*4)):120000);
-    voiceWorker.postMessage({samples,rate,final:sentFinal,language:session.language,preferSmall:preferAccurateVoice()}, [samples.buffer]);
+    }
+    session.watchdog=setTimeout(onVoiceTimeout,vertexVoiceRequestBudget(!!engine.voiceReady,session.decodeMs,sentFinal));
+    engine.postMessage({samples,rate,final:sentFinal,language:session.language,preferSmall:preferAccurateVoice()}, [samples.buffer]);
   } catch { fail('Trascrizione non disponibile. Puoi scrivere la domanda.'); }
 }
 
