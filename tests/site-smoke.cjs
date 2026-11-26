@@ -1168,6 +1168,7 @@ assert(editingPortfolio.includes('id="holdingAverageBuyPrice"'),
  'Editing a position must include average purchase input');
 console.log('PASS themes/fonts/feeds/icons/orderbook/portfolio and average buy price');
 
+assert(!settings.includes('crypto-global-alert-overview')&&!settings.includes('Avvisi generali UPPER'),'Settings must not display the global alert overview');
 assert(settings.includes('data-test-click-sound="1"'),'No test for click sound');
 assert(settings.includes('data-test-crypto-alert-sound="above"'),'No UPPER audio preview');
 assert(settings.includes('data-test-crypto-alert-sound="below"'),'No LOWER audio preview');
