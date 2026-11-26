@@ -1370,7 +1370,7 @@ assert(liveVoiceSource.includes('recognition.interimResults=true'));
 assert(liveVoiceSource.includes('function vertexNativeFinalReady(session)'));
 assert(liveVoiceSource.includes('if(vertexCommitNativeFinal(session))return;'));
 assert(liveVoiceSource.includes('recognition.processLocally=true'),'Recognition must stay local');
-assert(html.includes('assistente-mercati.html?v=voice-model-runtime-fix-20261126'));
+assert(html.includes('assistente-mercati.html?v=voice-reactivity-20261126'));
 
 assert(liveVoiceSource.includes('!session.nativeIncomplete&&!session.nativeUncertain'));
 assert(liveVoiceSource.includes('id="voice-spoken-caption"'));
@@ -1386,3 +1386,8 @@ assert(liveVoiceSource.includes("if(spokenTier){acceptAnswer(setVertexTier(spoke
 assert(liveVoiceSource.includes('id="voice-model-test"'));
 assert(liveVoiceSource.includes('await vertexResolveRuntimeTier(vertexTier)'));
 assert(liveVoiceSource.includes('if(modelTest&&runtimeTier!==vertexTier)'));
+
+assert(liveVoiceSource.includes('function vertexCheckVoiceGpu()'));
+assert(liveVoiceSource.includes('completeNative?Math.min(base,.7):base'));
+assert(liveVoiceSource.includes('prefetchedSpeech={index:index+1'));
+assert(liveVoiceSource.includes('if(!session.speechStarted||!session.lastVoicedLength)session.pauseSeconds=0'));

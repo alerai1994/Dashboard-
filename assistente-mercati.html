@@ -663,10 +663,19 @@ function vertexGpuRuntimeTier(selected,cores,memory,gpu){
  if(!gpu||tier==='base'||(Number(cores)||2)<4||(Number.isFinite(ram)&&ram<4))return null;
  return tier==='superiore'&&Number.isFinite(ram)&&ram<8?'media':tier;
 }
+let vertexGpuProbe=null,vertexGpuProbeUntil=0;
+function vertexCheckVoiceGpu(){
+ if(vertexForceCPU||!navigator.gpu)return Promise.resolve(false);
+ if(vertexGpuProbe&&Date.now()<vertexGpuProbeUntil)return vertexGpuProbe;
+ vertexGpuProbeUntil=Date.now()+2000;
+ const probe=(async()=>{try{const adapter=await Promise.race([navigator.gpu.requestAdapter({powerPreference:'high-performance'}),new Promise(r=>setTimeout(()=>r(null),1500))]);return !!adapter?.features?.has('shader-f16');}catch{return false;}})();
+ vertexGpuProbe=probe;
+ probe.then(ok=>{if(vertexGpuProbe===probe)vertexGpuProbeUntil=Date.now()+(ok?60000:5000);});
+ return probe;
+}
 async function vertexResolveRuntimeTier(selected){
  if(selected==='base')return 'base';
- let gpu=false;
- if(!vertexForceCPU&&navigator.gpu){try{const adapter=await Promise.race([navigator.gpu.requestAdapter({powerPreference:'high-performance'}),new Promise(r=>setTimeout(()=>r(null),1500))]);gpu=!!adapter?.features?.has('shader-f16');}catch{}}
+ const gpu=await vertexCheckVoiceGpu();
  return vertexGpuRuntimeTier(selected,navigator.hardwareConcurrency,Number(navigator.deviceMemory),gpu)||vertexDeviceRuntimeTier(selected);
 }
 function vertexIsMobile(){return !!navigator.userAgentData?.mobile||/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent||'')||(/Mac/i.test(navigator.platform||'')&&navigator.maxTouchPoints>1);}
@@ -677,8 +686,7 @@ let vertexForceCPU=false;
 const vertexHeavyConsent=new Set();
 async function vertexConfirmRuntime(tier,voice=false){
  if(tier==='base')return true;
- let gpu=false;
- if(!vertexForceCPU&&navigator.gpu){try{const adapter=await Promise.race([navigator.gpu.requestAdapter(),new Promise(r=>setTimeout(()=>r(null),1500))]);gpu=!!adapter?.features?.has('shader-f16');}catch{}}
+ const gpu=await vertexCheckVoiceGpu();
  if(vertexHeavyCPUConsentNeeded(tier,Number(navigator.deviceMemory),vertexIsMobile(),gpu)&&!vertexHeavyConsent.has(tier)){
   if(voice)return false; // Avoid a blocking dialog during spoken conversation.
   const ok=window.confirm('Il modello '+vertexTierNames[tier]+' richiede molta memoria. Su questo browser manca l’accelerazione WebGPU FP16 o non è disponibile. Tentare l’avvio su CPU può causare un arresto della pagina. Vuoi provare una sola volta?');
@@ -1889,7 +1897,9 @@ function phrasePauseLimit(session){
   const last=String(session.lastTranscript||session.nativeText||'').trim().toLowerCase().replace(/[.,!?;:]+$/,'');
   const incomplete=/(?:^|\s)(?:e|o|ma|perché|perche|quindi|che|di|del|della|con|per|su|il|la|un|una|and|or|but|because|with|of|to|the|a|an|for|about)$/.test(last);
   // Fast endpoint for a complete phrase; retain a longer pause for unfinished speech.
-  return (session.pauseLimit||.9)+(incomplete?1.1:0)+(!last?.65:vertexDictationMode==='literal'&&!/[.!?…]$/.test(String(session.lastRawTranscript||session.nativeText||'').trim())?.25:0);
+  const base=session.pauseLimit||.9;
+  const completeNative=!!last&&!incomplete&&vertexNativeFinalReady(session);
+  return (completeNative?Math.min(base,.7):base)+(incomplete?1.1:0)+(!last?.65:!completeNative&&vertexDictationMode==='literal'&&!/[.!?…]$/.test(String(session.lastRawTranscript||session.nativeText||'').trim())?.25:0);
 }
 function pauseEndsPhrase(session,rms,count){
   const seconds=count/(session.sampleRate||session.ctx.sampleRate);
@@ -2116,7 +2126,11 @@ function startLocalRecognition(session){
       session.nativeFinal=newFinal;
       const previousNative=session.nativeText;
       session.nativeText=text.trim();
-      if(session.nativeText&&session.nativeText!==previousNative){session.speechStarted=true;session.speechSeconds=Math.max(.2,session.speechSeconds||0);session.pauseSeconds=0;}
+      if(session.nativeText&&session.nativeText!==previousNative){
+         // Delayed text callbacks must not restart the acoustic silence timer.
+         if(!session.speechStarted||!session.lastVoicedLength)session.pauseSeconds=0;
+         session.speechStarted=true;session.speechSeconds=Math.max(.2,session.speechSeconds||0);
+       }
       session.nativeLastResultLength=session.length;
       updateDictation(session,text);
       if(vertexCommitNativeFinal(session))return;
@@ -2139,7 +2153,7 @@ function startLocalRecognition(session){
 function voicePartialInterval(session){
   // One request in flight. Adapt to measured decoding speed, never queue
   // outdated partial audio; final decoding always uses the complete recording.
-  return session.lastSent?Math.max(.25,Math.min(1.5,(session.decodeMs||300)/1000*.8)):.25;
+  return session.lastSent?Math.max(.25,Math.min(1.5,(session.decodeMs||300)/1000*.65)):.25;
 }
 function vertexVoiceRequestBudget(ready,decodeMs,final){
   if(!ready)return 120000;
@@ -2324,6 +2338,8 @@ mic.onclick=()=>{
 async function beginVoiceListening(){
   if(vertexLoading||vertexBatchRunning||!memoryReady||recording||question||speakingAnswer||document.hidden)return;
   const session = {wakeMode:vertexWakeEnabled?'command':'',language:voiceLanguage,phase:'request', blocks:[], length:0, lastSent:0, pending:false, original:input.value, levelHistory:[], speechSeconds:0, pauseSeconds:0, pauseLimit:.9,lastVoicedLength:0,nativeLastResultLength:0};
+  // Resolve GPU availability while the user speaks, without loading model weights.
+  if(vertexTier!=='base')void vertexCheckVoiceGpu();
   recording = session;
   session.requestTimer=setTimeout(()=>{if(recording===session&&session.phase==='request'){setContinuousTalk(false);endVoice();statusLine.textContent='Attivazione del microfono non completata. Verifica i permessi e riprova.';}},30000);
   voiceControls(true);
@@ -2491,7 +2507,7 @@ function resumeWakeListening(){
  clearTimeout(continuousTimer);
  continuousTimer=setTimeout(()=>{
   if(vertexWakeEnabled&&!document.hidden&&!recording&&!question&&!speakingAnswer)beginVoiceListening();
- },150);
+ },60);
 }
 function handleWakeTranscript(session,raw,reliable){
  if(!session.wakeMode)return false;
@@ -2527,7 +2543,7 @@ function continueAfterSpeech(){
     if(!continuousTalk||document.hidden||recording||question||speakingAnswer)return;
     continuousTimer=0;
     beginVoiceListening();
-  },150);
+  },60);
 }
 function cancelVoice() {
   setContinuousTalk(false);
@@ -2591,7 +2607,7 @@ function stopLocalSpeech(keepWorker=false){
   if(speechAudioElement){speechAudioElement.onended=speechAudioElement.onerror=null;speechAudioElement.pause();speechAudioElement.removeAttribute('src');speechAudioElement=null;}
   if(speechAudioUrl){URL.revokeObjectURL(speechAudioUrl);speechAudioUrl=null;}
 }
-function localSpeechBlob(text,generation){
+function localSpeechBlob(text,generation,quiet=false){
   return new Promise((resolve,reject)=>{
     if(generation!==speechGeneration){reject(Error('Annullato'));return;}
     try{
@@ -2603,7 +2619,7 @@ function localSpeechBlob(text,generation){
       const engine=localSpeechWorker;
       engine.onmessage=({data})=>{
         if(generation!==speechGeneration){reject(Error('Annullato'));return;}
-        if(typeof data.progress==='number'){statusLine.textContent='Preparazione voce italiana · '+data.progress+'%';return;}
+        if(typeof data.progress==='number'){if(!quiet)statusLine.textContent='Preparazione voce italiana · '+data.progress+'%';return;}
         if(data.wav instanceof Blob&&data.wav.size>44)resolve(data.wav);
         else reject(Error(data.error||'Audio non disponibile'));
       };
@@ -2789,6 +2805,7 @@ function speakAnswer(answer,resumeIndex=0){
     statusLine.textContent=failed?'Risposta scritta completa disponibile. Tocca Ascolta risposta per riprendere la voce dal punto interrotto.':'';
     if(failed){setWakePreference(false);setContinuousTalk(false);}else {continueAfterSpeech();if(!vertexWakeEnabled)restorePreferredWake();}
   }
+  let prefetchedSpeech=null;
   async function localNext(){
     if(generation!==speechGeneration)return;
     if(index>=chunks.length){finish(false);return;}
@@ -2796,13 +2813,18 @@ function speakAnswer(answer,resumeIndex=0){
     clearTimeout(speechTimer);
     speechTimer=setTimeout(()=>finish(true),120000);
     try{
-      const blob=await localSpeechBlob(chunks[index],generation);
+      const prepared=prefetchedSpeech?.index===index?prefetchedSpeech:null;
+      prefetchedSpeech=null;
+      const blob=prepared?(await prepared.promise):await localSpeechBlob(chunks[index],generation);
       if(generation!==speechGeneration)return;
+      if(!blob)throw Error('Preparazione audio non riuscita');
       statusLine.textContent='Vertex sta rispondendo…';
+      // Only one synthesis request at a time; overlap the next phrase with playback.
+      if(index+1<chunks.length)prefetchedSpeech={index:index+1,promise:localSpeechBlob(chunks[index+1],generation,true).catch(()=>null)};
       await playLocalSpeech(blob,generation,()=>{if(generation===speechGeneration)setSpokenCaption(chunks[index]);});
       if(generation!==speechGeneration)return;
       clearTimeout(speechTimer);const pause=naturalSpeechPause(chunks[index]);index++;vertexSpeechResumeIndex=index;attempt=0;localAttempt=0;speechTimer=setTimeout(next,pause);
-    }catch{if(generation!==speechGeneration)return;clearTimeout(speechTimer);if(localAttempt++===0){stopLocalSpeech();speechTimer=setTimeout(next,250);}else finish(true);}
+    }catch{if(generation!==speechGeneration)return;clearTimeout(speechTimer);if(localAttempt++===0){prefetchedSpeech=null;stopLocalSpeech();speechTimer=setTimeout(next,150);}else finish(true);}
   }
   function next(){
     if(generation!==speechGeneration)return;
