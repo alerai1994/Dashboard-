@@ -1594,7 +1594,7 @@ function releaseAudio(session) {
 }
 function setMicState(state){
   const active=state==='on';
-  const label=active?(recording?.wakeMode==='standby'?'Parla ora':recording?.wakeMode?'Disattiva microfono':'Termina dettatura'):state==='request'?'Annulla attivazione microfono':'Attiva ascolto diretto';
+  const label=active?(recording?.wakeMode==='standby'?'Parla ora':recording?.wakeMode==='command'?'Completa e invia la domanda':'Termina dettatura'):state==='request'?'Annulla attivazione microfono':'Attiva ascolto diretto';
   mic.dataset.micState=state;
   mic.setAttribute('aria-pressed',String(active));
   mic.setAttribute('aria-label',label);
@@ -2232,7 +2232,7 @@ function finishRecording() {
 // A tap in standby starts direct listening, rather than turning the microphone off.
 function vertexMicAction(wake,phase,mode){
  if(wake&&(!phase||mode==='standby'))return 'listen';
- if(wake||phase==='request')return 'stop';
+ if(phase==='request')return 'stop';
  if(phase==='listening')return 'finish';
  return phase?'stop':'listen';
 }
@@ -2400,13 +2400,13 @@ function vertexWakeCanRestore(preferred,visible,busy,granted){
  return preferred&&visible&&!busy&&granted;
 }
 async function restorePreferredWake(){
- if(vertexVoiceMemoryRoom())vertexReleaseHeavyForVoice();
  if(!vertexMayRestoreWake(vertexBlockedTier,vertexLoading,vertexBatchRunning)||!vertexWakePreferred||vertexWakeRestorePending||vertexWakeEnabled||document.hidden||!memoryReady||recording||question||speakingAnswer||!window.isSecureContext||!navigator.mediaDevices?.getUserMedia)return;
  vertexWakeRestorePending=true;const epoch=vertexWakeRestoreEpoch;
  try{
   let granted=vertexWakeAuthorized;
   try{const permission=await navigator.permissions?.query?.({name:'microphone'});if(permission)granted=permission.state==='granted';}catch{}
   if(epoch!==vertexWakeRestoreEpoch)return;
+  if(granted&&vertexWakePreferred&&!document.hidden&&!recording&&!question&&!speakingAnswer&&!vertexWakeEnabled&&!vertexLoading&&!vertexBatchRunning)vertexReleaseHeavyForVoice();
   if(!vertexVoiceMemoryRoom()&&vertexMayRestoreWake(vertexBlockedTier,vertexLoading,vertexBatchRunning)&&vertexWakeCanRestore(vertexWakePreferred,!document.hidden,!!(recording||question||speakingAnswer||vertexWakeEnabled),granted)){
    setWakeMode(true);beginVoiceListening();
   }else if(vertexWakePreferred&&!document.hidden&&!recording&&!question&&!speakingAnswer&&!vertexWakeEnabled){
@@ -2429,7 +2429,7 @@ function handleWakeTranscript(session,raw,reliable){
  const draft=input.value;
  const edited=!vertexOwnsVoiceDraft(session,draft)||!!session.original.trim();
  endVoice();input.value=edited?draft:session.original;
- if(edited){vertexWakeAwaitCommand=false;statusLine.textContent=wakeStatus();resumeWakeListening();return true;}
+ if(edited){setWakeMode(false);statusLine.textContent='Testo conservato. Controllalo e invialo, oppure riattiva il microfono.';return true;}
  if(!reliable&&session.lastTranscript){input.value=draft;setWakeMode(false);statusLine.textContent='Controlla la trascrizione prima di inviarla.';return true;}
  if(!vertexWakeEnabled)return true;
  if(decision.action==='submit'){
