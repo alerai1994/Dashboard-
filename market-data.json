@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-26T19:01:25.831706+00:00",
+  "generatedAt": "2026-11-26T19:03:01.401496+00:00",
   "source": "Yahoo Finance chart + CoinGecko, delayed/not real-time",
   "markets": [
     {
@@ -3625,8 +3625,8 @@
     {
       "id": "tsx",
       "symbol": "^GSPTSE",
-      "value": 34414.38,
-      "change": 10.3722,
+      "value": 34414.04,
+      "change": 10.3711,
       "currency": "CAD",
       "history": [
         35154.80078125,
@@ -3668,7 +3668,7 @@
         34082.1015625,
         33962.30078125,
         34180.0,
-        34414.37890625
+        34414.0390625
       ],
       "candles": [
         {
@@ -5433,17 +5433,17 @@
           "o": 34304.7695312,
           "h": 34453.0898438,
           "l": 34286.5898438,
-          "c": 34414.3789062
+          "c": 34414.0390625
         }
       ],
-      "time": "2026-11-26T19:01:16+00:00",
+      "time": "2026-11-26T19:02:46+00:00",
       "source": "Yahoo Finance · quotazione della fonte"
     },
     {
       "id": "ibov",
       "symbol": "^BVSP",
-      "value": 173343.3,
-      "change": 9.3269,
+      "value": 173290.42,
+      "change": 9.2936,
       "currency": "BRL",
       "history": [
         183828.0,
@@ -5485,7 +5485,7 @@
         164796.0,
         164090.0,
         166685.0,
-        173343.296875
+        173290.421875
       ],
       "candles": [
         {
@@ -7222,10 +7222,10 @@
           "o": 166698.5625,
           "h": 174331.953125,
           "l": 166695.796875,
-          "c": 173343.296875
+          "c": 173290.421875
         }
       ],
-      "time": "2026-11-26T18:46:01+00:00",
+      "time": "2026-11-26T18:47:31+00:00",
       "source": "Yahoo Finance · quotazione della fonte"
     },
     {
@@ -54229,8 +54229,8 @@
     {
       "id": "gold",
       "symbol": "GC=F",
-      "value": 3595.6,
-      "change": -13.1498,
+      "value": 3595.5,
+      "change": -13.1522,
       "currency": "USD",
       "history": [
         4162.2998046875,
@@ -54272,7 +54272,7 @@
         3651.39990234375,
         3561.89990234375,
         3535.800048828125,
-        3595.60009765625
+        3595.5
       ],
       "candles": [
         {
@@ -56033,21 +56033,21 @@
           "c": 3535.80004883
         },
         {
-          "t": 1795719066,
+          "t": 1795719181,
           "o": 3619.80004883,
           "h": 3634.69995117,
           "l": 3578.80004883,
-          "c": 3595.60009766
+          "c": 3595.5
         }
       ],
-      "time": "2026-11-26T18:51:06+00:00",
+      "time": "2026-11-26T18:53:01+00:00",
       "source": "Yahoo Finance · quotazione della fonte"
     },
     {
       "id": "silver",
       "symbol": "SI=F",
-      "value": 41.765,
-      "change": -18.0017,
+      "value": 41.77,
+      "change": -17.9919,
       "currency": "USD",
       "history": [
         59.97700119018555,
@@ -56089,7 +56089,7 @@
         43.14699935913086,
         40.7599983215332,
         40.051998138427734,
-        41.76499938964844
+        41.77000045776367
       ],
       "candles": [
         {
@@ -57850,14 +57850,14 @@
           "c": 40.0519981384
         },
         {
-          "t": 1795719016,
+          "t": 1795719181,
           "o": 41.7050018311,
           "h": 42.5149993896,
           "l": 41.0750007629,
-          "c": 41.7649993896
+          "c": 41.7700004578
         }
       ],
-      "time": "2026-11-26T18:50:16+00:00",
+      "time": "2026-11-26T18:53:01+00:00",
       "source": "Yahoo Finance · quotazione della fonte"
     },
     {
@@ -59680,8 +59680,8 @@
     {
       "id": "wti",
       "symbol": "CL=F",
-      "value": 84.89,
-      "change": 46.4884,
+      "value": 84.92,
+      "change": 46.5401,
       "currency": "USD",
       "history": [
         91.11000061035156,
@@ -59723,7 +59723,7 @@
         80.16999816894531,
         82.05000305175781,
         83.68000030517578,
-        84.88999938964844
+        84.91999816894531
       ],
       "candles": [
         {
@@ -61484,21 +61484,21 @@
           "c": 83.6800003052
         },
         {
-          "t": 1795719055,
+          "t": 1795719146,
           "o": 84.0899963379,
           "h": 85.2099990845,
           "l": 83.1600036621,
-          "c": 84.8899993896
+          "c": 84.9199981689
         }
       ],
-      "time": "2026-11-26T18:50:55+00:00",
+      "time": "2026-11-26T18:52:26+00:00",
       "source": "Yahoo Finance · quotazione della fonte"
     },
     {
       "id": "naturalgas",
       "symbol": "NG=F",
-      "value": 3.603,
-      "change": -18.5579,
+      "value": 3.593,
+      "change": -18.7839,
       "currency": "USD",
       "history": [
         3.0350000858306885,
@@ -61540,7 +61540,7 @@
         3.184000015258789,
         3.322999954223633,
         3.2690000534057617,
-        3.6029999256134033
+        3.5929999351501465
       ],
       "candles": [
         {
@@ -63301,14 +63301,14 @@
           "c": 3.26900005341
         },
         {
-          "t": 1795719049,
+          "t": 1795719175,
           "o": 3.67499995232,
           "h": 3.69600009918,
           "l": 3.57699990273,
-          "c": 3.60299992561
+          "c": 3.59299993515
         }
       ],
-      "time": "2026-11-26T18:50:49+00:00",
+      "time": "2026-11-26T18:52:55+00:00",
       "source": "Yahoo Finance · quotazione della fonte"
     },
     {
@@ -65118,14 +65118,14 @@
           "c": 5.33249998093
         },
         {
-          "t": 1795719064,
+          "t": 1795719168,
           "o": 5.48050022125,
           "h": 5.55350017548,
           "l": 5.42850017548,
           "c": 5.43450021744
         }
       ],
-      "time": "2026-11-26T18:51:04+00:00",
+      "time": "2026-11-26T18:52:48+00:00",
       "source": "Yahoo Finance · quotazione della fonte"
     }
   ],
@@ -65133,8 +65133,8 @@
     {
       "id": "eurusd",
       "symbol": "EURUSD=X",
-      "value": 1.0973,
-      "change": -5.1189,
+      "value": 1.0975,
+      "change": -5.1016,
       "currency": "USD",
       "history": [
         1.124985933303833,
@@ -65176,7 +65176,7 @@
         1.097152829170227,
         1.090809941291809,
         1.0962268114089966,
-        1.0973334312438965
+        1.0974539518356323
       ],
       "candles": [
         {
@@ -66997,10 +66997,10 @@
           "o": 1.0978153944,
           "h": 1.09914267063,
           "l": 1.09601056576,
-          "c": 1.09733343124
+          "c": 1.09745395184
         }
       ],
-      "time": "2026-11-26T19:00:43+00:00",
+      "time": "2026-11-26T19:02:43+00:00",
       "source": "Yahoo Finance · quotazione della fonte"
     },
     {
@@ -67049,7 +67049,7 @@
         1.3094661235809326,
         1.303475022315979,
         1.3111830949783325,
-        1.3106846809387207
+        1.310701847076416
       ],
       "candles": [
         {
@@ -68870,17 +68870,17 @@
           "o": 1.31190550327,
           "h": 1.31233596802,
           "l": 1.30963754654,
-          "c": 1.31068468094
+          "c": 1.31070184708
         }
       ],
-      "time": "2026-11-26T19:00:43+00:00",
+      "time": "2026-11-26T19:02:43+00:00",
       "source": "Yahoo Finance · quotazione della fonte"
     },
     {
       "id": "usdjpy",
       "symbol": "JPY=X",
-      "value": 159.273,
-      "change": 1.9478,
+      "value": 159.265,
+      "change": 1.9426,
       "currency": "JPY",
       "history": [
         157.927001953125,
@@ -68922,7 +68922,7 @@
         158.93099975585938,
         159.00900268554688,
         159.26199340820312,
-        159.2729949951172
+        159.26499938964844
       ],
       "candles": [
         {
@@ -70743,17 +70743,17 @@
           "o": 159.115997314,
           "h": 159.337997437,
           "l": 158.945999146,
-          "c": 159.272994995
+          "c": 159.26499939
         }
       ],
-      "time": "2026-11-26T19:01:24+00:00",
+      "time": "2026-11-26T19:03:00+00:00",
       "source": "Yahoo Finance · quotazione della fonte"
     },
     {
       "id": "usdchf",
       "symbol": "CHF=X",
-      "value": 0.8341,
-      "change": 3.2302,
+      "value": 0.834,
+      "change": 3.2178,
       "currency": "CHF",
       "history": [
         0.8305299878120422,
@@ -70795,7 +70795,7 @@
         0.8409299850463867,
         0.8414599895477295,
         0.8357800245285034,
-        0.834089994430542
+        0.8340299725532532
       ],
       "candles": [
         {
@@ -72616,10 +72616,10 @@
           "o": 0.830619990826,
           "h": 0.834890007973,
           "l": 0.830099999905,
-          "c": 0.834089994431
+          "c": 0.834029972553
         }
       ],
-      "time": "2026-11-26T19:01:26+00:00",
+      "time": "2026-11-26T19:03:00+00:00",
       "source": "Yahoo Finance · quotazione della fonte"
     },
     {
@@ -74492,7 +74492,7 @@
           "c": 0.663349866867
         }
       ],
-      "time": "2026-11-26T18:59:43+00:00",
+      "time": "2026-11-26T19:01:43+00:00",
       "source": "Yahoo Finance · quotazione della fonte"
     },
     {
@@ -96352,7 +96352,7 @@
       "id": "btc",
       "symbol": "BITCOIN",
       "value": 60422.0,
-      "change": 1.26257,
+      "change": 1.21798,
       "currency": "USD",
       "history": [
         82017.6015625,
@@ -96394,7 +96394,7 @@
         61210.984375,
         59747.765625,
         60378.19921875,
-        60403.94921875
+        60456.609375
       ],
       "candles": [
         {
@@ -98215,20 +98215,20 @@
           "o": 60378.5703125,
           "h": 61040.9453125,
           "l": 60040.0820312,
-          "c": 60403.9492188
+          "c": 60456.609375
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png?1696501400",
-      "market_cap": 1215670225000.0,
+      "market_cap": 1215480659758.0,
       "circulating_supply": 20117800.0,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z"
+      "cap_updated_at": "2026-11-26T19:02:53.000Z"
     },
     {
       "id": "eth",
       "symbol": "ETHEREUM",
-      "value": 1698.57,
-      "change": 1.15859,
+      "value": 1698.24,
+      "change": 1.06906,
       "currency": "USD",
       "history": [
         2408.741455078125,
@@ -98270,7 +98270,7 @@
         1708.851318359375,
         1677.69482421875,
         1690.76904296875,
-        1697.4100341796875
+        1699.6400146484375
       ],
       "candles": [
         {
@@ -100091,20 +100091,20 @@
           "o": 1690.75158691,
           "h": 1708.44458008,
           "l": 1672.76635742,
-          "c": 1697.41003418
+          "c": 1699.64001465
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/279/large/ethereum.png?1696501628",
-      "market_cap": 207685572993.0,
+      "market_cap": 207601225318.0,
       "circulating_supply": 122253671.96393436,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z"
+      "cap_updated_at": "2026-11-26T19:02:53.000Z"
     },
     {
       "id": "sol",
       "symbol": "SOLANA",
       "value": 71.24,
-      "change": 2.15676,
+      "change": 2.08138,
       "currency": "USD",
       "history": [
         104.02468872070312,
@@ -100146,7 +100146,7 @@
         71.98179626464844,
         69.63577270507812,
         70.39324188232422,
-        71.20999908447266
+        71.30999755859375
       ],
       "candles": [
         {
@@ -101967,20 +101967,20 @@
           "o": 70.3932418823,
           "h": 71.414642334,
           "l": 69.9213790894,
-          "c": 71.2099990845
+          "c": 71.3099975586
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/4128/large/solana.png?1718769756",
-      "market_cap": 42199392025.0,
+      "market_cap": 42182433738.0,
       "circulating_supply": 592183103.0391985,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z"
+      "cap_updated_at": "2026-11-26T19:02:53.000Z"
     },
     {
       "id": "inj",
       "symbol": "INJECTIVE-PROTOCOL",
-      "value": 6.21,
-      "change": 5.2639,
+      "value": 6.22,
+      "change": 5.31755,
       "currency": "USD",
       "history": [
         8.772727012634277,
@@ -102022,7 +102022,7 @@
         6.278571128845215,
         5.842606067657471,
         5.949549198150635,
-        6.21999979019165
+        6.236000061035156
       ],
       "candles": [
         {
@@ -103843,20 +103843,20 @@
           "o": 5.9496512413,
           "h": 6.26948642731,
           "l": 5.9496512413,
-          "c": 6.21999979019
+          "c": 6.23600006104
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/12882/large/Other_200x200.png?1738782212",
-      "market_cap": 621362735.0,
+      "market_cap": 621909459.0,
       "circulating_supply": 100000000.0,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z"
+      "cap_updated_at": "2026-11-26T19:02:53.000Z"
     },
     {
       "id": "bnb",
       "symbol": "BINANCECOIN",
-      "value": 552.83,
-      "change": 0.73553,
+      "value": 552.92,
+      "change": 0.66361,
       "currency": "USD",
       "history": [
         722.25537109375,
@@ -103898,7 +103898,7 @@
         555.8504638671875,
         547.7404174804688,
         553.5673217773438,
-        552.4299926757812
+        553.3499755859375
       ],
       "candles": [
         {
@@ -105719,20 +105719,20 @@
           "o": 553.561523438,
           "h": 560.253356934,
           "l": 545.645202637,
-          "c": 552.429992676
+          "c": 553.349975586
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/825/large/bnb-icon2_2x.png?1696501970",
-      "market_cap": 72716959728.0,
+      "market_cap": 72707480366.0,
       "circulating_supply": 131509913.25,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z"
+      "cap_updated_at": "2026-11-26T19:02:53.000Z"
     },
     {
       "id": "ore",
       "symbol": "ORE",
-      "value": 79.78,
-      "change": 3.43203,
+      "value": 79.84,
+      "change": 3.38059,
       "currency": "USD",
       "history": [
         82.80612559282451,
@@ -107166,19 +107166,19 @@
           "c": 80.32
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/36854/large/IMG_7340.png?1712633659",
-      "market_cap": 41917557.0,
+      "market_cap": 41961356.0,
       "circulating_supply": 525550.7619339795,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z",
+      "cap_updated_at": "2026-11-26T19:02:53.000Z",
       "candleSource": "CoinGecko USD",
       "ohlcCheckedAt": "2026-11-26T16:24:16.587478+00:00"
     },
     {
       "id": "xrp",
       "symbol": "RIPPLE",
-      "value": 0.952907,
-      "change": 2.70056,
+      "value": 0.952745,
+      "change": 2.54371,
       "currency": "USD",
       "history": [
         1.304955005645752,
@@ -107220,7 +107220,7 @@
         0.9395989775657654,
         0.9243720173835754,
         0.9369450211524963,
-        0.9521999955177307
+        0.9534000158309937
       ],
       "candles": [
         {
@@ -109041,20 +109041,20 @@
           "o": 0.936942636967,
           "h": 0.961188733578,
           "l": 0.936194837093,
-          "c": 0.952199995518
+          "c": 0.953400015831
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/44/large/xrp-symbol-white-128.png?1696501442",
-      "market_cap": 60555876895.0,
+      "market_cap": 60501011859.0,
       "circulating_supply": 63516606953.0,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z"
+      "cap_updated_at": "2026-11-26T19:02:53.000Z"
     },
     {
       "id": "doge",
       "symbol": "DOGECOIN",
-      "value": 0.056898,
-      "change": 3.19942,
+      "value": 0.056882,
+      "change": 2.98966,
       "currency": "USD",
       "history": [
         0.07932499796152115,
@@ -109096,7 +109096,7 @@
         0.05630199983716011,
         0.05524799972772598,
         0.05596800148487091,
-        0.05683000013232231
+        0.05691999942064285
       ],
       "candles": [
         {
@@ -110917,20 +110917,20 @@
           "o": 0.0559689216316,
           "h": 0.0571374706924,
           "l": 0.0559682548046,
-          "c": 0.0568300001323
+          "c": 0.0569199994206
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/5/large/dogecoin.png?1696501409",
-      "market_cap": 8931483190.0,
+      "market_cap": 8921258598.0,
       "circulating_supply": 156902192860.16806,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z"
+      "cap_updated_at": "2026-11-26T19:02:53.000Z"
     },
     {
       "id": "ada",
       "symbol": "CARDANO",
-      "value": 0.150186,
-      "change": 4.01488,
+      "value": 0.150235,
+      "change": 3.9402,
       "currency": "USD",
       "history": [
         0.22093899548053741,
@@ -110972,7 +110972,7 @@
         0.14828400313854218,
         0.1443530023097992,
         0.14576099812984467,
-        0.15004000067710876
+        0.1506199985742569
       ],
       "candles": [
         {
@@ -112793,20 +112793,20 @@
           "o": 0.145762830973,
           "h": 0.150334760547,
           "l": 0.145683169365,
-          "c": 0.150040000677
+          "c": 0.150619998574
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/975/large/cardano.png?1696502090",
-      "market_cap": 5649679578.0,
+      "market_cap": 5644601363.0,
       "circulating_supply": 37585128018.49563,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z"
+      "cap_updated_at": "2026-11-26T19:02:53.000Z"
     },
     {
       "id": "avax",
       "symbol": "AVALANCHE-2",
       "value": 6.64,
-      "change": 1.70511,
+      "change": 1.57932,
       "currency": "USD",
       "history": [
         9.766980171203613,
@@ -112848,7 +112848,7 @@
         6.777078151702881,
         6.564467906951904,
         6.623554229736328,
-        6.640999794006348
+        6.651000022888184
       ],
       "candles": [
         {
@@ -114669,20 +114669,20 @@
           "o": 6.62386798859,
           "h": 6.70750761032,
           "l": 6.48907470703,
-          "c": 6.64099979401
+          "c": 6.65100002289
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/12559/large/Avalanche_Circle_RedWhite_Trans.png?1696512369",
-      "market_cap": 2970098396.0,
+      "market_cap": 2967953733.0,
       "circulating_supply": 446744674.6852556,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z"
+      "cap_updated_at": "2026-11-26T19:02:53.000Z"
     },
     {
       "id": "link",
       "symbol": "CHAINLINK",
-      "value": 9.26,
-      "change": 3.20354,
+      "value": 9.25,
+      "change": 2.96134,
       "currency": "USD",
       "history": [
         12.024983406066895,
@@ -114724,7 +114724,7 @@
         8.999415397644043,
         8.837907791137695,
         9.047487258911133,
-        9.24899959564209
+        9.265999794006348
       ],
       "candles": [
         {
@@ -116545,20 +116545,20 @@
           "o": 9.04761219025,
           "h": 9.26950740814,
           "l": 9.04761219025,
-          "c": 9.24899959564
+          "c": 9.26599979401
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/877/large/Chainlink_Logo_500.png?1760023405",
-      "market_cap": 7106201086.0,
+      "market_cap": 7093970912.0,
       "circulating_supply": 766849970.424884,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z"
+      "cap_updated_at": "2026-11-26T19:02:53.000Z"
     },
     {
       "id": "dot",
       "symbol": "POLKADOT",
-      "value": 0.67399,
-      "change": 2.60344,
+      "value": 0.673993,
+      "change": 2.41539,
       "currency": "USD",
       "history": [
         1.117722988128662,
@@ -116600,7 +116600,7 @@
         0.6747090220451355,
         0.6514409780502319,
         0.6586319804191589,
-        0.6733999848365784
+        0.6743000149726868
       ],
       "candles": [
         {
@@ -118421,20 +118421,20 @@
           "o": 0.658613026142,
           "h": 0.676874339581,
           "l": 0.657795846462,
-          "c": 0.673399984837
+          "c": 0.674300014973
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/12171/large/polkadot.jpg?1766533446",
-      "market_cap": 1155792061.0,
+      "market_cap": 1154945595.0,
       "circulating_supply": 1713940722.1921818,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z"
+      "cap_updated_at": "2026-11-26T19:02:53.000Z"
     },
     {
       "id": "trx",
       "symbol": "TRON",
-      "value": 0.303335,
-      "change": -0.19523,
+      "value": 0.303338,
+      "change": -0.1114,
       "currency": "USD",
       "history": [
         0.3323949873447418,
@@ -118476,7 +118476,7 @@
         0.3095349967479706,
         0.30783501267433167,
         0.30361801385879517,
-        0.30312177538871765
+        0.3031432330608368
       ],
       "candles": [
         {
@@ -120297,20 +120297,20 @@
           "o": 0.303613781929,
           "h": 0.304433345795,
           "l": 0.301550924778,
-          "c": 0.303121775389
+          "c": 0.303143233061
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/1094/large/photo_2026-04-13_09-59-16.png?1776048311",
-      "market_cap": 28831758156.0,
+      "market_cap": 28831815187.0,
       "circulating_supply": 95058082246.61615,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z"
+      "cap_updated_at": "2026-11-26T19:02:53.000Z"
     },
     {
       "id": "ton",
       "symbol": "THE-OPEN-NETWORK",
-      "value": 0.961441,
-      "change": 3.65806,
+      "value": 0.960923,
+      "change": 3.56136,
       "currency": "USD",
       "history": [
         1.028521659506115,
@@ -122304,19 +122304,19 @@
           "c": 1.6
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/17980/large/Gram_Circular_Badge.png?1781524778",
-      "market_cap": 2781883834.0,
+      "market_cap": 2780074290.0,
       "circulating_supply": 2893539686.4977403,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z",
+      "cap_updated_at": "2026-11-26T19:02:53.000Z",
       "candleSource": "Binance Spot USDT",
       "ohlcCheckedAt": "2026-11-26T16:24:16.587478+00:00"
     },
     {
       "id": "sui",
       "symbol": "SUI",
-      "value": 0.670439,
-      "change": 2.33676,
+      "value": 0.670423,
+      "change": 2.17672,
       "currency": "USD",
       "history": [
         0.7170468658440973,
@@ -124310,19 +124310,19 @@
           "c": 0.6647
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/26375/large/sui-ocean-square.png?1727791290",
-      "market_cap": 2775773608.0,
+      "market_cap": 2774507425.0,
       "circulating_supply": 4139043544.1303763,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z",
+      "cap_updated_at": "2026-11-26T19:02:53.000Z",
       "candleSource": "Binance Spot USDT",
       "ohlcCheckedAt": "2026-11-26T16:24:16.587478+00:00"
     },
     {
       "id": "ltc",
       "symbol": "LITECOIN",
-      "value": 43.34,
-      "change": 3.08816,
+      "value": 43.33,
+      "change": 2.92921,
       "currency": "USD",
       "history": [
         59.07213592529297,
@@ -124364,7 +124364,7 @@
         41.3943977355957,
         40.82197570800781,
         42.7276496887207,
-        43.323001861572266
+        43.37099838256836
       ],
       "candles": [
         {
@@ -126185,20 +126185,20 @@
           "o": 42.7277793884,
           "h": 43.9384040833,
           "l": 42.7277793884,
-          "c": 43.3230018616
+          "c": 43.3709983826
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/2/large/litecoin.png?1696501400",
-      "market_cap": 3375615422.0,
+      "market_cap": 3373370835.0,
       "circulating_supply": 77868824.35583635,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z"
+      "cap_updated_at": "2026-11-26T19:02:53.000Z"
     },
     {
       "id": "bch",
       "symbol": "BITCOIN-CASH",
-      "value": 209.25,
-      "change": 3.54555,
+      "value": 209.12,
+      "change": 3.31822,
       "currency": "USD",
       "history": [
         207.8237670631443,
@@ -128192,19 +128192,19 @@
           "c": 207.4
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/780/large/bitcoin-cash-circle.png?1696501932",
-      "market_cap": 4211619095.0,
+      "market_cap": 4207439415.0,
       "circulating_supply": 20122187.39665076,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z",
+      "cap_updated_at": "2026-11-26T19:02:53.000Z",
       "candleSource": "Binance Spot USDT",
       "ohlcCheckedAt": "2026-11-26T16:24:16.587478+00:00"
     },
     {
       "id": "xlm",
       "symbol": "STELLAR",
-      "value": 0.127552,
-      "change": 1.06472,
+      "value": 0.127421,
+      "change": 0.88404,
       "currency": "USD",
       "history": [
         0.13376871223750558,
@@ -130198,19 +130198,19 @@
           "c": 0.1267
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/100/large/fmpFRHHQ_400x400.jpg?1735231350",
-      "market_cap": 4529183193.0,
+      "market_cap": 4522987414.0,
       "circulating_supply": 35493990303.02641,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z",
+      "cap_updated_at": "2026-11-26T19:02:53.000Z",
       "candleSource": "Binance Spot USDT",
       "ohlcCheckedAt": "2026-11-26T16:24:16.587478+00:00"
     },
     {
       "id": "hbar",
       "symbol": "HEDERA-HASHGRAPH",
-      "value": 0.054326,
-      "change": 6.22187,
+      "value": 0.054346,
+      "change": 6.14592,
       "currency": "USD",
       "history": [
         0.0852769985795021,
@@ -130252,7 +130252,7 @@
         0.05239899829030037,
         0.05029899999499321,
         0.05208899825811386,
-        0.05429999902844429
+        0.05438999831676483
       ],
       "candles": [
         {
@@ -132073,20 +132073,20 @@
           "o": 0.052089639008,
           "h": 0.0546673387289,
           "l": 0.052089639008,
-          "c": 0.0542999990284
+          "c": 0.0543899983168
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/3688/large/hbar.png?1696504364",
-      "market_cap": 2408786768.0,
+      "market_cap": 2408525059.0,
       "circulating_supply": 44327594365.17374,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z"
+      "cap_updated_at": "2026-11-26T19:02:53.000Z"
     },
     {
       "id": "near",
       "symbol": "NEAR",
-      "value": 3.1,
-      "change": 7.24635,
+      "value": 3.11,
+      "change": 7.19883,
       "currency": "USD",
       "history": [
         3.2732416572958503,
@@ -134080,19 +134080,19 @@
           "c": 3.073
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/10365/large/near.jpg?1696510367",
-      "market_cap": 4071628984.0,
+      "market_cap": 4076327263.0,
       "circulating_supply": 1312754592.0,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z",
+      "cap_updated_at": "2026-11-26T19:02:53.000Z",
       "candleSource": "Binance Spot USDT",
       "ohlcCheckedAt": "2026-11-26T16:24:16.587478+00:00"
     },
     {
       "id": "apt",
       "symbol": "APTOS",
-      "value": 0.386969,
-      "change": 4.76851,
+      "value": 0.38706,
+      "change": 4.53457,
       "currency": "USD",
       "history": [
         0.41679036042325823,
@@ -136086,11 +136086,11 @@
           "c": 0.3851
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/26455/large/Aptos-Network-Profile-Picture_%281%29.png?1788259511",
-      "market_cap": 344559166.0,
+      "market_cap": 344303606.0,
       "circulating_supply": 889572487.1526299,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z",
+      "cap_updated_at": "2026-11-26T19:02:53.000Z",
       "candleSource": "Binance Spot USDT",
       "ohlcCheckedAt": "2026-11-26T16:24:16.587478+00:00"
     },
@@ -136098,7 +136098,7 @@
       "id": "atom",
       "symbol": "COSMOS",
       "value": 1.21,
-      "change": -3.61452,
+      "change": -3.64399,
       "currency": "USD",
       "history": [
         1.2806707456687738,
@@ -138092,11 +138092,11 @@
           "c": 1.193
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/1481/large/cosmos_hub.png?1696502525",
-      "market_cap": 656518657.0,
+      "market_cap": 656673402.0,
       "circulating_supply": 544155337.884903,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z",
+      "cap_updated_at": "2026-11-26T19:02:53.000Z",
       "candleSource": "Binance Spot USDT",
       "ohlcCheckedAt": "2026-11-26T16:24:16.587478+00:00"
     },
@@ -138104,7 +138104,7 @@
       "id": "uni",
       "symbol": "UNISWAP",
       "value": 4.66,
-      "change": 0.08572,
+      "change": 0.00267,
       "currency": "USD",
       "history": [
         5.001417297102107,
@@ -140098,19 +140098,19 @@
           "c": 4.646
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/12504/large/uniswap-logo.png?1720676669",
-      "market_cap": 2830433322.0,
+      "market_cap": 2828725418.0,
       "circulating_supply": 607091895.875979,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z",
+      "cap_updated_at": "2026-11-26T19:02:53.000Z",
       "candleSource": "Binance Spot USDT",
       "ohlcCheckedAt": "2026-11-26T16:24:16.587478+00:00"
     },
     {
       "id": "aave",
       "symbol": "AAVE",
-      "value": 94.29,
-      "change": -0.03522,
+      "value": 94.7,
+      "change": 0.01237,
       "currency": "USD",
       "history": [
         105.11650455875765,
@@ -142104,19 +142104,19 @@
           "c": 93.98
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/12645/large/aave-token-round.png?1720472354",
-      "market_cap": 1456316236.0,
+      "market_cap": 1462001106.0,
       "circulating_supply": 15441651.593832644,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z",
+      "cap_updated_at": "2026-11-26T19:02:53.000Z",
       "candleSource": "Binance Spot USDT",
       "ohlcCheckedAt": "2026-11-26T16:24:16.587478+00:00"
     },
     {
       "id": "arb",
       "symbol": "ARBITRUM",
-      "value": 0.113819,
-      "change": 2.87844,
+      "value": 0.113871,
+      "change": 2.80334,
       "currency": "USD",
       "history": [
         0.12475125737282634,
@@ -144110,19 +144110,19 @@
           "c": 0.1127
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/16547/large/arb.jpg?1721358242",
-      "market_cap": 797120681.0,
+      "market_cap": 796648631.0,
       "circulating_supply": 6997670388.0,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z",
+      "cap_updated_at": "2026-11-26T19:02:53.000Z",
       "candleSource": "Binance Spot USDT",
       "ohlcCheckedAt": "2026-11-26T16:24:16.587478+00:00"
     },
     {
       "id": "op",
       "symbol": "OPTIMISM",
-      "value": 0.069932,
-      "change": 1.95546,
+      "value": 0.069873,
+      "change": 1.54643,
       "currency": "USD",
       "history": [
         0.07557831353095561,
@@ -146116,11 +146116,11 @@
           "c": 0.0695
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/25244/large/Token.png?1774456081",
-      "market_cap": 160221716.0,
+      "market_cap": 159914930.0,
       "circulating_supply": 2290771093.0,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z",
+      "cap_updated_at": "2026-11-26T19:02:53.000Z",
       "candleSource": "Binance Spot USDT",
       "ohlcCheckedAt": "2026-11-26T16:24:16.587478+00:00"
     },
@@ -146128,7 +146128,7 @@
       "id": "shib",
       "symbol": "SHIBA-INU",
       "value": 3.65e-06,
-      "change": 3.13338,
+      "change": 3.01338,
       "currency": "USD",
       "history": [
         3.8287020496206655e-06,
@@ -148122,19 +148122,19 @@
           "c": 3.63e-06
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/11939/large/shiba.png?1696511800",
-      "market_cap": 2152735533.0,
+      "market_cap": 2151638083.0,
       "circulating_supply": 589237938528874.5,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z",
+      "cap_updated_at": "2026-11-26T19:02:53.000Z",
       "candleSource": "Binance Spot USDT",
       "ohlcCheckedAt": "2026-11-26T16:24:16.587478+00:00"
     },
     {
       "id": "pepe",
       "symbol": "PEPE",
-      "value": 3.52e-06,
-      "change": 2.74603,
+      "value": 3.51e-06,
+      "change": 2.44182,
       "currency": "USD",
       "history": [
         3.7679101476901904e-06,
@@ -150128,11 +150128,11 @@
           "c": 3.47e-06
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/29850/large/pepe-token.jpeg?1696528776",
-      "market_cap": 1482126668.0,
+      "market_cap": 1478143213.0,
       "circulating_supply": 420690000000000.0,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z",
+      "cap_updated_at": "2026-11-26T19:02:53.000Z",
       "candleSource": "Binance Spot USDT",
       "ohlcCheckedAt": "2026-11-26T16:24:16.587478+00:00"
     },
@@ -150140,7 +150140,7 @@
       "id": "render",
       "symbol": "RENDER-TOKEN",
       "value": 1.33,
-      "change": 4.37177,
+      "change": 4.04699,
       "currency": "USD",
       "history": [
         1.3946210364140939,
@@ -152134,11 +152134,11 @@
           "c": 1.314
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/11636/large/rndr.png?1696511529",
-      "market_cap": 739444147.0,
+      "market_cap": 739245972.0,
       "circulating_supply": 556872170.7421163,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z",
+      "cap_updated_at": "2026-11-26T19:02:53.000Z",
       "candleSource": "Binance Spot USDT",
       "ohlcCheckedAt": "2026-11-26T16:24:16.587478+00:00"
     },
@@ -152146,7 +152146,7 @@
       "id": "ray",
       "symbol": "RAYDIUM",
       "value": 1.31,
-      "change": 2.45604,
+      "change": 2.25155,
       "currency": "USD",
       "history": [
         1.7971810102462769,
@@ -154012,17 +154012,17 @@
           "c": 1.30490005016
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/13928/large/PSigc4ie_400x400.jpg?1696513668",
-      "market_cap": 353017192.0,
+      "market_cap": 352327466.0,
       "circulating_supply": 269963496.376178,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z"
+      "cap_updated_at": "2026-11-26T19:02:53.000Z"
     },
     {
       "id": "lunc",
       "symbol": "TERRA-LUNA",
-      "value": 4.501e-05,
-      "change": 1.02551,
+      "value": 4.5e-05,
+      "change": 1.4574,
       "currency": "USD",
       "history": [
         4.600000102072954e-05,
@@ -154064,7 +154064,7 @@
         4.199999966658652e-05,
         4.400000034365803e-05,
         4.5000000682193786e-05,
-        4.486957550398074e-05
+        4.4861313654109836e-05
       ],
       "candles": [
         {
@@ -155885,20 +155885,20 @@
           "o": 4.49230683444e-05,
           "h": 4.59396505903e-05,
           "l": 4.32870656368e-05,
-          "c": 4.4869575504e-05
+          "c": 4.48613136541e-05
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/8284/large/01_LunaClassic_color.png?1696508486",
-      "market_cap": 248154088.0,
+      "market_cap": 248187009.0,
       "circulating_supply": 5514928555595.749,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z"
+      "cap_updated_at": "2026-11-26T19:02:53.000Z"
     },
     {
       "id": "vra",
       "symbol": "VERASITY",
       "value": 3.38e-06,
-      "change": -1.4655,
+      "change": 0.00269,
       "currency": "USD",
       "history": [
         3.3061965036714713e-06,
@@ -157332,19 +157332,19 @@
           "c": 3.06e-06
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/14025/large/logo_%281%29.png?1716968890",
-      "market_cap": 960230.0,
+      "market_cap": 960357.0,
       "circulating_supply": 283933875622.45703,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z",
+      "cap_updated_at": "2026-11-26T19:02:53.000Z",
       "candleSource": "CoinGecko USD",
       "ohlcCheckedAt": "2026-11-26T16:24:16.587478+00:00"
     },
     {
       "id": "wlfi",
       "symbol": "WORLD-LIBERTY-FINANCIAL",
-      "value": 0.04220962,
-      "change": -0.56091,
+      "value": 0.04220974,
+      "change": -0.66368,
       "currency": "USD",
       "history": [
         0.046508582373672246,
@@ -159338,19 +159338,19 @@
           "c": 0.0423
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/50767/large/wlfi.png?1756438915",
-      "market_cap": 1336748567.0,
+      "market_cap": 1336298402.0,
       "circulating_supply": 31662728115.0,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z",
+      "cap_updated_at": "2026-11-26T19:02:53.000Z",
       "candleSource": "Binance Spot USDT",
       "ohlcCheckedAt": "2026-11-26T16:24:16.587478+00:00"
     },
     {
       "id": "hot",
       "symbol": "HOLOTOKEN",
-      "value": 0.00031587,
-      "change": 1.11796,
+      "value": 0.00031569,
+      "change": 1.04549,
       "currency": "USD",
       "history": [
         0.00033255426863891053,
@@ -161344,19 +161344,19 @@
           "c": 0.000316
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/3348/large/hot-mark-med.png?1747766692",
-      "market_cap": 56098146.0,
+      "market_cap": 56073045.0,
       "circulating_supply": 177619433541.14133,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z",
+      "cap_updated_at": "2026-11-26T19:02:53.000Z",
       "candleSource": "Binance Spot USDT",
       "ohlcCheckedAt": "2026-11-26T16:24:16.587478+00:00"
     },
     {
       "id": "ksm",
       "symbol": "KUSAMA",
-      "value": 2.63,
-      "change": 2.24113,
+      "value": 2.62,
+      "change": 2.23159,
       "currency": "USD",
       "history": [
         4.213973045349121,
@@ -163222,17 +163222,17 @@
           "c": 2.62930011749
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/9568/large/m4zRhP5e_400x400.jpg?1696509648",
-      "market_cap": 50411182.0,
+      "market_cap": 50407190.0,
       "circulating_supply": 19210246.306509506,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z"
+      "cap_updated_at": "2026-11-26T19:02:53.000Z"
     },
     {
       "id": "wld",
       "symbol": "WORLDCOIN-WLD",
-      "value": 0.243412,
-      "change": 2.41759,
+      "value": 0.243314,
+      "change": 2.14334,
       "currency": "USD",
       "history": [
         0.4889979958534241,
@@ -165098,17 +165098,17 @@
           "c": 0.243200004101
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/31069/large/worldcoin.jpeg?1696529903",
-      "market_cap": 925828812.0,
+      "market_cap": 924943497.0,
       "circulating_supply": 3802537691.2480664,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z"
+      "cap_updated_at": "2026-11-26T19:02:53.000Z"
     },
     {
       "id": "fet",
       "symbol": "FETCH-AI",
-      "value": 0.119122,
-      "change": 10.86692,
+      "value": 0.119477,
+      "change": 10.87062,
       "currency": "USD",
       "history": [
         0.1893630027770996,
@@ -165150,7 +165150,7 @@
         0.10843099653720856,
         0.10653000324964523,
         0.10835299640893936,
-        0.11954999715089798
+        0.11964999884366989
       ],
       "candles": [
         {
@@ -166971,20 +166971,20 @@
           "o": 0.108354710042,
           "h": 0.119149707258,
           "l": 0.108354710042,
-          "c": 0.119549997151
+          "c": 0.119649998844
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/5681/large/ASI.png?1719827289",
-      "market_cap": 275573861.0,
+      "market_cap": 275849845.0,
       "circulating_supply": 2311508384.055814,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z"
+      "cap_updated_at": "2026-11-26T19:02:53.000Z"
     },
     {
       "id": "orai",
       "symbol": "ORAICHAIN-TOKEN",
-      "value": 0.30628,
-      "change": -6.84642,
+      "value": 0.307608,
+      "change": -6.41217,
       "currency": "USD",
       "history": [
         0.31974541137162843,
@@ -168418,19 +168418,19 @@
           "c": 0.299241
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/12931/large/orai.png?1696512718",
-      "market_cap": 5953316.0,
+      "market_cap": 5978552.0,
       "circulating_supply": 19436019.0,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z",
+      "cap_updated_at": "2026-11-26T19:02:53.000Z",
       "candleSource": "CoinGecko USD",
       "ohlcCheckedAt": "2026-11-26T16:24:16.587478+00:00"
     },
     {
       "id": "tai",
       "symbol": "TARS-PROTOCOL",
-      "value": 0.00089849,
-      "change": -25.37955,
+      "value": 0.00088125,
+      "change": -26.18216,
       "currency": "USD",
       "history": [
         0.0023736996287835213,
@@ -169864,19 +169864,19 @@
           "c": 0.00108438
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/37538/large/image_6.png?1736608965",
-      "market_cap": 4045.35,
+      "market_cap": 3967.74,
       "circulating_supply": 4502359.61357248,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z",
+      "cap_updated_at": "2026-11-26T19:02:53.000Z",
       "candleSource": "CoinGecko USD",
       "ohlcCheckedAt": "2026-11-26T16:24:16.587478+00:00"
     },
     {
       "id": "virtual",
       "symbol": "VIRTUAL-PROTOCOL",
-      "value": 0.362205,
-      "change": 3.0792,
+      "value": 0.362348,
+      "change": 2.86928,
       "currency": "USD",
       "history": [
         0.6566140055656433,
@@ -169918,7 +169918,7 @@
         0.3766680061817169,
         0.352851003408432,
         0.356781005859375,
-        0.3614494204521179
+        0.36163872480392456
       ],
       "candles": [
         {
@@ -171739,20 +171739,20 @@
           "o": 0.356780916452,
           "h": 0.362588316202,
           "l": 0.353245437145,
-          "c": 0.361449420452
+          "c": 0.361638724804
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/34057/large/LOGOMARK.png?1708356054",
-      "market_cap": 238566169.0,
+      "market_cap": 238518808.0,
       "circulating_supply": 658385841.8252224,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z"
+      "cap_updated_at": "2026-11-26T19:02:53.000Z"
     },
     {
       "id": "tao",
       "symbol": "BITTENSOR",
-      "value": 183.68,
-      "change": 2.00346,
+      "value": 183.62,
+      "change": 1.5062,
       "currency": "USD",
       "history": [
         194.4461497879751,
@@ -173746,19 +173746,19 @@
           "c": 181.8
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/28452/large/ARUsPeNQ_400x400.jpeg?1696527447",
-      "market_cap": 2155780829.0,
+      "market_cap": 2154065922.0,
       "circulating_supply": 11733079.376417076,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z",
+      "cap_updated_at": "2026-11-26T19:02:53.000Z",
       "candleSource": "Binance Spot USDT",
       "ohlcCheckedAt": "2026-11-26T16:24:16.587478+00:00"
     },
     {
       "id": "luna",
       "symbol": "TERRA-LUNA-2",
-      "value": 0.03194345,
-      "change": 1.13704,
+      "value": 0.03193081,
+      "change": 1.01811,
       "currency": "USD",
       "history": [
         0.03379888807458882,
@@ -175752,11 +175752,11 @@
           "c": 0.0318
         }
       ],
-      "time": "2026-11-26T19:00:57.000Z",
+      "time": "2026-11-26T19:02:53.000Z",
       "logo": "https://coin-images.coingecko.com/coins/images/25767/large/01_Luna_color.png?1696524851",
-      "market_cap": 22675792.0,
+      "market_cap": 22670090.0,
       "circulating_supply": 709984438.91686,
-      "cap_updated_at": "2026-11-26T19:00:57.000Z",
+      "cap_updated_at": "2026-11-26T19:02:53.000Z",
       "candleSource": "Binance Spot USDT",
       "ohlcCheckedAt": "2026-11-26T16:24:16.587478+00:00"
     }
