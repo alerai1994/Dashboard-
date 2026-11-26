@@ -1317,6 +1317,7 @@ function vertexContextOnlyFollowup(raw){
  return /^(?:e quindi|quindi|e poi|poi|perche|e perche|come mai|davvero|in che senso|in pratica|e questo|e quello|e allora|e adesso che significa|spiegami meglio|spiegamelo meglio|puoi spiegarmelo meglio|puoi approfondire|approfondisci|continua|non ho capito|non ti ho capito|non capisco|non ho capito bene|in parole semplici|piu semplice|piu breve|fammi un esempio|fai un esempio|puoi farmi un esempio|cosa intendi|cosa vuoi dire)(?: per favore)?$/.test(key);
 }
 function vertexHumanExchange(key){
+ if(/^(?:(?:ciao|salve|buongiorno|buonasera)(?: vertex)? )?(?:come stai|come va)(?: tutto bene)?$/.test(key))return vertexRecentConversationalReply(['Tutto pronto qui, grazie! E tu, come stai?','Sono qui e ti ascolto. Come va la tua giornata?']);
  if(/^(?:come stai|come va|come va vertex|tutto bene|come te la passi|how are you|how are you doing)$/.test(key))return vertexRecentConversationalReply(['Tutto pronto qui! E tu, come va?','Sono qui, pronto a fare due chiacchiere. Come va la tua giornata?']);
  if(/^(?:grazie|grazie mille|ti ringrazio|molte grazie|grazie di cuore|thank you|thanks)$/.test(key))return vertexRecentConversationalReply(['Figurati!','Di niente, volentieri.','Prego!']);
  if(/^(?:ok|okay|va bene|d accordo|capito|ho capito|perfetto|tutto chiaro)$/.test(key))return vertexRecentConversationalReply(['Bene!','Perfetto.','Va bene.']);
@@ -1880,6 +1881,13 @@ function pauseEndsPhrase(session,rms,count){
   const floor=sorted[Math.floor((sorted.length-1)*.15)];
   // Do not classify a loud first syllable as the noise floor.
   if(session.noiseFloor===undefined)session.noiseFloor=Math.min(floor,.0006);
+  // Learn steady background noise even when automatic gain initially puts it
+  // above the voice threshold, without adapting to variable speech peaks.
+  const upper=sorted[Math.floor((sorted.length-1)*.85)];
+  if(sorted.length*seconds>=.75&&upper<=Math.max(.00024,floor*1.6)&&floor<=.025){
+    const weight=Math.min(.2,seconds*2.5);
+    session.noiseFloor+=(Math.max(.00007,floor)-session.noiseFloor)*weight;
+  }
   const noise=Math.max(.00007,session.noiseFloor);
   const reference=(session.voiceReference||0)*Math.exp(-seconds/1.0);
   const gate=Math.max(.00022,noise*1.65,Math.min(.0015,reference*.025));
@@ -2063,7 +2071,9 @@ function startLocalRecognition(session){
       const newFinal=final.trim();
       if(newFinal&&newFinal!==session.nativeFinal)session.nativeFinalLength=session.length;
       session.nativeFinal=newFinal;
+      const previousNative=session.nativeText;
       session.nativeText=text.trim();
+      if(session.nativeText&&session.nativeText!==previousNative){session.speechStarted=true;session.speechSeconds=Math.max(.2,session.speechSeconds||0);session.pauseSeconds=0;}
       session.nativeLastResultLength=session.length;
       updateDictation(session,text);
       if(session.phase==='listening')statusLine.textContent=session.lastTranscript?'Sto trascrivendo in tempo reale…':session.wakeMode?wakeStatus():'Ti ascolto…';
@@ -2109,7 +2119,7 @@ function transcribeSoFar(session) {
     voiceWorker?.terminate();
     voiceWorker = null;
     endVoice();
-    setContinuousTalk(false);statusLine.textContent = message;
+    setWakePreference(false);setContinuousTalk(false);statusLine.textContent = message;
   }
   try {
     getVoiceWorker();
@@ -2215,7 +2225,7 @@ async function createVoiceCapture(session,onSamples,forceCompatible=false){
 function finishRecording() {
   const session = recording;
   if (!session || session.phase !== 'listening') return;
-  if(!session.speechStarted&&!validItalianTranscript(session.nativeFinal)){
+  if(!session.speechStarted&&!validItalianTranscript(session.nativeText)&&!session.lastTranscript){
     if(session.wakeMode&&vertexWakeEnabled){handleWakeTranscript(session,'',false);return;}
     input.value=session.original;setContinuousTalk(false);endVoice();
     statusLine.textContent='Non ho rilevato una frase. Tocca il microfono e riprova.';return;
@@ -2256,7 +2266,6 @@ mic.onclick=()=>{
 };
 async function beginVoiceListening(){
   if(vertexLoading||vertexBatchRunning||!memoryReady||recording||question||speakingAnswer||document.hidden)return;
-  el('speak-retry').hidden=true;
   const session = {wakeMode:vertexWakeEnabled?'command':'',language:voiceLanguage,phase:'request', blocks:[], length:0, lastSent:0, pending:false, original:input.value, levelHistory:[], speechSeconds:0, pauseSeconds:0, pauseLimit:2.5,lastVoicedLength:0,nativeLastResultLength:0};
   recording = session;
   session.requestTimer=setTimeout(()=>{if(recording===session&&session.phase==='request'){setContinuousTalk(false);endVoice();statusLine.textContent='Attivazione del microfono non completata. Verifica i permessi e riprova.';}},30000);
@@ -2713,7 +2722,7 @@ function speakAnswer(answer,resumeIndex=0){
     retry.hidden=!failed;
     vertexSpeechResumeIndex=failed?index:0;
     statusLine.textContent=failed?'Risposta scritta completa disponibile. Tocca Ascolta risposta per riprendere la voce dal punto interrotto.':'';
-    if(failed)setContinuousTalk(false);else {continueAfterSpeech();if(!vertexWakeEnabled)restorePreferredWake();}
+    if(failed){setWakePreference(false);setContinuousTalk(false);}else {continueAfterSpeech();if(!vertexWakeEnabled)restorePreferredWake();}
   }
   async function localNext(){
     if(generation!==speechGeneration)return;
@@ -2770,7 +2779,7 @@ function speakAnswer(answer,resumeIndex=0){
   }
   next();
 }
-el('speak-retry').onclick=()=>{if(!recording&&!question&&!speakingAnswer&&lastSpokenAnswer){unlockSpeechAudio();refreshSpeechVoices();speakAnswer(lastSpokenAnswer,vertexSpeechResumeIndex);}};
+el('speak-retry').onclick=()=>{if(!question&&!speakingAnswer&&lastSpokenAnswer){if(recording){if(recording.lastTranscript||recording.userEdited)return;endVoice();}unlockSpeechAudio();refreshSpeechVoices();speakAnswer(lastSpokenAnswer,vertexSpeechResumeIndex);}};
 let answerPreview=null,answerPreviewBody=null,answerPreviewText='';
 function clearAnswerPreview(){
   answerPreview?.remove();answerPreview=null;answerPreviewBody=null;answerPreviewText='';
