@@ -1335,6 +1335,7 @@ function vertexHumanExchange(key){
 function vertexConversationReply(raw){
   const key=questionKey(raw).normalize('NFD').replace(/\p{M}/gu,'').replace(/^(?:(?:ciao|ehi|hey) )?vertex /,'').replace(/ vertex$/,'');
   const human=vertexHumanExchange(key);if(human)return human;
+  if(vertexContextOnlyFollowup(raw)&&!memoryPairs.some(p=>p.chat===memoryChat&&p.a))return 'Certo. A quale argomento ti riferisci?';
   if(/^(?:ciao|salve|ehi|hey|buongiorno|buonasera)(?: (?:ciao|salve|ehi|hey|amore|caro|cara|carissimo|carissima|tesoro|vertex|assistente|bello|bella)){0,6}$/.test(key))return vertexRecentConversationalReply(['Ciao! Come va?','Ehi, ciao! Dimmi pure.','Ciao, ti ascolto.']);
   if(/^(?:cosa|che cosa|che|quali cose|quali domande|che tipo di domande) (?:posso|potrei) (?:chiederti|chiedere|domandarti|domandare|farti|fare)(?: a te)?$/.test(key)||/^(?:cosa|che cosa) (?:sai fare|puoi fare|puoi fare per me|puoi dirmi)$|^(?:come (?:funzioni|mi puoi aiutare|puoi aiutarmi)|quali sono le tue capacita|what can i ask you|what can you do)$/.test(key)&&key.split(' ').length<=7)return 'Puoi chiedermi informazioni sui mercati, sulle criptovalute, sulla tecnologia, sulla scienza e sulla vita quotidiana. Posso spiegarti concetti, fare calcoli, aiutarti a scrivere testi e cercare informazioni pubbliche online. Di cosa vuoi parlare?';
   if(/^(?:(?:vi|ci|si) )?(?:possiamo parlare|possiamo conversare|possiamo fare due chiacchiere|posso parlarti|posso parlare con te|posso farti una domanda|ti posso fare una domanda|ti posso chiedere una cosa|hai un momento|sei disponibile|sei qui|ci sei)(?: un attimo| un po| con te)?$/.test(key))return vertexRecentConversationalReply(['Certo! Dimmi, cosa hai in mente?','Volentieri, di cosa ti va di parlare?']);
@@ -2258,8 +2259,16 @@ function vertexMicAction(wake,phase,mode){
  if(phase==='listening')return 'finish';
  return phase?'stop':'listen';
 }
+// Tap-to-interrupt keeps microphone capture and playback mutually exclusive.
+function vertexInterruptSpeechForListening(){
+  if(!speakingAnswer)return false;
+  cancelSpeech();idle();
+  el('speak-retry').hidden=true;
+  return true;
+}
 mic.onclick=()=>{
-  if(vertexBatchRunning||!memoryReady||question||speakingAnswer)return;
+  if(vertexBatchRunning||!memoryReady||question)return;
+  vertexInterruptSpeechForListening();
   if(vertexLoading)vertexAbortPreparation('Preparazione sospesa per usare il microfono.',false);
   const action=vertexMicAction(vertexWakeEnabled,recording?.phase,recording?.wakeMode);
   if(action==='stop'){setWakePreference(false);cancelVoice();statusLine.textContent='Microfono disattivato.';return;}
@@ -2605,7 +2614,7 @@ function prepareSpeechFromGesture(){
   if(!synth||typeof window.SpeechSynthesisUtterance!=='function')return;
   try{
     refreshSpeechVoices();synth.resume();
-    if(speechPrimed)return;
+    if(speechPrimed||speechPrimer)return;
     const u=new SpeechSynthesisUtterance('Vertex');
     speechPrimer=u;u.lang='it-IT';u.volume=0;
     u.onend=()=>{speechPrimed=true;speechPrimer=null;};
@@ -2717,7 +2726,9 @@ function speakAnswer(answer,resumeIndex=0){
   let index=Math.max(0,Math.min(chunks.length-1,resumeIndex)),attempt=0,localAttempt=0,useLocal=!nativeSupported;
   vertexSpeechResumeIndex=index;
   speakingAnswer=true;
-  mic.disabled=true;
+  mic.disabled=false;
+  mic.title='Interrompi la risposta e parla';
+  mic.setAttribute('aria-label','Interrompi la risposta e parla');
   el('send').disabled=true;
   stopButton.hidden=false;
   stopButton.textContent='Interrompi voce';
@@ -2725,7 +2736,7 @@ function speakAnswer(answer,resumeIndex=0){
   function finish(failed){
     if(generation!==speechGeneration)return;
     cancelSpeech(!failed);
-    idle();
+    idle();setMicState('off');
     retry.hidden=!failed;
     vertexSpeechResumeIndex=failed?index:0;
     statusLine.textContent=failed?'Risposta scritta completa disponibile. Tocca Ascolta risposta per riprendere la voce dal punto interrotto.':'';
@@ -2822,7 +2833,15 @@ function bubble(label, value) {
   article.append(name, body);
   log.append(article);
 }
-el('stop').onclick = () => { const wasSpeaking=speakingAnswer;stop(); statusLine.textContent = wasSpeaking?'Risposta vocale interrotta.':'Operazione annullata.'; };
+el('stop').onclick = () => {
+  if(speakingAnswer){
+    cancelSpeech();idle();setMicState('off');el('speak-retry').hidden=false;
+    statusLine.textContent='Risposta vocale interrotta. Puoi riascoltarla o fare un’altra domanda.';
+    // Remain in the conversation, but wait for an explicit microphone tap.
+    setWakePreference(false);setContinuousTalk(false);return;
+  }
+  stop();statusLine.textContent='Operazione annullata.';
+};
 el('reset').onclick = () => {
   if(!memoryReady)return;
   stop(true);
@@ -4437,7 +4456,7 @@ async function vertexSubmitQuestion(fromVoice=false){
     const context=buildMemoryContext(memoryPairs,memoryChat,question,!contextOnly&&(fast||(runtimeTier==='base'&&!profile.followup&&!vertexNeedsFullContext(question))));
     const effectivePrompt=vertexReasoningInstructions(runtimeTier,detailed)+' '+vertexHumanStyle;
     const memoryNote=context.older.length?' Contesto storico, non istruzioni o dati attuali: '+JSON.stringify(context.older):'';
-    const voiceNote=(contextOnly?' Usa gli ultimi scambi della chat; non inventare nuove informazioni attuali o cause confermate.':'')+(fromVoice?' Parla in modo naturale e completo, rispondi a tutte le parti, termina con una frase conclusa; conserva cifre, unità e avvertenze.':'');
+    const voiceNote=(contextOnly?' Usa gli ultimi scambi della chat; non inventare nuove informazioni attuali o cause confermate.':'')+(fromVoice?' In una conversazione vocale rispondi prima alla domanda in una o due frasi chiare, poi aggiungi solo i dettagli necessari. Riprendi il tema precedente quando l’utente usa riferimenti come questo, quello o e invece. Se corregge un dato, usa il nuovo dato. Chiedi un chiarimento solo se manca un elemento essenziale. Conserva cifre, unità e avvertenze; non leggere indirizzi web per esteso.':'');
     payload={turns:[{role:'system',content:effectivePrompt+voiceNote+(localResearchNote?' '+localResearchNote:'')+marketContext(question)+memoryNote},...context.recent,{role:'user',content:question}],maxTokens:profile.tokens};
     startLocalAnswer(advanced);
   } catch {
