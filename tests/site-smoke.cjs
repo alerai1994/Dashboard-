@@ -1370,7 +1370,7 @@ assert(liveVoiceSource.includes('recognition.interimResults=true'));
 assert(liveVoiceSource.includes('function vertexNativeFinalReady(session)'));
 assert(liveVoiceSource.includes('if(vertexCommitNativeFinal(session))return;'));
 assert(liveVoiceSource.includes('recognition.processLocally=true'),'Recognition must stay local');
-assert(html.includes('assistente-mercati.html?v=voice-reactivity-20261126'));
+assert(html.includes('assistente-mercati.html?v=voice-clean-controls-20261126'));
 
 assert(liveVoiceSource.includes('!session.nativeIncomplete&&!session.nativeUncertain'));
 assert(liveVoiceSource.includes('id="voice-spoken-caption"'));
@@ -1391,3 +1391,9 @@ assert(liveVoiceSource.includes('function vertexCheckVoiceGpu()'));
 assert(liveVoiceSource.includes('completeNative?Math.min(base,.7):base'));
 assert(liveVoiceSource.includes('prefetchedSpeech={index:index+1'));
 assert(liveVoiceSource.includes('if(!session.speechStarted||!session.lastVoicedLength)session.pauseSeconds=0'));
+
+// Keep duplicate voice controls hidden without removing the original model menu.
+assert(liveVoiceSource.includes('id="voice-model-extra" hidden aria-hidden="true"'));
+assert(liveVoiceSource.includes('#voice-model-extra[hidden]{display:none!important}'));
+assert(liveVoiceSource.includes('Prova modello selezionato</button></div><div class="voice-action-row">'));
+assert(liveVoiceSource.includes('id="ai-model-toggle" aria-controls="ai-model-selector"'));
