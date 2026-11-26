@@ -1370,9 +1370,15 @@ assert(liveVoiceSource.includes('recognition.interimResults=true'));
 assert(liveVoiceSource.includes('function vertexNativeFinalReady(session)'));
 assert(liveVoiceSource.includes('if(vertexCommitNativeFinal(session))return;'));
 assert(liveVoiceSource.includes('recognition.processLocally=true'),'Recognition must stay local');
-assert(html.includes('assistente-mercati.html?v=voice-precision-dialogue-20261126'));
+assert(html.includes('assistente-mercati.html?v=voice-model-picker-20261126'));
 
 assert(liveVoiceSource.includes('!session.nativeIncomplete&&!session.nativeUncertain'));
 assert(liveVoiceSource.includes('id="voice-spoken-caption"'));
 assert(liveVoiceSource.includes('setSpokenCaption(chunks[index])'));
 assert(liveVoiceSource.includes('italianSpeechVoice(availableSpeechVoices,failedVoice)'));
+
+// Voice model picker shares selection and compatibility state with the main AI menu.
+for(const tier of ['base','media','superiore'])assert(liveVoiceSource.includes('class="voice-model-option" data-tier="'+tier+'"'));
+assert(liveVoiceSource.includes('id="voice-model-active"'));
+assert(liveVoiceSource.includes('function vertexSpokenModelTier(raw)'));
+assert(liveVoiceSource.includes("if(spokenTier){acceptAnswer(setVertexTier(spokenTier));return;}"));
