@@ -202,12 +202,12 @@ async function decodeVoice(clip,final,language='it'){
     max_new_tokens:Math.max(32,Math.min(448,Math.ceil(clip.length/16000*12)+24))};
   return transcriber(clip,options);
 }
-async function retryPreciseVoice(clip,language='it'){
+async function retryPreciseVoice(clip,language='it',preferSmall=true){
   try{await transcriber?.dispose();}catch{}
   transcriber=null;modelName=null;
   self.postMessage({status:'Verifica della trascrizione…'});
   let lastError;
-  for(const name of ['base','tiny']){
+  for(const name of (preferSmall?['tiny']:['base','tiny'])){
     try{
       await loadVoiceModel(name,'fp32');
       const result=await decodeVoice(clip,true,language);
@@ -272,7 +272,7 @@ self.onmessage = async ({data}) => {
         self.postMessage({text:'',notice:'Sto verificando il riconoscimento…'});
         return;
       }
-      text=await retryPreciseVoice(clip,language);
+      text=await retryPreciseVoice(clip,language,preferSmall);
     }
     if(!validItalianTranscript(text)||hasRecognitionLoop(text)){
       self.postMessage({text:'',notice:'Non ho riconosciuto correttamente la frase. Ripeti la domanda.'});
@@ -562,7 +562,7 @@ self.onmessage=async({data})=>{
       })().finally(()=>{preparingModel=null;});
       await preparingModel;
     }else if(model&&mode){self.postMessage({modelReady:true,activeTier:mode.level});}
-    else{try{await Promise.all([engineChoices(tier),engineLibrary()]);}catch{}}
+    else{try{const choice=(await engineChoices(tier))[0];if(choice&&vertexBackend(choice)==='mlc'&&!data.forceCPU)await vertexMLCLibrary();else await engineLibrary();}catch{}}
     return;
   }
   const turns=Array.isArray(data)?data:data.turns;
@@ -747,7 +747,8 @@ function setVertexTier(tier){
  syncVertexTier(vertexReadyTier);
  if(vertexReadyTier===tier)el('ai-model-note').textContent=vertexTierNotes[tier]+' Modello pronto.';
  else if(vertexDownloaded.has(tier))el('ai-model-note').textContent=vertexDownloadNotice(tier);
- if(tier==='base'&&!question&&!speakingAnswer&&!recording&&!vertexWakeEnabled)prepareSelectedVertexModel();
+ // Model selection never starts a heavyweight download or interrupts a microphone session.
+ if(!question&&!speakingAnswer&&!recording)prepareAnswerEngine(true);
  if(tier!=='base'&&!vertexDownloaded.has(tier))el('ai-model-note').textContent=vertexTierNotes[tier];
  return 'Modello '+vertexTierNames[tier]+' selezionato. '+(tier==='base'?'Userò il modello più leggero.':'Lo userò per le domande che richiedono AI locale, se le risorse lo consentono. Il primo download può richiedere tempo.');
 }
@@ -1911,7 +1912,7 @@ function warmVoice(session){
   try{
     const engine=getVoiceWorker();
     engine.onmessage=({data})=>{
-      if(recording===session&&data.status)statusLine.textContent=data.status;
+      if(recording===session&&data.status&&!session.lastTranscript)statusLine.textContent=data.status;
     };
     engine.onerror=()=>{
       if(voiceWorker===engine){engine.terminate();voiceWorker=null;}
@@ -2086,14 +2087,14 @@ function startLocalRecognition(session){
 function voicePartialInterval(session){
   // One request in flight. Adapt to measured decoding speed, never queue
   // outdated partial audio; final decoding always uses the complete recording.
-  return session.lastSent?Math.max(0.65,Math.min(3,(session.decodeMs||650)/1000*0.85)):0.65;
+  return session.lastSent?Math.max(0.45,Math.min(2.5,(session.decodeMs||450)/1000*0.85)):0.45;
 }
 function transcribeSoFar(session) {
   const final = session.phase === 'transcribing';
   const rate = session.sampleRate||session.ctx.sampleRate;
   if (recording !== session || session.pending || session.nativeActive) return;
   const interval = voicePartialInterval(session);
-  if (!final && (session.deferUntilFinal || session.speechSeconds < 0.35 || session.length - session.lastSent < rate * interval)) return;
+  if (!final && (session.deferUntilFinal || session.speechSeconds < 0.30 || session.length - session.lastSent < rate * interval)) return;
   session.pending = true;
   session.lastSent = session.length;
   const sentFinal = final;
@@ -3986,7 +3987,7 @@ function prepareAnswerEngine(allowModel=false){
   if(vertexBlockedTier||vertexLoading||worker||question||recording||speakingAnswer||document.hidden||vertexConversationReply(input.value))return;
   const policy=vertexPreloadPolicy(navigator.hardwareConcurrency||2,Number(navigator.deviceMemory),navigator.connection?.saveData,navigator.connection?.effectiveType);
   if(policy==='none')return;
-  try{const engine=getAnswerWorker();const preload=false;engine.postMessage({type:'prepare',preload,tier:vertexTier});}catch{}
+  try{const engine=getAnswerWorker();const preload=false;engine.postMessage({type:'prepare',preload,tier:vertexDeviceRuntimeTier(vertexTier),forceCPU:vertexForceCPU});}catch{}
 }
 function vertexHiddenModelCommand(raw){
  const key=String(raw||'').normalize('NFD').replace(/\p{M}/gu,'').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim().replace(/^(?:(?:ciao|ehi|hey) )?vertex /,'');
@@ -4485,7 +4486,7 @@ setVertexModelMenu(false);
 el('ai-cancel-preparation').addEventListener('click',()=>{if(vertexBatchRunning)startVertexBatch();else vertexAbortPreparation('Caricamento interrotto.',true);});
 el('ai-model-toggle').addEventListener('click',()=>setVertexModelMenu(el('ai-model-selector').hidden));
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!el('ai-model-selector').hidden){event.preventDefault();setVertexModelMenu(false,true);}});
-document.querySelectorAll('.ai-model-option').forEach(button=>button.addEventListener('click',()=>{if(vertexBatchRunning||question||(recording&&recording.wakeMode!=='standby')||speakingAnswer){statusLine.textContent='Termina o annulla la risposta prima di cambiare modello.';return;}clearTimeout(answerPreparationTimer);statusLine.textContent=setVertexTier(button.dataset.tier);setVertexModelMenu(false,true);}));
+document.querySelectorAll('.ai-model-option').forEach(button=>button.addEventListener('click',()=>{if(vertexBatchRunning||question||speakingAnswer){statusLine.textContent='Termina o annulla la risposta prima di cambiare modello.';return;}clearTimeout(answerPreparationTimer);const note=setVertexTier(button.dataset.tier);if(recording){if(recording.phase==='listening'&&recording.wakeMode==='standby'&&!recording.speechStarted&&!recording.pending){recording.wakeMode='command';vertexWakeAwaitCommand=true;clearTimeout(recording.listenTimer);recording.listenTimer=setTimeout(()=>{if(recording?.phase==='listening'&&recording.wakeMode==='command'&&!recording.speechStarted)handleWakeTranscript(recording,'',false);},45000);}statusLine.textContent=recording.phase==='listening'?(recording.lastTranscript?'Sto trascrivendo in tempo reale…':wakeStatus()):note;}else statusLine.textContent=note;setVertexModelMenu(false,!recording);}));
 input.addEventListener('input',()=>{if(recording?.wakeMode)recording.userEdited=true;clearTimeout(answerPreparationTimer);if(input.value.trim().length>=8&&!recording&&!question)answerPreparationTimer=setTimeout(()=>prepareAnswerEngine(true),450);});
 form.onsubmit=event=>{event.preventDefault();if(vertexBatchRunning||question||speakingAnswer||!input.value.trim())return;if(vertexLoading)vertexAbortPreparation('Preparazione sospesa per rispondere.',false);if(recording?.wakeMode){const draft=input.value;if(recording.pending&&voiceWorker){voiceWorker.terminate();voiceWorker=null;}endVoice();input.value=draft;vertexWakeAwaitCommand=vertexWakeEnabled;}if(!recording)prepareSpeechFromGesture();submitQuestion(false);};
 mic.disabled=true;el('send').disabled=true;
