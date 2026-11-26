@@ -1362,3 +1362,12 @@ assert(!heatmap.includes('id="vhLeader"'),'The removed INJ leader must not be re
 assert(!heatmap.includes('const inj=data.all.find('),'No pinned INJ asset in heatmap header');
 assert(!heatmap.includes('const leader=document.getElementById('),'Live paint must not recreate the leader');
 assert(!heatmapCss.includes('.vh-leader'),'Unused INJ leader styles must be absent');
+
+// Live voice regression: fast endpoint, validated final result, and cache refresh.
+const liveVoiceSource=read('assistente-mercati.html');
+assert(liveVoiceSource.includes('pauseLimit:.9,lastVoicedLength'));
+assert(liveVoiceSource.includes('recognition.interimResults=true'));
+assert(liveVoiceSource.includes('function vertexNativeFinalReady(session)'));
+assert(liveVoiceSource.includes('if(vertexCommitNativeFinal(session))return;'));
+assert(liveVoiceSource.includes('recognition.processLocally=true'),'Recognition must stay local');
+assert(html.includes('assistente-mercati.html?v=live-fast-transcription-20261126'));

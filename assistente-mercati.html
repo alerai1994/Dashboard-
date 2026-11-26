@@ -1865,7 +1865,8 @@ function joinedAudio(session) {
 function phrasePauseLimit(session){
   const last=String(session.lastTranscript||session.nativeText||'').trim().toLowerCase().replace(/[.,!?;:]+$/,'');
   const incomplete=/(?:^|\s)(?:e|o|ma|perché|perche|quindi|che|di|del|della|con|per|su|il|la|un|una|and|or|but|because|with|of|to|the|a|an|for|about)$/.test(last);
-  return (session.pauseLimit||2.5)+(incomplete?1.8:0)+(vertexDictationMode==='literal'&&(!last||!/[.!?…]$/.test(String(session.lastRawTranscript||session.nativeText||'').trim()))?.35:0);
+  // Fast endpoint for a complete phrase; retain a longer pause for unfinished speech.
+  return (session.pauseLimit||.9)+(incomplete?1.1:0)+(!last?.65:vertexDictationMode==='literal'&&!/[.!?…]$/.test(String(session.lastRawTranscript||session.nativeText||'').trim())?.25:0);
 }
 function pauseEndsPhrase(session,rms,count){
   const seconds=count/(session.sampleRate||session.ctx.sampleRate);
@@ -2046,6 +2047,18 @@ function vertexRecognitionText(result){
  }
  return '';
 }
+// Submit only a final native transcript that covers the most recent voiced audio.
+function vertexNativeFinalReady(session){
+  const final=session.nativeFinal;
+  return !!final&&final===session.nativeText&&!!normalizeVoiceTranscript(final,session.language)&&
+    (session.lastVoicedLength||0)-(session.nativeFinalLength||0)<=(session.sampleRate||16000)*.25;
+}
+function vertexCommitNativeFinal(session){
+  if(recording!==session||session.phase!=='transcribing'||!vertexNativeFinalReady(session))return false;
+  const final=session.nativeFinal;
+  if(handleWakeTranscript(session,final,true))return true;
+  updateDictation(session,final,true);endVoice();submitQuestion(true);return true;
+}
 function startLocalRecognition(session){
   if(!localRecognitionLanguages[session.language]||!LocalRecognition)return false;
   try{
@@ -2076,18 +2089,15 @@ function startLocalRecognition(session){
       if(session.nativeText&&session.nativeText!==previousNative){session.speechStarted=true;session.speechSeconds=Math.max(.2,session.speechSeconds||0);session.pauseSeconds=0;}
       session.nativeLastResultLength=session.length;
       updateDictation(session,text);
+      if(vertexCommitNativeFinal(session))return;
       if(session.phase==='listening')statusLine.textContent=session.lastTranscript?'Sto trascrivendo in tempo reale…':session.wakeMode?wakeStatus():'Ti ascolto…';
     };
     recognition.onerror=()=>nativeFallback(session);
     recognition.onend=()=>{
       if(recording!==session||session.recognizer!==recognition)return;
-      const final=session.nativeFinal;
       detachLocalRecognition(session,false);session.nativeActive=false;
-      const missedTail=(session.lastVoicedLength||0)-(session.nativeFinalLength||0)>(session.sampleRate||16000)*.75;
-      if(session.phase==='transcribing'&&!missedTail&&normalizeVoiceTranscript(final,session.language)&&final===session.nativeText){
-        if(handleWakeTranscript(session,final,true))return;
-        updateDictation(session,final,true);endVoice();submitQuestion(true);
-      }else if(session.phase==='listening'||session.phase==='transcribing'){
+      if(vertexCommitNativeFinal(session))return;
+      if(session.phase==='listening'||session.phase==='transcribing'){
         warmVoice(session);transcribeSoFar(session);
       }
     };
@@ -2099,7 +2109,7 @@ function startLocalRecognition(session){
 function voicePartialInterval(session){
   // One request in flight. Adapt to measured decoding speed, never queue
   // outdated partial audio; final decoding always uses the complete recording.
-  return session.lastSent?Math.max(0.45,Math.min(2.5,(session.decodeMs||450)/1000*0.85)):0.45;
+  return session.lastSent?Math.max(.25,Math.min(1.5,(session.decodeMs||300)/1000*.8)):.25;
 }
 function vertexVoiceRequestBudget(ready,decodeMs,final){
   if(!ready)return 120000;
@@ -2110,7 +2120,7 @@ function transcribeSoFar(session) {
   const rate = session.sampleRate||session.ctx.sampleRate;
   if (recording !== session || session.pending || session.nativeActive) return;
   const interval = voicePartialInterval(session);
-  if (!final && (session.deferUntilFinal || session.speechSeconds < 0.30 || session.length - session.lastSent < rate * interval)) return;
+  if (!final && (session.deferUntilFinal || session.speechSeconds < 0.25 || session.length - session.lastSent < rate * interval)) return;
   session.pending = true;
   session.lastSent = session.length;
   const sentFinal = final;
@@ -2242,8 +2252,9 @@ function finishRecording() {
   setMicState('off');
   releaseAudio(session);
   if(session.nativeActive&&session.recognizer){
+    if(vertexCommitNativeFinal(session))return;
     mic.disabled=true;statusLine.textContent='Completo la trascrizione…';
-    clearTimeout(session.nativeTimer);session.nativeTimer=setTimeout(()=>nativeFallback(session),1000);
+    clearTimeout(session.nativeTimer);session.nativeTimer=setTimeout(()=>nativeFallback(session),750);
     try{session.recognizer.stop();}catch{nativeFallback(session);}
     return;
   }
@@ -2282,7 +2293,7 @@ mic.onclick=()=>{
 };
 async function beginVoiceListening(){
   if(vertexLoading||vertexBatchRunning||!memoryReady||recording||question||speakingAnswer||document.hidden)return;
-  const session = {wakeMode:vertexWakeEnabled?'command':'',language:voiceLanguage,phase:'request', blocks:[], length:0, lastSent:0, pending:false, original:input.value, levelHistory:[], speechSeconds:0, pauseSeconds:0, pauseLimit:2.5,lastVoicedLength:0,nativeLastResultLength:0};
+  const session = {wakeMode:vertexWakeEnabled?'command':'',language:voiceLanguage,phase:'request', blocks:[], length:0, lastSent:0, pending:false, original:input.value, levelHistory:[], speechSeconds:0, pauseSeconds:0, pauseLimit:.9,lastVoicedLength:0,nativeLastResultLength:0};
   recording = session;
   session.requestTimer=setTimeout(()=>{if(recording===session&&session.phase==='request'){setContinuousTalk(false);endVoice();statusLine.textContent='Attivazione del microfono non completata. Verifica i permessi e riprova.';}},30000);
   voiceControls(true);
@@ -2709,7 +2720,7 @@ function vertexSpeechProsody(chunk){
  const phrase=String(chunk||'').trim();
  const question=/\?["»”]?$/.test(phrase),exclaim=/!["»”]?$/.test(phrase);
  const numeric=(phrase.match(/\d+(?:[.,]\d+)*/g)||[]).length>=3;
- return {rate:numeric?.93:question?.97:.98,pitch:question?1.035:exclaim?1.025:1, pause:question?170:/[.!]["»”]?$/.test(phrase)?180:/[;:]$/.test(phrase)?115:/,$/.test(phrase)?75:20};
+ return {rate:numeric?.93:question?.97:.98,pitch:question?1.035:exclaim?1.025:1, pause:question?110:/[.!]["»”]?$/.test(phrase)?120:/[;:]$/.test(phrase)?75:/,$/.test(phrase)?45:15};
 }
 function naturalSpeechPause(chunk){return vertexSpeechProsody(chunk).pause;}
 function speakAnswer(answer,resumeIndex=0){
@@ -2790,7 +2801,7 @@ function speakAnswer(answer,resumeIndex=0){
         }else {try{synth.cancel();}catch{}useLocal=true;next();}
       }
       u.onerror=retryChunk;
-      speechTimer=setTimeout(retryChunk,15000);
+      speechTimer=setTimeout(retryChunk,4000);
       if(synth.paused)synth.resume();
       synth.speak(u);
     }catch{useLocal=true;next();}
