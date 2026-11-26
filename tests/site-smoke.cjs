@@ -1370,4 +1370,9 @@ assert(liveVoiceSource.includes('recognition.interimResults=true'));
 assert(liveVoiceSource.includes('function vertexNativeFinalReady(session)'));
 assert(liveVoiceSource.includes('if(vertexCommitNativeFinal(session))return;'));
 assert(liveVoiceSource.includes('recognition.processLocally=true'),'Recognition must stay local');
-assert(html.includes('assistente-mercati.html?v=live-fast-transcription-20261126'));
+assert(html.includes('assistente-mercati.html?v=voice-precision-dialogue-20261126'));
+
+assert(liveVoiceSource.includes('!session.nativeIncomplete&&!session.nativeUncertain'));
+assert(liveVoiceSource.includes('id="voice-spoken-caption"'));
+assert(liveVoiceSource.includes('setSpokenCaption(chunks[index])'));
+assert(liveVoiceSource.includes('italianSpeechVoice(availableSpeechVoices,failedVoice)'));
