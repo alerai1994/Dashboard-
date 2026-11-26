@@ -97,7 +97,7 @@ main{padding-bottom:4rem}.lightbar{position:fixed;bottom:env(safe-area-inset-bot
 </svg>
 <canvas id="voice-wave-canvas" aria-hidden="true"></canvas>
 <script type="text/plain" id="voice-engine">function cleanDictation(text) {
-  const musicTag = /\[\s*(?:musica|music)\s*\]|\(\s*(?:musica|music)\s*\)/gi;
+  const musicTag = /\[\s*(?:musica|music)\s*\]/gi;
   return text.replace(musicTag, '').trim();
 }
 // The recorder supplies mono PCM at 16 kHz. Keep a margin around audible speech.
@@ -1860,7 +1860,7 @@ function joinedAudio(session) {
 function phrasePauseLimit(session){
   const last=String(session.lastTranscript||session.nativeText||'').trim().toLowerCase().replace(/[.,!?;:]+$/,'');
   const incomplete=/(?:^|\s)(?:e|o|ma|perché|perche|quindi|che|di|del|della|con|per|su|il|la|un|una|and|or|but|because|with|of|to|the|a|an|for|about)$/.test(last);
-  return (session.pauseLimit||2.5)+(incomplete?1.8:0);
+  return (session.pauseLimit||2.5)+(incomplete?1.8:0)+(vertexDictationMode==='literal'&&(!last||!/[.!?…]$/.test(String(session.lastRawTranscript||session.nativeText||'').trim()))?.35:0);
 }
 function pauseEndsPhrase(session,rms,count){
   const seconds=count/(session.sampleRate||session.ctx.sampleRate);
@@ -1955,17 +1955,27 @@ function hasRecognitionLoop(text) {
   }
   return false;
 }
+// Literal dictation is the default. The optional correction mode is independent
+// of recognition accuracy and never changes the original recording.
+let vertexDictationMode='literal';
+try{if(localStorage.getItem('vertex-dictation-mode-v1')==='corrected')vertexDictationMode='corrected';}catch{}
+function vertexDictationModeCommand(raw){
+ const key=String(raw||'').toLowerCase().normalize('NFD').replace(/\p{M}/gu,'').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
+ if(/^(?:attiva|usa|abilita) (?:la )?(?:dettatura letterale|trascrizione letterale|trascrizione fedele)$|^disattiva (?:la )?correzione automatica$/.test(key))return 'literal';
+ if(/^(?:attiva|usa|abilita) (?:la )?(?:dettatura corretta|trascrizione corretta|correzione automatica)$/.test(key))return 'corrected';
+ return '';
+}
+function vertexSetDictationMode(mode){
+ vertexDictationMode=mode==='corrected'?'corrected':'literal';
+ try{localStorage.setItem('vertex-dictation-mode-v1',vertexDictationMode);}catch{}
+ return vertexDictationMode==='literal'?'Trascrizione letterale attivata. Non riscriverò le parole riconosciute.':'Correzione automatica della dettatura attivata.';
+}
 function normalizeVoiceTranscript(text,language='it',complete=false){
-  const value=String(text||'').trim();
-  if(!validItalianTranscript(value)||hasRecognitionLoop(value))return '';
-  let corrected=value;
-  if(language==='it'){
-    corrected=correctItalianDictation(value,complete);
-  }else{
-    corrected=normalizeMarketTerms(value);
-    corrected=corrected.replace(/\bi m\b/gi,"I'm").replace(/\bi ve\b/gi,"I've");
-  }
-  return corrected;
+ const value=String(text||'').trim();
+ if(!validItalianTranscript(value)||hasRecognitionLoop(value))return '';
+ if(vertexDictationMode==='literal')return value;
+ if(language==='it')return correctItalianDictation(value,complete);
+ return normalizeMarketTerms(value).replace(/\bi m\b/gi,"I'm").replace(/\bi ve\b/gi,"I've");
 }
 // Show only speech addressed to Vertex, not unrelated standby speech.
 function vertexLiveDraft(mode,text){
@@ -4186,6 +4196,8 @@ async function vertexSubmitQuestion(fromVoice=false){
   question=input.value.trim();
   const turnId=++vertexTurnId;
   // Conversational requests do not need a network query or a model download.
+  const dictationMode=vertexDictationModeCommand(question);
+  if(dictationMode){acceptAnswer(vertexSetDictationMode(dictationMode));return;}
   const conversational=vertexLocalClockAnswer(question)||instantConversation(question);
   if(conversational){acceptAnswer(conversational);return;}
    const directComparison=vertexDirectMarketComparison(question);
