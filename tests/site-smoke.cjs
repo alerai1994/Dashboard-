@@ -1370,7 +1370,7 @@ assert(liveVoiceSource.includes('recognition.interimResults=true'));
 assert(liveVoiceSource.includes('function vertexNativeFinalReady(session)'));
 assert(liveVoiceSource.includes('if(vertexCommitNativeFinal(session))return;'));
 assert(liveVoiceSource.includes('recognition.processLocally=true'),'Recognition must stay local');
-assert(html.includes('assistente-mercati.html?v=voice-model-identity-20261127'));
+assert(html.includes('assistente-mercati.html?v=voice-live-crypto-20261127'));
 
 assert(liveVoiceSource.includes('!session.nativeIncomplete&&!session.nativeUncertain'));
 assert(liveVoiceSource.includes('id="voice-spoken-caption"'));
@@ -1403,3 +1403,8 @@ assert(liveVoiceSource.includes("answerTier:choice.level,answerBackend:'webgpu'"
 assert(liveVoiceSource.includes('answerTier:choice.level,answerBackend:choice.device'));
 assert(!liveVoiceSource.includes('startLocalAnswer(false);return;'));
 assert(liveVoiceSource.includes("review:complex&&(tier!=='base'||!followup)"));
+
+assert(liveVoiceSource.includes('function vertexLiveQuoteIntent(raw)'));
+assert(liveVoiceSource.includes('include_last_updated_at:'));
+assert(liveVoiceSource.includes('now-stamp>180000'));
+assert(liveVoiceSource.includes('Live non disponibile — '));
