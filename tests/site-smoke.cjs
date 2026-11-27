@@ -1370,7 +1370,7 @@ assert(liveVoiceSource.includes('recognition.interimResults=true'));
 assert(liveVoiceSource.includes('function vertexNativeFinalReady(session)'));
 assert(liveVoiceSource.includes('if(vertexCommitNativeFinal(session))return;'));
 assert(liveVoiceSource.includes('recognition.processLocally=true'),'Recognition must stay local');
-assert(html.includes('assistente-mercati.html?v=voice-clean-controls-20261126'));
+assert(html.includes('assistente-mercati.html?v=voice-model-identity-20261127'));
 
 assert(liveVoiceSource.includes('!session.nativeIncomplete&&!session.nativeUncertain'));
 assert(liveVoiceSource.includes('id="voice-spoken-caption"'));
@@ -1385,7 +1385,7 @@ assert(liveVoiceSource.includes("if(spokenTier){acceptAnswer(setVertexTier(spoke
 
 assert(liveVoiceSource.includes('id="voice-model-test"'));
 assert(liveVoiceSource.includes('await vertexResolveRuntimeTier(vertexTier)'));
-assert(liveVoiceSource.includes('if(modelTest&&runtimeTier!==vertexTier)'));
+assert(liveVoiceSource.includes('if(runtimeTier!==selectedTier)'));
 
 assert(liveVoiceSource.includes('function vertexCheckVoiceGpu()'));
 assert(liveVoiceSource.includes('completeNative?Math.min(base,.7):base'));
@@ -1397,3 +1397,9 @@ assert(liveVoiceSource.includes('id="voice-model-extra" hidden aria-hidden="true
 assert(liveVoiceSource.includes('#voice-model-extra[hidden]{display:none!important}'));
 assert(liveVoiceSource.includes('Prova modello selezionato</button></div><div class="voice-action-row">'));
 assert(liveVoiceSource.includes('id="ai-model-toggle" aria-controls="ai-model-selector"'));
+
+assert(liveVoiceSource.includes('data.answerTier!==selectedTier||data.answerTier!==runtimeTier'));
+assert(liveVoiceSource.includes("answerTier:choice.level,answerBackend:'webgpu'"));
+assert(liveVoiceSource.includes('answerTier:choice.level,answerBackend:choice.device'));
+assert(!liveVoiceSource.includes('startLocalAnswer(false);return;'));
+assert(liveVoiceSource.includes("review:complex&&(tier!=='base'||!followup)"));
