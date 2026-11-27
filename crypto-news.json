@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-27T03:52:14.319566+00:00",
+  "updatedAt": "2026-11-27T13:46:48.698406+00:00",
   "sources": {
     "Injective Official": {
       "ok": true,
@@ -75,7 +75,7 @@
     },
     "Decrypt": {
       "ok": true,
-      "items": 35
+      "items": 34
     },
     "CryptoSlate": {
       "ok": true,
@@ -98,11 +98,11 @@
     },
     "BBC Business": {
       "ok": true,
-      "items": 39
+      "items": 40
     },
     "BBC World": {
       "ok": true,
-      "items": 31
+      "items": 27
     },
     "BBC Technology": {
       "ok": true,
@@ -110,7 +110,7 @@
     },
     "Financial Times": {
       "ok": true,
-      "items": 8
+      "items": 12
     },
     "Federal Reserve": {
       "ok": true,
@@ -118,7 +118,7 @@
     },
     "NY Times Business": {
       "ok": true,
-      "items": 50
+      "items": 49
     },
     "NY Times World": {
       "ok": true,
@@ -126,7 +126,7 @@
     },
     "NY Times Technology": {
       "ok": true,
-      "items": 29
+      "items": 28
     },
     "MIT Technology Review": {
       "ok": true,
@@ -135,10 +135,556 @@
   },
   "items": [
     {
+      "title": "Binance to launch tokenized IPO program after regulatory approval: Yi He",
+      "url": "https://cointelegraph.com/news/binance-ipo-program-regulatory-approval-yi-he?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound",
+      "date": "2026-11-27T13:44:00+00:00",
+      "source": "Cointelegraph"
+    },
+    {
+      "title": "Japan weighs safeguards for Bitcoin holders who keep their own keys",
+      "url": "https://cryptoslate.com/japan-weighs-safeguards-for-bitcoin-holders-who-keep-their-own-keys/",
+      "date": "2026-11-27T13:40:56+00:00",
+      "source": "CryptoSlate"
+    },
+    {
       "title": "Photos: Macy’s Thanksgiving Day Parade History and Wacky Moments",
       "url": "https://www.nytimes.com/2026/11/26/nyregion/macys-thanksgiving-parade-history-timeline.html",
-      "date": "2026-11-27T03:39:46+00:00",
+      "date": "2026-11-27T13:40:20+00:00",
       "source": "NY Times Business"
+    },
+    {
+      "title": "Rare turtles found inside baggage at Amsterdam airport",
+      "url": "https://www.bbc.co.uk/news/articles/cm5y1380q3vgo?at_medium=RSS&at_campaign=rss",
+      "date": "2026-11-27T13:38:07+00:00",
+      "source": "BBC World"
+    },
+    {
+      "title": "Puma Shen, Critic of China, Could be the Next Mayor of Taipei",
+      "url": "https://www.nytimes.com/2026/11/27/world/asia/puma-shen-taiwan-election-china.html",
+      "date": "2026-11-27T13:33:49+00:00",
+      "source": "NY Times World"
+    },
+    {
+      "title": "Here’s what happened in crypto today",
+      "url": "https://cointelegraph.com/news/what-happened-in-crypto-today?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound",
+      "date": "2026-11-27T13:28:26+00:00",
+      "source": "Cointelegraph"
+    },
+    {
+      "title": "Binance Fully Lifts Withdrawal Suspension Four Weeks After $6.4B Hack",
+      "url": "https://decrypt.co/384121/binance-fully-lifts-withdrawal-suspension-four-weeks-after-6-4b-hack",
+      "date": "2026-11-27T13:24:17+00:00",
+      "source": "Decrypt"
+    },
+    {
+      "title": "Kalshi turns to small businesses as legal battles threaten forecasts on sports",
+      "url": "https://www.coindesk.com/business/2026/11/27/kalshi-turns-to-small-businesses-as-legal-battles-threaten-forecasts-on-sports",
+      "date": "2026-11-27T13:19:10+00:00",
+      "source": "CoinDesk"
+    },
+    {
+      "title": "US tech stocks set to jump at open as volatile trading takes hold",
+      "url": "https://www.ft.com/content/b80e6259-dca8-4da3-962d-402106a3cd81?syn-25a6b1a6=1",
+      "date": "2026-11-27T13:15:41+00:00",
+      "source": "Financial Times"
+    },
+    {
+      "title": "The Download: Innovators Under 35 nominations are open, and a bionic window into the mind",
+      "url": "https://www.technologyreview.com/2026/11/27/1149960/the-download-the-download-innovators-under-35-nominations-bionic-hand/",
+      "date": "2026-11-27T13:00:00+00:00",
+      "source": "MIT Technology Review"
+    },
+    {
+      "title": "Bit Digital borrowed against Ethereum to fund AI, and now its crypto treasury is paying the price",
+      "url": "https://cryptoslate.com/bit-digital-borrowed-against-ethereum-to-fund-ai-and-now-its-crypto-treasury-is-paying-the-price/",
+      "date": "2026-11-27T12:40:54+00:00",
+      "source": "CryptoSlate"
+    },
+    {
+      "title": "Brazil’s stock exchange pushes stablecoin launch back to 2027",
+      "url": "https://cointelegraph.com/news/brazil-b3-stablecoin-tokenization-launch-2027?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound",
+      "date": "2026-11-27T12:39:54+00:00",
+      "source": "Cointelegraph"
+    },
+    {
+      "title": "First principles to cling to when markets convulse",
+      "url": "https://www.ft.com/content/839c7d2c-adad-4e70-9abd-3cd5bdf5e09e?syn-25a6b1a6=1",
+      "date": "2026-11-27T12:32:08+00:00",
+      "source": "Financial Times"
+    },
+    {
+      "title": "Stocks Set to Rally at End of a Week of Wild Swings",
+      "url": "https://www.nytimes.com/2026/11/27/business/stocks-tech-stocks-ai.html",
+      "date": "2026-11-27T12:25:25+00:00",
+      "source": "NY Times Business"
+    },
+    {
+      "title": "Austria-supervised crypto firms report 20.4B euros in H1 trading volume",
+      "url": "https://cointelegraph.com/news/austria-supervised-crypto-firms-report-204b-h1-volume?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound",
+      "date": "2026-11-27T12:20:00+00:00",
+      "source": "Cointelegraph"
+    },
+    {
+      "title": "Bitcoin 'death cross' is coming. Here's what happened after previous 13.",
+      "url": "https://www.coindesk.com/daybook-us/2026/11/27/bitcoin-death-cross-is-coming-here-s-what-happened-after-previous-13",
+      "date": "2026-11-27T12:16:07+00:00",
+      "source": "CoinDesk"
+    },
+    {
+      "title": "Bitcoin on course to end seven-week losing streak while trailing stock rebound",
+      "url": "https://www.coindesk.com/markets/2026/11/27/bitcoin-on-course-to-end-seven-week-losing-streak-while-trailing-stock-rebound",
+      "date": "2026-11-27T11:45:47+00:00",
+      "source": "CoinDesk"
+    },
+    {
+      "title": "Ex-media executive admits saying Australian child sex abuse survivor 'looking to be raped again'",
+      "url": "https://www.bbc.co.uk/news/articles/ckr5grlq78n9o?at_medium=RSS&at_campaign=rss",
+      "date": "2026-11-27T11:44:40+00:00",
+      "source": "BBC World"
+    },
+    {
+      "title": "French economy shrinks 0.2% in third quarter",
+      "url": "https://www.ft.com/content/5325ace3-d69a-4686-acb6-2f06de6afd11?syn-25a6b1a6=1",
+      "date": "2026-11-27T11:38:30+00:00",
+      "source": "Financial Times"
+    },
+    {
+      "title": "Live updates: Bitcoin rebounds above $61,000 as AI stocks lead premarket gains",
+      "url": "https://www.coindesk.com/tech/2026/11/27/live-news-bitcoin-rebounds-above-usd61-000-as-ai-stocks-lead-premarket-gains",
+      "date": "2026-11-27T11:34:37+00:00",
+      "source": "CoinDesk"
+    },
+    {
+      "title": "Japanese carmakers’ sales collapse amid China market plunge",
+      "url": "https://www.ft.com/content/f627ff39-58e4-4def-8e79-794d3dc2996b?syn-25a6b1a6=1",
+      "date": "2026-11-27T11:31:30+00:00",
+      "source": "Financial Times"
+    },
+    {
+      "title": "Next ECB chief favors tokenized bank deposits over stablecoins and bitcoin",
+      "url": "https://www.coindesk.com/policy/2026/11/27/next-ecb-chief-favors-tokenized-bank-deposits-over-stablecoins-and-bitcoin",
+      "date": "2026-11-27T11:22:42+00:00",
+      "source": "CoinDesk"
+    },
+    {
+      "title": "Ex-Kenyan governor jailed for 25 years over pregnant girlfriend's murder",
+      "url": "https://www.bbc.co.uk/news/articles/crx209ekq5xdo?at_medium=RSS&at_campaign=rss",
+      "date": "2026-11-27T11:22:02+00:00",
+      "source": "BBC World"
+    },
+    {
+      "title": "Bitcoin miners are shutting down machines, but mining just got even harder",
+      "url": "https://cryptoslate.com/bitcoin-miners-are-shutting-down-machines-but-mining-just-got-even-harder/",
+      "date": "2026-11-27T11:20:06+00:00",
+      "source": "CryptoSlate"
+    },
+    {
+      "title": "Kalshi Courts Small Businesses With 'Microinsurance' as State Crackdowns Bite",
+      "url": "https://decrypt.co/384118/kalshi-courts-small-businesses-with-microinsurance-as-state-crackdowns-bite",
+      "date": "2026-11-27T11:19:47+00:00",
+      "source": "Decrypt"
+    },
+    {
+      "title": "Bitcoin supply metric hits 11-year low as new ‘capitulation’ signal arrives",
+      "url": "https://cointelegraph.com/markets/bitcoin-supply-metric-new-capitulation-signal?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound",
+      "date": "2026-11-27T11:14:28+00:00",
+      "source": "Cointelegraph"
+    },
+    {
+      "title": "Injective asks SEC to allow order books for tokenized stock trading",
+      "url": "https://www.coindesk.com/markets/2026/11/27/injective-asks-sec-to-allow-order-books-for-tokenized-stock-trading",
+      "date": "2026-11-27T11:07:17+00:00",
+      "source": "CoinDesk"
+    },
+    {
+      "title": "How A.I. Is Transforming Mathematics",
+      "url": "https://www.nytimes.com/2026/11/27/podcasts/hardfork-terence-tao.html",
+      "date": "2026-11-27T11:00:20+00:00",
+      "source": "NY Times Technology"
+    },
+    {
+      "title": "Brazil’s stock exchange teams up with major banks to launch real-pegged stablecoin",
+      "url": "https://www.coindesk.com/business/2026/11/27/brazil-s-stock-exchange-teams-up-with-major-banks-to-launch-real-pegged-stablecoin",
+      "date": "2026-11-27T10:51:27+00:00",
+      "source": "CoinDesk"
+    },
+    {
+      "title": "Our 2027 Innovators Under 35 competition is now open",
+      "url": "https://www.technologyreview.com/2026/11/27/1149857/2027-innovators-under-35-competition-nominate/",
+      "date": "2026-11-27T10:48:47+00:00",
+      "source": "MIT Technology Review"
+    },
+    {
+      "title": "Bank of Japan official says stablecoins need reserve rules to preserve ‘singleness of money’",
+      "url": "https://www.theblock.co/news/regulation/2026-11-27-bank-of-japan-official-says-stablecoins-need-reserve-rules-to-preserve-singleness-of-money-447059",
+      "date": "2026-11-27T10:45:02+00:00",
+      "source": "The Block"
+    },
+    {
+      "title": "Uganda to withdraw troops from DR Congo town amid diplomatic row",
+      "url": "https://www.bbc.co.uk/news/articles/cq4gnj2ldkyzo?at_medium=RSS&at_campaign=rss",
+      "date": "2026-11-27T10:39:31+00:00",
+      "source": "BBC World"
+    },
+    {
+      "title": "Hundreds of thousands still without power after storms hit US on Thanksgiving",
+      "url": "https://www.bbc.co.uk/news/articles/cre3dj5n7dpwo?at_medium=RSS&at_campaign=rss",
+      "date": "2026-11-27T10:26:28+00:00",
+      "source": "BBC World"
+    },
+    {
+      "title": "Bluefin to shut down perps, refocus on spot trading and tokenized RWAs",
+      "url": "https://cointelegraph.com/news/bluefin-shut-down-perps-refocus-spot-trading-tokenized-rwas?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound",
+      "date": "2026-11-27T10:26:06+00:00",
+      "source": "Cointelegraph"
+    },
+    {
+      "title": "Clashes mar European games as Macron condemns violence",
+      "url": "https://www.bbc.co.uk/sport/football/articles/c69q8y5x03ywo?at_medium=RSS&at_campaign=rss",
+      "date": "2026-11-27T10:24:24+00:00",
+      "source": "BBC World"
+    },
+    {
+      "title": "Jensen Huang Is Back, and So Is His Plaque at Denny’s",
+      "url": "https://www.nytimes.com/2026/11/26/business/dennys-jensen-huang-nvidia-plaque.html",
+      "date": "2026-11-27T10:17:23+00:00",
+      "source": "NY Times Business"
+    },
+    {
+      "title": "Ethereum Sets December 15 Date for Delayed Glamsterdam Testnet Upgrade",
+      "url": "https://decrypt.co/384104/ethereum-sets-december-15-date-for-delayed-glamsterdam-testnet-upgrade",
+      "date": "2026-11-27T10:15:51+00:00",
+      "source": "Decrypt"
+    },
+    {
+      "title": "My self-care ritual is a meal at a fancy restaurant - on my own",
+      "url": "https://www.bbc.co.uk/news/articles/cw8dv11dp2yeo?at_medium=RSS&at_campaign=rss",
+      "date": "2026-11-27T10:10:36+00:00",
+      "source": "BBC Business"
+    },
+    {
+      "title": "Holiday Deals Are Tempting. Here’s How to Avoid Buyer’s Remorse.",
+      "url": "https://www.nytimes.com/2026/11/27/business/holiday-shopping-deals-spending.html",
+      "date": "2026-11-27T10:03:51+00:00",
+      "source": "NY Times Business"
+    },
+    {
+      "title": "How to Live Calmly, Despite Stock Market Whiplash",
+      "url": "https://www.nytimes.com/2026/11/27/business/nvidia-jensen-huang-trump-markets.html",
+      "date": "2026-11-27T10:02:53+00:00",
+      "source": "NY Times Business"
+    },
+    {
+      "title": "As Prices Rise, Americans Are Making Trade-Offs Rather Than Cutting Back",
+      "url": "https://www.nytimes.com/2026/11/27/business/inflation-consumer-spending-trade-offs-holidays.html",
+      "date": "2026-11-27T10:02:41+00:00",
+      "source": "NY Times Business"
+    },
+    {
+      "title": "A Journalist Fights for Free Speech in Egypt, and to Stay Out of Jail",
+      "url": "https://www.nytimes.com/2026/11/27/world/middleeast/egypt-journalist-trial-lina-attalah-mada-masr.html",
+      "date": "2026-11-27T10:02:40+00:00",
+      "source": "NY Times World"
+    },
+    {
+      "title": "Spain’s Far-Right Era Ended in 1975. Will This Man Change That?",
+      "url": "https://www.nytimes.com/2026/11/27/world/europe/santiago-abascal-vox-spain-far-right.html",
+      "date": "2026-11-27T10:02:12+00:00",
+      "source": "NY Times World"
+    },
+    {
+      "title": "2 TV Shows Take on Sam Bankman-Fried and FTX",
+      "url": "https://www.nytimes.com/2026/11/27/business/media/sam-bankman-fried-ftx-altruists.html",
+      "date": "2026-11-27T10:02:08+00:00",
+      "source": "NY Times Business"
+    },
+    {
+      "title": "France’s Bookstores, Beloved Curators of Literature, Are in a Deep Crisis",
+      "url": "https://www.nytimes.com/2026/11/27/world/europe/france-bookstore-crisis-closures.html",
+      "date": "2026-11-27T10:01:47+00:00",
+      "source": "NY Times World"
+    },
+    {
+      "title": "Why Some A.I. Evangelists Aren’t Bothered by the Potential for Human Extinction",
+      "url": "https://www.nytimes.com/2026/11/27/magazine/ai-silicon-valley-human-extinction.html",
+      "date": "2026-11-27T10:01:01+00:00",
+      "source": "NY Times Technology"
+    },
+    {
+      "title": "Switzerland is bringing Bitcoin self-custody into a global crypto tax reporting network",
+      "url": "https://cryptoslate.com/switzerland-is-bringing-bitcoin-self-custody-into-a-global-crypto-tax-reporting-network/",
+      "date": "2026-11-27T10:00:49+00:00",
+      "source": "CryptoSlate"
+    },
+    {
+      "title": "48 Hours in Tokyo With an Airline Pilot",
+      "url": "https://www.nytimes.com/2026/11/27/travel/48-hours-in-tokyo-with-an-airline-pilot.html",
+      "date": "2026-11-27T10:00:33+00:00",
+      "source": "NY Times Business"
+    },
+    {
+      "title": "Plaque by Plaque, Russia Erases the Memory of the Gulag’s Horrors",
+      "url": "https://www.nytimes.com/2026/11/27/world/europe/russia-gulag-memory.html",
+      "date": "2026-11-27T10:00:10+00:00",
+      "source": "NY Times World"
+    },
+    {
+      "title": "Why Russia Is Erasing Stalin’s Crimes",
+      "url": "https://www.nytimes.com/video/world/europe/100000010915175/why-russia-is-erasing-stalins-crimes.html",
+      "date": "2026-11-27T10:00:01+00:00",
+      "source": "NY Times World"
+    },
+    {
+      "title": "Tether can freeze stolen crypto in minutes. Getting it back can take years.",
+      "url": "https://www.coindesk.com/business/2026/11/27/tether-can-freeze-stolen-crypto-in-minutes-getting-it-back-can-take-years",
+      "date": "2026-11-27T10:00:00+00:00",
+      "source": "CoinDesk"
+    },
+    {
+      "title": "How cutting-edge prosthetics can help probe the human mind",
+      "url": "https://www.technologyreview.com/2026/11/27/1149946/cutting-edge-prosthetics-allow-researchers-to-probe-the-human-mind/",
+      "date": "2026-11-27T10:00:00+00:00",
+      "source": "MIT Technology Review"
+    },
+    {
+      "title": "Bitcoin tops $61,000 as Nasdaq futures extend Wednesday’s rebound",
+      "url": "https://www.coindesk.com/markets/2026/11/27/bitcoin-tops-usd61-000-as-nasdaq-futures-extend-wednesday-s-rebound",
+      "date": "2026-11-27T09:49:55+00:00",
+      "source": "CoinDesk"
+    },
+    {
+      "title": "Zelensky criticises 'strange' Trump-Putin friendship in BBC interview",
+      "url": "https://www.bbc.co.uk/news/articles/c820q9wgrpyyo?at_medium=RSS&at_campaign=rss",
+      "date": "2026-11-27T09:07:48+00:00",
+      "source": "BBC World"
+    },
+    {
+      "title": "Guinea-Bissau's military leaders delay return to civilian rule until 2028",
+      "url": "https://www.bbc.co.uk/news/articles/cm879e5yxjq5o?at_medium=RSS&at_campaign=rss",
+      "date": "2026-11-27T08:58:08+00:00",
+      "source": "BBC World"
+    },
+    {
+      "title": "'We're scared to turn our heating on'",
+      "url": "https://www.bbc.co.uk/news/videos/c6jd7yj4ve9xo?at_medium=RSS&at_campaign=rss",
+      "date": "2026-11-27T08:47:00+00:00",
+      "source": "BBC Business"
+    },
+    {
+      "title": "Bitcoin’s crash fears fade ahead of $7.5 billion options expiry, but December tells a different story",
+      "url": "https://cryptoslate.com/bitcoins-crash-fears-fade-ahead-of-7-5-billion-options-expiry-but-december-tells-a-different-story/",
+      "date": "2026-11-27T08:40:14+00:00",
+      "source": "CryptoSlate"
+    },
+    {
+      "title": "Chinese shares soar after Beijing signals more support",
+      "url": "https://www.ft.com/content/fedc6392-ad25-43e4-9d9f-20216cbf331e?syn-25a6b1a6=1",
+      "date": "2026-11-27T08:32:35+00:00",
+      "source": "Financial Times"
+    },
+    {
+      "title": "Millions of wives in South Asia unprotected from marital rape - study",
+      "url": "https://www.bbc.co.uk/news/articles/cw074p95ye5do?at_medium=RSS&at_campaign=rss",
+      "date": "2026-11-27T08:13:43+00:00",
+      "source": "BBC World"
+    },
+    {
+      "title": "ESMA to overhaul EU’s MiCA crypto register in 2027",
+      "url": "https://cointelegraph.com/news/esma-overhaul-eu-mica-crypto-register-2027?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound",
+      "date": "2026-11-27T08:04:39+00:00",
+      "source": "Cointelegraph"
+    },
+    {
+      "title": "Ethereum devs schedule Glamsterdam upgrade for Hoodi testnet on Dec. 15",
+      "url": "https://www.theblock.co/news/ecosystems/2026-11-27-ethereum-devs-schedule-glamsterdam-upgrade-hoodi-447051",
+      "date": "2026-11-27T07:51:14+00:00",
+      "source": "The Block"
+    },
+    {
+      "title": "Monero suffers biggest single-day slide in over 5 months. Here’s why",
+      "url": "https://www.coindesk.com/markets/2026/11/27/monero-suffers-biggest-single-day-slide-in-over-5-months-here-s-why",
+      "date": "2026-11-27T07:33:01+00:00",
+      "source": "CoinDesk"
+    },
+    {
+      "title": "Italy's former police chief rejected mafia inquiry allegations before death",
+      "url": "https://www.bbc.co.uk/news/articles/c69q8yjj1v0po?at_medium=RSS&at_campaign=rss",
+      "date": "2026-11-27T07:28:10+00:00",
+      "source": "BBC World"
+    },
+    {
+      "title": "New York AG secures $1.37B court judgment against NovaTech founders",
+      "url": "https://cointelegraph.com/news/new-york-ag-137b-court-judgment-novatech?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound",
+      "date": "2026-11-27T07:19:44+00:00",
+      "source": "Cointelegraph"
+    },
+    {
+      "title": "Hong Kong seeks to lure sovereign wealth funds with tax breaks",
+      "url": "https://www.ft.com/content/0285a2eb-5312-443d-bd60-b094af9575b1?syn-25a6b1a6=1",
+      "date": "2026-11-27T06:47:12+00:00",
+      "source": "Financial Times"
+    },
+    {
+      "title": "Ethereum’s quantum defense plans could delay a major upgrade to stop transaction censorship",
+      "url": "https://cryptoslate.com/ethereums-quantum-defense-plans-could-delay-a-major-upgrade-to-stop-transaction-censorship/",
+      "date": "2026-11-27T06:40:09+00:00",
+      "source": "CryptoSlate"
+    },
+    {
+      "title": "EU leaders fail to bridge budget splits as talks stall",
+      "url": "https://www.bbc.co.uk/news/articles/cw4gnm3m9deno?at_medium=RSS&at_campaign=rss",
+      "date": "2026-11-27T06:11:55+00:00",
+      "source": "BBC World"
+    },
+    {
+      "title": "How much is your rent in Birmingham?",
+      "url": "https://www.bbc.co.uk/news/videos/ckg5r02mqp4no?at_medium=RSS&at_campaign=rss",
+      "date": "2026-11-27T06:11:32+00:00",
+      "source": "BBC Business"
+    },
+    {
+      "title": "The food bank helping pet owners with rising bills",
+      "url": "https://www.bbc.co.uk/news/articles/c623jgz7zmg8o?at_medium=RSS&at_campaign=rss",
+      "date": "2026-11-27T06:11:13+00:00",
+      "source": "BBC Business"
+    },
+    {
+      "title": "'It's impossible': Spain's young people on housing ahead of Sunday's election",
+      "url": "https://www.bbc.co.uk/news/videos/cm9w9y8947xqo?at_medium=RSS&at_campaign=rss",
+      "date": "2026-11-27T06:09:31+00:00",
+      "source": "BBC World"
+    },
+    {
+      "title": "Inside Saudi Arabia, Houthi attacks test kingdom's image of security",
+      "url": "https://www.bbc.co.uk/news/articles/c6ly7jgv7jzdo?at_medium=RSS&at_campaign=rss",
+      "date": "2026-11-27T06:04:51+00:00",
+      "source": "BBC World"
+    },
+    {
+      "title": "Leaders clash in final Spain election debate as housing dominates run-in",
+      "url": "https://www.bbc.co.uk/news/articles/ckr5gr4g8gn5o?at_medium=RSS&at_campaign=rss",
+      "date": "2026-11-27T06:03:39+00:00",
+      "source": "BBC World"
+    },
+    {
+      "title": "Mushroom murderer Erin Patterson launches last-ditch High Court appeal",
+      "url": "https://www.bbc.co.uk/news/articles/ck053e1d3ly1o?at_medium=RSS&at_campaign=rss",
+      "date": "2026-11-27T05:54:38+00:00",
+      "source": "BBC World"
+    },
+    {
+      "title": "In Praise of My Typewriter",
+      "url": "https://www.nytimes.com/2026/11/26/world/ai-typewriter-russia-brazil-mirumi.html",
+      "date": "2026-11-27T05:45:53+00:00",
+      "source": "NY Times World"
+    },
+    {
+      "title": "Venezuela to scrap law that bars opposition from public office",
+      "url": "https://www.bbc.co.uk/news/articles/c58j4pw9xjrlo?at_medium=RSS&at_campaign=rss",
+      "date": "2026-11-27T05:35:10+00:00",
+      "source": "BBC World"
+    },
+    {
+      "title": "Japan’s crypto security group taps SEAL to speed up hack response",
+      "url": "https://cointelegraph.com/news/japans-crypto-security-group-taps-seal-to-speed-up-hack-response?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound",
+      "date": "2026-11-27T05:22:36+00:00",
+      "source": "Cointelegraph"
+    },
+    {
+      "title": "Judge Blocks F.C.C. From Targeting Disney’s Local ABC Licenses",
+      "url": "https://www.nytimes.com/2026/11/25/business/media/disney-fcc-abc-ruling.html",
+      "date": "2026-11-27T05:19:06+00:00",
+      "source": "NY Times Business"
+    },
+    {
+      "title": "Ripple's lending plan moves closer to tapping XRP Ledger's $800 million in stablecoins",
+      "url": "https://www.coindesk.com/markets/2026/11/27/ripple-s-lending-plan-moves-closer-to-tapping-xrp-ledger-s-usd950-million-in-stablecoins",
+      "date": "2026-11-27T05:06:32+00:00",
+      "source": "CoinDesk"
+    },
+    {
+      "title": "Can Roof Tiles Reduce Indoor Heat? India Is Finding Out.",
+      "url": "https://www.nytimes.com/2026/11/26/world/asia/india-extreme-heat-housing-roof-tiles.html",
+      "date": "2026-11-27T05:05:26+00:00",
+      "source": "NY Times World"
+    },
+    {
+      "title": "The Threat to a Sanctuary for Children of North Korean Defectors",
+      "url": "https://www.nytimes.com/2026/11/27/world/asia/the-threat-to-a-sanctuary-for-children-of-north-korean-defectors.html",
+      "date": "2026-11-27T05:00:39+00:00",
+      "source": "NY Times World"
+    },
+    {
+      "title": "Kirkland & Ellis under fire from private equity backers over sell-to-yourself deals",
+      "url": "https://www.ft.com/content/5cc534e6-d461-4fc7-a744-b938e54eee1d?syn-25a6b1a6=1",
+      "date": "2026-11-27T05:00:23+00:00",
+      "source": "Financial Times"
+    },
+    {
+      "title": "Middle-class Americans and Europeans have opposite problems",
+      "url": "https://www.ft.com/content/047e1a9d-0448-4ccd-aaec-c5c06125d111?syn-25a6b1a6=1",
+      "date": "2026-11-27T05:00:22+00:00",
+      "source": "Financial Times"
+    },
+    {
+      "title": "A Japanese Volleyball Player Breaks a Taboo",
+      "url": "https://www.nytimes.com/2026/11/27/world/asia/a-japanese-volleyball-player-breaks-a-taboo.html",
+      "date": "2026-11-27T05:00:17+00:00",
+      "source": "NY Times World"
+    },
+    {
+      "title": "Marine Le Pen: the woman who could break the EU",
+      "url": "https://www.ft.com/content/9bbd926e-ccef-4717-9044-48a23c9353ba?syn-25a6b1a6=1",
+      "date": "2026-11-27T05:00:13+00:00",
+      "source": "Financial Times"
+    },
+    {
+      "title": "Warsh’s ‘good family fight’ could turn ugly",
+      "url": "https://www.ft.com/content/71ffa69f-2a07-44e4-8305-ae5548b89828?syn-25a6b1a6=1",
+      "date": "2026-11-27T05:00:13+00:00",
+      "source": "Financial Times"
+    },
+    {
+      "title": "Chinese households shed billions in consumer debt",
+      "url": "https://www.ft.com/content/8c5e0298-58f0-47e9-a843-513178d9fa2e?syn-25a6b1a6=1",
+      "date": "2026-11-27T05:00:04+00:00",
+      "source": "Financial Times"
+    },
+    {
+      "title": "China’s super-rich have a new obsession: million-dollar fish",
+      "url": "https://www.ft.com/content/5a8b6b3c-c293-4f38-9f14-f5cc6cf98a34?syn-25a6b1a6=1",
+      "date": "2026-11-27T05:00:04+00:00",
+      "source": "Financial Times"
+    },
+    {
+      "title": "Ethereum devs set Glamsterdam’s Hoodi rollout for mid-December after delays",
+      "url": "https://cointelegraph.com/news/ethereum-devs-set-glamsterdams-hoodi-rollout-for-mid-december-after-delays?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound",
+      "date": "2026-11-27T04:47:36+00:00",
+      "source": "Cointelegraph"
+    },
+    {
+      "title": "Binance says customer withdrawals are fully restored, four weeks after the $6.3 billion hack",
+      "url": "https://www.coindesk.com/markets/2026/11/27/binance-says-its-withdrawal-suspension-is-over-four-weeks-after-a-usd6-3-billion-hack",
+      "date": "2026-11-27T04:45:47+00:00",
+      "source": "CoinDesk"
+    },
+    {
+      "title": "Ethereum's much-awaited Glamsterdam upgrade cleared for December test. Here's what to know",
+      "url": "https://www.coindesk.com/tech/2026/11/27/ethereum-s-much-awaited-glamsterdam-upgrade-cleared-for-december-test-here-s-what-to-know",
+      "date": "2026-11-27T04:29:47+00:00",
+      "source": "CoinDesk"
+    },
+    {
+      "title": "USDT leads borrowing on four of six DeFi protocols examined by Europe’s banking watchdog",
+      "url": "https://cryptoslate.com/usdt-leads-borrowing-on-four-of-six-defi-protocols-examined-by-europes-banking-watchdog/",
+      "date": "2026-11-27T04:20:14+00:00",
+      "source": "CryptoSlate"
+    },
+    {
+      "title": "China, Japan, South Korea and ASEAN to form working group on digital payments, crypto regulation",
+      "url": "https://www.theblock.co/news/regulation/2026-11-26-china-japan-south-korea-asean-digital-payments-447029",
+      "date": "2026-11-27T04:18:40+00:00",
+      "source": "The Block"
     },
     {
       "title": "New Zealand's ruling coalition falls short of parliamentary majority by one seat",
@@ -177,9 +723,9 @@
       "source": "Financial Times"
     },
     {
-      "title": "I spend £200 a month on fancy meals by myself - would you dine solo?",
-      "url": "https://www.bbc.co.uk/news/articles/cw8dv11dp2yeo?at_medium=RSS&at_campaign=rss",
-      "date": "2026-11-27T00:54:45+00:00",
+      "title": "From £250 job to £9,000 bill: Inside the rogue trader networks scamming customers at scale",
+      "url": "https://www.bbc.co.uk/news/articles/c65yme31k7m2o?at_medium=RSS&at_campaign=rss",
+      "date": "2026-11-27T00:58:49+00:00",
       "source": "BBC Business"
     },
     {
@@ -195,7 +741,7 @@
       "source": "CryptoSlate"
     },
     {
-      "title": "Met Police ruined my life, says Kenyan man wrongly sentenced over attack on UK couple",
+      "title": "Met Police ruined my life, says Kenyan man wrongly convicted over attack on UK couple",
       "url": "https://www.bbc.co.uk/news/articles/cqvg2nlr8kd8o?at_medium=RSS&at_campaign=rss",
       "date": "2026-11-27T00:48:11+00:00",
       "source": "BBC World"
@@ -243,21 +789,9 @@
       "source": "BBC World"
     },
     {
-      "title": "US too focused on Middle East and not pushing Russia hard enough, Zelensky tells BBC",
-      "url": "https://www.bbc.co.uk/news/articles/c820q9wgrpyyo?at_medium=RSS&at_campaign=rss",
-      "date": "2026-11-26T22:49:27+00:00",
-      "source": "BBC World"
-    },
-    {
       "title": "‘Very racist’ Netflix SBF series, BitMart’s $319M shortfall: Asia Express",
       "url": "https://cointelegraph.com/magazine/very-racist-netflix-sbf-series-bitmarts-319m-shortfall-asia-express?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound",
       "date": "2026-11-26T22:39:46+00:00",
-      "source": "Cointelegraph"
-    },
-    {
-      "title": "Here’s what happened in crypto today",
-      "url": "https://cointelegraph.com/news/what-happened-in-crypto-today?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound",
-      "date": "2026-11-26T22:12:06+00:00",
       "source": "Cointelegraph"
     },
     {
@@ -309,12 +843,6 @@
       "source": "Cointelegraph"
     },
     {
-      "title": "Jensen Huang Is Back, and So Is His Plaque at Denny’s",
-      "url": "https://www.nytimes.com/2026/11/26/business/dennys-jensen-huang-nvidia-plaque.html",
-      "date": "2026-11-26T21:25:16+00:00",
-      "source": "NY Times Business"
-    },
-    {
       "title": "Judges in Israel Suggest Dropping Key Corruption Case Against Netanyahu",
       "url": "https://www.nytimes.com/2026/11/25/world/middleeast/judges-israel-corruption-case-netanyahu.html",
       "date": "2026-11-26T21:23:06+00:00",
@@ -357,12 +885,6 @@
       "source": "Decrypt"
     },
     {
-      "title": "In Praise of My Typewriter",
-      "url": "https://www.nytimes.com/2026/11/26/world/ai-typewriter-russia-brazil-mirumi.html",
-      "date": "2026-11-26T20:43:17+00:00",
-      "source": "NY Times World"
-    },
-    {
       "title": "Chainlink jumps 10% as its Wall Street ambitions gain momentum on two fronts",
       "url": "https://cryptoslate.com/chainlink-jumps-10-as-its-wall-street-ambitions-gain-momentum-on-two-fronts/",
       "date": "2026-11-26T20:40:01+00:00",
@@ -395,7 +917,7 @@
     {
       "title": "European Central Bank Chooses Pablo Hernández de Cos as Next President",
       "url": "https://www.nytimes.com/2026/11/26/business/ecb-pablo-hernandez-de-cos.html",
-      "date": "2026-11-26T19:41:34+00:00",
+      "date": "2026-11-26T19:41:35+00:00",
       "source": "NY Times Business"
     },
     {
@@ -509,7 +1031,7 @@
     {
       "title": "Trump’s Latest Tariffs Revive Focus on Pressuring China",
       "url": "https://www.nytimes.com/2026/11/26/business/trump-tariffs-asia.html",
-      "date": "2026-11-26T17:03:31+00:00",
+      "date": "2026-11-26T17:03:32+00:00",
       "source": "NY Times Business"
     },
     {
@@ -915,27 +1437,27 @@
       "source": "Financial Times"
     },
     {
+      "title": "El Salvador’s Nayib Bukele Elates Haiti With Fight Against Gangs",
+      "url": "https://www.nytimes.com/2026/11/26/world/americas/nayib-bukele-salvador-haiti.html",
+      "date": "2026-11-26T10:04:18+00:00",
+      "source": "NY Times World"
+    },
+    {
       "title": "The E.R. Closed at 5 P.M. A Dying Woman Showed Up 11 Minutes Too Late.",
       "url": "https://www.nytimes.com/2026/11/26/world/canada/port-hardy-woman-dies-outside-er.html",
       "date": "2026-11-26T10:04:18+00:00",
       "source": "NY Times World"
     },
     {
-      "title": "El Salvador’s Nayib Bukele Elates Haiti With Fight Against Gangs",
-      "url": "https://www.nytimes.com/2026/11/26/world/americas/nayib-bukele-salvador-haiti.html",
-      "date": "2026-11-26T10:04:17+00:00",
-      "source": "NY Times World"
-    },
-    {
       "title": "How Birds With GPS and Audio Sensors Track Hidden Fishing Boats",
       "url": "https://www.nytimes.com/2026/11/26/climate/seabirds-tracking-hidden-fishing-boats.html",
-      "date": "2026-11-26T10:04:04+00:00",
+      "date": "2026-11-26T10:04:05+00:00",
       "source": "NY Times World"
     },
     {
       "title": "‘Avengers’ and ‘Dune’ Have Hollywood Dreaming of a December Windfall",
       "url": "https://www.nytimes.com/2026/11/26/business/media/avengers-infinity-vision-dune.html",
-      "date": "2026-11-26T10:02:26+00:00",
+      "date": "2026-11-26T10:02:27+00:00",
       "source": "NY Times Business"
     },
     {
@@ -1038,12 +1560,6 @@
       "title": "The Unbearable Heat of Delhi’s Summer Nights",
       "url": "https://www.nytimes.com/2026/11/26/world/asia/the-unbearable-heat-of-delhis-summer-nights.html",
       "date": "2026-11-26T08:47:33+00:00",
-      "source": "NY Times World"
-    },
-    {
-      "title": "Can Roof Tiles Reduce Indoor Heat? India Is Finding Out.",
-      "url": "https://www.nytimes.com/2026/11/26/world/asia/india-extreme-heat-housing-roof-tiles.html",
-      "date": "2026-11-26T08:45:06+00:00",
       "source": "NY Times World"
     },
     {
@@ -1173,14 +1689,14 @@
       "source": "The Block"
     },
     {
-      "title": "An Italian Couple Bought a House Built by Pier Paolo Pasolini. Local Villagers Want to Evict Them.",
-      "url": "https://www.nytimes.com/2026/11/26/world/europe/pasolini-house-eviction-court.html",
+      "title": "London Banning Noise and Capping Fares for Its Pedicabs",
+      "url": "https://www.nytimes.com/2026/11/26/world/europe/london-pedicab-regulations-music-ban-nyc.html",
       "date": "2026-11-26T05:01:11+00:00",
       "source": "NY Times World"
     },
     {
-      "title": "London Banning Noise and Capping Fares for Its Pedicabs",
-      "url": "https://www.nytimes.com/2026/11/26/world/europe/london-pedicab-regulations-music-ban-nyc.html",
+      "title": "An Italian Couple Bought a House Built by Pier Paolo Pasolini. Local Villagers Want to Evict Them.",
+      "url": "https://www.nytimes.com/2026/11/26/world/europe/pasolini-house-eviction-court.html",
       "date": "2026-11-26T05:01:11+00:00",
       "source": "NY Times World"
     },
@@ -1327,12 +1843,6 @@
       "url": "https://www.bbc.co.uk/news/articles/ck62y23z58yeo?at_medium=RSS&at_campaign=rss",
       "date": "2026-11-26T02:06:10+00:00",
       "source": "BBC World"
-    },
-    {
-      "title": "Judge Blocks F.C.C. From Targeting Disney’s Local ABC Licenses",
-      "url": "https://www.nytimes.com/2026/11/25/business/media/disney-fcc-abc-ruling.html",
-      "date": "2026-11-26T02:01:20+00:00",
-      "source": "NY Times Business"
     },
     {
       "title": "Trump Rejoiced in the Market’s Nvidia Surge. It Didn’t Last Long.",
