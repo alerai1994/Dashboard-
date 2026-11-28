@@ -1370,7 +1370,7 @@ assert(liveVoiceSource.includes('recognition.interimResults=true'));
 assert(liveVoiceSource.includes('function vertexNativeFinalReady(session)'));
 assert(liveVoiceSource.includes('if(vertexCommitNativeFinal(session))return;'));
 assert(liveVoiceSource.includes('recognition.processLocally=true'),'Recognition must stay local');
-assert(html.includes('assistente-mercati.html?v=voice-live-crypto-20261127'));
+assert(html.includes('assistente-mercati.html?v=refined-ai-models-20261128'));
 
 assert(liveVoiceSource.includes('!session.nativeIncomplete&&!session.nativeUncertain'));
 assert(liveVoiceSource.includes('id="voice-spoken-caption"'));
@@ -1408,3 +1408,8 @@ assert(liveVoiceSource.includes('function vertexLiveQuoteIntent(raw)'));
 assert(liveVoiceSource.includes('include_last_updated_at:'));
 assert(liveVoiceSource.includes('now-stamp>180000'));
 assert(liveVoiceSource.includes('Live non disponibile — '));
+
+// Review must not introduce unsupported numbers or URLs, and preserve voice instructions.
+assert(liveVoiceSource.includes('vertexUsableReview(draft,revised,turns)'));
+assert(liveVoiceSource.includes('const allowedLinks=new Set(links(known)),allowedNumbers=new Set(numbers(known))'));
+assert(liveVoiceSource.includes('const systemPrompt=priorityVoice+effectivePrompt'));
