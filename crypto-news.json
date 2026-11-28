@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-27T22:24:17.027853+00:00",
+  "updatedAt": "2026-11-28T04:13:54.317827+00:00",
   "sources": {
     "Injective Official": {
       "ok": true,
@@ -106,7 +106,7 @@
     },
     "BBC Technology": {
       "ok": true,
-      "items": 19
+      "items": 20
     },
     "Financial Times": {
       "ok": true,
@@ -134,6 +134,108 @@
     }
   },
   "items": [
+    {
+      "title": "Binance withdrawals are back after October’s hack and here’s why yours might still be blocked",
+      "url": "https://cryptoslate.com/binance-withdrawals-are-back-after-octobers-hack-and-heres-why-yours-might-still-be-blocked/",
+      "date": "2026-11-28T02:10:31+00:00",
+      "source": "CryptoSlate"
+    },
+    {
+      "title": "Princess Kate’s Cancer Documentary ‘Heal’: 3 Takeaways",
+      "url": "https://www.nytimes.com/2026/11/27/world/europe/princess-catherine-kate-heal-cancer-documentary.html",
+      "date": "2026-11-28T01:35:00+00:00",
+      "source": "NY Times World"
+    },
+    {
+      "title": "How gamers are using AI and leaked files to clone Grand Theft Auto 6",
+      "url": "https://www.bbc.co.uk/news/articles/c64gn8pe5eeqo?at_medium=RSS&at_campaign=rss",
+      "date": "2026-11-28T01:30:50+00:00",
+      "source": "BBC Technology"
+    },
+    {
+      "title": "Nigeria's 'ultimate hard man' who become an online meme",
+      "url": "https://www.bbc.co.uk/news/articles/cm3vg3lkrk03o?at_medium=RSS&at_campaign=rss",
+      "date": "2026-11-28T01:20:35+00:00",
+      "source": "BBC World"
+    },
+    {
+      "title": "Tech Now",
+      "url": "https://www.bbc.co.uk/iplayer/episode/m00353dd?at_medium=RSS&at_campaign=rss",
+      "date": "2026-11-28T01:00:00+00:00",
+      "source": "BBC Technology"
+    },
+    {
+      "title": "'Poison seller' Kenneth Law apologises in court to the families of his victims",
+      "url": "https://www.bbc.co.uk/news/articles/cmx2898wq2qjo?at_medium=RSS&at_campaign=rss",
+      "date": "2026-11-28T00:56:55+00:00",
+      "source": "BBC World"
+    },
+    {
+      "title": "Israeli bank lets customers buy Bitcoin but charges them 2% to get in and 2% to get out",
+      "url": "https://cryptoslate.com/israeli-bank-lets-customers-buy-bitcoin-but-charges-them-2-to-get-in-and-2-to-get-out/",
+      "date": "2026-11-28T00:50:45+00:00",
+      "source": "CryptoSlate"
+    },
+    {
+      "title": "The Indian 'Tamasha queen' whose fans paid for a show that never happened",
+      "url": "https://www.bbc.co.uk/news/articles/cj20q9pw0116o?at_medium=RSS&at_campaign=rss",
+      "date": "2026-11-28T00:50:11+00:00",
+      "source": "BBC World"
+    },
+    {
+      "title": "NBC Pulls an Ad That Some Described as Antisemitic",
+      "url": "https://www.nytimes.com/2026/11/27/business/media/nbc-ad-snl.html",
+      "date": "2026-11-28T00:46:42+00:00",
+      "source": "NY Times Business"
+    },
+    {
+      "title": "A Journalist Fights for Free Speech in Egypt, and to Stay Out of Jail",
+      "url": "https://www.nytimes.com/2026/11/27/world/middleeast/egypt-journalist-trial-lina-attalah-mada-masr.html",
+      "date": "2026-11-28T00:21:34+00:00",
+      "source": "NY Times World"
+    },
+    {
+      "title": "A clinic is reassessing people with ADHD and autism diagnoses - but critics fear it could deepen stigma",
+      "url": "https://www.bbc.co.uk/news/articles/cr9309nyg2vno?at_medium=RSS&at_campaign=rss",
+      "date": "2026-11-28T00:05:17+00:00",
+      "source": "BBC World"
+    },
+    {
+      "title": "Police Link Release of Substance at Don Toliver Concert to Robbery Attempts",
+      "url": "https://www.nytimes.com/2026/11/27/world/europe/don-toliver-manchester-substance-robberies.html",
+      "date": "2026-11-27T23:24:27+00:00",
+      "source": "NY Times World"
+    },
+    {
+      "title": "France’s Bookstores, Beloved Curators of Literature, Are in a Deep Crisis",
+      "url": "https://www.nytimes.com/2026/11/27/world/europe/france-bookstore-crisis-closures.html",
+      "date": "2026-11-27T23:11:38+00:00",
+      "source": "NY Times World"
+    },
+    {
+      "title": "Chainflip identifies who lost money in $12.6 million hack as recovery plan takes shape",
+      "url": "https://cryptoslate.com/chainflip-identifies-who-lost-money-in-12-6-million-hack-as-recovery-plan-takes-shape/",
+      "date": "2026-11-27T23:10:30+00:00",
+      "source": "CryptoSlate"
+    },
+    {
+      "title": "Behind China's spectacular rise, voices who defied it say they are being drowned out",
+      "url": "https://www.bbc.co.uk/news/articles/cme3d4y094x7o?at_medium=RSS&at_campaign=rss",
+      "date": "2026-11-27T23:02:35+00:00",
+      "source": "BBC World"
+    },
+    {
+      "title": "OpenAI countersues Apple for stealing trade secrets",
+      "url": "https://www.ft.com/content/af599e07-d44c-4068-ab84-6ee3c85551d4?syn-25a6b1a6=1",
+      "date": "2026-11-27T23:00:08+00:00",
+      "source": "Financial Times"
+    },
+    {
+      "title": "S&P cuts France outlook to negative",
+      "url": "https://www.ft.com/content/4e16110a-9604-4455-8557-4edece5df01a?syn-25a6b1a6=1",
+      "date": "2026-11-27T22:45:36+00:00",
+      "source": "Financial Times"
+    },
     {
       "title": "How to Live Calmly, Despite Stock Market Whiplash",
       "url": "https://www.nytimes.com/2026/11/27/business/nvidia-jensen-huang-trump-markets.html",
@@ -165,18 +267,6 @@
       "kind": "software-release"
     },
     {
-      "title": "Prosecutors seek 25-year prison term for 'poison seller' Kenneth Law",
-      "url": "https://www.bbc.co.uk/news/articles/cmx2898wq2qjo?at_medium=RSS&at_campaign=rss",
-      "date": "2026-11-27T22:03:46+00:00",
-      "source": "BBC World"
-    },
-    {
-      "title": "Princess Kate’s Cancer Documentary ‘Heal’: 3 Takeaways",
-      "url": "https://www.nytimes.com/2026/11/27/world/europe/princess-catherine-kate-heal-cancer-documentary.html",
-      "date": "2026-11-27T22:00:04+00:00",
-      "source": "NY Times World"
-    },
-    {
       "title": "Spanish PM and rivals rally supporters in final pitch for votes",
       "url": "https://www.bbc.co.uk/news/articles/c8wy5p4gdnwvo?at_medium=RSS&at_campaign=rss",
       "date": "2026-11-27T21:55:53+00:00",
@@ -201,15 +291,9 @@
       "source": "NY Times World"
     },
     {
-      "title": "S&P cuts France outlook to negative",
-      "url": "https://www.ft.com/content/4e16110a-9604-4455-8557-4edece5df01a?syn-25a6b1a6=1",
-      "date": "2026-11-27T21:34:13+00:00",
-      "source": "Financial Times"
-    },
-    {
       "title": "Quebec Can Keep Its Ban on Religious Symbols, Canada’s Top Court Rules",
       "url": "https://www.nytimes.com/2026/11/27/world/canada/canada-supreme-court-quebec-religion-bill-21.html",
-      "date": "2026-11-27T21:17:11+00:00",
+      "date": "2026-11-27T21:17:12+00:00",
       "source": "NY Times World"
     },
     {
@@ -291,15 +375,15 @@
       "source": "Financial Times"
     },
     {
-      "title": "OpenAI countersues Apple for stealing trade secrets",
-      "url": "https://www.ft.com/content/af599e07-d44c-4068-ab84-6ee3c85551d4?syn-25a6b1a6=1",
-      "date": "2026-11-27T18:20:05+00:00",
-      "source": "Financial Times"
-    },
-    {
       "title": "AI and the decryption nightmare",
       "url": "https://www.ft.com/content/4114d053-de5e-46a5-8b46-758726abdcb7?syn-25a6b1a6=1",
       "date": "2026-11-27T18:18:27+00:00",
+      "source": "Financial Times"
+    },
+    {
+      "title": "Can AI crack encryption?",
+      "url": "https://www.ft.com/content/1a29e62d-b18d-4bad-937d-34f3eae0587a?syn-25a6b1a6=1",
+      "date": "2026-11-27T18:16:51+00:00",
       "source": "Financial Times"
     },
     {
@@ -381,6 +465,12 @@
       "source": "Cointelegraph"
     },
     {
+      "title": "Severe Thanksgiving storms leave roads flooded and trees fallen",
+      "url": "https://www.bbc.co.uk/news/videos/ckvg20y511p4o?at_medium=RSS&at_campaign=rss",
+      "date": "2026-11-27T16:46:47+00:00",
+      "source": "BBC World"
+    },
+    {
       "title": "Mélenchon takes aim at Germany in Berlin campaign stop",
       "url": "https://www.ft.com/content/6689598a-47f2-41b3-92d7-e5c234914c5b?syn-25a6b1a6=1",
       "date": "2026-11-27T16:45:39+00:00",
@@ -441,12 +531,6 @@
       "source": "NY Times Business"
     },
     {
-      "title": "France’s Bookstores, Beloved Curators of Literature, Are in a Deep Crisis",
-      "url": "https://www.nytimes.com/2026/11/27/world/europe/france-bookstore-crisis-closures.html",
-      "date": "2026-11-27T15:26:55+00:00",
-      "source": "NY Times World"
-    },
-    {
       "title": "Climate Talks Imploded, but the ‘Age of Electricity’ Rolls On, Energy Chief Says",
       "url": "https://www.nytimes.com/2026/11/27/business/fatih-birol-iea-cop31-electrification.html",
       "date": "2026-11-27T15:18:58+00:00",
@@ -461,7 +545,7 @@
     {
       "title": "Spain’s Far-Right Era Ended in 1975. Will This Man Change That?",
       "url": "https://www.nytimes.com/2026/11/27/world/europe/santiago-abascal-vox-spain-far-right.html",
-      "date": "2026-11-27T14:45:20+00:00",
+      "date": "2026-11-27T14:45:21+00:00",
       "source": "NY Times World"
     },
     {
@@ -705,15 +789,9 @@
       "source": "NY Times Business"
     },
     {
-      "title": "A Journalist Fights for Free Speech in Egypt, and to Stay Out of Jail",
-      "url": "https://www.nytimes.com/2026/11/27/world/middleeast/egypt-journalist-trial-lina-attalah-mada-masr.html",
-      "date": "2026-11-27T10:02:40+00:00",
-      "source": "NY Times World"
-    },
-    {
       "title": "2 TV Shows Take on Sam Bankman-Fried and FTX",
       "url": "https://www.nytimes.com/2026/11/27/business/media/sam-bankman-fried-ftx-altruists.html",
-      "date": "2026-11-27T10:02:08+00:00",
+      "date": "2026-11-27T10:02:09+00:00",
       "source": "NY Times Business"
     },
     {
@@ -1145,7 +1223,7 @@
     {
       "title": "U.K. Releases Files on Peter Mandelson, Ambassador Tied to Jeffrey Epstein",
       "url": "https://www.nytimes.com/2026/11/26/world/europe/peter-mandelson-epstein-uk.html",
-      "date": "2026-11-26T21:40:09+00:00",
+      "date": "2026-11-26T21:40:10+00:00",
       "source": "NY Times World"
     },
     {
@@ -2007,14 +2085,14 @@
       "source": "The Block"
     },
     {
-      "title": "An Italian Couple Bought a House Built by Pier Paolo Pasolini. Local Villagers Want to Evict Them.",
-      "url": "https://www.nytimes.com/2026/11/26/world/europe/pasolini-house-eviction-court.html",
+      "title": "London Banning Noise and Capping Fares for Its Pedicabs",
+      "url": "https://www.nytimes.com/2026/11/26/world/europe/london-pedicab-regulations-music-ban-nyc.html",
       "date": "2026-11-26T05:01:11+00:00",
       "source": "NY Times World"
     },
     {
-      "title": "London Banning Noise and Capping Fares for Its Pedicabs",
-      "url": "https://www.nytimes.com/2026/11/26/world/europe/london-pedicab-regulations-music-ban-nyc.html",
+      "title": "An Italian Couple Bought a House Built by Pier Paolo Pasolini. Local Villagers Want to Evict Them.",
+      "url": "https://www.nytimes.com/2026/11/26/world/europe/pasolini-house-eviction-court.html",
       "date": "2026-11-26T05:01:11+00:00",
       "source": "NY Times World"
     },
